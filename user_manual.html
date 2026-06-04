@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YZF Sudoku 使用手册 / User Manual</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --paper: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #d9dee8;
+      --brand: #2563eb;
+      --brand-soft: #eaf1ff;
+      --warn: #b45309;
+      --warn-soft: #fff7ed;
+      --ok: #047857;
+      --ok-soft: #ecfdf5;
+      --code: #111827;
+      --code-bg: #f3f4f6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.72;
+    }
+    header {
+      background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+      color: #fff;
+      padding: 36px 22px 30px;
+    }
+    header .wrap, main { max-width: 1180px; margin: 0 auto; }
+    h1 { margin: 0 0 10px; font-size: clamp(28px, 4vw, 46px); line-height: 1.15; }
+    header p { margin: 4px 0; color: rgba(255,255,255,.88); }
+    .meta { margin-top: 14px; font-size: 14px; color: rgba(255,255,255,.78); }
+    main { padding: 24px 16px 60px; }
+    nav {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 22px;
+      box-shadow: 0 8px 26px rgba(15,23,42,.06);
+    }
+    nav h2 { margin-top: 0; font-size: 20px; }
+    .toc { columns: 2; column-gap: 40px; padding-left: 22px; }
+    .toc a { color: var(--brand); text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+    section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px;
+      margin: 18px 0;
+      box-shadow: 0 8px 26px rgba(15,23,42,.05);
+    }
+    h2 { font-size: 26px; margin: 0 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+    h3 { font-size: 19px; margin: 22px 0 8px; }
+    .pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin: 14px 0;
+    }
+    .zh, .en {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: #fff;
+    }
+    .zh::before, .en::before {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 2px 9px;
+      margin-bottom: 8px;
+    }
+    .zh::before { content: "中文"; color: #1d4ed8; background: var(--brand-soft); }
+    .en::before { content: "English"; color: #047857; background: var(--ok-soft); }
+    ul, ol { padding-left: 22px; }
+    li { margin: 5px 0; }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background: var(--code-bg);
+      color: var(--code);
+      border-radius: 6px;
+    }
+    code { padding: 2px 5px; }
+    pre { padding: 12px; overflow: auto; border: 1px solid var(--line); }
+    .note, .warn, .ok {
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 12px 0;
+      border: 1px solid;
+    }
+    .note { background: var(--brand-soft); border-color: #bfdbfe; }
+    .warn { background: var(--warn-soft); border-color: #fed7aa; color: #7c2d12; }
+    .ok { background: var(--ok-soft); border-color: #bbf7d0; color: #064e3b; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+    th, td { border: 1px solid var(--line); padding: 9px 10px; vertical-align: top; }
+    th { background: #f8fafc; text-align: left; }
+    .kbd {
+      display: inline-block;
+      min-width: 1.8em;
+      padding: 1px 6px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      box-shadow: inset 0 -1px 0 #cbd5e1;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.9em;
+      text-align: center;
+    }
+    .small { color: var(--muted); font-size: 13px; }
+    footer { max-width: 1180px; margin: 0 auto 40px; padding: 0 16px; color: var(--muted); }
+    @media (max-width: 820px) {
+      .pair { grid-template-columns: 1fr; }
+      .toc { columns: 1; }
+      section { padding: 17px; }
+    }
+    @media print {
+      body { background: #fff; }
+      header { color: #000; background: #fff; border-bottom: 2px solid #000; }
+      section, nav { box-shadow: none; break-inside: avoid; }
+      a { color: #000; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>YZF Sudoku 使用手册 / User Manual</h1>
+      <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
+      <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
+      <div class="meta">Version: Manual v1.0 · Updated: 2026-06-04</div>
+    </div>
+  </header>
+
+  <main>
+    <nav aria-label="Table of contents">
+      <h2>目录 / Contents</h2>
+      <ol class="toc">
+        <li><a href="#overview">项目简介 / Overview</a></li>
+        <li><a href="#start">启动方式 / How to Start</a></li>
+        <li><a href="#layout">界面区域 / Interface Layout</a></li>
+        <li><a href="#input">题面输入 / Puzzle Input</a></li>
+        <li><a href="#image-ocr">图片识别 / Image Recognition</a></li>
+        <li><a href="#edit-board">盘面编辑 / Board Editing</a></li>
+        <li><a href="#solve">自动解题 / Auto Solve</a></li>
+        <li><a href="#all-steps">所有步骤 / All Steps</a></li>
+        <li><a href="#techniques">技巧与高亮 / Techniques and Highlights</a></li>
+        <li><a href="#superhard">内置超难题库 / Built-in Superhard Bank</a></li>
+        <li><a href="#export">导出与分享 / Export and Sharing</a></li>
+        <li><a href="#mobile">手机端使用 / Mobile Use</a></li>
+        <li><a href="#standalone">Standalone 版本 / Standalone Version</a></li>
+        <li><a href="#troubleshooting">常见问题 / Troubleshooting</a></li>
+        <li><a href="#credits">模型与来源声明 / Credits</a></li>
+      </ol>
+    </nav>
+
+    <section id="overview">
+      <h2>1. 项目简介 / Overview</h2>
+      <div class="pair">
+        <div class="zh">
+          <p>YZF Sudoku 是一个面向高级数独技巧分析的 Web/WASM 工具。它支持题串导入、Coach 格式导入、图片本地识别、自动解题、所有步骤搜索、候选数编辑、技巧路径展示和高亮。</p>
+          <p>项目重点不是只给出答案，而是展示每一步逻辑推理过程，尤其适合研究 AIC、ALS、UR、Oddagon、Force Chain 等高级技巧。</p>
+        </div>
+        <div class="en">
+          <p>YZF Sudoku is a Web/WASM Sudoku tool focused on advanced solving logic. It supports puzzle-string import, Sudoku Coach formats, local image OCR, auto solving, all-step search, candidate editing, explanation paths, and highlighting.</p>
+          <p>The goal is not only to produce the final answer, but to show the logical path behind each step, especially for advanced techniques such as AIC, ALS, UR, Oddagon, and Force Chain.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="start">
+      <h2>2. 启动方式 / How to Start</h2>
+      <div class="pair">
+        <div class="zh">
+          <h3>普通 Web 版</h3>
+          <p>普通版通常通过本地或在线 HTTP 服务打开，例如开发时可以使用：</p>
+          <pre>cd web-app
+python -m http.server 8000</pre>
+          <p>然后访问 <code>http://127.0.0.1:8000/index.html</code>。</p>
+          <h3>Standalone 版</h3>
+          <p>Standalone 版设计目标是双击 HTML 文件即可使用，不需要本地服务器。图片识别所需模型和运行时应已被内联进单文件 HTML。</p>
+        </div>
+        <div class="en">
+          <h3>Regular Web Build</h3>
+          <p>The regular build is usually opened through a local or hosted HTTP server. For development:</p>
+          <pre>cd web-app
+python -m http.server 8000</pre>
+          <p>Then open <code>http://127.0.0.1:8000/index.html</code>.</p>
+          <h3>Standalone Build</h3>
+          <p>The standalone build is intended to work by double-clicking the HTML file without starting a server. OCR models and runtime files should be bundled into the single HTML file.</p>
+        </div>
+      </div>
+      <div class="warn">Standalone 版不应依赖 <code>localhost</code>。如果图片识别提示缺少 <code>.ort</code>、<code>.wasm</code> 或 <code>ort.min.js</code>，说明打包流程没有正确内联 OCR 资源。</div>
+    </section>
+
+    <section id="layout">
+      <h2>3. 界面区域 / Interface Layout</h2>
+      <div class="pair">
+        <div class="zh">
+          <ul>
+            <li><strong>盘面区：</strong>显示 9×9 棋盘、已知数、出数和候选数。</li>
+            <li><strong>输入面板：</strong>用于输入题串、导入 Coach/Library 格式、图片识别。</li>
+            <li><strong>技巧面板：</strong>选择技巧、搜索下一步、搜索所有步骤。</li>
+            <li><strong>结果面板：</strong>显示删数、路径、解释、评分和状态信息。</li>
+            <li><strong>导出区域：</strong>导出当前盘面、候选数和可分享题串。</li>
+          </ul>
+        </div>
+        <div class="en">
+          <ul>
+            <li><strong>Board:</strong> shows the 9×9 grid, givens, solved digits, and candidates.</li>
+            <li><strong>Input panel:</strong> accepts puzzle strings, Coach/Library formats, and image OCR.</li>
+            <li><strong>Technique panel:</strong> selects techniques, finds the next step, or searches all steps.</li>
+            <li><strong>Result panel:</strong> displays eliminations, paths, explanations, ratings, and status messages.</li>
+            <li><strong>Export area:</strong> exports the current board, candidates, and shareable strings.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="input">
+      <h2>4. 题面输入 / Puzzle Input</h2>
+      <div class="pair">
+        <div class="zh">
+          <p>项目支持多种导入格式：</p>
+          <ul>
+            <li><strong>81 字符题串：</strong>使用数字 <code>1-9</code> 表示提示数，<code>0</code> 或 <code>.</code> 表示空格。</li>
+            <li><strong>Library 冒号格式：</strong>例如 <code>:0000:x:&lt;board&gt;:&lt;eliminations&gt;::</code>，可保存候选删除信息。</li>
+            <li><strong>Sudoku Coach JSON：</strong>包含 <code>givenDigits</code>、<code>userDigits</code>、<code>userCellCandidates</code> 等字段。</li>
+            <li><strong>SCv7_32 Coach 压缩串：</strong>前端会先解压成 Coach JSON，再导入。</li>
+          </ul>
+          <p>普通导入会进行合法性和唯一解校验；图片识别导入则允许先作为草稿落盘，方便手动校正。</p>
+        </div>
+        <div class="en">
+          <p>The project supports several import formats:</p>
+          <ul>
+            <li><strong>81-character string:</strong> digits <code>1-9</code> are givens, while <code>0</code> or <code>.</code> means empty.</li>
+            <li><strong>Library colon format:</strong> for example <code>:0000:x:&lt;board&gt;:&lt;eliminations&gt;::</code>, preserving candidate eliminations.</li>
+            <li><strong>Sudoku Coach JSON:</strong> includes fields such as <code>givenDigits</code>, <code>userDigits</code>, and <code>userCellCandidates</code>.</li>
+            <li><strong>SCv7_32 Coach compressed string:</strong> decompressed by the frontend into Coach JSON before import.</li>
+          </ul>
+          <p>Regular imports are checked for validity and uniqueness. OCR imports are allowed to land as editable drafts so the user can correct recognition mistakes.</p>
+        </div>
+      </div>
+      <h3>Coach 候选数 mask / Coach Candidate Masks</h3>
+      <div class="pair">
+        <div class="zh">
+          <p><code>userCellCandidates</code> 是 81 个 mask，用 <code>-</code> 分隔。数字 <code>d</code> 对应 <code>1 &lt;&lt; d</code>。例如候选 <code>2,3,6</code> 的 mask 是 <code>4 + 8 + 64 = 76</code>。</p>
+        </div>
+        <div class="en">
+          <p><code>userCellCandidates</code> contains 81 masks separated by <code>-</code>. Digit <code>d</code> corresponds to <code>1 &lt;&lt; d</code>. For candidates <code>2,3,6</code>, the mask is <code>4 + 8 + 64 = 76</code>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="image-ocr">
+      <h2>5. 图片识别 / Image Recognition</h2>
+      <div class="pair">
+        <div class="zh">
+          <p>图片识别在浏览器本地运行，不上传图片，不使用在线 fallback。识别完成后会直接导入为可编辑草稿盘面。</p>
+          <p>入口一般位于“题面输入 / 导出评分”面板：</p>
+          <ul>
+            <li><strong>选择图片识别：</strong>从本地文件或相册选择图片。</li>
+            <li><strong>拍照识别：</strong>手机端调用相机拍摄图片。</li>
+            <li><strong>从剪贴板识别：</strong>桌面端读取剪贴板截图。</li>
+            <li><strong>Ctrl+V：</strong>桌面端也可以直接粘贴截图。</li>
+          </ul>
+        </div>
+        <div class="en">
+          <p>Image recognition runs locally in the browser. Images are not uploaded and no online fallback is used. The recognized result is imported directly as an editable draft board.</p>
+          <p>The buttons are normally placed in the “Puzzle Input / Export & Rating” panel:</p>
+          <ul>
+            <li><strong>Select Image:</strong> choose an image from files or photo library.</li>
+            <li><strong>Take Photo:</strong> open the camera on mobile devices.</li>
+            <li><strong>Read Clipboard:</strong> read a screenshot from the desktop clipboard.</li>
+            <li><strong>Ctrl+V:</strong> desktop users can paste screenshots directly.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>识别结果如何解释 / How OCR Results Are Interpreted</h3>
+      <div class="pair">
+        <div class="zh">
+          <ul>
+            <li><strong>黑色大数字：</strong>导入为提示数 <code>givenDigits</code>。</li>
+            <li><strong>蓝色或其它颜色大数字：</strong>导入为出数 <code>userDigits</code>。</li>
+            <li><strong>小候选数：</strong>导入为 <code>userCellCandidates</code>。</li>
+            <li><strong>非唯一解：</strong>不会拒绝导入，而是作为草稿显示，方便校正。</li>
+          </ul>
+          <p>OCR 导入后会用黑色提示数组成的题串做唯一解校验。如果校验失败，仍然允许用户在盘面上继续修正。</p>
+        </div>
+        <div class="en">
+          <ul>
+            <li><strong>Black large digits:</strong> imported as givens, <code>givenDigits</code>.</li>
+            <li><strong>Blue or other colored large digits:</strong> imported as solved/user digits, <code>userDigits</code>.</li>
+            <li><strong>Pencil marks:</strong> imported as <code>userCellCandidates</code>.</li>
+            <li><strong>Non-unique result:</strong> not rejected; it is shown as a draft so the user can correct it.</li>
+          </ul>
+          <p>After OCR import, the black givens are checked for uniqueness. If the check fails, the draft still remains editable on the board.</p>
+        </div>
+      </div>
+
+      <div class="note">
+        图片识别模型使用 Alex Kubiesa / Sudoku OCR 训练的本地模型。项目不使用 sudoku-ocr.com 的在线 fallback。<br />
+        The OCR feature uses a local model trained by Alex Kubiesa / Sudoku OCR. This project does not use the sudoku-ocr.com online fallback.
+      </div>
+    </section>
+
+    <section id="edit-board">
+      <h2>6. 盘面编辑 / Board Editing</h2>
+      <div class="pair">
+        <div class="zh">
+          <p>点击格子后，可以输入数字或候选数。OCR 草稿状态下，修改会直接作用在前端草稿盘面，不会因为当前题面尚未唯一解而被 engine 拒绝。</p>
+          <ul>
+            <li>输入大数字：设置该格出数。</li>
+            <li>切换候选：在空格中添加或移除候选数。</li>
+            <li>撤销/重做：回退或恢复最近的盘面操作。</li>
+            <li>校正完成后，可重新导入或开始搜索技巧。</li>
+          </ul>
+        </div>
+        <div class="en">
+          <p>After selecting a cell, you can enter a digit or toggle candidates. In OCR draft mode, edits are applied directly to the frontend draft board, so the engine will not reject the board simply because the givens are not yet unique.</p>
+          <ul>
+            <li>Enter a large digit: set the solved/user digit for the cell.</li>
+            <li>Toggle candidates: add or remove pencil marks in an empty cell.</li>
+            <li>Undo/Redo: revert or restore recent board operations.</li>
+            <li>After correction, you may re-import or start technique search.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="solve">
+      <h2>7. 自动解题 / Auto Solve</h2>
+      <div class="pair">
+        <div class="zh">
+          <p>自动解题会从当前盘面开始，按启用技巧和优先级逐步搜索可用步骤，直到解完或找不到下一步。</p>
+          <ul>
+            <li><strong>自动解题：</strong>连续应用找到的逻辑步骤。</li>
+            <li><strong>后台解题：</strong>耗时较长的搜索可能显示后台状态提示。</li>
+            <li><strong>状态信息：</strong>会显示 solved、NoResult、Invalid 等结果。</li>
+          </ul>
+          <p>如果自动解题找不到某个高级技巧，请确认该技巧在技巧面板中已启用，并且当前 wasm/standalone 是重新编译或重新生成后的版本。</p>
+        </div>
+        <div class="en">
+          <p>Auto Solve starts from the current board and searches for logical steps according to the enabled techniques and priority order, until the puzzle is solved or no next step is found.</p>
+          <ul>
+            <li><strong>Auto Solve:</strong> repeatedly applies available logical steps.</li>
+            <li><strong>Background solving:</strong> long searches may display background status messages.</li>
+            <li><strong>Status messages:</strong> show results such as solved, NoResult, or Invalid.</li>
+          </ul>
+          <p>If an advanced technique is not found, make sure it is enabled in the technique panel and that the current wasm/standalone file has been rebuilt or regenerated.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="all-steps">
+      <h2>8. 所有步骤 / All Steps</h2>
+      <div class="pair">
+        <div class="zh">
+          <p>“所有步骤”会在当前盘面上收集多个可用步骤，便于比较不同技巧、不同删数和不同路径。</p>
+          <ul>
+            <li>可按技巧类型过滤。</li>
+            <li>可查看删数、路径、解释和高亮。</li>
+            <li>对复杂链和 Force Chain，搜索时间可能明显增加。</li>
+          </ul>
+        </div>
+        <div class="en">
+          <p>“All Steps” collects multiple available steps from the current board, making it easier to compare different techniques, eliminations, and paths.</p>
+          <ul>
+            <li>Filter by technique type.</li>
+            <li>Inspect eliminations, paths, explanations, and highlights.</li>
+            <li>Complex chains and Force Chains may require noticeably more time.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="techniques">
+      <h2>9. 技巧与高亮 / Techniques and Highlights</h2>
+      <div class="pair">
+        <div class="zh">
+          <p>项目支持从基础到高级的一系列技巧。高级链类技巧会显示路径、强弱关系、共同删数和特殊构型。</p>
+          <p>近期重点支持的高级内容包括：</p>
+          <ul>
+            <li>AIC / X-Chain / XY-Chain</li>
+            <li>ALS / AHS / XZ 类技巧</li>
+            <li>UR Guardian Force Chain</li>
+            <li>Triplet Oddagon / Tridagon Guardian Force Chain</li>
+            <li>MSLS、JE、Dynamic Chain 等高级迁移技巧</li>
+          </ul>
+          <p>高亮通常包含：链路径、起点、终点、删数、结构格、guardian 候选等。</p>
+        </div>
+        <div class="en">
+          <p>The project supports a wide range of techniques from basic to advanced. Advanced chain techniques display paths, strong/weak links, common eliminations, and special patterns.</p>
+          <p>Recently supported advanced areas include:</p>
+          <ul>
+            <li>AIC / X-Chain / XY-Chain</li>
+            <li>ALS / AHS / XZ-style techniques</li>
+            <li>UR Guardian Force Chain</li>
+            <li>Triplet Oddagon / Tridagon Guardian Force Chain</li>
+            <li>MSLS, JE, Dynamic Chain, and other migrated advanced techniques</li>
+          </ul>
+          <p>Highlights usually include chain paths, starts, ends, eliminations, structure cells, and guardian candidates.</p>
+        </div>
+      </div>
+
+      <h3>Guardian Force Chain 说明 / Guardian Force Chain</h3>
+      <div class="pair">
+        <div class="zh">
+          <p>Guardian Force Chain 的通用逻辑是：某个 dead pattern 的所有 guardian 不可能同时为假，因此至少一个 guardian 为真。如果每个 guardian 为真都推出同一个删数，则该删数成立。</p>
+          <p>UR Guardian FC 和 Triplet Oddagon Guardian FC 的搜索逻辑相同，区别只在 dead pattern 构型不同。</p>
+        </div>
+        <div class="en">
+          <p>The general logic of Guardian Force Chain is: not all guardians of a dead pattern can be false, so at least one guardian must be true. If every true guardian leads to the same elimination, that elimination is valid.</p>
+          <p>UR Guardian FC and Triplet Oddagon Guardian FC share the same search logic; only the dead-pattern structure differs.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="superhard">
+      <h2>10. 内置超难题库 / Built-in Superhard Bank</h2>
+      <div class="pair">
+        <div class="zh">
+          <p>项目支持内置超难题库。点击生成超难题时，会从压缩内置题库随机抽取一题，解压并导入当前盘面。</p>
+          <p>当前轻量方案使用压缩 bank，题库数据段比直接 81 字符文本更小。题库生成工具可以把题串批量打包为 C++ 数据段。</p>
+          <ul>
+            <li>常规题串：约 81 字节/题。</li>
+            <li>Puzzle19 raw：约 19 字节/题。</li>
+            <li>压缩 bank：实测约 14.4 字节/题，取决于题库内容。</li>
+          </ul>
+        </div>
+        <div class="en">
+          <p>The project supports a built-in superhard puzzle bank. When generating a superhard puzzle, one entry is randomly selected from the compressed bank, decoded, and imported into the current board.</p>
+          <p>The lightweight design uses a compressed bank, much smaller than storing raw 81-character strings. The packing tool can convert a list of puzzles into a C++ data segment.</p>
+          <ul>
+            <li>Raw puzzle strings: about 81 bytes per puzzle.</li>
+            <li>Puzzle19 raw: about 19 bytes per puzzle.</li>
+            <li>Compressed bank: observed around 14.4 bytes per puzzle, depending on the bank.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="export">
+      <h2>11. 导出与分享 / Export and Sharing</h2>
+      <div class="pair">
+        <div class="zh">
+          <p>你可以导出当前盘面用于分享、复现或调试。常见导出内容包括：</p>
+          <ul>
+            <li>普通 81 字符题串。</li>
+            <li>Library 冒号格式，包含候选删除信息。</li>
+            <li>Coach JSON 或 SCv7_32 压缩串。</li>
+            <li>当前评分、步骤路径和高亮信息。</li>
+          </ul>
+          <p>OCR 导入后如果需要保存校正后的盘面，建议先在盘面上校正，再使用现有导出功能。</p>
+        </div>
+        <div class="en">
+          <p>You can export the current board for sharing, reproduction, or debugging. Common export contents include:</p>
+          <ul>
+            <li>Plain 81-character puzzle string.</li>
+            <li>Library colon format with candidate eliminations.</li>
+            <li>Coach JSON or SCv7_32 compressed string.</li>
+            <li>Current rating, step paths, and highlight information.</li>
+          </ul>
+          <p>After OCR import, correct the board first, then use the existing export feature to save the corrected position.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="mobile">
+      <h2>12. 手机端使用 / Mobile Use</h2>
+      <div class="pair">
+        <div class="zh">
+          <ul>
+            <li>手机没有 <span class="kbd">Ctrl</span> + <span class="kbd">V</span> 快捷键，因此应使用“选择图片识别”或“拍照识别”。</li>
+            <li>如果 Chrome 无法调用相机，先检查 Chrome 的相机权限是否被禁用。</li>
+            <li>某些浏览器会把“拍照识别”显示为“拍照/相册”选择，这是浏览器行为，不一定是项目问题。</li>
+            <li>识别后可直接在盘面上修改大数字和候选数。</li>
+          </ul>
+          <h3>Chrome Android 刷新缓存</h3>
+          <p>手机端没有完全等同于电脑 <span class="kbd">Ctrl</span> + <span class="kbd">F5</span> 的快捷键。开发测试时建议使用版本号参数，或在 Chrome 设置中清除该站点缓存。</p>
+        </div>
+        <div class="en">
+          <ul>
+            <li>Mobile devices do not have a <span class="kbd">Ctrl</span> + <span class="kbd">V</span> shortcut, so use “Select Image” or “Take Photo”.</li>
+            <li>If Chrome cannot open the camera, check whether camera permission is disabled in Chrome settings.</li>
+            <li>Some browsers show a “camera/gallery” chooser instead of opening the camera directly. This is browser behavior, not necessarily a project bug.</li>
+            <li>After recognition, edit large digits and candidates directly on the board.</li>
+          </ul>
+          <h3>Refreshing Chrome on Android</h3>
+          <p>There is no exact mobile equivalent of desktop <span class="kbd">Ctrl</span> + <span class="kbd">F5</span>. During development, use versioned URLs or clear the site cache in Chrome settings.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="standalone">
+      <h2>13. Standalone 版本 / Standalone Version</h2>
+      <div class="pair">
+        <div class="zh">
+          <p>Standalone 版的目标是离线使用，不需要本地服务器。为了支持图片识别，构建脚本需要把 OCR JS、ORT runtime、WASM 和模型文件内联或打包进单文件 HTML。</p>
+          <p>如果普通 Web 版能识别但 standalone 失败，优先检查：</p>
+          <ul>
+            <li><code>ort.min.js</code> 是否被正确内联。</li>
+            <li><code>.wasm</code> runtime 是否可用。</li>
+            <li><code>puzzle_localizer.ort</code> 与 <code>puzzle_classifier.ort</code> 是否被打包。</li>
+            <li>OCR 模块是否还在使用动态 <code>import()</code> 或 <code>fetch()</code> 本地文件。</li>
+          </ul>
+        </div>
+        <div class="en">
+          <p>The standalone build is meant for offline use without a local server. To support image recognition, the build script must inline or bundle the OCR JS, ORT runtime, WASM, and model files into the single HTML file.</p>
+          <p>If OCR works in the regular Web build but fails in standalone, check:</p>
+          <ul>
+            <li>whether <code>ort.min.js</code> is correctly bundled.</li>
+            <li>whether the <code>.wasm</code> runtime is available.</li>
+            <li>whether <code>puzzle_localizer.ort</code> and <code>puzzle_classifier.ort</code> are bundled.</li>
+            <li>whether the OCR module still uses dynamic <code>import()</code> or <code>fetch()</code> for local files.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="troubleshooting">
+      <h2>14. 常见问题 / Troubleshooting</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>问题 / Issue</th>
+            <th>原因 / Cause</th>
+            <th>处理 / Fix</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>图片识别提示 <code>no available backend found</code></td>
+            <td>ONNX Runtime Web 的 wasm/mjs 路径错误，或 standalone 没有正确内联 runtime。</td>
+            <td>普通版检查 <code>web-app/ocr/ort/</code>；standalone 重新生成单文件 HTML。</td>
+          </tr>
+          <tr>
+            <td>OCR 结果能显示但候选数很差</td>
+            <td>模型输出后处理没有按参考逻辑解析。</td>
+            <td>应按 <code>modelOutputs(pp) &lt; 0</code> 判断候选格，并用 <code>modelOutputs(v*81+pp) &gt; 0</code> 判断候选。</td>
+          </tr>
+          <tr>
+            <td>识别的大数字变成出数，UR 类技巧失效</td>
+            <td>没有按颜色区分提示数与出数。</td>
+            <td>黑色大数字应作为 given；非黑色大数字作为 user digit。</td>
+          </tr>
+          <tr>
+            <td>导入非唯一解被拒绝，无法校正 OCR</td>
+            <td>OCR 走了普通题串严格导入路径。</td>
+            <td>OCR 应导入为草稿盘面，非唯一只提示，不拒绝。</td>
+          </tr>
+          <tr>
+            <td>技巧找不到，但 native 测试能找到</td>
+            <td>可能是前端 wasm 没刷新，或 Manual/FindAll/Auto Solve 调用路径不一致。</td>
+            <td>重新编译 wasm，清缓存；技巧逻辑应归一化到统一搜索入口。</td>
+          </tr>
+          <tr>
+            <td>手机端无法拍照</td>
+            <td>浏览器权限被禁用，或浏览器不直接支持 <code>capture</code> 行为。</td>
+            <td>开启浏览器相机权限；或先用系统相机拍照，再用“选择图片识别”。</td>
+          </tr>
+          <tr>
+            <td>普通版盘面变黑或不显示</td>
+            <td>OCR 模块在页面启动时同步加载失败，导致主 app 初始化中断。</td>
+            <td>OCR 应懒加载；OCR 加载失败不能影响普通棋盘启动。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="credits">
+      <h2>15. 模型与来源声明 / Credits</h2>
+      <div class="pair">
+        <div class="zh">
+          <p>数独图片识别功能使用本地模型，模型来源于 Alex Kubiesa / Sudoku OCR 训练的识别模型。项目只在浏览器本地进行识别，不上传图片，也不使用在线 fallback。</p>
+          <p>建议在应用的 About、帮助页或图片识别区域保留声明：</p>
+          <pre>数独图片识别功能使用由 Alex Kubiesa / Sudoku OCR 训练的本地识别模型。本项目不使用在线 fallback。</pre>
+        </div>
+        <div class="en">
+          <p>The Sudoku image recognition feature uses a local model trained by Alex Kubiesa / Sudoku OCR. Recognition is performed locally in the browser. Images are not uploaded and no online fallback is used.</p>
+          <p>Recommended attribution text for About, Help, or the OCR panel:</p>
+          <pre>Sudoku image recognition uses a local model trained by Alex Kubiesa / Sudoku OCR. No online fallback is used.</pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+</body>
+</html>
