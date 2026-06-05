@@ -19,6 +19,11 @@ const board = document.getElementById("board");
 const boardStage = document.getElementById("boardStage");
 const boardMeta = document.getElementById("boardMeta");
 const hintPanel = document.getElementById("hintPanel");
+const stepExplainPanel = document.getElementById("stepExplainPanel");
+const btnStepExplain = document.getElementById("btnStepExplain");
+const stepExplainDialog = document.getElementById("stepExplainDialog");
+const stepExplainDialogContent = document.getElementById("stepExplainDialogContent");
+const stepExplainDialogClose = document.getElementById("stepExplainDialogClose");
 const yzfUnderlay = document.getElementById("yzfUnderlay");
 const yzfOverlay = document.getElementById("yzfOverlay");
 const yzfDebugSampleSelect = document.getElementById("yzfDebugSampleSelect");
@@ -168,6 +173,7 @@ let allStepsFilterState = { query: "", technique: "", sortMode: "default", repla
 let branchUndoData = null;
 let originalBoard = "";
 let currentHint = null;
+let currentStepExplainContext = null;
 let currentSnapshot = null;
 let currentManualAdvancedInputString = "";
 let currentManualAdvancedInputFormat = "unknown";
@@ -443,6 +449,9 @@ const i18n = {
 const uiText = {
   zh: {
     boardHeading: "盘面",
+    brandSubtitle: "移动优先逻辑训练器",
+    manualLink: "使用手册",
+    techniqueHelp: "技巧说明",
     initialHint: "等待加载题面。",
     branch: "分支",
     controls: "操作",
@@ -457,6 +466,10 @@ const uiText = {
     step: "提示一步",
     solve: "自动解题",
     apply: "应用提示",
+    stepExplain: "解释",
+    stepExplainTitle: "动态教程：为什么这一步成立",
+    stepExplainUnavailable: "当前没有可解释的步骤。",
+    close: "关闭",
     fullscreen: "全屏",
     exitFullscreen: "退出全屏",
     difficulty: "难度",
@@ -467,34 +480,34 @@ const uiText = {
     startBatch: "开始出题",
     stop: "停止",
     batchStatusIdle: "按当前难度批量生成，写入磁盘文件。",
-    moreInput: "更多：题面输入 / 导出评分",
+    moreInput: "更多：题面输入与导出评分",
     exportPuzzle: "导出题串",
     clearSavedSession: "清除本地保存",
     sessionRestored: "已恢复上次关闭时的盘面和技巧配置。",
     sessionRestoreFailed: "恢复上次现场失败：{message}",
     sessionCleared: "已清除本地保存的盘面和技巧配置。",
     ratePuzzle: "评分当前题目",
-    allStepsFilterPlaceholder: "过滤：技巧 / 删数 / 描述",
+    allStepsFilterPlaceholder: "过滤：技巧、删数或描述",
     allTechniques: "全部技巧",
     defaultSort: "默认排序",
     conclusionSort: "出数/删数优先",
     replaceable: "可替换",
     clear: "清除",
     noAllSteps: "暂无可选步骤。",
-    manualAdvancedTitle: "高级技巧 / Manual Advanced",
+    manualAdvancedTitle: "高级技巧",
     runManualAdvanced: "运行高级技巧",
     clearManualAdvanced: "清除高级技巧",
-    manualAdvancedNote: "not from default solver / 不影响默认提示一步",
-    overlayLegend: "Overlay legend / 图例",
+    manualAdvancedNote: "不影响默认提示一步。",
+    overlayLegend: "图例",
     onNode: "ON node：绿色小点",
     offNode: "OFF node：橙色小点",
     groupedSector: "GroupedSector：组合候选区域",
     strongEdge: "Strong edge：实线",
     weakEdge: "Weak edge：虚线",
-    groupEdge: "Group edge：紫色 / group",
-    afAux: "AF auxiliary：cover row 水平 / cover column 垂直",
+    groupEdge: "组合边：紫色",
+    afAux: "AF 辅助：cover row 水平，cover column 垂直",
     debugCandidate: "Debug candidate：红叉，仅调试",
-    overlayDebugOnly: "debug-only / 不作为正式删数",
+    overlayDebugOnly: "仅调试，不作为正式删数",
     chooseDigit: "选择数字",
     candidateMode: "候选",
     valueMode: "出数",
@@ -623,7 +636,7 @@ const uiText = {
     techniqueHeader: "技巧",
     scoreHeader: "评分",
     difficultyLevel: "难度 {level}",
-    manualMarksTitle: "手工标记 / Manual Marks",
+    manualMarksTitle: "手工标记",
     manualMarkModeLabel: "模式",
     manualMarkLineLabel: "链线",
     manualMarkColorLabel: "颜色",
@@ -639,10 +652,10 @@ const uiText = {
     markElim: "正式删数",
     markChain: "手动画链",
     markBlock: "区块标记",
-    markPrimary: "添加 / 左击",
-    markSecondary: "清除 / 右击",
-    markStrong: "强链 / 实线",
-    markWeak: "弱链 / 虚线",
+    markPrimary: "添加",
+    markSecondary: "清除",
+    markStrong: "强链（实线）",
+    markWeak: "弱链（虚线）",
     markConstructionStrong: "构造强链",
     markConstructionWeak: "构造弱链",
     markApplyElims: "应用全部删数",
@@ -682,6 +695,9 @@ const uiText = {
   },
   en: {
     boardHeading: "Board",
+    brandSubtitle: "Mobile-first logic trainer",
+    manualLink: "Manual",
+    techniqueHelp: "Techniques",
     initialHint: "Waiting for puzzle to load.",
     branch: "Branch",
     controls: "Controls",
@@ -696,6 +712,10 @@ const uiText = {
     step: "Hint step",
     solve: "Solve",
     apply: "Apply hint",
+    stepExplain: "Explain",
+    stepExplainTitle: "Dynamic tutorial: why this step works",
+    stepExplainUnavailable: "No explainable step is selected.",
+    close: "Close",
     fullscreen: "Fullscreen",
     exitFullscreen: "Exit fullscreen",
     difficulty: "Difficulty",
@@ -706,7 +726,7 @@ const uiText = {
     startBatch: "Start",
     stop: "Stop",
     batchStatusIdle: "Generate a batch at the current difficulty and write it to a disk file.",
-    moreInput: "More: puzzle input / export & rating",
+    moreInput: "More: puzzle input, export, and rating",
     exportPuzzle: "Export puzzle",
     ratePuzzle: "Rate puzzle",
     allStepsFilterPlaceholder: "Filter: technique / action / description",
@@ -726,10 +746,10 @@ const uiText = {
     groupedSector: "GroupedSector: grouped candidate area",
     strongEdge: "Strong edge: solid line",
     weakEdge: "Weak edge: dashed line",
-    groupEdge: "Group edge: purple / group",
-    afAux: "AF auxiliary: cover row horizontal / cover column vertical",
+    groupEdge: "Group edge: purple",
+    afAux: "AF auxiliary: cover row horizontal; cover column vertical",
     debugCandidate: "Debug candidate: red cross, debug only",
-    overlayDebugOnly: "debug-only / not a formal elimination",
+    overlayDebugOnly: "Debug only; not a formal elimination",
     chooseDigit: "Choose digit",
     candidateMode: "Candidates",
     valueMode: "Values",
@@ -2231,6 +2251,14 @@ function setInputLabelByControl(controlId, value) {
 
 function applyStaticLanguage() {
   document.documentElement.lang = lang.value === "en" ? "en" : "zh-CN";
+  const linkLangSuffix = `?lang=${encodeURIComponent(lang.value || "zh")}`;
+  const manualLinkEl = document.getElementById("manualLink");
+  if (manualLinkEl) manualLinkEl.href = `./user_manual.html${linkLangSuffix}`;
+  const techniquesLinkEl = document.getElementById("techniquesLink");
+  if (techniquesLinkEl) techniquesLinkEl.href = `./techniques.html${linkLangSuffix}`;
+  setTextById("brandSubtitle", ui("brandSubtitle"));
+  setTextById("manualLink", ui("manualLink"));
+  setTextById("techniquesLink", ui("techniqueHelp"));
   setTextById("boardHeading", ui("boardHeading"));
   if (hintPanel && hintPanel.textContent === (lang.value === "en" ? uiText.zh.initialHint : uiText.en.initialHint)) {
     hintPanel.textContent = ui("initialHint");
@@ -2248,6 +2276,10 @@ function applyStaticLanguage() {
   setButtonText(btnAllSteps, ui("allSteps"));
   setButtonText(btnSolve, ui("solve"));
   setButtonText(btnApply, ui("apply"));
+  setButtonText(btnStepExplain, ui("stepExplain"));
+  setTextById("stepExplainDialogTitle", ui("stepExplainTitle"));
+  setTextById("stepExplainDialogClose", ui("close"));
+  updateStepExplainButtonState();
   updateFullscreenButton();
   setTextById("tabBtnControls", ui("controls"));
   setTextById("tabBtnTechniques", ui("techniques"));
@@ -3342,7 +3374,7 @@ function clearChainOverlay(message = "") {
   clearBoardChainHighlights();
   yzfUnderlay?.replaceChildren();
   yzfOverlay?.replaceChildren();
-  setYzfOverlayModeNote("debug-only / 不作为正式删数");
+  setYzfOverlayModeNote(ui("overlayDebugOnly"));
   if (message) {
     setStatusElementState(yzfOverlayStatus, message, "debug");
   } else {
@@ -5591,8 +5623,8 @@ function renderChainOverlay(sampleJson) {
     message = `title=${overlaySample?.title || ""}; chainType=${overlaySample?.chainType || ""}; eliminations=${candidateCount}; nodes=${pathNodes.length}; edges=${pathEdges.length}; default solver result`;
   } else {
     message = candidateCount > 0
-      ? `Sample=${overlaySample?.sampleName || "unknown"}; outcome=${outcome}; endpointRelation=${endpointRelation}; debugOnly=${debugOnly}; conclusionReadyForStepResult=${readyForStep}; debugCandidates=${candidateCount}; debug only / 不作为正式删数`
-      : `Sample=${overlaySample?.sampleName || "unknown"}; outcome=${outcome}; endpointRelation=${endpointRelation}; debugOnly=${debugOnly}; conclusionReadyForStepResult=${readyForStep}; No debug candidates; debug only / 不作为正式删数`;
+      ? `Sample=${overlaySample?.sampleName || "unknown"}; outcome=${outcome}; endpointRelation=${endpointRelation}; debugOnly=${debugOnly}; conclusionReadyForStepResult=${readyForStep}; debugCandidates=${candidateCount}; debug only`
+      : `Sample=${overlaySample?.sampleName || "unknown"}; outcome=${outcome}; endpointRelation=${endpointRelation}; debugOnly=${debugOnly}; conclusionReadyForStepResult=${readyForStep}; No debug candidates; debug only`;
   }
   setStatusElementState(yzfOverlayStatus, message + (reason ? `; selected=${reason}` : ""), "debug");
 }
@@ -5624,14 +5656,14 @@ async function loadYzfTyp4DebugSample(sampleName) {
   setYzfOverlayModeNote(
     overlaySample.isManualPromotedStepResult
       ? "manual promoted sample / not from default solver"
-      : "debug-only / 不作为正式删数"
+      : ui("overlayDebugOnly")
   );
   if (overlaySample.isManualPromotedStepResult && overlaySample.puzzleSource === "fallback") {
     console.debug("YZF typ=4 promoted sample fallback puzzle used", sampleName);
   }
   hintPanel.textContent = overlaySample.isManualPromotedStepResult
     ? "YZF typ=4 promoted manual StepResult sample loaded. not from default solver"
-    : "YZF typ=4 debug sample loaded. debug only / 不作为正式删数";
+    : "YZF typ=4 debug sample loaded.";
   renderBoardSnapshot(currentSnapshot, null);
   renderChainOverlay(sampleJson);
   return true;
@@ -5655,7 +5687,7 @@ function initYzfTyp4DebugOverlayControls() {
   });
 
   btnYzfDebugClear?.addEventListener("click", () => {
-    clearChainOverlay("YZF typ=4 debug overlay cleared. debug only / 不作为正式删数");
+    clearChainOverlay("YZF typ=4 debug overlay cleared.");
     hintPanel.textContent = "YZF typ=4 debug overlay cleared.";
   });
 
@@ -5706,7 +5738,7 @@ function updateManualAdvancedTypUi() {
     } else if (typ === 6) {
       note.textContent = "typ=6 Complex AIC：FW/Fire、AF 与 UR Guardian 强边已接入；UR Guardian 链可在 FindAll 中通过 strong:urguardian / {UR:ab r..c..} 标识确认。";
     } else {
-      note.textContent = "not from default solver / 不影响默认提示一步";
+      note.textContent = ui("manualAdvancedNote");
     }
   }
 }
@@ -6037,7 +6069,7 @@ function normalizeManualAdvancedStepResult(stepResult, puzzle, responseMeta = {}
     endpointInference: responseMeta.endpointInference || "",
     selectedPathRank: 0,
     selectedPathReason: "manual_advanced_stepresult",
-    explanation: responseMeta.description || stepResult?.description || "manual advanced result / default-capable when enabled",
+    explanation: responseMeta.description || stepResult?.description || lang.value === "en" ? "Manual advanced result; also available in default solving when enabled" : "高级技巧结果；启用后也可由默认求解使用",
     rank: Number.isInteger(stepResult?.rank) ? stepResult.rank : 0,
     hasBackendColorCands: Array.isArray(stepResult?.colorCands) && stepResult.colorCands.length > 0,
     // V433: keep backend colorCands in the overlay model.  renderBoardSnapshot()
@@ -6941,7 +6973,7 @@ function renderManualAdvancedResponse(response, puzzleInfo, request, rawResponse
     guardRejectReason ? `guardRejectReason=${guardRejectReason}` : "",
     `debugJsonPresent=${debugJsonPresent}`,
     warnings.length ? `warnings=${warnings.join(",")}` : "warnings=-",
-    stepResult ? "manual advanced result / default-capable when enabled" : "",
+    stepResult ? lang.value === "en" ? "Manual advanced result; also available in default solving when enabled" : "高级技巧结果；启用后也可由默认求解使用" : "",
     status === "NoResult" ? `graphNodeCount=${graphNodeCount}; graphStrongEdgeCount=${graphStrongEdgeCount}; graphWeakEdgeCount=${graphWeakEdgeCount}; visitedStates=${visitedStates}; pathLength=${pathLength}` : "",
   ].filter(Boolean).join(" | ");
 
@@ -7033,7 +7065,7 @@ function renderManualAdvancedResponse(response, puzzleInfo, request, rawResponse
 
   if (!stepResult && !debugOverlaySource) {
     clearChainOverlay();
-    setYzfOverlayModeNote("debug-only / 不作为正式删数");
+    setYzfOverlayModeNote(ui("overlayDebugOnly"));
     const warnAboutInput = inputFormatResolved !== "library" || !usedCandidateState;
     const suffix = warnAboutInput ? " | 当前没有使用 Library 候选状态，链类技巧测试可能不真实" : "";
     setStatusElementState(manualAdvancedStatus, summary + (status === "NoResult" ? " | NoResult" : "") + suffix, status === "GuardRejected" ? "warn" : (status === "Unsupported" || status === "InvalidRequest" || status === "InternalError" ? "error" : (warnAboutInput ? "warn" : "info")));
@@ -7046,7 +7078,7 @@ function renderManualAdvancedResponse(response, puzzleInfo, request, rawResponse
   if (!hasRenderableOverlayPath(overlaySample)) {
     clearChainOverlay();
     const isDebugOnlyNoPath = !stepResult && debugOverlaySource;
-    setYzfOverlayModeNote(isDebugOnlyNoPath ? "debug-only / 无可画链路" : "manual advanced result / overlay unavailable");
+    setYzfOverlayModeNote(isDebugOnlyNoPath ? (lang.value === "en" ? "Debug only; no renderable chain path" : "仅调试：无可画链路") : (lang.value === "en" ? "Manual advanced result; overlay unavailable" : "高级技巧结果：无法显示链路"));
     setStatusElementState(yzfOverlayStatus,
       isDebugOnlyNoPath
         ? `typ=${typ}; status=${status}; debugJson present but no renderable path; overlay skipped`
@@ -7071,7 +7103,7 @@ function renderManualAdvancedResponse(response, puzzleInfo, request, rawResponse
     return;
   }
   renderChainOverlay(overlaySample);
-  setYzfOverlayModeNote(stepResult ? "manual advanced result / default-capable when enabled" : "debug-only / 不作为正式删数");
+  setYzfOverlayModeNote(stepResult ? (lang.value === "en" ? "Manual advanced result; also available in default solving when enabled" : "高级技巧结果；启用后也可由默认求解使用") : ui("overlayDebugOnly"));
   const warnAboutInput = inputFormatResolved !== "library" || !usedCandidateState;
   const resultLines = [
     `title=${title || "-"}`,
@@ -7142,7 +7174,7 @@ async function runManualAdvancedTechnique() {
 function clearManualAdvancedUiOnly() {
   clearManualAdvancedResult();
   setOptionalTextBlock(manualAdvancedSmokeOutput, "");
-  setYzfOverlayModeNote("debug-only / 不作为正式删数");
+  setYzfOverlayModeNote(ui("overlayDebugOnly"));
 }
 
 function initManualAdvancedControls() {
@@ -7466,6 +7498,270 @@ function formatHintDesc(step) {
   return descriptionWithTechniqueName(step, name, locale.noAction) || `${name}: ${locale.noAction}`;
 }
 
+
+function stepExplainCellList(cells, max = 14) {
+  if (!Array.isArray(cells) || cells.length === 0) return "";
+  const names = cells
+    .filter((cell) => Number.isInteger(cell?.row) && Number.isInteger(cell?.col))
+    .map(cellName);
+  const unique = [...new Set(names)];
+  if (unique.length <= max) return unique.join(", ");
+  return `${unique.slice(0, max).join(", ")} … (+${unique.length - max})`;
+}
+
+function stepExplainNodeList(nodes, max = 8) {
+  if (!Array.isArray(nodes) || nodes.length === 0) return "";
+  const items = nodes.map(chainNodeText);
+  if (items.length <= max) return items.join("; ");
+  return `${items.slice(0, max).join("; ")} … (+${items.length - max})`;
+}
+
+function stepExplainKindKey(step = {}) {
+  return `${step.kind || ""} ${step.title || ""} ${step.chainType || ""} ${step.description || ""}`.toLowerCase();
+}
+
+function stepExplainConclusion(step = {}) {
+  const action = actionText(step);
+  if (action) return action;
+  return lang.value === "zh" ? "本步没有明确出数/删数。" : "No explicit placement/elimination in this step.";
+}
+
+function stepExplainTemplateType(step = {}) {
+  const key = stepExplainKindKey(step);
+  if (/fullhouse|hiddensingle|nakedsingle|single/.test(key)) return "single";
+  if (/locked|pointing|claiming|intersection/.test(key)) return "locked";
+  if (/naked.*(pair|triple|quad|subset)|hidden.*(pair|triple|quad|subset)|subset/.test(key)) return "subset";
+  if (/skyscraper|2-string|two string|twostringkite|turbot/.test(key)) return "turbot";
+  if (/fish|x-wing|xwing|swordfish|jellyfish|finned|sashimi|kraken|empty rectangle|eri/.test(key)) return "fish";
+  if (/unique|ur|bug|avoidable|deadly|rectangle/.test(key)) return "unique";
+  if (/als|ahs|almost locked|almost hidden/.test(key)) return "als";
+  if (/wing|w-wing|xy-wing|xyz-wing|m-wing|s-wing|l-wing/.test(key)) return "wing";
+  if (/whip|gwhip|braid|gbraid|forcing|chain|aic|nice loop|loop|ring|color/.test(key) || (Array.isArray(step.nodes) && step.nodes.length > 0)) return "chain";
+  if (/rank|msls|multi-fish|multifish|base cover|cover set/.test(key) || Number(step.rank || 0) > 0) return "rank";
+  if (/exocet|fireworks|jexocet|junior exocet/.test(key)) return "exocet";
+  if (/oddagon|tridagon/.test(key)) return "oddagon";
+  return "generic";
+}
+
+function stepExplainBuildLines(step = {}, snapshot = null) {
+  const zh = lang.value === "zh";
+  const type = stepExplainTemplateType(step);
+  const cellsText = stepExplainCellList(step.cells || []);
+  const nodesText = stepExplainNodeList(step.nodes || []);
+  const cand = candidatesText(step.candidates);
+  const house = step.house || "";
+  const conclusion = stepExplainConclusion(step);
+  const elims = Array.isArray(step.eliminations) ? step.eliminations.length : 0;
+  const places = Array.isArray(step.actions) ? step.actions.filter((a) => a.type === "place").length : 0;
+  const structureCount = Array.isArray(step.cells) ? step.cells.length : 0;
+  const edgeCount = Array.isArray(step.edges) ? step.edges.length : 0;
+  const groupCount = Array.isArray(step.groups) ? step.groups.length : 0;
+  const rank = Number(step.rank || 0);
+
+  const lines = [];
+  const checks = [];
+  let proof = "";
+
+  if (type === "single") {
+    lines.push(zh ? `先看结论 ${conclusion}。` : `Start from the conclusion ${conclusion}.`);
+    lines.push(zh ? `核对目标格或目标区域${house ? ` ${house}` : ""}：其他数字/位置都已经被盘面条件排除。` : `Check the target cell/house${house ? ` ${house}` : ""}: every other value or position has already been excluded by sudoku constraints.`);
+    proof = zh ? "数学逻辑：一个格只能填一个数字，一个区域内同一个数字也只能出现一次。当候选集或落点集合只剩唯一选择时，若不取它就会导致该格无数可填，或该数字在本区域无处可放，所以它必然成立。" : "Logic: a cell can contain only one digit, and a digit can appear only once in a house. If only one candidate or one position remains, rejecting it would leave either the cell or the digit without any legal option, so it is forced.";
+    checks.push(zh ? "确认高亮格确实只剩该候选，或高亮区域内该数字只剩这一个落点。" : "Verify the highlighted cell has only that candidate, or the highlighted house has only that position for the digit.");
+  } else if (type === "locked") {
+    lines.push(zh ? `观察候选 ${cand || "目标数字"} 在一个宫/行/列中的所有落点。` : `Observe all positions of candidate ${cand || "the target digit"} in the highlighted box/row/column.`);
+    lines.push(zh ? `这些落点被锁在交叉的同一行、列或宫内，因此结论 ${conclusion} 可删。` : `Those positions are locked into the same crossing row/column/box, so ${conclusion} can be removed.`);
+    proof = zh ? "数学逻辑：目标数字必须在原区域内出现一次，而它所有可能位置又都落在交叉区域中。因此这个数字必然占用那条交叉行/列/宫的一个位置；交叉区域外同一行/列/宫里的同数字候选不可能再成立。" : "Logic: the digit must occur once in the original house, and all its possible positions lie inside the crossing house. Therefore the digit must occupy that crossing house, so the same digit outside the intersection in that house cannot be true.";
+    checks.push(zh ? "确认被删除候选与锁定候选是同一个数字，并且位于交叉区域外。" : "Verify removed candidates are the same digit and lie outside the locked intersection.");
+  } else if (type === "subset") {
+    lines.push(zh ? `看高亮的子集${cellsText ? `：${cellsText}` : ""}${house ? `，所在区域 ${house}` : ""}。` : `Look at the highlighted subset${cellsText ? `: ${cellsText}` : ""}${house ? ` in ${house}` : ""}.`);
+    lines.push(zh ? `子集把若干数字与若干格互相锁定，因此结论 ${conclusion} 可删。` : `The subset locks the digits and cells together, so ${conclusion} can be removed.`);
+    proof = zh ? "数学逻辑：N 个格如果只能容纳同一组 N 个数字，那么这 N 个数字必须全部填在这些格里，区域内其他格不能再含这些数字；反过来，N 个数字如果在某区域内只能落入 N 个格，那么这些格必须专门留给这些数字，格内其他候选可以删除。这是容量/抽屉原理。" : "Logic: if N cells can contain only the same N digits, those digits must fill those cells and can be removed elsewhere in the house. Conversely, if N digits can appear only in N cells of a house, those cells are reserved for them and other candidates in those cells can be removed. This is a capacity/pigeonhole argument.";
+    checks.push(zh ? "数清楚：参与格数与锁定数字数相同。" : "Count carefully: the number of involved cells must match the number of locked digits.");
+  } else if (type === "turbot") {
+    const isKite = /kite|twostringkite|2-string|two string/i.test(stepExplainKindKey(step));
+    const isSky = /skyscraper/i.test(stepExplainKindKey(step));
+    lines.push(zh
+      ? `只观察候选 ${cand || "目标数字"}，把这个结构按两条强链来读，而不是按普通 base-cover 鱼来读。`
+      : `Look only at candidate ${cand || "the target digit"}; read this pattern as two strong links, not as an ordinary base-cover fish.`);
+    lines.push(zh
+      ? (isKite ? `双线风筝由一条行强链和一条列强链组成，两个靠近宫内的端点互相看见，两个远端至少一真，因此 ${conclusion}。` : `摩天楼由两条平行行/列强链组成，一侧端点互相看见，另一侧两个“楼顶”至少一真，因此 ${conclusion}。`)
+      : (isKite ? `A 2-String Kite has one row strong link and one column strong link; the two near endpoints see each other, so at least one of the far endpoints is true, giving ${conclusion}.` : `A Skyscraper has two parallel row/column strong links; one side sees each other, so at least one of the two top endpoints is true, giving ${conclusion}.`));
+    proof = zh
+      ? "数学逻辑：强链表示同一行/列/宫内该数字只有两个位置，因此两端至少一真。两个强链之间通过一个弱关系连接；弱关系表示连接端不能同时为真。若第一个远端为假，则第一个强链迫使近端为真；近端为真又通过弱关系迫使另一近端为假；另一近端为假后，第二条强链迫使第二个远端为真。反向同理，所以两个远端至少有一个为真。任何同时看见这两个远端的同数字候选若成立，就会把两个远端都排除，违反“至少一真”，所以可删。"
+      : "Logic: a strong link means the digit has only two positions in a row, column, or box, so at least one end is true. The two strong links are joined by a weak link; the weak link means the joined endpoints cannot both be true. If the first far endpoint is false, its strong link makes the near endpoint true; the weak link makes the other near endpoint false; the second strong link then makes the second far endpoint true. The reverse direction is symmetric, so at least one far endpoint is true. Any same-digit candidate that sees both far endpoints would make both false, contradicting that result, so it can be removed.";
+    checks.push(zh
+      ? (isKite ? "确认一条强链在行、一条强链在列；宫内连接端是弱连接，删数同时看见两个远端。" : "确认两条强链分别在两条平行行/列中；底部连接端互相看见，删数同时看见两个楼顶端。")
+      : (isKite ? "Verify one strong link is in a row and one in a column; the box-side joined endpoints see each other, and the deletion sees both far endpoints." : "Verify the two strong links are in parallel rows/columns; the joined base endpoints see each other, and the deletion sees both top endpoints."));
+  } else if (type === "fish") {
+    lines.push(zh ? `本步把候选 ${cand || "鱼数字"} 的若干 base 区域与 cover 区域配对。` : `This step pairs base sets and cover sets for candidate ${cand || "the fish digit"}.`);
+    lines.push(zh ? `base 中所有鱼数字都被 cover 覆盖，cover 里不属于 base 的同数字候选可删：${conclusion}。` : `All fish candidates in the bases are covered by the covers; same-digit candidates in the covers but outside the bases can be removed: ${conclusion}.`);
+    proof = zh ? "数学逻辑：每个 base 区域都必须放入一个鱼数字；如果这些可能落点全部落在同数量的 cover 区域中，那么这些 cover 区域会被 base 的鱼数字占满。于是 cover 区域里额外的同数字候选不可能成立。带鳍鱼则用分支理解：鳍成立时直接限制删数；鳍不成立时退化为普通鱼，同样删数。" : "Logic: each base set must contain the fish digit once. If all possible positions in the bases are covered by the same number of cover sets, those covers are occupied by the base placements. Extra same-digit candidates in the covers cannot be true. For finned fish, either the fin is true and sees the deletion, or the fin is false and the pattern becomes a normal fish.";
+    checks.push(zh ? "确认删数在 cover 区域内，但不在 base 与 cover 的交点结构中。" : "Verify the deletion is in a cover set but outside the base-cover intersections.");
+  } else if (type === "unique") {
+    lines.push(zh ? `本步使用唯一解前提，观察高亮的致命结构${cellsText ? `：${cellsText}` : ""}。` : `This step uses the uniqueness assumption and checks the highlighted deadly pattern${cellsText ? `: ${cellsText}` : ""}.`);
+    lines.push(zh ? `若保留/放入被删候选，会形成两个数字可互换的第二解，因此结论 ${conclusion} 成立。` : `If the removed candidate were kept/placed, the pattern would allow two interchangeable solutions, so ${conclusion} follows.`);
+    proof = zh ? "数学逻辑：标准数独题默认只有唯一解。UR、BUG、Avoidable Rectangle 等结构的危险点在于：某些格只剩同一组数字后，这些数字可以成对互换而不破坏行列宫约束，从而产生第二解。因此任何会把盘面推入该致命结构的候选都必须删除。" : "Logic: standard sudoku assumes a unique solution. UR, BUG, Avoidable Rectangle and related patterns identify a state where digits can be swapped without breaking row/column/box rules, creating a second solution. Any candidate that would force that deadly state must be false.";
+    checks.push(zh ? "确认你接受唯一解前提；非唯一题不应使用这类技巧。" : "Confirm the puzzle is intended to have a unique solution; do not use uniqueness techniques on non-unique puzzles.");
+  } else if (type === "als") {
+    lines.push(zh ? `观察高亮的 ALS/AHS 结构${cellsText ? `：${cellsText}` : ""}。` : `Observe the highlighted ALS/AHS structures${cellsText ? `: ${cellsText}` : ""}.`);
+    lines.push(zh ? `它们通过受限公共候选或强制候选互相约束，所以结论 ${conclusion} 可删/可出。` : `They constrain one another through restricted common candidates or forced candidates, so ${conclusion} follows.`);
+    proof = zh ? "数学逻辑：ALS 是 N 个格含 N+1 个候选，少掉任意一个候选后就会变成锁定集。若两个 ALS 通过受限公共候选相连，该公共候选不能在两个 ALS 中同时失效；否则两边都会被迫成锁定集并造成容量冲突。能同时看到相关受限位置的外部候选因此不能成立。AHS 是对数字/位置关系的对偶表达。" : "Logic: an ALS has N cells and N+1 candidates; removing one candidate turns it into a locked set. When two ALSs share a restricted common candidate, that candidate cannot be absent from both ALSs, or both sides are forced into incompatible locked-set states. External candidates that see the restricted positions can therefore be removed. AHS is the dual view using digits/positions.";
+    checks.push(zh ? "确认每个 ALS 在同一 house 内，且格数比候选数少 1。" : "Verify each ALS lies in one house and has one more candidate than cells.");
+  } else if (type === "wing") {
+    lines.push(zh ? `先找枢纽/翼格以及它们共享的候选关系。` : `First identify the pivot/wing cells and their shared candidates.`);
+    lines.push(zh ? `不管枢纽取哪种可能，至少一个翼端会推出同一个限制，因此结论 ${conclusion} 成立。` : `Whichever pivot case is true, at least one wing enforces the same restriction, so ${conclusion} follows.`);
+    proof = zh ? "数学逻辑：Wing 类技巧通常是一个小型二分证明。枢纽格的候选只有少数几种；逐一讨论后，每一种情况都会让某个翼端候选成立。若某个外部候选同时看见所有可能成立的翼端，它就不可能成立。" : "Logic: wing techniques are small case splits. The pivot has only a few possibilities; in every case, one of the wing candidates becomes true. Any external candidate that sees all possible true wing candidates cannot be true.";
+    checks.push(zh ? "确认被删候选同时看见所有可能推出的翼端同数字候选。" : "Verify the removed candidate sees every possible same-digit wing endpoint.");
+  } else if (type === "chain") {
+    lines.push(zh ? `按链路顺序阅读节点${nodesText ? `：${nodesText}` : ""}。` : `Read the chain in node order${nodesText ? `: ${nodesText}` : ""}.`);
+    lines.push(zh ? `强弱关系交替传递真假；端点、环或反证路径推出结论 ${conclusion}。` : `Truth alternates through strong and weak links; endpoints, loops, or contradiction paths imply ${conclusion}.`);
+    proof = zh ? "数学逻辑：强关系表示两端至少一真，弱关系表示两端不能同真。沿链假设起点为真/假后，真假会被逐段强制传递。若两个端点共同看到某候选，则该候选为真会迫使两个端点都假而违反链的至少一真；若形成不连续环或矛盾路径，则某个候选会导致自身冲突、区域无候选或格子无候选，所以它可删。Whip/Braid 可理解为假设某候选成立后，经过一串强制选择必达矛盾。" : "Logic: a strong link means at least one end is true; a weak link means both ends cannot be true. Truth values propagate along the chain. If two endpoints see a candidate, making that candidate true would make both endpoints false, contradicting the chain's at-least-one-true result. In a discontinuous loop or contradiction path, an assumption forces a conflict or an empty cell/house, so the assumed candidate is false. Whip/Braid steps are contradiction proofs driven by forced choices.";
+    checks.push(zh ? "确认线条方向只是阅读辅助；真正依据是强/弱关系和端点可见性。" : "Line direction is a reading aid; the proof rests on strong/weak links and endpoint visibility.");
+  } else if (type === "rank") {
+    lines.push(zh ? `本步把 base 集合、cover 集合和候选覆盖关系作为整体比较。` : `This step compares base sets, cover sets, and candidate coverage as one structure.`);
+    lines.push(zh ? `当 cover 足以覆盖 base 的必要占位，多余交叠位置或 rank 约束位置可得出 ${conclusion}。` : `When the covers account for the required base placements, extra overlaps or rank-constrained positions imply ${conclusion}.`);
+    proof = zh ? "数学逻辑：秩理论把“必须满足的约束”看成 base，把“可容纳这些满足项的位置”看成 cover。若 cover 数量与 base 数量相等，cover 会被必要项占满，额外候选不能成立；若存在 rank 差，则删数/出数来自覆盖冗余、交叠或 guardian 对所有可能性的限制。" : "Logic: rank logic treats required constraints as bases and the places that can satisfy them as covers. If the number of covers equals the number of bases, the covers are filled by the required placements and extra candidates are false. With nonzero rank, eliminations/placements come from cover redundancy, overlaps, or guardians restricting all possibilities.";
+    checks.push(zh ? "优先核对 base/cover 数量、rank 标注和删数是否落在被覆盖的额外位置。" : "Check base/cover counts, rank, and whether deletions are covered extras.");
+  } else if (type === "exocet") {
+    lines.push(zh ? `观察 base cells、target cells、cross/guardian 区域的关系。` : `Observe the relation among base cells, target cells, cross cells, and guardians.`);
+    lines.push(zh ? `base 的真值组合会强制 target/cross 的可选范围，因此结论 ${conclusion} 成立。` : `The base-value combination forces the target/cross possibilities, so ${conclusion} follows.`);
+    proof = zh ? "数学逻辑：Exocet/Fireworks 类结构把一组 base 候选与目标格候选绑定。base 中最终选出的数字必须在目标区域得到一致落点；凡是无法与任何合法 base 组合兼容的候选，或会让所有 base 组合失败的候选，都可以删除。guardian 的作用是覆盖例外分支：每个例外若成立也会推出同一结论。" : "Logic: Exocet/Fireworks patterns bind base candidates to target candidates. The digits chosen in the base must have compatible placements in the targets/cross cells. Candidates incompatible with every legal base combination, or candidates that make all combinations fail, can be removed. Guardians cover exception branches that lead to the same conclusion.";
+    checks.push(zh ? "核对 base 候选集合与 target 候选集合是否一致或受同一组数字约束。" : "Check that base and target candidates match or are constrained by the same digit set.");
+  } else if (type === "oddagon") {
+    lines.push(zh ? `观察奇环/奇数结构中的交替候选。` : `Observe the alternating candidates in the odd loop/pattern.`);
+    lines.push(zh ? `若保留某候选，会迫使奇数长度结构无法二色一致，因此结论 ${conclusion} 成立。` : `Keeping the candidate would force an impossible two-coloring around an odd structure, so ${conclusion} follows.`);
+    proof = zh ? "数学逻辑：Oddagon/Tridagon 利用奇数长度交替结构。若某组候选被迫沿结构两两交替，偶环可以一致闭合，奇环却会在回到起点时要求同一候选同时真/假或两个相同状态相邻，因此造成矛盾。触发该矛盾的候选必须删除。" : "Logic: Oddagon/Tridagon patterns use an odd alternating structure. Pairwise alternation can close on an even loop, but on an odd loop it returns to the start with inconsistent truth requirements. Any candidate that triggers that contradiction is false.";
+    checks.push(zh ? "确认结构长度/分组确实形成奇数交替，而不是普通偶环。" : "Verify the structure is truly odd-alternating, not an ordinary even loop.");
+  } else {
+    lines.push(zh ? `先看高亮结构${cellsText ? `：${cellsText}` : ""}，再看结论 ${conclusion}。` : `First inspect the highlighted structure${cellsText ? `: ${cellsText}` : ""}, then the conclusion ${conclusion}.`);
+    lines.push(zh ? "本技巧的专用模板尚未细化；当前说明使用通用“结构限制所有可能性”的读法。" : "This technique does not yet have a specialized template; this uses the generic all-cases-covered reading." );
+    proof = zh ? "数学逻辑：系统找到的结构会把目标候选的所有可能情况分完。若每个分支都排除同一个候选，或只有一个分支能避免冲突，那么对应删数/出数就是必然结论。" : "Logic: the found structure partitions the possible cases. If every case excludes the same candidate, or only one case avoids contradiction, the corresponding deletion/placement is forced.";
+    checks.push(zh ? "核对高亮结构、结论位置以及候选数字是否一致。" : "Check that the highlighted structure, target cells, and digits match the conclusion.");
+  }
+
+  if (step.description) {
+    checks.push(zh ? "原始步骤描述可作为 Eureka/结构文本，对照盘面逐段核验。" : "Use the original step description as Eureka/structure text and verify it against the grid.");
+  }
+  if (elims > 0 || places > 0) {
+    checks.push(zh ? `本步结论数量：出数 ${places}，删数 ${elims}。` : `Conclusion count: placements ${places}, eliminations ${elims}.`);
+  }
+
+  const meta = [];
+  if (cand) meta.push(zh ? `候选 ${cand}` : `candidate ${cand}`);
+  if (house) meta.push(house);
+  if (structureCount) meta.push(zh ? `结构格 ${structureCount}` : `${structureCount} cells`);
+  if (edgeCount) meta.push(zh ? `链边 ${edgeCount}` : `${edgeCount} edges`);
+  if (groupCount) meta.push(zh ? `分组 ${groupCount}` : `${groupCount} groups`);
+  if (rank) meta.push(`rank ${rank}`);
+
+  return { type, lines, proof, checks, meta };
+}
+
+function buildStepExplanationContent(step, snapshot = currentSnapshot) {
+  const zh = lang.value === "zh";
+  const data = stepExplainBuildLines(step, snapshot);
+  const fragment = document.createDocumentFragment();
+
+  const subtitle = document.createElement("div");
+  subtitle.className = "step-explain-subtitle";
+  subtitle.textContent = `${stepDisplayName(step)} · ${formatHintDesc(step)}`;
+  fragment.appendChild(subtitle);
+
+  const ol = document.createElement("ol");
+  data.lines.forEach((line) => {
+    const li = document.createElement("li");
+    li.textContent = line;
+    ol.appendChild(li);
+  });
+  fragment.appendChild(ol);
+
+  const proof = document.createElement("div");
+  proof.className = "step-explain-proof";
+  proof.textContent = data.proof;
+  fragment.appendChild(proof);
+
+  if (data.checks.length > 0) {
+    const ul = document.createElement("ul");
+    data.checks.forEach((line) => {
+      const li = document.createElement("li");
+      li.textContent = line;
+      ul.appendChild(li);
+    });
+    fragment.appendChild(ul);
+  }
+
+  if (data.meta.length > 0) {
+    const meta = document.createElement("div");
+    meta.className = "step-explain-meta";
+    data.meta.forEach((item) => {
+      const span = document.createElement("span");
+      span.className = "step-explain-pill";
+      span.textContent = item;
+      meta.appendChild(span);
+    });
+    fragment.appendChild(meta);
+  }
+
+  return fragment;
+}
+
+function updateStepExplainButtonState(step = currentHint, snapshot = currentSnapshot) {
+  const enabled = Boolean(step && step.valid);
+  currentStepExplainContext = enabled ? { step, snapshot } : null;
+  if (!btnStepExplain) return;
+  btnStepExplain.classList.remove("hidden");
+  btnStepExplain.disabled = !enabled;
+  const label = ui("stepExplain");
+  const unavailable = ui("stepExplainUnavailable");
+  setButtonText(btnStepExplain, label);
+  btnStepExplain.title = enabled ? label : unavailable;
+  btnStepExplain.setAttribute("aria-label", enabled ? label : unavailable);
+}
+
+function closeStepExplanationDialog() {
+  if (!stepExplainDialog) return;
+  if (typeof stepExplainDialog.close === "function" && stepExplainDialog.open) {
+    stepExplainDialog.close();
+  } else {
+    stepExplainDialog.classList.add("hidden");
+  }
+}
+
+function resetStepExplainDialogPosition() {
+  if (!stepExplainDialog) return;
+  stepExplainDialog.style.left = "50%";
+  stepExplainDialog.style.top = "50%";
+  stepExplainDialog.style.transform = "translate(-50%, -50%)";
+}
+
+function openStepExplanationDialog() {
+  const ctx = currentStepExplainContext;
+  if (!ctx?.step || !ctx.step.valid) {
+    setStatus(ui("stepExplainUnavailable"));
+    return;
+  }
+  if (!stepExplainDialog || !stepExplainDialogContent) return;
+  setTextById("stepExplainDialogTitle", ui("stepExplainTitle"));
+  setTextById("stepExplainDialogClose", ui("close"));
+  stepExplainDialogContent.replaceChildren(buildStepExplanationContent(ctx.step, ctx.snapshot));
+  stepExplainDialog.classList.remove("hidden");
+  resetStepExplainDialogPosition();
+  if (typeof stepExplainDialog.showModal === "function") {
+    stepExplainDialog.showModal();
+  }
+}
+
+function renderStepExplanation(step = null, snapshot = currentSnapshot) {
+  // V441: explanation is no longer rendered inline. Keep the topbar Explain
+  // button disabled/enabled by current step, and generate the tutorial dialog on demand.
+  if (stepExplainPanel) {
+    stepExplainPanel.classList.add("hidden");
+    stepExplainPanel.replaceChildren();
+  }
+  updateStepExplainButtonState(step, snapshot);
+}
+
+
 function getBoardState() {
   if (!engine) return null;
   return parseJson(engine.state_json());
@@ -7688,6 +7984,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     clearManualChainEndpointHighlights();
     clearManualMarkOverlay();
     hintPanel.textContent = lang.value === "en" ? "Waiting for wasm to load." : "等待 wasm 加载。";
+    renderStepExplanation(null, null);
     return;
   }
 
@@ -7754,16 +8051,17 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
   renderManualMarkOverlay();
 
   if (hint?.valid) {
+    hintPanel.textContent = formatHintDesc(hint);
+    renderStepExplanation(hint, snapshot);
     if (isChainHint) {
-      hintPanel.textContent = formatHintDesc(hint);
       setYzfOverlayModeNote("default solver result");
       renderChainOverlay(normalizeDefaultSolverStepResult(hint, snapshot.board || "", hint));
     } else {
-      hintPanel.textContent = formatHintDesc(hint);
       setYzfOverlayModeNote("");
       clearRenderedChainOverlay();
     }
   } else {
+    renderStepExplanation(null, snapshot);
     setYzfOverlayModeNote("");
     clearRenderedChainOverlay();
   }
@@ -9775,6 +10073,62 @@ btnApply.addEventListener("click", () => {
     log(text);
   }
 });
+
+
+function installStepExplainDialogDrag() {
+  if (!stepExplainDialog) return;
+  const header = stepExplainDialog.querySelector(".step-explain-dialog-header");
+  if (!header) return;
+  let dragState = null;
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+  header.addEventListener("pointerdown", (event) => {
+    if (event.button !== undefined && event.button !== 0) return;
+    if (event.target?.closest?.("button, a, input, select, textarea")) return;
+    const rect = stepExplainDialog.getBoundingClientRect();
+    dragState = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    stepExplainDialog.style.transform = "none";
+    stepExplainDialog.style.left = `${rect.left}px`;
+    stepExplainDialog.style.top = `${rect.top}px`;
+    header.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  });
+
+  header.addEventListener("pointermove", (event) => {
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+    const margin = 8;
+    const maxLeft = Math.max(margin, window.innerWidth - dragState.width - margin);
+    const maxTop = Math.max(margin, window.innerHeight - dragState.height - margin);
+    const nextLeft = clamp(event.clientX - dragState.offsetX, margin, maxLeft);
+    const nextTop = clamp(event.clientY - dragState.offsetY, margin, maxTop);
+    stepExplainDialog.style.left = `${nextLeft}px`;
+    stepExplainDialog.style.top = `${nextTop}px`;
+  });
+
+  const endDrag = (event) => {
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+    header.releasePointerCapture?.(event.pointerId);
+    dragState = null;
+  };
+  header.addEventListener("pointerup", endDrag);
+  header.addEventListener("pointercancel", endDrag);
+}
+
+btnStepExplain?.addEventListener("click", openStepExplanationDialog);
+stepExplainDialogClose?.addEventListener("click", closeStepExplanationDialog);
+stepExplainDialog?.addEventListener("click", (event) => {
+  if (event.target === stepExplainDialog) closeStepExplanationDialog();
+});
+stepExplainDialog?.addEventListener("close", () => {
+  stepExplainDialog.classList.add("hidden");
+});
+installStepExplainDialogDrag();
 
 allStepsFilterText?.addEventListener("input", () => {
   allStepsFilterState.query = allStepsFilterText.value || "";

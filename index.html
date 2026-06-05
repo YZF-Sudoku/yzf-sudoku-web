@@ -42,6 +42,18 @@
       gap: 8px;
       padding: 0 0 4px;
     }
+    .topbar label {
+      display: inline-flex;
+      align-items: center;
+      margin: 0;
+    }
+    .topbar select {
+      min-height: 30px;
+      margin: 0;
+      padding: 4px 9px;
+      line-height: 1.2;
+      vertical-align: middle;
+    }
     .brand {
       display: flex;
       flex-direction: row;
@@ -64,7 +76,9 @@
     .manual-link {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       min-height: 30px;
+      margin: 0;
       padding: 4px 9px;
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -72,8 +86,10 @@
       color: var(--accent);
       font-size: 13px;
       font-weight: 650;
+      line-height: 1.2;
       text-decoration: none;
       white-space: nowrap;
+      vertical-align: middle;
     }
     .manual-link:hover, .manual-link:focus {
       border-color: var(--accent);
@@ -365,20 +381,26 @@
       align-items: center;
       margin: 8px 0;
     }
+    .ocr-import-actions button,
     .ocr-file-button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      position: relative;
-      overflow: hidden;
-      min-height: 34px;
-      padding: 6px 10px;
+      min-height: 36px;
+      margin: 0;
+      padding: 7px 10px;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 6px;
       background: #fff;
-      color: var(--text);
+      color: var(--ink);
+      font: inherit;
       font-size: 14px;
       line-height: 1.2;
+      vertical-align: middle;
+    }
+    .ocr-file-button {
+      position: relative;
+      overflow: hidden;
       cursor: pointer;
       user-select: none;
     }
@@ -3110,6 +3132,58 @@
     body.manual-marks-focus .hint-panel {
       max-height: 64px;
     }
+
+    .step-explain-panel {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.32);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.045);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.55;
+      max-height: 240px;
+      overflow: auto;
+    }
+    .step-explain-panel.hidden { display: none; }
+    .step-explain-panel .step-explain-title {
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .step-explain-panel .step-explain-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .step-explain-panel ol,
+    .step-explain-panel ul {
+      margin: 6px 0 0 1.2em;
+      padding: 0;
+    }
+    .step-explain-panel li { margin: 4px 0; }
+    .step-explain-panel .step-explain-proof {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed rgba(148, 163, 184, 0.38);
+    }
+    .step-explain-panel .step-explain-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .step-explain-panel .step-explain-pill {
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.42);
+    }
+    @media (orientation: landscape) and (max-height: 640px) {
+      .step-explain-panel { max-height: 120px; font-size: 12px; }
+    }
+
     @media (orientation: portrait), (max-width: 699px) {
       .hint-panel {
         max-height: 84px;
@@ -3269,6 +3343,58 @@
       }
     }
 
+
+    .step-explain-panel {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.32);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.045);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.55;
+      max-height: 240px;
+      overflow: auto;
+    }
+    .step-explain-panel.hidden { display: none; }
+    .step-explain-panel .step-explain-title {
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .step-explain-panel .step-explain-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .step-explain-panel ol,
+    .step-explain-panel ul {
+      margin: 6px 0 0 1.2em;
+      padding: 0;
+    }
+    .step-explain-panel li { margin: 4px 0; }
+    .step-explain-panel .step-explain-proof {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed rgba(148, 163, 184, 0.38);
+    }
+    .step-explain-panel .step-explain-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .step-explain-panel .step-explain-pill {
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.42);
+    }
+    @media (orientation: landscape) and (max-height: 640px) {
+      .step-explain-panel { max-height: 120px; font-size: 12px; }
+    }
+
     @media (orientation: portrait), (max-width: 699px) {
       .board-stage {
         flex: 0 0 auto !important;
@@ -3280,6 +3406,107 @@
       }
     }
 
+
+    /* V441: step tutorial is opt-in. Keep the board size stable; place the
+       Explain button next to Manual/Techniques in the topbar and enable it only
+       when a current step result is available. */
+    .board-heading-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 28px;
+    }
+    .board-heading-row h3 {
+      margin: 0;
+    }
+    .step-explain-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      margin: 0;
+      padding: 4px 9px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.2;
+      text-decoration: none;
+      white-space: nowrap;
+      cursor: pointer;
+      font-family: inherit;
+      vertical-align: middle;
+    }
+    .step-explain-button:hover:not(:disabled),
+    .step-explain-button:focus:not(:disabled) {
+      border-color: var(--accent);
+      background: #eff6ff;
+      outline: none;
+    }
+    .step-explain-button.hidden { display: inline-flex; }
+    .step-explain-button:disabled {
+      opacity: 0.46;
+      cursor: not-allowed;
+      color: var(--muted);
+      background: #f8fafc;
+    }
+    .step-explain-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: min(760px, calc(100vw - 28px));
+      max-height: min(76vh, 720px);
+      margin: 0;
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      border-radius: 16px;
+      padding: 0;
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.32);
+    }
+    .step-explain-dialog::backdrop {
+      background: rgba(15, 23, 42, 0.42);
+    }
+    .step-explain-dialog.hidden { display: none; }
+    .step-explain-dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.32);
+      cursor: move;
+      touch-action: none;
+      user-select: none;
+    }
+    .step-explain-dialog-header strong { font-size: 15px; }
+    .step-explain-dialog-close {
+      margin: 0;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      border-radius: 999px;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .step-explain-dialog-content {
+      padding: 12px 16px 16px;
+      overflow: auto;
+      max-height: calc(min(76vh, 720px) - 52px);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .step-explain-dialog-content ol,
+    .step-explain-dialog-content ul {
+      margin: 8px 0 0 1.2em;
+      padding: 0;
+    }
+    .step-explain-dialog-content li { margin: 5px 0; }
+
+
   </style>
 </head>
 <body>
@@ -3289,9 +3516,11 @@
         <header class="topbar">
           <div class="brand">
             <div class="brand-title">YZF_Sudoku</div>
-            <div class="brand-subtitle">mobile-first logic trainer</div>
+            <div id="brandSubtitle" class="brand-subtitle">移动优先逻辑训练器</div>
           </div>
-          <a id="manualLink" class="manual-link" href="./user_manual.html" target="_blank" rel="noopener">使用手册 / Manual</a>
+          <a id="manualLink" class="manual-link" href="./user_manual.html" target="_blank" rel="noopener">使用手册</a>
+          <button id="btnStepExplain" class="step-explain-button" type="button" disabled title="当前没有可解释的步骤。" aria-label="当前没有可解释的步骤。">解释</button>
+          <a id="techniquesLink" class="manual-link" href="./techniques.html" target="_blank" rel="noopener">技巧说明</a>
           <label>
             <span class="hidden">Language</span>
             <select id="lang">
@@ -3300,7 +3529,9 @@
             </select>
           </label>
         </header>
-        <h3 id="boardHeading">盘面</h3>
+        <div class="board-heading-row">
+          <h3 id="boardHeading">盘面</h3>
+        </div>
         <div id="boardMeta" class="board-meta"></div>
         <div id="boardStage" class="board-stage">
           <svg id="yzfUnderlay" class="yzf-underlay" viewBox="0 0 900 900" aria-hidden="true"></svg>
@@ -3308,8 +3539,16 @@
           <svg id="yzfOverlay" class="yzf-overlay" viewBox="0 0 900 900" aria-hidden="true"></svg>
         </div>
         <div id="hintPanel" class="hint-panel">等待加载题面。</div>
+        <div id="stepExplainPanel" class="step-explain-panel hidden" aria-live="polite"></div>
+        <dialog id="stepExplainDialog" class="step-explain-dialog hidden">
+          <div class="step-explain-dialog-header">
+            <strong id="stepExplainDialogTitle">动态教程：为什么这一步成立</strong>
+            <button id="stepExplainDialogClose" class="step-explain-dialog-close" type="button">关闭</button>
+          </div>
+          <div id="stepExplainDialogContent" class="step-explain-dialog-content"></div>
+        </dialog>
         <div id="yzfBranchControls" class="yzf-branch-controls hidden">
-          <label><span id="yzfBranchLabelText">分支</span> <select id="yzfBranchSelect"><option value="all">all branches</option></select></label>
+          <label><span id="yzfBranchLabelText">分支</span> <select id="yzfBranchSelect"><option value="all">全部分支</option></select></label>
         </div>
 
         <div class="tab-shell">
@@ -3345,10 +3584,10 @@
                 <button id="btnYzfDebugLoad" type="button" class="compact">Load</button>
                 <button id="btnYzfDebugClear" type="button" class="compact">Clear</button>
               </div>
-              <div id="yzfOverlayModeNote" class="yzf-debug-note">debug-only / 不作为正式删数</div>
-              <div id="yzfOverlayStatus" class="yzf-debug-status hidden">debug only / 不作为正式删数</div>
+              <div id="yzfOverlayModeNote" class="yzf-debug-note">仅调试，不作为正式删数</div>
+              <div id="yzfOverlayStatus" class="yzf-debug-status hidden">仅调试，不作为正式删数</div>
               <details class="yzf-debug-legend">
-                <summary>Overlay legend / 图例</summary>
+                <summary>图例</summary>
                 <div class="yzf-debug-legend-grid">
                   <div class="yzf-legend-item">
                     <span class="yzf-legend-chip node on"></span>
@@ -3372,11 +3611,11 @@
                   </div>
                   <div class="yzf-legend-item">
                     <span class="yzf-legend-chip edge group">g</span>
-                    <span>Group edge：紫色 / group</span>
+                    <span>组合边：紫色</span>
                   </div>
                   <div class="yzf-legend-item">
                     <span class="yzf-legend-chip candidate" style="background:#ffcbcb;color:#7a0012;border-radius:999px;padding:1px 7px;">6</span>
-                    <span>AF auxiliary：cover row 水平 / cover column 垂直</span>
+                    <span>AF 辅助：cover row 水平，cover column 垂直</span>
                   </div>
                   <div class="yzf-legend-item">
                     <span class="yzf-legend-chip candidate">×</span>
@@ -3407,7 +3646,7 @@
 
 
             <details id="manualMarksPanel" class="manual-marks-panel">
-              <summary><span id="manualMarksTitle">手工标记 / Manual Marks</span></summary>
+              <summary><span id="manualMarksTitle">手工标记</span></summary>
               <div class="manual-marks-grid">
                 <label><span id="manualMarkModeLabel">模式</span><select id="manualMarkMode">
                   <option value="off">关闭标记</option>
@@ -3420,15 +3659,15 @@
                   <option value="block">区块标记</option>
                 </select></label>
                 <label><span id="manualMarkLineLabel">链线</span><select id="manualMarkLineType">
-                  <option value="strong">强链 / 实线</option>
-                  <option value="weak">弱链 / 虚线</option>
+                  <option value="strong">强链（实线）</option>
+                  <option value="weak">弱链（虚线）</option>
                   <option value="constructionStrong">构造强链</option>
                   <option value="constructionWeak">构造弱链</option>
                 </select></label>
               </div>
               <div class="manual-mark-actions" role="group" aria-label="manual mark action">
-                <button id="manualMarkPrimary" type="button" class="compact active">添加 / 左击</button>
-                <button id="manualMarkSecondary" type="button" class="compact">清除 / 右击</button>
+                <button id="manualMarkPrimary" type="button" class="compact active">添加</button>
+                <button id="manualMarkSecondary" type="button" class="compact">清除</button>
               </div>
               <div class="manual-mark-color-row">
                 <span id="manualMarkColorLabel">颜色</span>
@@ -3468,7 +3707,7 @@
             </details>
 
             <details class="input-panel">
-              <summary>更多：题面输入 / 导出评分</summary>
+              <summary>更多：题面输入与导出评分</summary>
               <textarea id="givens">53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79</textarea>
               <div class="ocr-import-actions">
                 <label id="btnImageOcrPick" class="ocr-file-button"><span id="btnImageOcrPickText">选择图片识别</span><input id="imageOcrInput" class="ocr-native-file-input" type="file" accept="image/*" /></label>
@@ -3500,7 +3739,7 @@
 
           <section id="tabAllSteps" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnAllSteps" data-tab-panel="allSteps" hidden>
             <div class="all-steps-filter" aria-label="可选步骤过滤">
-              <input id="allStepsFilterText" type="search" placeholder="过滤：技巧 / 删数 / 描述" autocomplete="off" aria-label="过滤可选步骤">
+              <input id="allStepsFilterText" type="search" placeholder="过滤：技巧、删数或描述" autocomplete="off" aria-label="过滤可选步骤">
               <select id="allStepsFilterTechnique" aria-label="按技巧过滤"><option value="">全部技巧</option></select>
               <select id="allStepsSortMode" aria-label="可选步骤排序"><option value="default">默认排序</option><option value="conclusion">出数/删数优先</option></select>
               <label><input id="allStepsFilterReplaceable" type="checkbox"> 可替换</label>
@@ -3630,6 +3869,6 @@
         document.addEventListener('DOMContentLoaded', scheduleDynamicBoardSizeForLayoutMode);
       })();
     </script>
-    <script type="module" src="./app.js?v=20260603-v411-local-ocr-lazy"></script>
+    <script type="module" src="./app.js?v=20260605-v444-single-language-ui"></script>
   </body>
 </html>
