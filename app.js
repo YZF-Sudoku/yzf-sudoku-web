@@ -10366,12 +10366,28 @@ imageOcrCameraInput?.addEventListener("change", async () => {
   await recognizeAndImportImageFile(file);
 });
 
+function isEditablePasteTarget(target) {
+  if (!target) return false;
+  const el = target instanceof Element ? target : target?.parentElement;
+  if (!el) return false;
+
+  return Boolean(
+    el.closest("input, textarea, select, [contenteditable='true'], [contenteditable='']")
+  );
+}
+
 window.addEventListener("paste", async (event) => {
+  if (isEditablePasteTarget(event.target)) {
+    return;
+  }
+
   const items = Array.from(event.clipboardData?.items || []);
   const imageItem = items.find((item) => item.type?.startsWith?.("image/"));
   if (!imageItem) return;
+
   const file = imageItem.getAsFile();
   if (!file) return;
+
   event.preventDefault();
   await recognizeAndImportImageFile(file);
 });
