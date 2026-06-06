@@ -382,6 +382,7 @@
       margin: 8px 0;
     }
     .ocr-import-actions button,
+    .ocr-import-actions select,
     .ocr-file-button {
       display: inline-flex;
       align-items: center;
@@ -397,6 +398,10 @@
       font-size: 14px;
       line-height: 1.2;
       vertical-align: middle;
+    }
+    .ocr-import-actions select {
+      min-width: 132px;
+      cursor: pointer;
     }
     .ocr-file-button {
       position: relative;
@@ -3727,6 +3732,14 @@
                 <label id="btnImageOcrPick" class="ocr-file-button"><span id="btnImageOcrPickText">选择图片识别</span><input id="imageOcrInput" class="ocr-native-file-input" type="file" accept="image/*" /></label>
                 <label id="btnImageOcrCamera" class="ocr-file-button ocr-camera-action"><span id="btnImageOcrCameraText">拍照识别</span><input id="imageOcrCameraInput" class="ocr-native-file-input" type="file" accept="image/*" capture="environment" /></label>
                 <button id="btnImageOcrClipboard" type="button">从剪贴板识别</button>
+                <select id="exportFormatSelect" aria-label="导出格式" title="导出格式">
+                  <option value="original">原始题串</option>
+                  <option value="known">已知数字串</option>
+                  <option value="candidates">候选数字串</option>
+                  <option value="sukaku">Sukaku 字串</option>
+                  <option value="library" selected>Library 题串</option>
+                  <option value="coach">To Coach</option>
+                </select>
                 <button id="btnExportPuzzle">导出题串</button>
                 <button id="btnClearSavedSession" type="button">清除本地保存</button>
                 <button id="btnRate">评分当前题目</button>

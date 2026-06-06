@@ -62,6 +62,7 @@ let localSudokuOcrModulePromise = null;
 let ortScriptPromise = null;
 let lastOcrDraftCoachJson = null;
 const APP_SESSION_STORAGE_KEY = "yzf_sudoku_session_v1";
+const EXPORT_FORMAT_STORAGE_KEY = "yzf_sudoku_export_format_v1";
 let appSessionSaveTimer = 0;
 let appSessionRestoring = false;
 
@@ -72,7 +73,7 @@ function loadScriptOnce(src) {
     if (existing.dataset.loaded === "1") return Promise.resolve();
     return new Promise((resolve, reject) => {
       existing.addEventListener("load", resolve, { once: true });
-      existing.addEventListener("error", () => reject(new Error(`脚本加载失败：${src}`)), { once: true });
+      existing.addEventListener("error", () => reject(new Error(uif("scriptLoadFailed", { src }))), { once: true });
     });
   }
   return new Promise((resolve, reject) => {
@@ -84,7 +85,7 @@ function loadScriptOnce(src) {
       script.dataset.loaded = "1";
       resolve();
     }, { once: true });
-    script.addEventListener("error", () => reject(new Error(`脚本加载失败：${src}`)), { once: true });
+    script.addEventListener("error", () => reject(new Error(uif("scriptLoadFailed", { src }))), { once: true });
     document.head.appendChild(script);
   });
 }
@@ -120,6 +121,7 @@ async function localSudokuOcrAttributionSafe() {
   }
 }
 const btnExportPuzzle = document.getElementById("btnExportPuzzle");
+const exportFormatSelect = document.getElementById("exportFormatSelect");
 const btnRate = document.getElementById("btnRate");
 const btnCandidates = document.getElementById("btnCandidates");
 const btnStep = document.getElementById("btnStep");
@@ -455,6 +457,14 @@ const uiText = {
     techniqueHelp: "技巧说明",
     initialHint: "等待加载题面。",
     branch: "分支",
+    allBranches: "全部分支",
+    mainActionsLabel: "主要操作",
+    numberPadLabel: "数字键盘",
+    manualMarkActionLabel: "手工标记操作",
+    manualMarkColorsLabel: "手工标记颜色",
+    allStepsFilterAria: "可选步骤过滤",
+    filterByTechnique: "按技巧过滤",
+    allStepsSortAria: "可选步骤排序",
     controls: "操作",
     techniques: "技巧",
     path: "解题路径",
@@ -483,7 +493,15 @@ const uiText = {
     batchStatusIdle: "按当前难度批量生成，写入磁盘文件。",
     moreInput: "更多：题面输入与导出评分",
     exportPuzzle: "导出题串",
-    clearSavedSession: "清除本地保存",
+    exportFormatLabel: "导出格式",
+    exportFormatOriginal: "原始题串",
+    exportFormatKnown: "已知数字串",
+    exportFormatCandidates: "候选数字串",
+    exportFormatSukaku: "Sukaku 字串",
+    exportFormatLibrary: "Library 题串",
+    exportFormatCoach: "To Coach",
+    clearSavedSession: "清除本地现场",
+    clearSavedSessionTitle: "清除浏览器中自动保存的上次盘面和技巧配置；不会清空当前盘面。",
     sessionRestored: "已恢复上次关闭时的盘面和技巧配置。",
     sessionRestoreFailed: "恢复上次现场失败：{message}",
     sessionCleared: "已清除本地保存的盘面和技巧配置。",
@@ -516,6 +534,7 @@ const uiText = {
     currentInput: "当前",
     techniquePresetApplied: "已应用技巧预设",
     wasmLoadFailed: "wasm 加载失败",
+    scriptLoadFailed: "脚本加载失败：{src}",
     unsupportedFullscreen: "当前浏览器不支持网页全屏，请尝试添加到主屏幕/PWA，或使用安卓 Chrome 测试。",
     fullscreenFailed: "全屏失败",
     optionsUpdated: "技巧配置已更新。",
@@ -629,6 +648,39 @@ const uiText = {
     trainingSyncFailed: "训练题已生成，但主引擎同步失败。",
     trainingGenerated: "已生成 {technique} 训练题：尝试 {attempts} 次，{rating}。",
     exportUnavailable: "当前盘面无法导出：没有有效 81 位题面或候选盘状态。",
+    coachCompressUnsupported: "当前环境不支持 Coach 题串压缩",
+    coachDecompressUnsupported: "当前环境不支持 Coach 题串解压",
+    coachInvalidChar: "Coach 编码包含非法字符：{ch}",
+    manualAdvancedExportFailed: "当前盘面无法导出为手动高级技巧输入。",
+    currentStateSyncFailed: "当前盘面状态同步失败：{error}",
+    waitingWasm: "等待 wasm 加载。",
+    branchShorter: "路径缩短 {count} 步",
+    branchLonger: "路径增加 {count} 步",
+    branchStepsUnchanged: "步数未变",
+    branchScoreLower: "评分降低 {score}",
+    branchScoreHigher: "评分提高 {score}",
+    branchScoreUnchanged: "评分未变",
+    branchAppliedTitle: "分叉路径已应用",
+    branchStepLabel: "第 {index} 步",
+    branchSomeStep: "某一步",
+    branchPanelDetail: "{step} ← 可选 #{candidate}；步数 {oldSteps}→{newSteps}（{stepDelta}），评分 {oldScore}→{newScore}（{scoreDelta}），hash={hash}",
+    branchOldStep: "原步骤",
+    branchNewStep: "新步骤",
+    branchUnnamedStep: "未命名步骤",
+    branchTechniqueChanged: "技法变化：{oldTitle} → {newTitle}",
+    branchTechniqueKept: "技法保持：{title}",
+    branchUndoButton: "撤销分叉",
+    branchNoUndo: "没有可撤销的分叉路径。",
+    branchUndoDone: "已撤销最近一次分叉，恢复原解题路径。",
+    branchNotBound: "当前可选步骤没有绑定到解题路径中的 before 盘面，不能替换路径。",
+    branchMissingApi: "当前 wasm 尚未包含 solve_path_for_import_json，请重新编译并刷新页面。",
+    branchNoMatchingBefore: "替换失败：自动解题路径中没有找到相同 beforeHash 的步骤。",
+    branchSameStep: "可选步骤与当前路径第 {index} 步相同，未替换。",
+    branchApplyAfterFailed: "替换失败：无法由 before + 可选步骤推出后续盘面。",
+    branchSerializeFailed: "替换失败：替换后的盘面无法序列化为候选盘状态。",
+    branchTailFailed: "替换失败：后续路径重算失败：{error}",
+    branchReplaced: "已用可选步骤替换第 {index} 步，并从此处重算后续路径。新路径 {steps} 步。",
+    branchRowTitle: "单击预览；右键或长按：替换路径并从此处重算",
     whipMemoryLabel: "Whip/gWhip 搜索内存模式：",
     whipMemoryAuto: "自动（普通求解关闭，Whip 评分开启）",
     whipMemoryNormal: "普通（速度优先）",
@@ -701,6 +753,14 @@ const uiText = {
     techniqueHelp: "Techniques",
     initialHint: "Waiting for puzzle to load.",
     branch: "Branch",
+    allBranches: "All branches",
+    mainActionsLabel: "Main actions",
+    numberPadLabel: "Number pad",
+    manualMarkActionLabel: "Manual mark actions",
+    manualMarkColorsLabel: "Manual mark colors",
+    allStepsFilterAria: "Available steps filter",
+    filterByTechnique: "Filter by technique",
+    allStepsSortAria: "Available step sort",
     controls: "Controls",
     techniques: "Techniques",
     path: "Solution Path",
@@ -729,6 +789,18 @@ const uiText = {
     batchStatusIdle: "Generate a batch at the current difficulty and write it to a disk file.",
     moreInput: "More: puzzle input, export, and rating",
     exportPuzzle: "Export puzzle",
+    exportFormatLabel: "Export format",
+    exportFormatOriginal: "Original puzzle",
+    exportFormatKnown: "Known digits",
+    exportFormatCandidates: "Candidates text",
+    exportFormatSukaku: "Sukaku string",
+    exportFormatLibrary: "Library string",
+    exportFormatCoach: "To Coach",
+    clearSavedSession: "Clear saved session",
+    clearSavedSessionTitle: "Clear the last board and technique settings saved in this browser; the current board is not cleared.",
+    sessionRestored: "Restored the board and technique settings from the last session.",
+    sessionRestoreFailed: "Failed to restore the last session: {message}",
+    sessionCleared: "Cleared the saved board and technique settings in this browser.",
     ratePuzzle: "Rate puzzle",
     allStepsFilterPlaceholder: "Filter: technique / action / description",
     allTechniques: "All techniques",
@@ -758,6 +830,7 @@ const uiText = {
     currentInput: "Current",
     techniquePresetApplied: "Applied technique preset",
     wasmLoadFailed: "wasm load failed",
+    scriptLoadFailed: "Script load failed: {src}",
     unsupportedFullscreen: "This browser does not support page fullscreen. Try adding it to the home screen/PWA, or use Chrome on Android.",
     fullscreenFailed: "Fullscreen failed",
     optionsUpdated: "Technique settings updated.",
@@ -871,6 +944,39 @@ const uiText = {
     trainingSyncFailed: "Training puzzle was generated, but syncing it to the main engine failed.",
     trainingGenerated: "Generated {technique} training puzzle: {attempts} attempts, {rating}.",
     exportUnavailable: "Cannot export the current board: no valid 81-char puzzle or candidate state.",
+    coachCompressUnsupported: "This environment does not support Coach string compression",
+    coachDecompressUnsupported: "This environment does not support Coach string decompression",
+    coachInvalidChar: "Coach encoding contains an invalid character: {ch}",
+    manualAdvancedExportFailed: "The current board cannot be exported as manual advanced input.",
+    currentStateSyncFailed: "Failed to sync the current board state: {error}",
+    waitingWasm: "Waiting for wasm to load.",
+    branchShorter: "Path shortened by {count} step(s)",
+    branchLonger: "Path lengthened by {count} step(s)",
+    branchStepsUnchanged: "Step count unchanged",
+    branchScoreLower: "Rating decreased by {score}",
+    branchScoreHigher: "Rating increased by {score}",
+    branchScoreUnchanged: "Rating unchanged",
+    branchAppliedTitle: "Branched path applied",
+    branchStepLabel: "Step {index}",
+    branchSomeStep: "one step",
+    branchPanelDetail: "{step} ← option #{candidate}; steps {oldSteps}→{newSteps} ({stepDelta}), rating {oldScore}→{newScore} ({scoreDelta}), hash={hash}",
+    branchOldStep: "old step",
+    branchNewStep: "new step",
+    branchUnnamedStep: "unnamed step",
+    branchTechniqueChanged: "Technique changed: {oldTitle} → {newTitle}",
+    branchTechniqueKept: "Technique unchanged: {title}",
+    branchUndoButton: "Undo branch",
+    branchNoUndo: "No branched path to undo.",
+    branchUndoDone: "Undid the latest branch and restored the original solve path.",
+    branchNotBound: "This optional step is not bound to a before-board in the solve path, so it cannot replace the path.",
+    branchMissingApi: "The current wasm build does not include solve_path_for_import_json; rebuild and refresh.",
+    branchNoMatchingBefore: "Replacement failed: no step with the same beforeHash was found in the auto-solve path.",
+    branchSameStep: "The optional step is the same as path step {index}; nothing was replaced.",
+    branchApplyAfterFailed: "Replacement failed: could not produce the after-board from before + optional step.",
+    branchSerializeFailed: "Replacement failed: the board after replacement cannot be serialized with candidate state.",
+    branchTailFailed: "Replacement failed: recomputing the tail path failed: {error}",
+    branchReplaced: "Replaced path step {index} with the optional step and recomputed the tail. New path has {steps} step(s).",
+    branchRowTitle: "Click to preview; right-click or long-press to replace the path from here",
     whipMemoryLabel: "Whip/gWhip search memory mode:",
     whipMemoryAuto: "Auto (off for normal solving, on for Whip rating)",
     whipMemoryNormal: "Normal (speed first)",
@@ -2243,6 +2349,13 @@ function setButtonText(button, value) {
   button.setAttribute("aria-label", value);
 }
 
+
+function setTitleAndAria(el, value) {
+  if (!el) return;
+  el.title = value;
+  el.setAttribute("aria-label", value);
+}
+
 function setInputLabelByControl(controlId, value) {
   const control = document.getElementById(controlId);
   const label = control?.closest("label");
@@ -2268,6 +2381,9 @@ function applyStaticLanguage() {
     hintPanel.textContent = ui("initialHint");
   }
   setTextById("yzfBranchLabelText", ui("branch"));
+  if (yzfBranchSelect?.options?.[0]) yzfBranchSelect.options[0].textContent = ui("allBranches");
+  document.querySelector(".global-actions")?.setAttribute("aria-label", ui("mainActionsLabel"));
+  if (numpad) numpad.setAttribute("aria-label", ui("numberPadLabel"));
   setButtonText(btnGenerate, ui("generate"));
   setButtonText(btnGenerateTraining, ui("generateTraining"));
   setButtonText(btnLoad, ui("load"));
@@ -2307,15 +2423,20 @@ function applyStaticLanguage() {
   const moreSummary = [...document.querySelectorAll(".input-panel summary")].find((el) => /更多|More/i.test(el.textContent));
   if (moreSummary) moreSummary.textContent = ui("moreInput");
   setTextById("btnExportPuzzle", ui("exportPuzzle"));
+  updateExportFormatLabels();
   setTextById("btnClearSavedSession", ui("clearSavedSession"));
+  setTitleAndAria(btnClearSavedSession, ui("clearSavedSessionTitle"));
   setTextById("btnRate", ui("ratePuzzle"));
   setTextById("btnImageOcrPickText", ui("ocrPickImage"));
   setTextById("btnImageOcrCameraText", ui("ocrCameraImage"));
   setTextById("btnImageOcrClipboard", ui("ocrClipboardImage"));
+  document.querySelector(".all-steps-filter")?.setAttribute("aria-label", ui("allStepsFilterAria"));
   if (allStepsFilterText) {
     allStepsFilterText.placeholder = ui("allStepsFilterPlaceholder");
     allStepsFilterText.setAttribute("aria-label", ui("allStepsFilterPlaceholder"));
   }
+  if (allStepsFilterTechnique) allStepsFilterTechnique.setAttribute("aria-label", ui("filterByTechnique"));
+  if (allStepsSortMode) allStepsSortMode.setAttribute("aria-label", ui("allStepsSortAria"));
   if (allStepsFilterTechnique?.options?.[0]) allStepsFilterTechnique.options[0].textContent = ui("allTechniques");
   if (allStepsSortMode?.options?.[0]) allStepsSortMode.options[0].textContent = ui("defaultSort");
   if (allStepsSortMode?.options?.[1]) allStepsSortMode.options[1].textContent = ui("conclusionSort");
@@ -2337,6 +2458,8 @@ function applyStaticLanguage() {
   });
 
   setTextById("manualMarksTitle", ui("manualMarksTitle"));
+  document.querySelector(".manual-mark-actions")?.setAttribute("aria-label", ui("manualMarkActionLabel"));
+  if (manualMarkSwatches) manualMarkSwatches.setAttribute("aria-label", ui("manualMarkColorsLabel"));
   setTextById("manualMarkModeLabel", ui("manualMarkModeLabel"));
   setTextById("manualMarkLineLabel", ui("manualMarkLineLabel"));
   setTextById("manualMarkColorLabel", ui("manualMarkColorLabel"));
@@ -2422,6 +2545,18 @@ function paintBeforeLongTask() {
 function log(text) {
   out.classList.remove("hidden");
   out.textContent = text;
+}
+
+function logUi(key, values = null) {
+  log(values ? uif(key, values) : ui(key));
+}
+
+function relocalizeIfExactText(element, key) {
+  if (!element) return;
+  const text = element.textContent || "";
+  if (text === (uiText.zh?.[key] || "") || text === (uiText.en?.[key] || "")) {
+    element.textContent = ui(key);
+  }
 }
 
 function setStatus(message) {
@@ -2640,6 +2775,193 @@ function snapshotToLibraryString(snapshot = currentSnapshot) {
   return `:0000:x:${boardPart}:${eliminations.trim()}::`;
 }
 
+
+
+function snapshotToOriginalPuzzleString(snapshot = currentSnapshot) {
+  const givensText = snapshotGivensString(snapshot);
+  if (givensText.length !== 81) return "";
+  return [...givensText].map((ch) => (ch >= "1" && ch <= "9") ? ch : ".").join("");
+}
+
+function snapshotToKnownDigitsString(snapshot = currentSnapshot) {
+  const boardText = snapshotBoardString(snapshot);
+  if (boardText.length !== 81) return "";
+  return [...boardText].map((ch) => (ch >= "1" && ch <= "9") ? ch : ".").join("");
+}
+
+function cellCandidateTextForExport(snapshot, index) {
+  const boardText = snapshotBoardString(snapshot);
+  const value = boardText[index] || ".";
+  if (value >= "1" && value <= "9") return value;
+  const candidates = Array.isArray(snapshot?.cells?.[index]?.candidates)
+    ? snapshot.cells[index].candidates
+    : [];
+  return candidates
+    .filter((digit) => Number.isInteger(digit) && digit >= 1 && digit <= 9)
+    .sort((a, b) => a - b)
+    .join("");
+}
+
+function snapshotToCandidatesTextString(snapshot = currentSnapshot) {
+  const boardText = snapshotBoardString(snapshot);
+  if (boardText.length !== 81 || !Array.isArray(snapshot?.cells)) return "";
+
+  const widths = new Array(9).fill(1);
+  for (let col = 0; col < 9; col += 1) {
+    for (let row = 0; row < 9; row += 1) {
+      const text = cellCandidateTextForExport(snapshot, row * 9 + col);
+      widths[col] = Math.max(widths[col], text.length || 1);
+    }
+  }
+
+  const borderSegment = (cols) => cols.map((col) => "-".repeat(widths[col])).join("-");
+  const top = `,-${borderSegment([0, 1, 2])},-${borderSegment([3, 4, 5])},-${borderSegment([6, 7, 8])},`;
+  const mid = `:-${borderSegment([0, 1, 2])}+-${borderSegment([3, 4, 5])}+-${borderSegment([6, 7, 8])}:`;
+  const bottom = `'-${borderSegment([0, 1, 2])}'-${borderSegment([3, 4, 5])}'-${borderSegment([6, 7, 8])}'`;
+  const lines = [top];
+  for (let row = 0; row < 9; row += 1) {
+    const parts = [];
+    for (let boxCol = 0; boxCol < 3; boxCol += 1) {
+      const cells = [];
+      for (let offset = 0; offset < 3; offset += 1) {
+        const col = boxCol * 3 + offset;
+        const text = cellCandidateTextForExport(snapshot, row * 9 + col);
+        cells.push((text || "").padEnd(widths[col], " "));
+      }
+      parts.push(cells.join(" "));
+    }
+    lines.push(`| ${parts[0]} | ${parts[1]} | ${parts[2]} |`);
+    if (row === 2 || row === 5) lines.push(mid);
+  }
+  lines.push(bottom);
+  return lines.join("\n");
+}
+
+function snapshotToSukakuString(snapshot = currentSnapshot) {
+  const boardText = snapshotBoardString(snapshot);
+  if (boardText.length !== 81 || !Array.isArray(snapshot?.cells)) return "";
+  let output = "";
+  for (let index = 0; index < 81; index += 1) {
+    const value = boardText[index] || ".";
+    const mask = value >= "1" && value <= "9"
+      ? (1 << Number(value))
+      : candidateMaskFromArray(snapshot.cells[index]?.candidates || []);
+    for (let digit = 1; digit <= 9; digit += 1) {
+      output += (mask & (1 << digit)) !== 0 ? String(digit) : "0";
+    }
+  }
+  return output;
+}
+
+function encodeCoachBase32(bytes) {
+  let buffer = 0;
+  let bits = 0;
+  let output = "";
+  for (const byte of bytes) {
+    buffer = (buffer << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      bits -= 5;
+      output += COACH_BASE32_CHARS[(buffer >> bits) & 31];
+    }
+  }
+  if (bits > 0) {
+    output += COACH_BASE32_CHARS[(buffer << (5 - bits)) & 31];
+  }
+  return output;
+}
+
+async function deflateCoachBytes(bytes) {
+  if (typeof CompressionStream !== "undefined") {
+    const stream = new Response(bytes).body.pipeThrough(new CompressionStream("deflate"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  if (typeof process !== "undefined" && process.versions?.node) {
+    const { deflateSync } = await import("node:zlib");
+    return deflateSync(bytes);
+  }
+  throw new Error(ui("coachCompressUnsupported"));
+}
+
+async function snapshotToCoachString(snapshot = currentSnapshot) {
+  const coachJson = snapshotToCoachJson(snapshot);
+  if (!coachJson) return "";
+  const payload = {
+    gridSize: 9,
+    givenDigits: coachJson.givenDigits.replaceAll(".", "0"),
+    userCellCandidates: coachJson.userCellCandidates,
+  };
+  const userDigits = coachJson.userDigits.replaceAll(".", "0");
+  if (/[1-9]/.test(userDigits)) payload.userDigits = userDigits;
+  const json = JSON.stringify(payload);
+  const compressed = await deflateCoachBytes(new TextEncoder().encode(json));
+  return `SCv7_32_${encodeCoachBase32(compressed)}`;
+}
+
+function getExportFormat() {
+  const value = exportFormatSelect?.value || "library";
+  return ["original", "known", "candidates", "sukaku", "library", "coach"].includes(value) ? value : "library";
+}
+
+async function selectedExportPuzzleString(snapshot = currentSnapshot) {
+  switch (getExportFormat()) {
+    case "original": return snapshotToOriginalPuzzleString(snapshot);
+    case "known": return snapshotToKnownDigitsString(snapshot);
+    case "candidates": return snapshotToCandidatesTextString(snapshot);
+    case "sukaku": return snapshotToSukakuString(snapshot);
+    case "coach": return await snapshotToCoachString(snapshot);
+    case "library":
+    default:
+      return snapshotToLibraryString(snapshot);
+  }
+}
+
+function selectedExportFormatLabel() {
+  const format = getExportFormat();
+  const labels = {
+    original: "exportFormatOriginal",
+    known: "exportFormatKnown",
+    candidates: "exportFormatCandidates",
+    sukaku: "exportFormatSukaku",
+    library: "exportFormatLibrary",
+    coach: "exportFormatCoach",
+  };
+  return ui(labels[format] || "exportFormatLibrary");
+}
+
+function loadExportFormatSetting() {
+  if (!exportFormatSelect) return;
+  try {
+    const saved = localStorage.getItem(EXPORT_FORMAT_STORAGE_KEY);
+    if (saved && [...exportFormatSelect.options].some((option) => option.value === saved)) {
+      exportFormatSelect.value = saved;
+    }
+  } catch (_) {}
+}
+
+function saveExportFormatSetting() {
+  if (!exportFormatSelect) return;
+  try {
+    localStorage.setItem(EXPORT_FORMAT_STORAGE_KEY, getExportFormat());
+  } catch (_) {}
+}
+
+function updateExportFormatLabels() {
+  if (!exportFormatSelect) return;
+  const labels = {
+    original: ui("exportFormatOriginal"),
+    known: ui("exportFormatKnown"),
+    candidates: ui("exportFormatCandidates"),
+    sukaku: ui("exportFormatSukaku"),
+    library: ui("exportFormatLibrary"),
+    coach: ui("exportFormatCoach"),
+  };
+  for (const option of exportFormatSelect.options) {
+    option.textContent = labels[option.value] || option.textContent;
+  }
+  exportFormatSelect.title = ui("exportFormatLabel");
+  exportFormatSelect.setAttribute("aria-label", ui("exportFormatLabel"));
+}
 
 function isOcrDraftSnapshot(snapshot = currentSnapshot) {
   return Boolean(snapshot?.ocrDraft || snapshot?.source === "local-image-ocr-draft");
@@ -3153,7 +3475,7 @@ function getCurrentManualAdvancedInputInfo() {
       usesCandidates: false,
     };
   }
-  return { ok: false, error: "当前盘面无法导出为手动高级技巧输入。" };
+  return { ok: false, error: ui("manualAdvancedExportFailed") };
 }
 
 function syncEngineToCurrentSnapshot() {
@@ -3163,7 +3485,7 @@ function syncEngineToCurrentSnapshot() {
   const text = snapshotToLibraryString();
   const result = parseJson(engine.import_puzzle_json(text));
   if (!result?.ok) {
-    setStatus(`当前盘面状态同步失败：${result?.error || "无法导入"}`);
+    setStatus(uif("currentStateSyncFailed", { error: result?.error || ui("importFailedGeneric") }));
     return false;
   }
   givens.value = text;
@@ -3191,7 +3513,7 @@ function decodeCoachBase32(encoded) {
   const values = [...encoded.trim().toLowerCase()].map((ch) => {
     const value = COACH_BASE32_REVERSE.get(ch);
     if (value == null) {
-      throw new Error(`Coach 编码包含非法字符：${ch}`);
+      throw new Error(uif("coachInvalidChar", { ch }));
     }
     return value;
   });
@@ -3228,7 +3550,7 @@ async function inflateCoachBytes(bytes) {
     const { inflateSync } = await import("node:zlib");
     return inflateSync(bytes);
   }
-  throw new Error("当前环境不支持 Coach 题串解压");
+  throw new Error(ui("coachDecompressUnsupported"));
 }
 
 async function preprocessImportText(text) {
@@ -8158,7 +8480,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     boardMeta.textContent = "";
     clearManualChainEndpointHighlights();
     clearManualMarkOverlay();
-    hintPanel.textContent = lang.value === "en" ? "Waiting for wasm to load." : "等待 wasm 加载。";
+    hintPanel.textContent = ui("waitingWasm");
     renderStepExplanation(null, null);
     return;
   }
@@ -9086,16 +9408,16 @@ function signedDeltaText(value) {
 
 function branchStepDeltaLabel(oldSteps, newSteps) {
   const delta = Number(newSteps || 0) - Number(oldSteps || 0);
-  if (delta < 0) return `路径缩短 ${Math.abs(delta)} 步`;
-  if (delta > 0) return `路径增加 ${delta} 步`;
-  return "步数未变";
+  if (delta < 0) return uif("branchShorter", { count: Math.abs(delta) });
+  if (delta > 0) return uif("branchLonger", { count: delta });
+  return ui("branchStepsUnchanged");
 }
 
 function branchScoreDeltaLabel(oldScore, newScore) {
   const delta = Number(newScore || 0) - Number(oldScore || 0);
-  if (delta < 0) return `评分降低 ${Math.abs(delta)}`;
-  if (delta > 0) return `评分提高 ${delta}`;
-  return "评分未变";
+  if (delta < 0) return uif("branchScoreLower", { score: Math.abs(delta) });
+  if (delta > 0) return uif("branchScoreHigher", { score: delta });
+  return ui("branchScoreUnchanged");
 }
 
 function branchDeltaTone(oldSteps, newSteps, oldScore, newScore) {
@@ -9115,11 +9437,11 @@ function updateBranchPanel(data = lastSolveData) {
   const summary = data.branchSummary;
   const title = document.createElement("div");
   title.className = "branch-panel-title";
-  title.textContent = "分叉路径已应用";
+  title.textContent = ui("branchAppliedTitle");
 
   const detail = document.createElement("div");
   detail.className = "branch-panel-detail";
-  const stepText = Number(summary.replacedStepIndex || 0) > 0 ? `第 ${summary.replacedStepIndex} 步` : "某一步";
+  const stepText = Number(summary.replacedStepIndex || 0) > 0 ? uif("branchStepLabel", { index: summary.replacedStepIndex }) : ui("branchSomeStep");
   const oldSteps = Number(summary.oldSteps || 0);
   const newSteps = Number(summary.newSteps || 0);
   const oldScore = Number(summary.oldScore || 0);
@@ -9128,7 +9450,7 @@ function updateBranchPanel(data = lastSolveData) {
   const hash = String(summary.beforeHash || "").slice(0, 16);
   const stepDelta = newSteps - oldSteps;
   const scoreDelta = newScore - oldScore;
-  detail.textContent = `${stepText} ← 可选 #${candidateIndex || "?"}；步数 ${oldSteps}→${newSteps}（${signedDeltaText(stepDelta)}），评分 ${oldScore}→${newScore}（${signedDeltaText(scoreDelta)}），hash=${hash}`;
+  detail.textContent = uif("branchPanelDetail", { step: stepText, candidate: candidateIndex || "?", oldSteps, newSteps, stepDelta: signedDeltaText(stepDelta), oldScore, newScore, scoreDelta: signedDeltaText(scoreDelta), hash });
 
   const delta = document.createElement("div");
   delta.className = `branch-panel-delta ${branchDeltaTone(oldSteps, newSteps, oldScore, newScore)}`;
@@ -9136,12 +9458,12 @@ function updateBranchPanel(data = lastSolveData) {
 
   const titleChange = document.createElement("div");
   titleChange.className = "branch-panel-change";
-  const oldTitle = String(summary.oldTitle || "原步骤");
-  const newTitle = String(summary.newTitle || "新步骤");
+  const oldTitle = String(summary.oldTitle || ui("branchOldStep"));
+  const newTitle = String(summary.newTitle || ui("branchNewStep"));
   if (oldTitle && newTitle && oldTitle !== newTitle) {
-    titleChange.textContent = `技法变化：${oldTitle} → ${newTitle}`;
+    titleChange.textContent = uif("branchTechniqueChanged", { oldTitle, newTitle });
   } else {
-    titleChange.textContent = `技法保持：${newTitle || oldTitle || "未命名步骤"}`;
+    titleChange.textContent = uif("branchTechniqueKept", { title: newTitle || oldTitle || ui("branchUnnamedStep") });
   }
 
   const actions = document.createElement("div");
@@ -9149,7 +9471,7 @@ function updateBranchPanel(data = lastSolveData) {
   const undoButton = document.createElement("button");
   undoButton.type = "button";
   undoButton.className = "compact";
-  undoButton.textContent = "撤销分叉";
+  undoButton.textContent = ui("branchUndoButton");
   undoButton.addEventListener("click", undoLastBranch);
   actions.appendChild(undoButton);
 
@@ -9164,7 +9486,7 @@ function clearBranchState() {
 
 function undoLastBranch() {
   if (!branchUndoData?.solveData) {
-    setStatus("没有可撤销的分叉路径。");
+    setStatus(ui("branchNoUndo"));
     return;
   }
   lastSolveData = cloneJsonSafe(branchUndoData.solveData);
@@ -9177,29 +9499,29 @@ function undoLastBranch() {
   updateBranchPanel(lastSolveData);
   activateTab("path");
   renderBoardSnapshot(currentSnapshot, currentHint);
-  setStatus("已撤销最近一次分叉，恢复原解题路径。");
+  setStatus(ui("branchUndoDone"));
 }
 
 function rebuildSolvePathWithCandidate(candidateRecord) {
   if (!engine) return;
   if (!isBranchableOptionalStep(candidateRecord)) {
-    setStatus("当前可选步骤没有绑定到解题路径中的 before 盘面，不能替换路径。");
+    setStatus(ui("branchNotBound"));
     return;
   }
   if (typeof engine.solve_path_for_import_json !== "function") {
-    setStatus("当前 wasm 尚未包含 solve_path_for_import_json，请重新编译并刷新页面。");
+    setStatus(ui("branchMissingApi"));
     return;
   }
 
   const replaceIndex = findSolvePathReplacementIndex(candidateRecord);
   if (replaceIndex < 0) {
-    setStatus("替换失败：自动解题路径中没有找到相同 beforeHash 的步骤。");
+    setStatus(ui("branchNoMatchingBefore"));
     return;
   }
 
   const originalRecord = lastSolveData?.path?.[replaceIndex] || null;
   if (originalRecord?.step && candidateRecord.step && isSameStepResult(originalRecord.step, candidateRecord.step)) {
-    setStatus(`可选步骤与当前路径第 ${replaceIndex + 1} 步相同，未替换。`);
+    setStatus(uif("branchSameStep", { index: replaceIndex + 1 }));
     return;
   }
 
@@ -9208,13 +9530,13 @@ function rebuildSolvePathWithCandidate(candidateRecord) {
   const beforeHash = stepRecordBeforeHash(candidateRecord);
   const afterSnapshot = applyStepToSnapshot(beforeSnapshot, replacementStep);
   if (!afterSnapshot) {
-    setStatus("替换失败：无法由 before + 可选步骤推出后续盘面。");
+    setStatus(ui("branchApplyAfterFailed"));
     return;
   }
 
   const afterLibrary = snapshotToLibraryString(afterSnapshot);
   if (!afterLibrary) {
-    setStatus("替换失败：替换后的盘面无法序列化为候选盘状态。");
+    setStatus(ui("branchSerializeFailed"));
     return;
   }
 
@@ -9225,7 +9547,7 @@ function rebuildSolvePathWithCandidate(candidateRecord) {
     console.error(error);
   }
   if (!tailData?.ok) {
-    setStatus(`替换失败：后续路径重算失败：${tailData?.error || "未知错误"}`);
+    setStatus(uif("branchTailFailed", { error: tailData?.error || ui("unknownError") }));
     return;
   }
 
@@ -9298,7 +9620,7 @@ function rebuildSolvePathWithCandidate(candidateRecord) {
   updateBranchPanel(combined);
   activateTab("path");
   renderBoardSnapshot(currentSnapshot, currentHint);
-  setStatus(`已用可选步骤替换第 ${replaceIndex + 1} 步，并从此处重算后续路径。新路径 ${combinedPath.length} 步。`);
+  setStatus(uif("branchReplaced", { index: replaceIndex + 1, steps: combinedPath.length }));
 }
 
 function installOptionalStepBranchHandlers(item, record) {
@@ -9306,7 +9628,7 @@ function installOptionalStepBranchHandlers(item, record) {
   const row = item.querySelector(":scope > .tree-row");
   if (!row) return;
   row.classList.add("branchable-step-row");
-  row.title = "单击预览；右键或长按：替换路径并从此处重算";
+  row.title = ui("branchRowTitle");
   row.addEventListener("contextmenu", (event) => {
     event.preventDefault();
     rebuildSolvePathWithCandidate(record);
@@ -9721,7 +10043,7 @@ async function init() {
   const restoredSession = await restoreAppSession();
   renderTechniques();
   activateTab("controls");
-  log(ui("wasmLoaded"));
+  logUi("wasmLoaded");
   if (!restoredSession) {
     renderBoard(null);
   }
@@ -10165,8 +10487,15 @@ btnGenerateTraining?.addEventListener("click", async () => {
   }
 });
 
+loadExportFormatSetting();
+updateExportFormatLabels();
+
+exportFormatSelect?.addEventListener("change", () => {
+  saveExportFormatSetting();
+});
+
 btnExportPuzzle?.addEventListener("click", async () => {
-  const puzzle = exportedPuzzleString();
+  const puzzle = await selectedExportPuzzleString();
   if (!puzzle) {
     setStatus(ui("exportUnavailable"));
     log(JSON.stringify({
@@ -10177,10 +10506,11 @@ btnExportPuzzle?.addEventListener("click", async () => {
   }
   givens.value = puzzle;
   const copied = await copyText(puzzle);
-  const isLibrary = puzzle.includes(":");
+  const format = getExportFormat();
   log(JSON.stringify({
     ok: true,
-    format: isLibrary ? "library" : "81-char puzzle",
+    format,
+    formatLabel: selectedExportFormatLabel(),
     puzzle,
     givens: originalBoard,
     copied,
@@ -10597,6 +10927,9 @@ btnTechBraidRating?.addEventListener("click", () => applyTechniquePreset("braidR
 
 lang.addEventListener("change", () => {
   applyStaticLanguage();
+  relocalizeIfExactText(out, "wasmLoaded");
+  relocalizeIfExactText(hintPanel, "waitingWasm");
+  relocalizeIfExactText(hintPanel, "initialHint");
   if (lastSolveData) {
     tree.replaceChildren(renderSolveTreeView(lastSolveData));
   }
