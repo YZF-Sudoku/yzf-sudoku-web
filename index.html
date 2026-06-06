@@ -414,6 +414,21 @@
       color: var(--accent);
       outline: none;
     }
+
+    .ocr-draft-only-action {
+      border-color: #d6b45b;
+      background: #fff9e8;
+    }
+
+    .ocr-draft-only-action[hidden] {
+      display: none !important;
+    }
+
+    .ocr-draft-only-action.active {
+      background: #ffe6a3;
+      box-shadow: 0 0 0 2px rgba(214, 180, 91, 0.25) inset;
+    }
+
     .ocr-native-file-input {
       position: absolute;
       inset: 0;
@@ -431,6 +446,53 @@
       .ocr-camera-action {
         display: inline-flex;
       }
+    }
+
+    .ocr-image-preview-panel {
+      margin: 8px 0 10px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .ocr-image-preview-panel[hidden] {
+      display: none !important;
+    }
+    .ocr-image-preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .ocr-image-preview-grid {
+      display: flex;
+      justify-content: center;
+    }
+    .ocr-image-preview-figure {
+      margin: 0;
+      width: min(100%, 576px);
+    }
+    .ocr-image-preview-figure[hidden] {
+      display: none !important;
+    }
+    .ocr-image-preview-figure figcaption {
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .ocr-image-preview-figure img {
+      width: min(100%, 576px);
+      max-width: 576px;
+      max-height: 576px;
+      object-fit: contain;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #f8fafc;
+      display: block;
+      margin: 0 auto;
     }
     .workspace {
       width: 100%;
@@ -1678,6 +1740,19 @@
       font-size: 14px;
       font-weight: 700;
     }
+    .numpad .ocr-role-toggle {
+      min-height: 34px;
+      align-self: center;
+      padding: 4px 10px;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.15;
+      white-space: nowrap;
+      letter-spacing: 0;
+    }
+    .numpad .ocr-role-toggle[hidden] {
+      display: none !important;
+    }
     .sudoku-cell.selected {
       background: #dbeafe;
       box-shadow: inset 0 0 0 3px #2563eb;
@@ -1837,7 +1912,54 @@
         max-width: none;
         padding: 0;
       }
-      .workspace {
+  
+    .ocr-image-preview-panel {
+      margin: 8px 0 10px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .ocr-image-preview-panel[hidden] {
+      display: none !important;
+    }
+    .ocr-image-preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .ocr-image-preview-grid {
+      display: flex;
+      justify-content: center;
+    }
+    .ocr-image-preview-figure {
+      margin: 0;
+      width: min(100%, 576px);
+    }
+    .ocr-image-preview-figure[hidden] {
+      display: none !important;
+    }
+    .ocr-image-preview-figure figcaption {
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .ocr-image-preview-figure img {
+      width: min(100%, 576px);
+      max-width: 576px;
+      max-height: 576px;
+      object-fit: contain;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #f8fafc;
+      display: block;
+      margin: 0 auto;
+    }
+    .workspace {
         width: 100%;
         max-width: none;
       }
@@ -2194,7 +2316,54 @@
       .app-shell {
         max-width: none;
       }
-      .workspace {
+  
+    .ocr-image-preview-panel {
+      margin: 8px 0 10px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .ocr-image-preview-panel[hidden] {
+      display: none !important;
+    }
+    .ocr-image-preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .ocr-image-preview-grid {
+      display: flex;
+      justify-content: center;
+    }
+    .ocr-image-preview-figure {
+      margin: 0;
+      width: min(100%, 576px);
+    }
+    .ocr-image-preview-figure[hidden] {
+      display: none !important;
+    }
+    .ocr-image-preview-figure figcaption {
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .ocr-image-preview-figure img {
+      width: min(100%, 576px);
+      max-width: 576px;
+      max-height: 576px;
+      object-fit: contain;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #f8fafc;
+      display: block;
+      margin: 0 auto;
+    }
+    .workspace {
         max-width: none;
       }
       .board-wrap {
@@ -2518,7 +2687,54 @@
         overflow: hidden;
         background: #fff;
       }
-      .workspace {
+  
+    .ocr-image-preview-panel {
+      margin: 8px 0 10px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .ocr-image-preview-panel[hidden] {
+      display: none !important;
+    }
+    .ocr-image-preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .ocr-image-preview-grid {
+      display: flex;
+      justify-content: center;
+    }
+    .ocr-image-preview-figure {
+      margin: 0;
+      width: min(100%, 576px);
+    }
+    .ocr-image-preview-figure[hidden] {
+      display: none !important;
+    }
+    .ocr-image-preview-figure figcaption {
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .ocr-image-preview-figure img {
+      width: min(100%, 576px);
+      max-width: 576px;
+      max-height: 576px;
+      object-fit: contain;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #f8fafc;
+      display: block;
+      margin: 0 auto;
+    }
+    .workspace {
         width: 100vw;
         max-width: none;
         height: 100dvh;
@@ -3296,7 +3512,54 @@
         max-height: 100dvh !important;
         overflow: hidden !important;
       }
-      .workspace {
+  
+    .ocr-image-preview-panel {
+      margin: 8px 0 10px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .ocr-image-preview-panel[hidden] {
+      display: none !important;
+    }
+    .ocr-image-preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .ocr-image-preview-grid {
+      display: flex;
+      justify-content: center;
+    }
+    .ocr-image-preview-figure {
+      margin: 0;
+      width: min(100%, 576px);
+    }
+    .ocr-image-preview-figure[hidden] {
+      display: none !important;
+    }
+    .ocr-image-preview-figure figcaption {
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .ocr-image-preview-figure img {
+      width: min(100%, 576px);
+      max-width: 576px;
+      max-height: 576px;
+      object-fit: contain;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #f8fafc;
+      display: block;
+      margin: 0 auto;
+    }
+    .workspace {
         height: calc(100dvh - 12px) !important;
         max-height: calc(100dvh - 12px) !important;
         overflow: hidden !important;
@@ -3579,8 +3842,8 @@
             <button id="btnRedo" class="action-button compact" type="button" title="重做" aria-label="重做"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-hidden="true"><path d="m15 7 4 4-4 4"></path><path d="M18 11h-7a5 5 0 1 0 0 10h1"></path></svg></span><span class="action-label">重做</span></button>
             <button id="btnSolve" class="action-button compact" type="button" title="自动解题" aria-label="自动解题"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-hidden="true"><path d="M8.5 10.5c-1-.8-1.6-2-1.6-3.3A5.1 5.1 0 0 1 12 2.5a5.1 5.1 0 0 1 5.1 4.7c0 1.3-.6 2.5-1.6 3.3-.6.5-1 .9-1.2 1.5h-4.6c-.2-.6-.6-1-1.2-1.5Z"></path><path d="M10 14.5h4M10.8 17h2.4"></path><path d="M4.2 6.6 2.8 6.1M6.4 3.5 5.5 2.4M17.6 3.5l.9-1.1M19.8 6.6l1.4-.5M15.8 1.8l.4-1.1"></path><path d="M5 18.2c1.2-1.1 2.6-1.5 3.7-1.2.8.3 1.2 1 1.8 1.4.8.5 1.8.4 2.4-.2.4-.4.7-.9 1.2-1.2 1-.6 2.4-.2 4 1.2"></path></svg></span><span class="action-label">自动解题</span></button>
             <button id="btnStep" class="action-button compact" type="button" title="提示一步" aria-label="提示一步"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-hidden="true"><path d="M8.5 13.5c-1.1-.9-1.8-2.3-1.8-3.8A5.3 5.3 0 0 1 12 4.5a5.3 5.3 0 0 1 5.3 5.2c0 1.5-.7 2.9-1.8 3.8-.7.6-1.2 1.3-1.4 2H9.9c-.2-.7-.7-1.4-1.4-2Z"></path><path d="M10 18h4M10.8 20.5h2.4"></path><path d="M18.2 6.2h.01"></path></svg></span><span class="action-label">提示一步</span></button>
-            <button id="btnAllSteps" class="action-button compact" type="button" title="所有步骤" aria-label="所有步骤"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-hidden="true"><path d="M8.5 13.5c-1.1-.9-1.8-2.3-1.8-3.8A5.3 5.3 0 0 1 12 4.5a5.3 5.3 0 0 1 5.3 5.2c0 1.5-.7 2.9-1.8 3.8-.7.6-1.2 1.3-1.4 2H9.9c-.2-.7-.7-1.4-1.4-2Z"></path><path d="M10 18h4M10.8 20.5h2.4"></path><path d="M4.2 9.2 2.7 8.7M6.1 4.8 5.1 3.6M17.9 4.8l1-1.2M19.8 9.2l1.5-.5M15.8 2.9l.4-1.4"></path></svg></span><span class="action-label">所有步骤</span></button>
             <button id="btnApply" class="action-button compact" type="button" title="应用提示" aria-label="应用提示"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M8.7 12.3l2.2 2.2 4.4-4.8"></path></svg></span><span class="action-label">应用提示</span></button>
+            <button id="btnAllSteps" class="action-button compact" type="button" title="所有步骤" aria-label="所有步骤"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-hidden="true"><path d="M8.5 13.5c-1.1-.9-1.8-2.3-1.8-3.8A5.3 5.3 0 0 1 12 4.5a5.3 5.3 0 0 1 5.3 5.2c0 1.5-.7 2.9-1.8 3.8-.7.6-1.2 1.3-1.4 2H9.9c-.2-.7-.7-1.4-1.4-2Z"></path><path d="M10 18h4M10.8 20.5h2.4"></path><path d="M4.2 9.2 2.7 8.7M6.1 4.8 5.1 3.6M17.9 4.8l1-1.2M19.8 9.2l1.5-.5M15.8 2.9l.4-1.4"></path></svg></span><span class="action-label">所有步骤</span></button>
             <button id="btnFullscreen" class="action-button compact" type="button" title="全屏" aria-label="全屏"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-hidden="true"><path d="M9 4H4v5M15 4h5v5M20 15v5h-5M4 15v5h5"></path></svg></span><span class="action-label">全屏</span></button>
           </div>
           <div class="tab-list" role="tablist" aria-label="board tools">
@@ -3743,6 +4006,19 @@
                 <button id="btnExportPuzzle">导出题串</button>
                 <button id="btnClearSavedSession" type="button">清除本地保存</button>
                 <button id="btnRate">评分当前题目</button>
+              </div>
+              <div id="imageOcrPreviewPanel" class="ocr-image-preview-panel hidden">
+                <div class="ocr-image-preview-header">
+                  <span id="imageOcrPreviewTitle">OCR 图片预览</span>
+                  <button id="btnImageOcrPreviewClear" type="button">隐藏图片</button>
+                </div>
+                <div id="imageOcrPreviewSummary" class="ocr-image-preview-summary"></div>
+                <div class="ocr-image-preview-grid">
+                  <figure class="ocr-image-preview-figure">
+                    <figcaption id="imageOcrPreviewWarpedCaption">处理后的 576×576 棋盘</figcaption>
+                    <img id="imageOcrPreviewWarped" alt="处理后的 576×576 棋盘" />
+                  </figure>
+                </div>
               </div>
               <pre id="out"></pre>
             </details>

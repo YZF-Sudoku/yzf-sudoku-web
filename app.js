@@ -57,6 +57,11 @@ const btnImageOcrClipboard = document.getElementById("btnImageOcrClipboard");
 const btnClearSavedSession = document.getElementById("btnClearSavedSession");
 const imageOcrInput = document.getElementById("imageOcrInput");
 const imageOcrCameraInput = document.getElementById("imageOcrCameraInput");
+const imageOcrPreviewPanel = document.getElementById("imageOcrPreviewPanel");
+const imageOcrPreviewSummary = document.getElementById("imageOcrPreviewSummary");
+const imageOcrPreviewOriginal = document.getElementById("imageOcrPreviewOriginal");
+const imageOcrPreviewWarped = document.getElementById("imageOcrPreviewWarped");
+const btnImageOcrPreviewClear = document.getElementById("btnImageOcrPreviewClear");
 
 let localSudokuOcrModulePromise = null;
 let ortScriptPromise = null;
@@ -186,6 +191,7 @@ let currentPreviewRecord = null;
 let selectedIndex = -1;
 let selectedDigit = 1;
 let inputMode = "value";
+let ocrDraftValueRole = "given";
 let techniqueState = [];
 let whipMemoryMode = "auto";
 let batchAbortRequested = false;
@@ -567,6 +573,20 @@ const uiText = {
     ocrPickImage: "选择图片识别",
     ocrCameraImage: "拍照识别",
     ocrClipboardImage: "从剪贴板识别",
+    ocrPreviewTitle: "识别预览",
+    ocrPreviewHide: "隐藏预览",
+    ocrPreviewOriginal: "原始图片",
+    ocrPreviewWarped: "处理后的 576×576 棋盘",
+    ocrPreviewSummary: "提示数 {clue} 个，出数 {userDigits} 个，候选格 {cand} 个。可对照下方 576×576 处理图在盘面上校正。",
+    ocrDraftRoleGiven: "提示",
+    ocrDraftRoleSolved: "出数",
+    ocrDraftRoleGivenTitle: "OCR 草稿：新输入的大数字将作为提示数；点同一个数字可切换身份或清空。",
+    ocrDraftRoleSolvedTitle: "OCR 草稿：新输入的大数字将作为出数；点同一个数字可切换身份或清空。",
+    ocrDraftRoleStatus: "OCR 草稿大数字身份：{role}。点盘面上的数字可修改提示数/出数身份。",
+    ocrDraftSelectCellFirst: "请先进入 OCR 草稿，并点击一个蓝色出数格。",
+    ocrDraftNoUserDigit: "当前格不是蓝色出数，无法转换为提示数。",
+    ocrDraftAlreadyGiven: "当前格已经是黑色提示数。",
+    ocrDraftMadeGiven: "已将当前格改为黑色提示数。",
     ocrClipboardUnsupported: "当前浏览器不支持按钮读取剪贴板图片。桌面端可复制截图后按 Ctrl+V；手机端请用“选择图片识别”或“拍照识别”。",
     ocrReadingClipboard: "正在读取剪贴板图片……",
     ocrClipboardNoImage: "剪贴板中没有图片。请先截图/复制图片，或使用“选择图片识别”“拍照识别”。",
@@ -863,6 +883,20 @@ const uiText = {
     ocrPickImage: "Recognize image",
     ocrCameraImage: "Take photo",
     ocrClipboardImage: "Recognize clipboard",
+    ocrPreviewTitle: "Recognition preview",
+    ocrPreviewHide: "Hide preview",
+    ocrPreviewOriginal: "Original image",
+    ocrPreviewWarped: "Processed 576×576 board",
+    ocrPreviewSummary: "{clue} givens, {userDigits} solved digits, {cand} candidate cells. Compare with the 576×576 processed board below and correct directly on the grid.",
+    ocrDraftRoleGiven: "Clue",
+    ocrDraftRoleSolved: "Solved",
+    ocrDraftRoleGivenTitle: "OCR draft: newly entered large digits are treated as givens. Tap the same digit to switch role or clear it.",
+    ocrDraftRoleSolvedTitle: "OCR draft: newly entered large digits are treated as solved/user digits. Tap the same digit to switch role or clear it.",
+    ocrDraftRoleStatus: "OCR draft large-digit role: {role}. Tap board digits to correct clue/solved identity.",
+    ocrDraftSelectCellFirst: "Enter an OCR draft first, then click a blue user digit.",
+    ocrDraftNoUserDigit: "The selected cell is not a blue user digit, so it cannot be converted to a given.",
+    ocrDraftAlreadyGiven: "The selected cell is already a black given.",
+    ocrDraftMadeGiven: "Converted the selected cell to a black given.",
     ocrClipboardUnsupported: "This browser does not support reading clipboard images from a button. On desktop, copy a screenshot and press Ctrl+V; on mobile, use Recognize image or Take photo.",
     ocrReadingClipboard: "Reading clipboard image...",
     ocrClipboardNoImage: "No image found in the clipboard. Copy a screenshot first, or use Recognize image / Take photo.",
@@ -2430,6 +2464,13 @@ function applyStaticLanguage() {
   setTextById("btnImageOcrPickText", ui("ocrPickImage"));
   setTextById("btnImageOcrCameraText", ui("ocrCameraImage"));
   setTextById("btnImageOcrClipboard", ui("ocrClipboardImage"));
+  setTextById("imageOcrPreviewTitle", ui("ocrPreviewTitle"));
+  setTextById("btnImageOcrPreviewClear", ui("ocrPreviewHide"));
+  setTextById("imageOcrPreviewOriginalCaption", ui("ocrPreviewOriginal"));
+  setTextById("imageOcrPreviewWarpedCaption", ui("ocrPreviewWarped"));
+  if (imageOcrPreviewOriginal) imageOcrPreviewOriginal.alt = ui("ocrPreviewOriginal");
+  if (imageOcrPreviewWarped) imageOcrPreviewWarped.alt = ui("ocrPreviewWarped");
+  refreshOcrPreviewSummaryText();
   document.querySelector(".all-steps-filter")?.setAttribute("aria-label", ui("allStepsFilterAria"));
   if (allStepsFilterText) {
     allStepsFilterText.placeholder = ui("allStepsFilterPlaceholder");
@@ -3076,6 +3117,7 @@ function updateOcrDraftInputFromSnapshot(snapshot = currentSnapshot) {
   lastOcrDraftCoachJson = snapshotToCoachJson(snapshot, { editableDraft: true });
 }
 
+
 function toggleOcrDraftValue(index, digit) {
   const snapshot = cloneSnapshot(currentSnapshot);
   if (!snapshot) return false;
@@ -3084,24 +3126,31 @@ function toggleOcrDraftValue(index, digit) {
   const boardChars = [...snapshotBoardString(snapshot)];
   const cell = snapshot.cells[index];
   if (!cell) return false;
+
   const currentValue = Number(cell.value || 0);
-  const nextValue = currentValue === digit ? 0 : digit;
+  const targetGiven = ocrDraftValueRole === "given";
+  const sameDigit = currentValue === digit;
+  const sameRole = Boolean(cell.given) === targetGiven;
+  const nextValue = sameDigit && sameRole ? 0 : digit;
+
   boardChars[index] = nextValue > 0 ? String(nextValue) : ".";
   cell.value = nextValue;
-  cell.given = Boolean(cell.given && nextValue > 0);
-  if (snapshot.ocrGivenDigits) {
-    const givenChars = [...normalizeCoachDigitString(snapshot.ocrGivenDigits)];
-    givenChars[index] = cell.given && nextValue > 0 ? String(nextValue) : ".";
-    snapshot.ocrGivenDigits = givenChars.join("");
-    snapshot.givens = snapshot.ocrGivenDigits;
-  }
+  cell.given = nextValue > 0 ? targetGiven : false;
+
+  const givenChars = [...normalizeCoachDigitString(snapshot.ocrGivenDigits || snapshot.givens || "")];
+  givenChars[index] = cell.given && nextValue > 0 ? String(nextValue) : ".";
+  snapshot.ocrGivenDigits = givenChars.join("");
+  snapshot.givens = snapshot.ocrGivenDigits;
+
   cell.candidates = [];
+  cell.count = 0;
   if (nextValue > 0) {
     const removedMask = 1 << nextValue;
     for (const peer of peerIndexes(index)) {
       const peerCell = snapshot.cells[peer];
       if (!peerCell || peerCell.value > 0) continue;
       peerCell.candidates = (peerCell.candidates || []).filter((candidate) => (removedMask & (1 << candidate)) === 0);
+      peerCell.count = peerCell.candidates.length;
     }
   }
   snapshot.board = boardChars.join("");
@@ -3110,7 +3159,7 @@ function toggleOcrDraftValue(index, digit) {
   updateOcrDraftInputFromSnapshot(snapshot);
   renderBoardSnapshot(snapshot, null);
   updateInputControls();
-  setStatus(ui("ocrDraftCandidateChanged"));
+  setStatus(ui("ocrDraftValueChanged"));
   scheduleAppSessionSave();
   return true;
 }
@@ -3135,6 +3184,43 @@ function toggleOcrDraftCandidate(index, digit) {
   setStatus(ui("ocrDraftCandidateChanged"));
   scheduleAppSessionSave();
   return true;
+}
+
+function clearOcrPreview() {
+  if (imageOcrPreviewPanel) imageOcrPreviewPanel.classList.add("hidden");
+  if (imageOcrPreviewOriginal) imageOcrPreviewOriginal.removeAttribute("src");
+  if (imageOcrPreviewWarped) imageOcrPreviewWarped.removeAttribute("src");
+  if (imageOcrPreviewSummary) {
+    imageOcrPreviewSummary.textContent = "";
+    delete imageOcrPreviewSummary.dataset.clue;
+    delete imageOcrPreviewSummary.dataset.userDigits;
+    delete imageOcrPreviewSummary.dataset.cand;
+  }
+}
+
+function refreshOcrPreviewSummaryText() {
+  if (!imageOcrPreviewSummary || imageOcrPreviewPanel?.classList.contains("hidden")) return;
+  const clue = Number(imageOcrPreviewSummary.dataset.clue || 0);
+  const userDigits = Number(imageOcrPreviewSummary.dataset.userDigits || 0);
+  const cand = Number(imageOcrPreviewSummary.dataset.cand || 0);
+  imageOcrPreviewSummary.textContent = uif("ocrPreviewSummary", { clue, userDigits, cand });
+}
+
+function showOcrPreview(ocrResult, summary = {}) {
+  const preview = ocrResult?.preview || {};
+  const warpedUrl = preview.warpedDataUrl || preview.warped || "";
+  if (!imageOcrPreviewPanel || !warpedUrl) return;
+  // OCR correction is most useful against the actual 576×576 board sent to recognition.
+  // Keep the original upload out of the preview here so the panel stays large and focused.
+  if (imageOcrPreviewOriginal) imageOcrPreviewOriginal.removeAttribute("src");
+  if (imageOcrPreviewWarped) imageOcrPreviewWarped.src = warpedUrl;
+  if (imageOcrPreviewSummary) {
+    imageOcrPreviewSummary.dataset.clue = String(summary.clueCount ?? ocrResult?.clueCount ?? 0);
+    imageOcrPreviewSummary.dataset.userDigits = String(summary.userDigitCount ?? ocrResult?.userDigitCount ?? 0);
+    imageOcrPreviewSummary.dataset.cand = String(summary.candidateCells ?? ocrResult?.candidateCells ?? 0);
+    refreshOcrPreviewSummaryText();
+  }
+  imageOcrPreviewPanel.classList.remove("hidden");
 }
 
 function evaluateOcrGivenDigitsUniqueness(givenDigits) {
@@ -3189,6 +3275,7 @@ async function importPuzzleFromOcrResult(coachJson, summary = {}) {
     givensUnique: snapshot.ocrSummary?.givensUnique === true,
     warning: snapshot.ocrSummary?.givensUniqueWarning || "",
   };
+  showOcrPreview(summary, result);
   const attribution = await localSudokuOcrAttributionSafe();
   if (attribution) {
     log(uif("ocrDoneLog", { attribution }));
@@ -8731,6 +8818,16 @@ function buildNumpad() {
     updateInputControls();
   });
   numpad.appendChild(mode);
+
+  const ocrRole = document.createElement("button");
+  ocrRole.type = "button";
+  ocrRole.className = "ocr-role-toggle";
+  ocrRole.addEventListener("click", () => {
+    ocrDraftValueRole = ocrDraftValueRole === "given" ? "solved" : "given";
+    updateInputControls();
+    setStatus(uif("ocrDraftRoleStatus", { role: ui(ocrDraftValueRole === "given" ? "ocrDraftRoleGiven" : "ocrDraftRoleSolved") }));
+  });
+  numpad.appendChild(ocrRole);
   updateInputControls();
 }
 
@@ -8748,7 +8845,18 @@ function updateInputControls() {
     modeButton.classList.toggle("active", inputMode === "candidate");
     modeButton.title = ui("inputModeTitle");
   }
-  numpad.title = `${ui("currentInput")}: ${inputMode === "candidate" ? ui("candidateMode") : ui("valueMode")} ${selectedDigit}. ${ui("inputModeTitle")}`;
+  const ocrRoleButton = numpad.querySelector(".ocr-role-toggle");
+  if (ocrRoleButton) {
+    const showOcrRole = isOcrDraftSnapshot(currentSnapshot);
+    ocrRoleButton.hidden = !showOcrRole;
+    ocrRoleButton.textContent = ocrDraftValueRole === "given" ? ui("ocrDraftRoleGiven") : ui("ocrDraftRoleSolved");
+    ocrRoleButton.classList.toggle("active", ocrDraftValueRole === "given");
+    ocrRoleButton.title = ui(ocrDraftValueRole === "given" ? "ocrDraftRoleGivenTitle" : "ocrDraftRoleSolvedTitle");
+  }
+  const roleText = isOcrDraftSnapshot(currentSnapshot) && inputMode !== "candidate"
+    ? `, ${ui(ocrDraftValueRole === "given" ? "ocrDraftRoleGiven" : "ocrDraftRoleSolved")}`
+    : "";
+  numpad.title = `${ui("currentInput")}: ${inputMode === "candidate" ? ui("candidateMode") : ui("valueMode")} ${selectedDigit}${roleText}. ${ui("inputModeTitle")}`;
 }
 
 function loadTechniqueState() {
@@ -10170,6 +10278,14 @@ async function importPuzzleFromCurrentInput(options = {}) {
 }
 
 
+
+function clearStoredOcrPreviewUrl() {
+  for (const url of lastOcrImagePreviewUrls) {
+    try { URL.revokeObjectURL(url); } catch (_) {}
+  }
+  lastOcrImagePreviewUrls = [];
+}
+
 async function importCoachJsonFromLocalOcr(coachJson, summary = {}) {
   return importPuzzleFromOcrResult(coachJson, summary);
 }
@@ -10182,6 +10298,7 @@ async function recognizeAndImportImageFile(file) {
     return { ok: false, error };
   }
   try {
+    clearOcrPreview();
     setStatus(ui("ocrRecognizingLocal"));
     const { recognizeSudokuImageToCoachJson } = await loadLocalSudokuOcrModule();
     const ocr = await recognizeSudokuImageToCoachJson(file);
@@ -10197,6 +10314,8 @@ async function recognizeAndImportImageFile(file) {
     if (imageOcrCameraInput) imageOcrCameraInput.value = "";
   }
 }
+
+btnImageOcrPreviewClear?.addEventListener("click", clearOcrPreview);
 
 btnLoad.addEventListener("click", async () => {
   await importPuzzleFromCurrentInput({ clipboardFallback: true });
