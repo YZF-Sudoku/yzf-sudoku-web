@@ -249,7 +249,7 @@ const REF_TECHNIQUES = [
   ["XYZWing", "XYZ-Wing", "Wings", 3, 180],
   ["XYZRing", "XYZ-Ring", "Wings", 3, 190],
   ["BUGPlusN", "BUG + n", "Uniqueness", 3, 190],
-  ["BivalueOddagon", "Bivalue Oddagon", "Oddagon", 3, 190],
+  ["BivalueOddagon", "Bivalue Oddagon", "Negative Rank", 3, 190],
   ["WXYZWing", "WXYZ-Wing", "Wings", 3, 200],
   ["UniqueRectangle", "UR", "Uniqueness", 3, 150],
   ["UniqueLoop", "UL", "Uniqueness", 3, 200],
@@ -259,7 +259,7 @@ const REF_TECHNIQUES = [
   ["FinnedJellyfish", "Finned JellyFish", "Fish", 3, 250],
   ["SueDeCoq", "Sue de Coq", "ALS", 3, 250],
   ["Fireworks", "Fireworks", "Single Digit", 3, 250],
-  ["BrokenWing", "Broken Wing", "Wings", 3, 250],
+  ["BrokenWing", "Broken Wing", "Guardian", 3, 250],
   ["XChain", "X-Chain", "Chains", 4, 260],
   ["XYChain", "XY-Chain", "Chains", 4, 260],
   ["AIC", "AIC", "Chains", 4, 280],
@@ -276,7 +276,7 @@ const REF_TECHNIQUES = [
   ["ComplexSwordfish", "Complex SwordFish", "Fish", 4, 350],
   ["ComplexJellyfish", "Complex JellyFish", "Fish", 4, 350],
   ["ComplexSquirmbagFish", "Complex SquirmbagFish", "Fish", 4, 370],
-  ["BlossomLoop", "Blossom Loop", "ALS", 5, 400],
+  ["BlossomLoop", "Blossom Loop", "Rank Logic", 5, 400],
   ["ComplexAIC", "Complex AIC", "Chains", 5, 400],
   ["CellRegionFC", "Cell/Region FC", "Chains", 5, 400],
   ["Whip", "Whip", "Chains", 5, 450],
@@ -290,7 +290,7 @@ const REF_TECHNIQUES = [
   ["JE", "JE", "Exocet", 4, 500],
   ["SeniorExocet", "Senior Exocet", "Exocet", 4, 600],
   ["WeakExocet", "Weak Exocet", "Exocet", 4, 500],
-  ["TripletOddagon", "Triplet Oddagon", "Oddagon", 4, 500],
+  ["TripletOddagon", "Triplet Oddagon", "Negative Rank", 4, 500],
   ["BruteForce", "BruteForce", "Fallback", 5, 10000],
 ].map(([kind, title, category, difficulty, score], index) => ({
   kind,
@@ -393,6 +393,7 @@ const i18n = {
       Wings: "Wing",
       Uniqueness: "唯一性",
       Oddagon: "Oddagon",
+      "Negative Rank": "负秩",
       Chains: "链",
       "Rank Logic": "秩逻辑",
       Exocet: "Exocet",
@@ -3757,6 +3758,7 @@ function parseYzfEdgeType(type) {
   const alsLabelPart = parts.find((part) => String(part || "").startsWith("alsLabel="));
   const afLabelPart = parts.find((part) => String(part || "").startsWith("afLabel="));
   const urLabelPart = parts.find((part) => String(part || "").startsWith("urLabel="));
+  const amslsLabelPart = parts.find((part) => String(part || "").startsWith("amslsLabel="));
   const rolePart = parts.find((part) => String(part || "").startsWith("role="));
   return {
     strength: strengthRaw === "weak" ? "weak" : "strong",
@@ -3765,6 +3767,7 @@ function parseYzfEdgeType(type) {
     alsLabel: alsLabelPart ? alsLabelPart.slice("alsLabel=".length) : "",
     afLabel: afLabelPart ? afLabelPart.slice("afLabel=".length) : "",
     urLabel: urLabelPart ? urLabelPart.slice("urLabel=".length) : "",
+    amslsLabel: amslsLabelPart ? amslsLabelPart.slice("amslsLabel=".length) : "",
     role: rolePart ? rolePart.slice("role=".length) : "",
   };
 }
@@ -3832,6 +3835,7 @@ function normalizeStepResultPathEdges(stepEdges = [], pathNodes = []) {
         alsLabel: parsed.alsLabel || "",
         afLabel: parsed.afLabel || "",
         urLabel: parsed.urLabel || "",
+        amslsLabel: parsed.amslsLabel || "",
       };
     });
   }
@@ -3864,6 +3868,7 @@ function normalizeStepResultPathEdges(stepEdges = [], pathNodes = []) {
         alsLabel: parsed.alsLabel || "",
         afLabel: parsed.afLabel || "",
         urLabel: parsed.urLabel || "",
+        amslsLabel: parsed.amslsLabel || "",
       };
     });
   }
@@ -3902,6 +3907,7 @@ function normalizeStepResultPathEdges(stepEdges = [], pathNodes = []) {
       alsLabel: parsed.alsLabel || "",
       afLabel: parsed.afLabel || "",
       urLabel: parsed.urLabel || "",
+      amslsLabel: parsed.amslsLabel || "",
     };
   });
 }
@@ -5340,7 +5346,12 @@ function applyBoardChainHighlights(overlaySample, startNodeId) {
       }
       paintAlsMeta(parseAlsEdgeMeta(edge));
     }
+  }
 
+  // Always layer ON/OFF/start chain highlights over backend-owned structure colors.
+  // Backend colorCands describe the AMSLS/ALS/AF body; they should not suppress
+  // the actual path endpoints used by the chain renderer.
+  {
     for (const node of pathNodes) {
       const digit = Number(node.digitDisplay || node.digit || 0);
       if (!Number.isInteger(digit) || digit < 1 || digit > 9) continue;
@@ -6291,6 +6302,7 @@ function extractManualChainModel(source) {
         alsLabel: parsed.alsLabel || edge.alsLabel || "",
         afLabel: parsed.afLabel || edge.afLabel || "",
         urLabel: parsed.urLabel || edge.urLabel || "",
+        amslsLabel: parsed.amslsLabel || edge.amslsLabel || "",
       };
     });
 
@@ -6410,12 +6422,23 @@ function formatUrGuardianNodeWithEdges(node, edges = []) {
   return digit >= 1 && digit <= 9 && cellText ? `${digit}${cellText}${urSuffix}` : "";
 }
 
+function formatAmslsNodeFromEdgeLabel(node, edges = []) {
+  const edge = edgeForNodeByReason(node, edges, "amsls");
+  const label = String(edge?.amslsLabel || "").trim();
+  if (label) return label;
+  const cells = Array.isArray(node?.sectorCells) ? node.sectorCells : [];
+  const cellText = compressGroupedSectorText(cells);
+  return cellText ? `{AMSLS:${cellText}}` : "{AMSLS}";
+}
+
 function formatManualChainNodeCompactWithEdges(node, edges = []) {
   const nodeKind = node?.nodeKind || node?.kind || "";
   const afText = formatAfNodeFromEdgeLabel(node, edges);
   if (afText) return afText;
   const urText = formatUrGuardianNodeWithEdges(node, edges);
   if (urText) return urText;
+  const amslsText = formatAmslsNodeFromEdgeLabel(node, edges);
+  if (amslsText && nodeTouchesReasonEdge(node, edges, "amsls")) return amslsText;
   if (nodeKind === "GroupedSector" && nodeTouchesFireEdge(node, edges)) {
     const digit = Number(node?.digitDisplay || node?.digit || 0);
     const cellText = fireworkSectorText(node?.sectorCells);
@@ -6436,6 +6459,10 @@ function formatManualChainNodeDetailedWithEdge(node, edge, edges = []) {
   if (edgeReason === "urguardian") {
     const urText = formatUrGuardianNodeWithEdges(node, [edge]);
     if (urText) return urText;
+  }
+  if (edgeReason === "amsls") {
+    const amslsText = formatAmslsNodeFromEdgeLabel(node, [edge]);
+    if (amslsText) return amslsText;
   }
   if (nodeKind === "GroupedSector" &&
       edgeReason === "fire" &&
@@ -6563,8 +6590,9 @@ function buildManualAdvancedChainTexts(stepResult) {
     const alsDetail = edge.alsLabel ? ` ${edge.alsLabel}` : "";
     const afDetail = edge.afLabel ? ` ${edge.afLabel}` : "";
     const urDetail = edge.urLabel ? ` ${edge.urLabel}` : "";
+    const amslsDetail = edge.amslsLabel ? ` ${edge.amslsLabel}` : "";
     detailedLines.push(
-      `${formatManualChainNodeDetailedWithEdge(orderedNodes[index], edge, orderedEdges)} --${edge.strength} ${edge.reason}${alsDetail}${afDetail}${urDetail}-- ${formatManualChainNodeDetailedWithEdge(nextNode, edge, orderedEdges)}`
+      `${formatManualChainNodeDetailedWithEdge(orderedNodes[index], edge, orderedEdges)} --${edge.strength} ${edge.reason}${alsDetail}${afDetail}${urDetail}${amslsDetail}-- ${formatManualChainNodeDetailedWithEdge(nextNode, edge, orderedEdges)}`
     );
   }
 
@@ -7532,14 +7560,42 @@ function stepExplainTemplateType(step = {}) {
   if (/locked|pointing|claiming|intersection/.test(key)) return "locked";
   if (/naked.*(pair|triple|quad|subset)|hidden.*(pair|triple|quad|subset)|subset/.test(key)) return "subset";
   if (/skyscraper|2-string|two string|twostringkite|turbot/.test(key)) return "turbot";
+  // Complex rank/exocet families must be identified before the generic Fish/Chain buckets.
+  // Kazusa treats Multifish and Complex Fish through rank theory, not ordinary base-cover fish.
+  if (/multi\s*-?\s*fish|multifish|mutant fish|franken fish|complex\s+(swordfish|jellyfish|squirmbag|fish)|rank\s*fish/.test(key)) return "rankFish";
+  if (/sk\s*loop|msls|multi-sector locked|rank\s*0|rank-zero|zero\s*rank/.test(key)) return "rank0";
+  if (/mutant\s*(junior|senior)?\s*exocet|mutant\s*je|mutant\s*se|junior\s*exocet|senior\s*exocet|weak\s*exocet|double\s*je|jexocet|\bje\b|\bse\b|exocet/.test(key)) return "exocet";
+  if (/cell.*force|region.*force|force\s*chain|forcing\s*chain|dynamic\s*chain|dynamic\s*forcing|merged\s*forcing|finned\s*chain/.test(key)) return "forcing";
+  // Blossom-family loops are ALS/forcing structures, not ordinary AIC loops.
+  // Keep them out of the generic "loop" fallback so Blossom Loop / Death Blossom
+  // do not disappear into the normal chain tutorial.
+  if (/death\s*blossom|deathblossom|blossom\s*loop|blossomloop|burring\s*loop|burringloop|burred\s*loop|kraken\s*blossom|kraken\s*als|blossom/.test(key)) return "blossom";
+  // Kazusa groups Oddagon/Tridagon with Rank Logic -> Negative Ranks.
+  // This is neither uniqueness (UR/BUG second-solution proof) nor an ordinary
+  // Guardian catch-all: the core proof is an unsatisfiable odd/negative-rank
+  // structure, with guardians/extras acting only as exits from that bad state.
+  if (/bi[-\s]*value\s*oddagon|bivalueoddagon|tri[-\s]*value\s*oddagon|triplet\s*oddagon|tripletoddagon|trivalue\s*oddagon|oddagon|tridagon/.test(key)) return "oddagon";
+  // Uniqueness families must be classified before guardian wording.
+  // Kazusa places UR/UL/XR/AR/BUG/GSP under uniqueness/deadly-pattern logic:
+  // even when a step name contains "guardian" (for example UR Guardian), the
+  // explanation still depends on the unique-solution premise.
+  if (/unique|\bur\b|urguardian|ur\s*guardian|bug|avoidable|deadly|rectangle|gsp|global single pattern|unique\s*loop|extended\s*rectangle|avoidable\s*rectangle/.test(key)) return "unique";
+  // Guardian/Broken-Pattern logic is reserved for techniques whose proof is
+  // genuinely "guards must contain at least one truth" rather than uniqueness.
+  // Kazusa describes Broken Wing under Guardian Logic; Broken Loop / no-solution
+  // patterns are also read this way. Do not pull UR/BUG/AR/GSP out of uniqueness.
+  if (/broken\s*wing|brokenwing|broken\s*loop|pattern\s*having\s*no\s*solution|no\s*solution\s*pattern|guardian\s*logic|guardians?/.test(key)) return "guardian";
   if (/fish|x-wing|xwing|swordfish|jellyfish|finned|sashimi|kraken|empty rectangle|eri/.test(key)) return "fish";
-  if (/unique|ur|bug|avoidable|deadly|rectangle/.test(key)) return "unique";
+  // WXYZ/VWXYZ and bent almost subsets are better explained as ALS-XZ/Bent-Set logic,
+  // not as a classic two-wing pivot pattern.
+  if (/wxyz|vwxyz|bent almost|bent subset|bentset/.test(key)) return "alsWing";
   if (/als|ahs|almost locked|almost hidden/.test(key)) return "als";
-  if (/wing|w-wing|xy-wing|xyz-wing|m-wing|s-wing|l-wing/.test(key)) return "wing";
+  // W/M/S/L/M3/Grouped M3 Wings emitted by FindAIC are compressed AIC names:
+  // they should be read as two/three-strong-link chains, not as ordinary pivot + two wings.
+  if (/(grouped\s*)?m3\s*-?\s*wing|m3wing|m\s*-?\s*wing|s\s*-?\s*wing|l\s*-?\s*wing|w\s*-?\s*wing|wwing/.test(key)) return "aicWing";
+  if (/xy-wing|xywing|xyz-wing|xyzz?wing|xyzring|wing/.test(key)) return "wing";
+  if (/rank|base cover|cover set/.test(key) || Number(step.rank || 0) > 0) return "rank";
   if (/whip|gwhip|braid|gbraid|forcing|chain|aic|nice loop|loop|ring|color/.test(key) || (Array.isArray(step.nodes) && step.nodes.length > 0)) return "chain";
-  if (/rank|msls|multi-fish|multifish|base cover|cover set/.test(key) || Number(step.rank || 0) > 0) return "rank";
-  if (/exocet|fireworks|jexocet|junior exocet/.test(key)) return "exocet";
-  if (/oddagon|tridagon/.test(key)) return "oddagon";
   return "generic";
 }
 
@@ -7592,46 +7648,165 @@ function stepExplainBuildLines(step = {}, snapshot = null) {
     checks.push(zh
       ? (isKite ? "确认一条强链在行、一条强链在列；宫内连接端是弱连接，删数同时看见两个远端。" : "确认两条强链分别在两条平行行/列中；底部连接端互相看见，删数同时看见两个楼顶端。")
       : (isKite ? "Verify one strong link is in a row and one in a column; the box-side joined endpoints see each other, and the deletion sees both far endpoints." : "Verify the two strong links are in parallel rows/columns; the joined base endpoints see each other, and the deletion sees both top endpoints."));
+  } else if (type === "guardian") {
+    const key = stepExplainKindKey(step);
+    const isBrokenWing = /broken\s*wing|brokenwing/.test(key);
+    const isBrokenLoop = /broken\s*loop|pattern\s*having\s*no\s*solution|no\s*solution\s*pattern/.test(key);
+    const isUrGuardian = /ur\s*guardian|urguardian/.test(key);
+    const isFireworks = /fireworks|firework/.test(key);
+    lines.push(zh
+      ? `本步按 Guardian / Broken Pattern 逻辑读，不按普通 Wing、Fish 或唯一性模板读。`
+      : `Read this as Guardian / Broken-Pattern logic, not as an ordinary Wing, Fish, or uniqueness template.`);
+    lines.push(zh
+      ? `先找 guardian / 守护者候选：如果这些守护者全部为假，剩余结构会变成非法结构；因此守护者中至少一个必须为真，从而推出 ${conclusion}。`
+      : `First identify the guardians. If all guardians were false, the remaining structure would become illegal; therefore at least one guardian must be true, giving ${conclusion}.`);
+    proof = zh
+      ? `数学逻辑：Kazusa 把 Broken Wing 放在 Guardian Logic 下说明，核心不是“枢纽格 + 翼格”，而是“守护者阻止一个坏结构成立”。先假设所有 guardian 都不成立；此时盘面会退化成某种不可接受的结构，例如全强链死环、无解图形、零秩/负秩容量冲突。既然真实解不能进入这个坏结构，至少一个 guardian 必须为真。于是任何同时看见所有 guardian 的同数字候选都不能为真；若只有一个 guardian，它甚至可以直接被确认为真。${isBrokenWing ? " Broken Wing 只是这个逻辑的历史名称，不应要求用户寻找普通 Wing 的 pivot。" : ""}${isBrokenLoop ? " Broken Loop / Pattern Having No Solution 也是同一口径：守护者为假时，剩余环或图形本身无解。" : ""}${isUrGuardian ? " 注意：UR Guardian 名称里虽然有 guardian，但仍属于唯一性技巧，应按唯一解前提解释，不应从 UR/BUG 体系挪到普通 Guardian。" : ""}${isFireworks ? " 注意：Kazusa 将 Fireworks 放在全部标记技巧的烟花数组体系，不应默认按 Guardian Logic 解释；只有输出明确写成 guardian/broken-pattern 时才使用本模板。" : ""}`
+      : `Logic: Kazusa explains Broken Wing under Guardian Logic. The core is not a pivot plus wing cells; guardians are candidates that prevent a bad structure from becoming active. Assume every guardian is false. The remaining pattern degenerates into an invalid structure, such as an all-strong-link dead loop, a no-solution pattern, or a rank/capacity conflict. Since the real solution cannot enter that bad structure, at least one guardian must be true. Any same-digit candidate that sees every guardian would make them all false and can be removed; if there is only one guardian, it may be placed. ${isBrokenWing ? "Broken Wing is a historical name for this logic and should not be read as a classic pivot-wing." : ""}${isBrokenLoop ? "Broken Loop / Pattern Having No Solution uses the same reading: without the guardians, the remaining loop or pattern has no solution." : ""}${isUrGuardian ? "Note: a UR Guardian name still belongs to the uniqueness family and must be explained with the unique-solution premise, not moved into ordinary Guardian Logic." : ""}${isFireworks ? "Note: Kazusa treats Fireworks as a full-marking fireworks-array family; only outputs explicitly marked guardian/broken-pattern should use this template." : ""}`;
+    checks.push(zh ? "不要找枢纽格；先找 guardian 候选，以及 guardian 全假时会剩下什么坏结构。" : "Do not look for a pivot; identify the guardian candidates and the bad structure left when all guardians are false.");
+    checks.push(zh ? "确认删数同时看见所有 guardian，或该删数一旦成立会使所有 guardian 失效。" : "Verify the deletion sees every guardian, or that making it true would disable every guardian.");
+    checks.push(zh ? "UR、BUG、AR、UL、XR、GSP 不从唯一性体系挪走；若名称里出现 UR Guardian，应解释为唯一性结构的破坏点，并明确唯一解前提。" : "UR/BUG/AR/UL/XR/GSP stay in the uniqueness family; if a name says UR Guardian, explain it as a guard for a uniqueness deadly pattern under the unique-solution premise.");
   } else if (type === "fish") {
     lines.push(zh ? `本步把候选 ${cand || "鱼数字"} 的若干 base 区域与 cover 区域配对。` : `This step pairs base sets and cover sets for candidate ${cand || "the fish digit"}.`);
     lines.push(zh ? `base 中所有鱼数字都被 cover 覆盖，cover 里不属于 base 的同数字候选可删：${conclusion}。` : `All fish candidates in the bases are covered by the covers; same-digit candidates in the covers but outside the bases can be removed: ${conclusion}.`);
     proof = zh ? "数学逻辑：每个 base 区域都必须放入一个鱼数字；如果这些可能落点全部落在同数量的 cover 区域中，那么这些 cover 区域会被 base 的鱼数字占满。于是 cover 区域里额外的同数字候选不可能成立。带鳍鱼则用分支理解：鳍成立时直接限制删数；鳍不成立时退化为普通鱼，同样删数。" : "Logic: each base set must contain the fish digit once. If all possible positions in the bases are covered by the same number of cover sets, those covers are occupied by the base placements. Extra same-digit candidates in the covers cannot be true. For finned fish, either the fin is true and sees the deletion, or the fin is false and the pattern becomes a normal fish.";
     checks.push(zh ? "确认删数在 cover 区域内，但不在 base 与 cover 的交点结构中。" : "Verify the deletion is in a cover set but outside the base-cover intersections.");
+  } else if (type === "blossom") {
+    const key = stepExplainKindKey(step);
+    const isLoop = /blossom\s*loop|blossomloop|burring\s*loop|burringloop|burred\s*loop/.test(key);
+    const isDeath = /death\s*blossom|deathblossom/.test(key);
+    lines.push(zh
+      ? (isLoop
+        ? `本步按“绽放环”来读：它介于标准连续环和网之间，是带动态/强制分支的 Rank 0 环状结构，不按普通 AIC Loop 或普通 ALS Blossom 读。`
+        : `本步按 Death Blossom / ALS 分支结构来读，不按普通 Wing 来读。`)
+      : (isLoop
+        ? `Read this as a Blossom Loop: a rank-0 loop with dynamic/forcing branches, sitting between a standard continuous loop and a net. Do not read it as an ordinary AIC loop or a plain ALS Blossom.`
+        : `Read this as a Death Blossom / ALS-branch structure, not as an ordinary wing.`));
+    lines.push(zh
+      ? (isLoop
+        ? `绽放环的关键是环中弱关系在整体上都可以按强关系使用：动态分支或强制分支会把断点补上，因此每处弱关系都能产生连续环式删数，结论 ${conclusion}。`
+        : `Death Blossom 从中心 stem 分叉到多个 ALS 花瓣；中心格必取一种情况，而所有情况都排除同一目标，因此 ${conclusion}。`)
+      : (isLoop
+        ? `The key point is that every weak link in the loop can be treated as strong at the global level: dynamic or forcing branches repair the break, so the loop gets continuous-loop-style eliminations, giving ${conclusion}.`
+        : `A Death Blossom branches from a central stem into several ALS petals. The stem must take one case, and every case excludes the same target, so ${conclusion}.`));
+    proof = zh
+      ? (isLoop
+        ? "数学逻辑：绽放环不是普通枢纽 Wing，也不是单纯 ALS-XZ。它是带动态分支和强制分支的环状结构，证明口径接近 Rank 0 连续环/网。环内强区域 Truth 表示至少要有一个候选为真，弱区域 Link 表示最多只能有一个候选为真。标准绽放环中 Truth 数与 Link 数相等，所以结构内真候选数量既至少为 Truth 个，又至多为 Link 个；两者相等时，每个弱区域都必须恰好容纳一个真候选。于是每一处弱关系都可像强关系一样参与删数。若某个外部候选成立，会破坏这种一一配额，导致某个弱区域无真、某个强区域无法满足，或沿动态/强制分支绕回矛盾，因此该候选不能成立。动态分支按动态链观察；强制分支按毛刺/多毛刺链观察。"
+        : "数学逻辑：Death Blossom 是以 stem 为中心的多分支 ALS 证明。中心 stem 的候选至少有一个必须成立；对 stem 的每一种可能取值，对应花瓣 ALS 都会被迫形成锁定分配，并排除同一个目标候选。因为所有分支都排除该目标，所以目标候选无论 stem 取哪种情况都不能成立。")
+      : (isLoop
+        ? "Logic: a Blossom Loop is not a classic pivot wing and not merely ALS-XZ. It is a loop with dynamic and forcing branches, best read as a rank-0 continuous-loop/net-like structure. Truth regions require at least one true candidate; Link regions allow at most one true candidate. In a standard Blossom Loop, the number of Truth regions equals the number of Link regions, so the pattern must contain exactly that many true candidates and each Link region is filled exactly once. This lets every weak link act like a strong link for eliminations. If an external candidate were true, it would break this one-for-one quota, leave a Truth unsatisfied, leave a Link without its needed truth, or propagate through the dynamic/forcing branches back to contradiction. Dynamic branches are checked like dynamic chains; forcing branches are checked like fin/burr branches."
+        : "Logic: a Death Blossom is a multi-branch ALS proof around a central stem. The stem must take one of its candidates; in every stem case, a corresponding ALS petal becomes locked and excludes the same target candidate. Since every branch excludes the target, the target is false.");
+    checks.push(zh
+      ? (isLoop
+        ? "核对它是否是标准绽放环：分支的分开与汇合节点应能整体按强/弱区域连接，并且 Truth 数与 Link 数相等，即 Rank = 0。"
+        : "先找 stem，再看每个 ALS 花瓣和共同目标。")
+      : (isLoop
+        ? "Verify it is a standard Blossom Loop: branch split/merge nodes must connect as whole Truth/Link regions, and Truth count must equal Link count, i.e. Rank = 0."
+        : "Find the stem first, then each ALS petal and the common target."));
+    checks.push(zh
+      ? (isLoop
+        ? "不要只因为名称含 Loop 就按普通 AIC 环解释；也不要把它写成 Death Blossom 的简单闭合版。先看主环，再看动态分支和强制/毛刺分支如何把每处弱关系补成强关系。"
+        : "确认每个 ALS 花瓣满足格数与候选数的容量条件，并且所有 stem 分支都排除同一目标。")
+      : (isLoop
+        ? "Do not treat it as an ordinary AIC loop merely because the name contains Loop, and do not describe it as just a closed Death Blossom. Read the main loop first, then verify how dynamic and forcing/burr branches turn each weak link into a strong inference."
+        : "Verify each ALS petal satisfies the cell/candidate capacity condition, and every stem branch excludes the same target."));
   } else if (type === "unique") {
     lines.push(zh ? `本步使用唯一解前提，观察高亮的致命结构${cellsText ? `：${cellsText}` : ""}。` : `This step uses the uniqueness assumption and checks the highlighted deadly pattern${cellsText ? `: ${cellsText}` : ""}.`);
-    lines.push(zh ? `若保留/放入被删候选，会形成两个数字可互换的第二解，因此结论 ${conclusion} 成立。` : `If the removed candidate were kept/placed, the pattern would allow two interchangeable solutions, so ${conclusion} follows.`);
-    proof = zh ? "数学逻辑：标准数独题默认只有唯一解。UR、BUG、Avoidable Rectangle 等结构的危险点在于：某些格只剩同一组数字后，这些数字可以成对互换而不破坏行列宫约束，从而产生第二解。因此任何会把盘面推入该致命结构的候选都必须删除。" : "Logic: standard sudoku assumes a unique solution. UR, BUG, Avoidable Rectangle and related patterns identify a state where digits can be swapped without breaking row/column/box rules, creating a second solution. Any candidate that would force that deadly state must be false.";
-    checks.push(zh ? "确认你接受唯一解前提；非唯一题不应使用这类技巧。" : "Confirm the puzzle is intended to have a unique solution; do not use uniqueness techniques on non-unique puzzles.");
+    lines.push(zh ? `若保留/放入被删候选，会形成两个数字可互换的第二解；这不是允许多解，而是与谜题唯一解前提矛盾，因此结论 ${conclusion} 成立。` : `If the removed candidate were kept/placed, the pattern would allow two interchangeable solutions. That is not accepting multiple solutions; it contradicts the puzzle's uniqueness assumption, so ${conclusion} follows.`);
+    proof = zh ? "数学逻辑：唯一性技巧采用反证法，前提是当前谜题被视为合格的唯一解数独。UR、UL、XR、AR、BUG、GSP 等致命结构都保持在唯一性类别中；即使某个变体文字里出现 guard/guardian，也只是“防止致命结构成立的破坏点”，不是普通 Guardian Logic。若某些候选被保留或某些破坏点消失，局部数字可以成对互换而不破坏行列宫约束，从而构造出第二个完成盘。这与唯一解前提矛盾，所以任何会把盘面推入该致命结构的候选都必须删除；若题目本身允许多解，则不能使用这类结论。" : "Logic: uniqueness techniques are proofs by contradiction under the assumption that the puzzle has a unique solution. UR, UL, XR, AR, BUG, GSP, and related deadly-pattern families stay in this uniqueness category even when a variant is described with a guard/guardian. Keeping certain candidates or removing the guard would let digits be swapped locally without breaking row/column/box rules, constructing a second completed grid. That contradicts the uniqueness assumption, so any candidate that forces the deadly state is false. If the puzzle is allowed to have multiple solutions, this class of conclusion must not be used.";
+    checks.push(zh ? "先确认这是唯一解题；非唯一题或尚未确认唯一性的 OCR 草稿不应使用唯一性技巧。" : "First confirm the puzzle is intended to have a unique solution; do not use uniqueness techniques on non-unique puzzles or OCR drafts whose uniqueness has not been confirmed.");
   } else if (type === "als") {
     lines.push(zh ? `观察高亮的 ALS/AHS 结构${cellsText ? `：${cellsText}` : ""}。` : `Observe the highlighted ALS/AHS structures${cellsText ? `: ${cellsText}` : ""}.`);
     lines.push(zh ? `它们通过受限公共候选或强制候选互相约束，所以结论 ${conclusion} 可删/可出。` : `They constrain one another through restricted common candidates or forced candidates, so ${conclusion} follows.`);
     proof = zh ? "数学逻辑：ALS 是 N 个格含 N+1 个候选，少掉任意一个候选后就会变成锁定集。若两个 ALS 通过受限公共候选相连，该公共候选不能在两个 ALS 中同时失效；否则两边都会被迫成锁定集并造成容量冲突。能同时看到相关受限位置的外部候选因此不能成立。AHS 是对数字/位置关系的对偶表达。" : "Logic: an ALS has N cells and N+1 candidates; removing one candidate turns it into a locked set. When two ALSs share a restricted common candidate, that candidate cannot be absent from both ALSs, or both sides are forced into incompatible locked-set states. External candidates that see the restricted positions can therefore be removed. AHS is the dual view using digits/positions.";
     checks.push(zh ? "确认每个 ALS 在同一 house 内，且格数比候选数少 1。" : "Verify each ALS lies in one house and has one more candidate than cells.");
+  } else if (type === "aicWing") {
+    lines.push(zh ? `按步骤描述里的 Eureka/AIC 顺序阅读${nodesText ? `：${nodesText}` : ""}。` : `Read the Eureka/AIC text in order${nodesText ? `: ${nodesText}` : ""}.`);
+    lines.push(zh ? `这个名称里的 Wing 是链结构的压缩命名，不是普通“枢纽 + 两翼”的双翼模板；它通常由两条或三条强关系串联，推出结论 ${conclusion}。` : `Here “Wing” is a compressed chain name, not the ordinary pivot-plus-two-wings template; it is usually made from two or three strong links and implies ${conclusion}.`);
+    proof = zh ? "数学逻辑：Kazusa 的 W-Wing 先按两个分支读：某个区域内目标数字的所有落点必有一个成立，每个落点都会推出一个同数字翼端，因此这些翼端至少一真；多分支 W-Wing 只是把两个分支扩展成三个或更多分支。YZF 里由 FindAIC 命名的 M-Wing、S-Wing、L-Wing、M3-Wing、Grouped M3-Wing 更应按 AIC/强制链理解。等号段表示强关系：两端至少一真；短横段表示弱关系：两端不能同时真。多个强关系经弱关系连接后，会得到某组端点至少一真，或得到目标候选若成立就沿链传播到矛盾。因此删数不是来自一个固定双翼枢纽，而是来自这条多强链/多分支覆盖了目标候选的全部可能。" : "Logic: Kazusa's W-Wing is first a branch proof: every possible position of the target digit in a house has one true branch, and each branch forces a same-digit wing endpoint, so at least one endpoint is true. Multi-Branch W-Wing extends this from two branches to three or more. In YZF, M-Wing, S-Wing, L-Wing, M3-Wing, and Grouped M3-Wing names emitted by FindAIC should be read as AIC/forcing-chain compressions. Equality segments are strong links: at least one end is true; dash segments are weak links: both ends cannot be true. Several strong links joined by weak links prove that a set of endpoints has at least one truth, or that the target candidate propagates to contradiction. The deletion comes from complete multi-strong-link/branch coverage, not from a fixed two-wing pivot.";
+    checks.push(zh ? "不要强行找普通 Wing 的 pivot；逐段核对描述中的每个“=”是否真是强关系，每个“-”是否真是弱关系。" : "Do not force a classic wing pivot; verify each '=' segment is a real strong link and each '-' segment is a real weak link.");
+    checks.push(zh ? "Grouped 节点要当作一个分组端点读：组内任一候选成立都代表该端点成立。" : "Read grouped nodes as one grouped endpoint: any true candidate in the group makes that endpoint true.");
+  } else if (type === "alsWing") {
+    lines.push(zh ? `把 WXYZ/VWXYZ 视为 ALS-XZ 或 Bent Almost Set 的特例来读。` : `Read WXYZ/VWXYZ as a special case of ALS-XZ or a bent almost set.`);
+    lines.push(zh ? `核心集合比锁定集合多一个自由候选；受限公共候选把分支锁住，因此共同受限的目标得到结论 ${conclusion}。` : `The core set has one extra candidate beyond a locked set; restricted common candidates lock the branches, so the shared target gives ${conclusion}.`);
+    proof = zh ? "数学逻辑：WXYZ-Wing 不宜简单说成 XY/XYZ-Wing 的更大双翼版。更准确地说，它是一个四候选的 ALS-XZ/Bent Almost Subset。核心区域内的格数与候选数只差 1；当受限公共候选被某一侧使用或排除时，剩余候选会被迫形成锁定分配。目标候选若成立，会同时破坏所有合法分配分支，或同时看见所有可能承担目标数字的位置，所以目标候选可删。" : "Logic: WXYZ-Wing is better treated as a four-candidate ALS-XZ/Bent Almost Subset, not merely as a larger XY/XYZ-Wing. The core has one more candidate than cells; once a restricted common candidate is used or excluded on one side, the remaining candidates are forced into a locked allocation. If the target candidate were true, it would break every legal allocation branch, or it would see all possible positions that can carry the target digit, so it can be removed.";
+    checks.push(zh ? "核对核心集合是否满足“格数 + 1 个候选”的 ALS/Bent Set 条件。" : "Verify the core satisfies the ALS/Bent-Set condition: one more candidate than cells.");
+    checks.push(zh ? "核对删数是否确实同时受所有可能目标落点限制，而不是只看见其中一部分。" : "Verify the deletion is restricted by all possible target positions, not just some of them.");
   } else if (type === "wing") {
     lines.push(zh ? `先找枢纽/翼格以及它们共享的候选关系。` : `First identify the pivot/wing cells and their shared candidates.`);
-    lines.push(zh ? `不管枢纽取哪种可能，至少一个翼端会推出同一个限制，因此结论 ${conclusion} 成立。` : `Whichever pivot case is true, at least one wing enforces the same restriction, so ${conclusion} follows.`);
-    proof = zh ? "数学逻辑：Wing 类技巧通常是一个小型二分证明。枢纽格的候选只有少数几种；逐一讨论后，每一种情况都会让某个翼端候选成立。若某个外部候选同时看见所有可能成立的翼端，它就不可能成立。" : "Logic: wing techniques are small case splits. The pivot has only a few possibilities; in every case, one of the wing candidates becomes true. Any external candidate that sees all possible true wing candidates cannot be true.";
-    checks.push(zh ? "确认被删候选同时看见所有可能推出的翼端同数字候选。" : "Verify the removed candidate sees every possible same-digit wing endpoint.");
+    lines.push(zh ? `普通 XY/XYZ 类 Wing 是小型分支证明；若是多个翼端，则应按多翼分支覆盖来读，而不是误解成固定双翼。结论 ${conclusion} 来自所有分支都排除同一目标。` : `Ordinary XY/XYZ-style wings are small case splits; if multiple wing endpoints are present, read it as multi-wing branch coverage rather than a fixed two-wing pattern. ${conclusion} follows because every branch excludes the same target.`);
+    proof = zh ? "数学逻辑：Kazusa 对 XY/XYZ/WXYZ/VWXYZ 的统一讲法是分支覆盖。枢纽或核心格只有少数可选情况；逐一讨论后，每一种情况都会让某个同数字翼端成立，或核心格自身承担目标数字。若某个外部候选同时看见所有可能成立的目标数字位置，它成立就会把这些位置全部排除，违反“至少一个成立”，所以可删。XY-Wing 少一个目标候选，XYZ 以后则可视为更完整的多格多候选分支；若结构扩展成多翼，必须覆盖全部翼端。" : "Logic: Kazusa presents XY/XYZ/WXYZ/VWXYZ as branch coverage. The pivot or core cell has only a few cases; in every case, one same-digit wing endpoint becomes true, or the core itself carries the target digit. Any external candidate that sees every possible true target position would eliminate all of them, contradicting the at-least-one-true result. XY-Wing lacks one target candidate, while XYZ and larger wings are fuller multi-cell/multi-candidate branches. If the pattern has multiple wings, all endpoints must be covered.";
+    checks.push(zh ? "确认被删候选同时看见所有可能推出的翼端同数字候选；多翼结构要检查全部翼端。" : "Verify the removed candidate sees every possible same-digit wing endpoint; for multi-wing patterns, check every endpoint.");
   } else if (type === "chain") {
     lines.push(zh ? `按链路顺序阅读节点${nodesText ? `：${nodesText}` : ""}。` : `Read the chain in node order${nodesText ? `: ${nodesText}` : ""}.`);
     lines.push(zh ? `强弱关系交替传递真假；端点、环或反证路径推出结论 ${conclusion}。` : `Truth alternates through strong and weak links; endpoints, loops, or contradiction paths imply ${conclusion}.`);
-    proof = zh ? "数学逻辑：强关系表示两端至少一真，弱关系表示两端不能同真。沿链假设起点为真/假后，真假会被逐段强制传递。若两个端点共同看到某候选，则该候选为真会迫使两个端点都假而违反链的至少一真；若形成不连续环或矛盾路径，则某个候选会导致自身冲突、区域无候选或格子无候选，所以它可删。Whip/Braid 可理解为假设某候选成立后，经过一串强制选择必达矛盾。" : "Logic: a strong link means at least one end is true; a weak link means both ends cannot be true. Truth values propagate along the chain. If two endpoints see a candidate, making that candidate true would make both endpoints false, contradicting the chain's at-least-one-true result. In a discontinuous loop or contradiction path, an assumption forces a conflict or an empty cell/house, so the assumed candidate is false. Whip/Braid steps are contradiction proofs driven by forced choices.";
-    checks.push(zh ? "确认线条方向只是阅读辅助；真正依据是强/弱关系和端点可见性。" : "Line direction is a reading aid; the proof rests on strong/weak links and endpoint visibility.");
+    proof = zh ? "数学逻辑：Kazusa 的双强链章节把强关系解释为“两端至少一真”，弱关系解释为“两端不能同真”。AIC/X-Chain/XY-Chain 就是把这些关系按 Eureka 顺序串起来。若链头和链尾共同看见某候选，该候选为真会让两个端点都假，违反链推出的“至少一真”；若形成不连续环，则某候选会推出自身冲突、区域无候选或格子无候选，所以它可删。Whip/Braid 仍可按反证链读：假设目标成立后，经过一串强制选择必达矛盾。" : "Logic: Kazusa's two-strong-link chapter defines a strong inference as at least one end true, and a weak inference as not both true. AIC/X-Chain/XY-Chain strings those inferences in Eureka order. If two endpoints both see a candidate, making that candidate true would make both endpoints false and violate the chain's at-least-one-true result. In a discontinuous loop, an assumption forces self-conflict, an empty house, or an empty cell, so it is false. Whip/Braid steps can still be read as contradiction chains: assume the target, follow forced choices, and reach impossibility.";
+    checks.push(zh ? "确认线条方向只是阅读辅助；真正依据是强/弱关系、端点可见性和是否真的覆盖全部分支。" : "Line direction is a reading aid; the proof rests on strong/weak links, endpoint visibility, and complete branch coverage.");
+  } else if (type === "forcing") {
+    lines.push(zh ? `按强制链分支读：先找起点，再逐条核对所有可能分支是否都走向同一结论 ${conclusion}。` : `Read this as forcing-chain branches: find the start, then verify every possible branch reaches the common conclusion ${conclusion}.`);
+    lines.push(zh ? `它不是普通“头尾取交集”的链；结论来自完备分支、归并分支、鱼鳍分支或动态分支共同排除目标。` : `This is not an ordinary endpoint-intersection chain; the conclusion comes from complete branches, merged branches, fin branches, or dynamic branches all excluding the target.`);
+    proof = zh ? "数学逻辑：Kazusa 的强制链章节强调，强制链依赖多个分支。若从某个格、某个区域或某个候选出发，所有合法分支最终都推出同一个删数/出数，那么真实分支无论是哪一个，共同结论都必然成立；若某个假设让某一行/列/宫的某数字全部无处可放，或让某格无候选，则该假设为假。归并强制链把起点延后后，多个目标可接入同一批分支并一并删除；鳍链则把“鱼鳍真”和“鱼鳍假时链成立”作为两类分支取交集。" : "Logic: Kazusa's forcing-chain chapter emphasizes multiple branches. Starting from a cell, house, or candidate, if every legal branch reaches the same placement/elimination, the common conclusion is true no matter which branch is real. If an assumption leaves a row/column/box with no place for a digit, or a cell with no candidates, that assumption is false. Merged forcing chains move the start later so several targets can join the same branch proof; finned chains split into the fin-true branch and the fin-false chain branch and take their common deletion.";
+    checks.push(zh ? "确认分支是完备的：格强制链要覆盖该格所有候选；区域强制链要覆盖该区域该数字所有落点。" : "Verify branch completeness: a cell forcing chain must cover all candidates of the cell; a region forcing chain must cover all positions of the digit in the house.");
+    checks.push(zh ? "若是动态链，注意分支内部还会继续分叉，必须看到所有子分支都指向同一目标。" : "For dynamic chains, branches may split again; every sub-branch must still reach the same target.");
+  } else if (type === "rankFish") {
+    lines.push(zh ? `本步按 Kazusa 秩理论里的复数鱼/复杂鱼来读：先分强区域与弱区域，再看 rank，而不是按普通 X-Wing/Swordfish 的形状模板来读。` : `Read this as Kazusa-style rank-theory Multifish/Complex Fish: identify strong sectors, weak sectors, and rank, rather than using an ordinary X-Wing/Swordfish shape template.`);
+    lines.push(zh ? `强区域给出必须满足的候选名额，弱区域负责覆盖这些名额；当覆盖计数锁定后，多余位置推出 ${conclusion}。` : `Strong sectors supply required candidate placements and weak sectors cover them; once the count is locked, extra covered positions imply ${conclusion}.`);
+    proof = zh ? "数学逻辑：Kazusa 的秩理论把强区域定义为必须且只能填入一个实例，把弱区域定义为最多只能填入一个实例；秩可理解为“最多可容纳次数 − 实际必须填入次数”。复数鱼把多个数字、多个行列宫或单元格空间一起计数。若强区域数量与弱区域容量相等，且结构内候选被弱区域完整覆盖，就形成 Rank 0：每个弱区域的容量都要被必要实例用掉。任何弱区域中的额外候选若成立，会抢占容量，使某个强区域无处安置或某个弱区域超额，所以可删。Complex Fish 也是同一思想，只是 base/cover 可由更混合的区域组成；rank 非 0 时必须按输出的 guardian/例外条件核对，不能自动套 Rank 0 删法。" : "Logic: Kazusa's rank theory defines a strong sector as requiring exactly one instance, and a weak sector as allowing at most one; rank is the available capacity minus the required truths. Multifish counts several digits and several row/column/box/cell spaces together. If the number of strong sectors equals weak capacity and all in-structure candidates are covered by weak sectors, the pattern is rank 0: every weak sector's capacity is consumed by required instances. Any extra candidate in a weak sector would steal capacity, leaving a strong sector unsupported or overfilling a weak sector, so it can be removed. Complex Fish uses the same idea with more mixed base/cover sectors; nonzero rank must be checked through the reported guardians/exceptions, not by automatically applying rank-0 deletions.";
+    checks.push(zh ? "核对说明中的强区域/弱区域数量是否相等；若 step 标出 rank，应优先核对 rank=0 或对应 rank 约束。" : "Check whether the listed strong and weak sectors have equal counts; if the step reports rank, verify rank 0 or the reported rank condition first.");
+    checks.push(zh ? "Multi-Fish 的删数通常落在弱区域覆盖到的额外候选，不要按普通鱼只找一组 base 行/列。" : "Multifish deletions usually lie in extra candidates covered by weak sectors; do not look only for one ordinary set of base rows/columns.");
+  } else if (type === "rank0") {
+    lines.push(zh ? `本步按 MSLS / Rank 0 或 Rank 1 覆盖计数读：先看 Home/Away 数字集、被选中的行列宫，以及 NS/HS/DC 是否平衡。` : `Read this as MSLS / Rank-0 or Rank-1 cover counting: first check the Home/Away digit sets, the selected houses, and whether NS/HS/DC are balanced.`);
+    lines.push(zh ? `当“需要放入的 digit covers”与“能够容纳它们的核心格/隐藏格”形成锁定，任何会打破 NS、HS、DC 不等式的候选都可推出 ${conclusion}。` : `When the required digit covers are locked to the core naked/hidden cells that can hold them, any candidate that breaks the NS/HS/DC balance gives ${conclusion}.`);
+    proof = zh
+      ? "数学逻辑：Kazusa 把 MSLS 归到秩理论里的“网”，强调可以用单元格作强区域、用相关连接作弱区域构成零秩结构；David P Bird 的 MSLS 口径则更适合用户手算，不必强迫用户先分强弱区域。先把数字分成 Home set 与 Away set，再给若干行、列、宫分配这些数字覆盖；已给/已定数字从该 house 的覆盖中扣除，只留下仍需安置的 digit covers。记 NS 为所有候选都被覆盖的核心格数，HS 为至少有一个候选被覆盖的格数，DC 为 digit covers 总数，通常有 HS ≥ DC ≥ NS。若 DC = NS，就形成 Multi-Sector Naked Set：NS 个核心格必须容纳 DC 个必要数字，容量刚好用满，所以部分覆盖格中的被覆盖候选、以及核心格中被覆盖两次的候选若成立，都会导致核心格还要用更少的 digit covers 填满，最终出现某格无数可填或某格要放两个数的矛盾。若 HS = DC，则按 Multi-Sector Hidden Set 读：HS 个可容纳格最多容纳 DC 个必要数字，容量也被锁死，未覆盖的额外候选会破坏隐藏集合容量。Rank 1 / Almost 形态则允许一个例外名额；只有所有可能例外都被定位后，其余 potential eliminations 才能删除。SK Loop 是 MSLS 的典型外观之一，常见为四宫矩形和对角给定数；它可以写成链，但用户解释应优先按多区域锁定集合的容量证明读。"
+      : "Logic: Kazusa places MSLS under rank-theory “nets”: cells can act as strong sectors, while related links/covers act as weak sectors to form a rank-0 structure. In David P Bird's more hand-solving-friendly MSLS reading, the user does not need to start by labeling weak and strong sectors. Split the digits into a Home set and its Away complement, assign those covers to selected rows/columns/boxes, and subtract already-given/solved digits from each house, leaving only the digit covers still to be placed. Let NS be the number of cells whose candidates are all covered, HS the number of cells with at least one covered candidate, and DC the number of digit covers; normally HS ≥ DC ≥ NS. If DC = NS, the core cells form a Multi-Sector Naked Set: the NS cells must hold exactly the DC required digits, so capacity is fully used. A covered candidate in a partially covered cell, or a twice-covered candidate inside the core, would consume one of those required covers and leave too few covers to fill the core, eventually forcing an empty cell or a cell with two digits. If HS = DC, read it as a Multi-Sector Hidden Set: the possible cells have exactly the capacity needed for the required covers, so uncovered extras are false. Rank-1/almost cases allow one exception; the remaining potential eliminations are valid only after the exception is localized. SK Loop is a typical MSLS-looking pattern, often a four-box rectangle with diagonal givens; it may be written as a chain, but the user proof should be the multi-sector capacity argument.";
+    checks.push(zh ? "先核对 Home/Away 或 Base/Roof 数字集，再核对每个被选 house 中还需要放置哪些数字覆盖。" : "First check the Home/Away or Base/Roof digit sets, then check which digit covers still need placement in each selected house.");
+    checks.push(zh ? "核对 NS、HS、DC：MS-NS 常看 DC=NS；MS-HS 常看 HS=DC；Almost/Rank 1 只能删除被证明不是例外的候选。" : "Check NS, HS, and DC: MS-NS usually relies on DC=NS; MS-HS on HS=DC; Almost/Rank-1 forms can delete only candidates proven not to be the exception.");
+    checks.push(zh ? "SK Loop 不要按普通链环解释；先看四宫矩形、对角给定数和 Home set 是否构成 MSLS 等量覆盖。" : "Do not read SK Loop as an ordinary chain loop; first check whether the four-box rectangle, diagonal givens, and Home set form an MSLS equal-cover pattern.");
+    checks.push(zh ? "删数应是 potential eliminations：部分覆盖格中的被覆盖候选、核心格中被覆盖两次的候选，或隐藏集合中未覆盖的额外候选。" : "Deletions should be potential eliminations: covered candidates in partially covered cells, twice-covered candidates inside the core, or uncovered extras in a hidden-set reading.");
   } else if (type === "rank") {
     lines.push(zh ? `本步把 base 集合、cover 集合和候选覆盖关系作为整体比较。` : `This step compares base sets, cover sets, and candidate coverage as one structure.`);
     lines.push(zh ? `当 cover 足以覆盖 base 的必要占位，多余交叠位置或 rank 约束位置可得出 ${conclusion}。` : `When the covers account for the required base placements, extra overlaps or rank-constrained positions imply ${conclusion}.`);
     proof = zh ? "数学逻辑：秩理论把“必须满足的约束”看成 base，把“可容纳这些满足项的位置”看成 cover。若 cover 数量与 base 数量相等，cover 会被必要项占满，额外候选不能成立；若存在 rank 差，则删数/出数来自覆盖冗余、交叠或 guardian 对所有可能性的限制。" : "Logic: rank logic treats required constraints as bases and the places that can satisfy them as covers. If the number of covers equals the number of bases, the covers are filled by the required placements and extra candidates are false. With nonzero rank, eliminations/placements come from cover redundancy, overlaps, or guardians restricting all possibilities.";
     checks.push(zh ? "优先核对 base/cover 数量、rank 标注和删数是否落在被覆盖的额外位置。" : "Check base/cover counts, rank, and whether deletions are covered extras.");
   } else if (type === "exocet") {
-    lines.push(zh ? `观察 base cells、target cells、cross/guardian 区域的关系。` : `Observe the relation among base cells, target cells, cross cells, and guardians.`);
-    lines.push(zh ? `base 的真值组合会强制 target/cross 的可选范围，因此结论 ${conclusion} 成立。` : `The base-value combination forces the target/cross possibilities, so ${conclusion} follows.`);
-    proof = zh ? "数学逻辑：Exocet/Fireworks 类结构把一组 base 候选与目标格候选绑定。base 中最终选出的数字必须在目标区域得到一致落点；凡是无法与任何合法 base 组合兼容的候选，或会让所有 base 组合失败的候选，都可以删除。guardian 的作用是覆盖例外分支：每个例外若成立也会推出同一结论。" : "Logic: Exocet/Fireworks patterns bind base candidates to target candidates. The digits chosen in the base must have compatible placements in the targets/cross cells. Candidates incompatible with every legal base combination, or candidates that make all combinations fail, can be removed. Guardians cover exception branches that lead to the same conclusion.";
-    checks.push(zh ? "核对 base 候选集合与 target 候选集合是否一致或受同一组数字约束。" : "Check that base and target candidates match or are constrained by the same digit set.");
+    const key = stepExplainKindKey(step);
+    const isMutant = /mutant|交叉|变异/.test(key);
+    const isSenior = /senior|高级/.test(key);
+    const isWeak = /weak|弱/.test(key);
+    const isDouble = /double|双/.test(key);
+    lines.push(zh
+      ? `观察 base cells、target cells、cross lines/cross cells，以及可能出现的 companion、mirror、guardian。`
+      : `Observe the base cells, target cells, cross lines/cross cells, and any companions, mirrors, or guardians.`);
+    lines.push(zh
+      ? `JExocet 说明的核心是：两个 target cells 合起来必须持有与 base cells 相同的一对真数字；与这个同步关系不兼容的候选推出 ${conclusion}。`
+      : `The core JExocet reading is that the two target cells together must hold the same true digit pair as the base cells; candidates incompatible with that synchronization give ${conclusion}.`);
+    if (isWeak) {
+      proof = zh
+        ? `数学逻辑：Weak Exocet 只保留 Exocet 骨架中一部分稳定约束，所以不能套用完整 JE 的全部删数。仍然可以使用的部分是 base-target 同步的“所有分支覆盖”：base 中每一种可行真数对，都必须在 target/cross 结构里找到相容承接。若某候选在所有可行承接中都会造成某个 base 数字无处安置、target 无法承接，或 cross/cross-line 容量冲突，它就可删。`
+        : `Logic: Weak Exocet preserves only part of the stable Exocet constraints, so the full JE deletion set must not be applied wholesale. The usable part is all-branch coverage of base-target synchronization: every viable true digit pair in the base must have a compatible target/cross arrangement. A candidate can be removed only when it conflicts with every viable arrangement by blocking a base digit, target placement, or cross-line capacity.`;
+    } else {
+      proof = zh
+        ? `数学逻辑：JExocet Definition 的目标是证明一对 target cells 必须合起来持有 base cells 中的同一对真数字。base cells 位于一条迷你线，确定 base cross-line；另外两条平行 cross-lines 与 target/cross cells 共同形成 S-cell 容量限制。对任一真正进入 base 的数字来说，它在三条 cross-lines 中需要满足固定次数；普通 S cells 最多只能提供其中一部分，因此 target cells 必须承担缺少的必要落点。于是 target 中的非 base 数字可删；任何破坏“base 真数对 = target 真数对”的候选，都会让某个 base 数字无法承接，或让 cross-line/S-cell 容量超限，所以可删。${isSenior ? " Senior Exocet 扩大了 S-cell 集合，target 可能落在交叉结构内部；仍然依靠同一个容量证明：S cells 只能提供两次承接，target 必须提供第三次承接。" : " Junior Exocet 先按标准 base/target/cross/companion 角色核对。"}${isMutant ? " Mutant Exocet 把 cross 结构推广到更混合的行列组合，常可附带 rank/Multifish 视角；动态说明只按结论列出的目标逐项核对，不自动扩展删数。" : ""}${isDouble ? " Double JE 需要分别核对两个 JE2 子结构如何共存，再使用它们共同推出的额外限制。" : ""}`
+        : `Logic: the JExocet definition proves that the two target cells together must hold the same true digit pair as the base cells. The base cells sit in a mini-line and define the base cross-line; two further parallel cross-lines plus target/cross cells impose S-cell capacity limits. For any digit that is true in the base, its appearances across the three cross-lines must satisfy a fixed count. Ordinary S cells can provide only part of that count, so the target cells must provide the missing required placements. Therefore non-base digits in targets can be removed, and any candidate that breaks “true base pair = true target pair” would leave a base digit unsupported or overfill the cross-line/S-cell capacity, so it can be removed. ${isSenior ? "Senior Exocet expands the S-cell set and targets may sit inside the cross structure; the same capacity proof applies: S cells can provide only two supports, so the targets must provide the third." : "Junior Exocet starts by checking the standard base/target/cross/companion roles."}${isMutant ? " Mutant Exocet generalizes the cross structure to mixed row/column combinations and may also have a rank/Multifish reading; verify only the listed conclusions, not an expanded deletion set." : ""}${isDouble ? " Double JE requires checking how the two JE2 subpatterns coexist before using their additional shared restrictions." : ""}`;
+    }
+    checks.push(zh ? "先核对 base 候选集合；target cells 应只承接 base 真数字，而不是把 cross 区域里的所有候选一概删除。" : "First check the base candidate set; target cells should carry only the true base digits, but that does not mean every candidate in the cross area is deleted.");
+    checks.push(zh ? "核对 S-cell/cross-line 容量：每个 base 数字的承接次数必须由 target/cross 结构满足，删数只能来自破坏该配额的候选。" : "Check S-cell/cross-line capacity: each base digit's required supports must be supplied by the target/cross structure, and deletions must come only from candidates that break that quota.");
+    checks.push(zh ? "Senior、Mutant、Double、JE+、Almost JE 等扩展形态只继承被证明仍成立的推论；不要自动套用完整 Junior Exocet 的所有删数规则。" : "Senior, Mutant, Double, JE+, and Almost JE variants inherit only the inferences that remain proven; do not automatically apply every full Junior Exocet deletion rule.");
   } else if (type === "oddagon") {
-    lines.push(zh ? `观察奇环/奇数结构中的交替候选。` : `Observe the alternating candidates in the odd loop/pattern.`);
-    lines.push(zh ? `若保留某候选，会迫使奇数长度结构无法二色一致，因此结论 ${conclusion} 成立。` : `Keeping the candidate would force an impossible two-coloring around an odd structure, so ${conclusion} follows.`);
-    proof = zh ? "数学逻辑：Oddagon/Tridagon 利用奇数长度交替结构。若某组候选被迫沿结构两两交替，偶环可以一致闭合，奇环却会在回到起点时要求同一候选同时真/假或两个相同状态相邻，因此造成矛盾。触发该矛盾的候选必须删除。" : "Logic: Oddagon/Tridagon patterns use an odd alternating structure. Pairwise alternation can close on an even loop, but on an odd loop it returns to the start with inconsistent truth requirements. Any candidate that triggers that contradiction is false.";
-    checks.push(zh ? "确认结构长度/分组确实形成奇数交替，而不是普通偶环。" : "Verify the structure is truly odd-alternating, not an ordinary even loop.");
+    const key = stepExplainKindKey(step);
+    const isTriplet = /triplet|tri[-\s]*value|trivalue|tridagon|三/.test(key);
+    lines.push(zh
+      ? `本步按 Kazusa 的 Rank Logic / Negative Rank 口径读，不按 UR/BUG 唯一性模板读。`
+      : `Read this with Kazusa's Rank Logic / Negative-Rank model, not as a UR/BUG uniqueness template.`);
+    lines.push(zh
+      ? `先看奇数交替主体，再看 guardian/额外候选如何阻止坏结构完整成立；会把结构推入负秩矛盾的候选推出 ${conclusion}。`
+      : `First inspect the odd alternating body, then the guardians/extras that prevent the bad structure from becoming complete; candidates that force the negative-rank contradiction give ${conclusion}.`);
+    proof = zh
+      ? `数学逻辑：Oddagon/Tridagon 在 Kazusa 体系里属于 Rank Logic 的 Negative Rank。它不是“如果成立会有第二解”的唯一性反证，而是“结构本身无法满足”的容量/奇偶矛盾。Bivalue Oddagon 可以理解为奇数个双值强约束围成的交替环：沿环传播真假，偶数环可以闭合，奇数环回到起点时会要求同一状态同时为真/假，或要求两个相邻位置取同一侧状态，导致无解。${isTriplet ? "Trivalue/Triplet Oddagon 是同一负秩思想的三值推广：三数字在奇结构中被配额和交替关系卡死，若额外候选被去掉或某候选被保留，就会出现某个数字缺位、重复占位或局部容量无法满足。" : ""}因此，guardian 或额外候选只是阻止坏结构成立的出口；若某个删数候选会排除所有出口，或把盘面强迫进这个负秩结构，它就必须为假。这个结论不依赖“唯一解第二解”前提，但必须核对奇数结构和所有出口是否完整。`
+      : `Logic: in Kazusa's taxonomy, Oddagon/Tridagon belongs to Rank Logic / Negative Ranks. It is not a uniqueness proof saying that a second solution would appear; it is an unsatisfiable structure/capacity contradiction. A Bivalue Oddagon can be read as an odd ring of bivalue strong constraints: truth alternation can close on an even ring, but on an odd ring it returns to the start with inconsistent truth requirements or adjacent endpoints requiring the same state. ${isTriplet ? "Trivalue/Triplet Oddagon generalizes the same negative-rank idea: the three digits are trapped by quota and alternation constraints, so removing the exits or keeping a forcing candidate causes a missing digit, duplicate placement, or local capacity failure. " : ""}Guardians or extra candidates are exits that prevent the bad structure from becoming active. A deletion is valid only when the candidate would remove every exit or force the grid into that negative-rank contradiction. This does not rely on the unique-solution/second-solution premise, but the odd structure and all exits must be checked.`;
+    checks.push(zh ? "确认它不是 UR/BUG：Oddagon 的核心是奇数/负秩无解矛盾，不是可互换第二解。" : "Verify it is not UR/BUG: Oddagon is an odd/negative-rank no-solution contradiction, not an interchangeable-second-solution proof.");
+    checks.push(zh ? "确认奇数结构、候选集合和 guardian/额外候选完整；删数必须确实会消灭所有出口或触发负秩矛盾。" : "Verify the odd structure, digit set, and guardians/extras are complete; the deletion must truly remove all exits or trigger the negative-rank contradiction.");
   } else {
     lines.push(zh ? `先看高亮结构${cellsText ? `：${cellsText}` : ""}，再看结论 ${conclusion}。` : `First inspect the highlighted structure${cellsText ? `: ${cellsText}` : ""}, then the conclusion ${conclusion}.`);
     lines.push(zh ? "本技巧的专用模板尚未细化；当前说明使用通用“结构限制所有可能性”的读法。" : "This technique does not yet have a specialized template; this uses the generic all-cases-covered reading." );
@@ -8270,6 +8445,12 @@ function getTechniqueConfigPayload(state = techniqueState) {
   const payload = { whipMemoryMode: normalizeWhipMemoryMode(whipMemoryMode) };
   for (const item of (state || []).filter((tech) => tech.implemented !== false)) {
     payload[item.kind] = Boolean(item.enabled);
+    if (item.kind === "ComplexAIC") {
+      payload.ComplexAICWithAMSLS = Boolean(item.withAMSLS);
+    }
+    if (item.kind === "JE") {
+      payload.JEWithJEPOM = Boolean(item.withJEPOM);
+    }
   }
   return payload;
 }
@@ -8384,6 +8565,8 @@ function mergeReferenceTechniques(engineTechniques, previousState = techniqueSta
       score: engineItem?.score ?? ref.score,
       difficulty: engineItem?.difficulty ?? ref.difficulty,
       enabled: engineItem ? Boolean(engineItem.enabled) : Boolean(previous?.enabled),
+      withAMSLS: engineItem?.withAMSLS ?? previous?.withAMSLS ?? false,
+      withJEPOM: engineItem?.withJEPOM ?? previous?.withJEPOM ?? false,
       implemented: Boolean(engineItem),
     };
   });
@@ -8489,6 +8672,27 @@ function renderTechniques() {
     name.textContent = techniqueName(item);
     label.append(input, name);
     nameCell.appendChild(label);
+
+    const addSubOption = (key, text) => {
+      const subLabel = document.createElement("label");
+      subLabel.className = "technique-suboption";
+      const subInput = document.createElement("input");
+      subInput.type = "checkbox";
+      subInput.checked = Boolean(item[key]);
+      subInput.disabled = item.implemented === false || !input.checked;
+      subInput.addEventListener("change", () => {
+        const next = techniqueState.map((tech) => (
+          tech.kind === item.kind ? { ...tech, [key]: subInput.checked } : tech
+        ));
+        applyTechniqueState(next);
+      });
+      const subText = document.createElement("span");
+      subText.textContent = text;
+      subLabel.append(subInput, subText);
+      nameCell.appendChild(subLabel);
+    };
+    if (item.kind === "ComplexAIC") addSubOption("withAMSLS", "with AMSLS");
+    if (item.kind === "JE") addSubOption("withJEPOM", "with JEPOM");
 
     const scoreCell = document.createElement("td");
     scoreCell.className = "technique-score-cell";
@@ -10369,6 +10573,8 @@ function applyTechniquePreset(mode) {
       ...item,
       order: REF_TECHNIQUE_BY_KIND.get(item.kind)?.order ?? item.order,
       enabled: enabledFor(item),
+      withAMSLS: item.kind === "ComplexAIC" ? false : item.withAMSLS,
+      withJEPOM: item.kind === "JE" ? false : item.withJEPOM,
     }))
     .sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
   const nextWhipMemoryMode = mode === "whipRating" ? "large" : (whipMemoryMode === "large" ? "large" : "auto");
