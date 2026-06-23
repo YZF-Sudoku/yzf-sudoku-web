@@ -560,6 +560,365 @@
       border-radius: 6px;
       background: #fffaf2;
     }
+
+    .tlg-solver-panel {
+      margin-top: 8px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #f8fbff;
+    }
+    .tlg-solver-panel summary {
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 800;
+      color: #0f3d7a;
+      user-select: none;
+    }
+    .tlg-solver-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px 8px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #274161;
+    }
+    .tlg-solver-grid label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .tlg-solver-grid select,
+    .tlg-solver-grid input[type="number"] {
+      min-width: 0;
+      max-width: 100%;
+    }
+    .tlg-solver-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .tlg-solver-controls button {
+      margin: 0;
+    }
+    .tlg-solver-status {
+      min-height: 22px;
+      margin-top: 8px;
+      padding: 6px 8px;
+      border-left: 4px solid #1466cc;
+      background: #eff6ff;
+      color: #1e3a5f;
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: normal;
+      word-break: break-word;
+    }
+    .tlg-solver-status[data-tone="error"] {
+      border-left-color: #b42318;
+      background: #fef3f2;
+      color: #7a271a;
+    }
+    .tlg-solver-status[data-tone="ok"] {
+      border-left-color: #0b7a4b;
+      background: #ecfdf3;
+      color: #106548;
+    }
+    .tlg-solver-solution-panel {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border: 1px solid rgba(11, 122, 75, 0.22);
+      border-radius: 6px;
+      background: #f7fff9;
+      color: #173a2b;
+    }
+    .tlg-solver-solution-title {
+      margin-bottom: 5px;
+      color: #0b6b43;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .tlg-solver-solution {
+      margin: 0;
+      overflow-x: auto;
+      color: #172b22;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: normal;
+    }
+    .tlg-solver-state-panel {
+      margin-top: 8px;
+      padding: 7px 8px;
+      border: 1px solid rgba(15, 61, 122, 0.14);
+      border-radius: 6px;
+      background: #ffffff;
+      color: #243b55;
+      font-size: 12px;
+    }
+    .tlg-solver-state-title {
+      font-weight: 800;
+      margin-bottom: 5px;
+      color: #0f3d7a;
+    }
+    .tlg-solver-state-group {
+      margin-top: 5px;
+    }
+    .tlg-solver-state-group-title {
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .tlg-solver-state-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .tlg-solver-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      border: 1px solid rgba(20, 102, 204, 0.2);
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #183b63;
+      line-height: 1.2;
+    }
+    .tlg-solver-chip button {
+      min-width: 0;
+      margin: 0;
+      padding: 0 3px;
+      border: 0;
+      background: transparent;
+      color: #7a271a;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .tlg-solver-debug {
+      margin-top: 8px;
+      border-top: 1px solid rgba(15, 61, 122, 0.12);
+      padding-top: 6px;
+    }
+    .tlg-solver-debug summary {
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .tlg-solver-textarea {
+      width: 100%;
+      min-height: 76px;
+      margin-top: 6px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+    .tlg-solver-json {
+      max-height: 160px;
+      margin-top: 8px;
+      padding: 8px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      color: #16324f;
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .candidate.tlg-virtual-candidate {
+      outline: max(1px, 0.14em) solid #7c3aed;
+      outline-offset: max(-3px, -0.22em);
+      border-radius: 999px;
+      background: color-mix(in srgb, #ede9fe 70%, transparent);
+      font-weight: 900;
+    }
+    .candidate.tlg-aur-corner {
+      outline: max(1px, 0.14em) dashed #ea580c;
+      outline-offset: max(-2px, -0.18em);
+      border-radius: 999px;
+      background: color-mix(in srgb, #ffedd5 70%, transparent);
+      font-weight: 900;
+    }
+    .candidate.tlg-aur-corner-secondary {
+      outline: max(1px, 0.14em) dashed #2563eb;
+      outline-offset: max(-2px, -0.18em);
+      border-radius: 999px;
+      background: color-mix(in srgb, #dbeafe 70%, transparent);
+      font-weight: 900;
+    }
+    .candidate.tlg-daur-candidate {
+      outline: max(1px, 0.14em) dotted #0891b2;
+      outline-offset: max(-2px, -0.18em);
+      border-radius: 999px;
+      background: color-mix(in srgb, #cffafe 72%, transparent);
+      font-weight: 900;
+    }
+    .candidate.tlg-elimination {
+      color: #7a0012;
+      font-weight: 900;
+      z-index: 4;
+    }
+    .candidate.tlg-elimination::before,
+    .candidate.tlg-elimination::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 1.42em;
+      height: max(2px, 0.16em);
+      border-radius: 999px;
+      background: #b42318;
+      transform-origin: center;
+      z-index: 40;
+      pointer-events: none;
+      filter: drop-shadow(0 1px 0 rgba(255,255,255,0.9))
+              drop-shadow(0 -1px 0 rgba(255,255,255,0.9))
+              drop-shadow(1px 0 0 rgba(255,255,255,0.9))
+              drop-shadow(-1px 0 0 rgba(255,255,255,0.9));
+    }
+    .candidate.tlg-elimination::before {
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+    .candidate.tlg-elimination::after {
+      transform: translate(-50%, -50%) rotate(-45deg);
+    }
+    .candidate.tlg-selected-endpoint {
+      box-shadow: inset 0 0 0 max(1px, 0.14em) #0ea5e9;
+      border-radius: 999px;
+    }
+    .candidate.tlg-multi-selected {
+      border-radius: 999px;
+      background: color-mix(in srgb, #fee2e2 78%, transparent);
+      box-shadow: inset 0 0 0 max(2px, 0.16em) #dc2626;
+      color: #7f1d1d;
+      font-weight: 900;
+      z-index: 12;
+    }
+    .tlg-context-menu {
+      position: fixed;
+      z-index: 10000;
+      min-width: 230px;
+      max-width: min(300px, calc(100vw - 16px));
+      padding: 5px;
+      border: 1px solid rgba(15, 23, 42, 0.28);
+      border-radius: 7px;
+      background: #ffffff;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
+      color: #172033;
+      font-size: 13px;
+      user-select: none;
+    }
+    .tlg-context-header {
+      padding: 5px 8px 7px;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+      margin-bottom: 4px;
+      color: #334155;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tlg-context-item {
+      display: flex;
+      width: 100%;
+      min-height: 30px;
+      align-items: center;
+      justify-content: flex-start;
+      margin: 0;
+      padding: 5px 9px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      line-height: 1.25;
+      text-align: left;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tlg-context-item:hover,
+    .tlg-context-item:focus-visible,
+    .tlg-context-submenu-wrap:focus-within > .tlg-context-submenu-trigger {
+      outline: none;
+      background: #eaf2ff;
+      color: #0f3d7a;
+    }
+    .tlg-context-separator {
+      height: 1px;
+      margin: 4px 3px;
+      background: rgba(15, 23, 42, 0.14);
+    }
+    .tlg-context-submenu-wrap {
+      position: relative;
+    }
+    .tlg-context-submenu-trigger::after {
+      content: "›";
+      margin-left: auto;
+      padding-left: 16px;
+      color: #64748b;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .tlg-context-submenu {
+      display: none;
+      position: absolute;
+      top: -5px;
+      left: calc(100% + 4px);
+      min-width: 170px;
+      padding: 5px;
+      border: 1px solid rgba(15, 23, 42, 0.28);
+      border-radius: 7px;
+      background: #fff;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.2);
+    }
+    .tlg-context-submenu-wrap:hover > .tlg-context-submenu,
+    .tlg-context-submenu-wrap:focus-within > .tlg-context-submenu {
+      display: block;
+    }
+    .tlg-context-open-left .tlg-context-submenu {
+      right: calc(100% + 4px);
+      left: auto;
+    }
+    .candidate.tlg-house-membership {
+      isolation: isolate;
+      font-weight: 900;
+    }
+    .candidate.tlg-house-membership > .tlg-house-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 1.62em;
+      height: 1.62em;
+      overflow: visible;
+      pointer-events: none;
+      transform: translate(-50%, calc(-50% - 1.5cqw));
+      z-index: -1;
+    }
+    .candidate.tlg-truth-candidate {
+      /* Kept as a no-op compatibility selector for cached markup. V563 uses
+         the SVG house-membership overlay instead of a single blue outline. */
+      font-weight: 900;
+    }
+    /* Cell Links remain cell-level objects. V574 changed only row/column/box
+       Link rendering to candidate-level overlays; it must not suppress this fill. */
+    .sudoku-cell.tlg-cell-link {
+      background-image: linear-gradient(rgba(14, 165, 233, 0.24), rgba(14, 165, 233, 0.24)) !important;
+    }
+    .sudoku-cell.tlg-cell-truth::after {
+      content: "";
+      position: absolute;
+      inset: max(2px, 0.12em);
+      border: max(2px, 0.16em) solid rgba(20, 102, 204, 0.62);
+      border-radius: max(2px, 0.12em);
+      pointer-events: none;
+      z-index: 8;
+    }
+
     .manual-advanced-panel {
       margin-top: 8px;
       padding: 8px;
@@ -1778,13 +2137,19 @@
       color: var(--muted);
       font-size: 12px;
     }
-    .batch-grid input {
+    .batch-grid input, .batch-grid select, .batch-grid textarea {
       min-width: 0;
       height: 30px;
       padding: 4px 7px;
       border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 13px;
+    }
+    .batch-grid textarea {
+      grid-column: 1 / -1;
+      min-height: 86px;
+      resize: vertical;
+      line-height: 1.35;
     }
     .batch-actions {
       display: grid;
@@ -3800,7 +4165,7 @@
             <div class="brand-title">YZF_Sudoku</div>
             <div id="brandSubtitle" class="brand-subtitle">移动优先逻辑训练器</div>
           </div>
-          <a id="manualLink" class="manual-link" href="./user_manual.html" target="_blank" rel="noopener">使用手册</a>
+          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260623-v586-tlg-truth-coverage-native-order" target="_blank" rel="noopener">使用手册</a>
           <button id="btnStepExplain" class="step-explain-button" type="button" disabled title="当前没有可解释的步骤。" aria-label="当前没有可解释的步骤。">解释</button>
           <a id="techniquesLink" class="manual-link" href="./techniques.html" target="_blank" rel="noopener">技巧说明</a>
           <label>
@@ -3854,6 +4219,187 @@
           </div>
 
           <section id="tabControls" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnControls" data-tab-panel="controls">
+              <label class="generate-options">
+                <span>难度</span>
+              <select id="difficultySelect" title="生成题目时使用参考项目的 ER 难度分档">
+                <option value="0">Random (ER 0-12.0)</option>
+                <option value="1">Easy (ER 0-1.5)</option>
+                <option value="2">Medium (ER 1.5-2.8)</option>
+                <option value="3">Hard (ER 2.8-6.0)</option>
+                <option value="4">Unfair (ER 6.0-8.0)</option>
+                <option value="5">Extreme (ER 8.0-9.3)</option>
+                <option value="6">Insane (ER 9.3-12.0)</option>
+              </select>
+            </label>
+            <label class="generate-options">
+              <span>训练</span>
+              <select id="trainingTechniqueSelect" title="生成解题路径中包含指定技巧的题目"></select>
+            </label>
+
+            <div id="numpad" class="numpad" aria-label="number pad"></div>
+
+
+            <details class="input-panel">
+              <summary>更多：题面输入与导出评分</summary>
+              <textarea id="givens">53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79</textarea>
+              <div class="ocr-import-actions">
+                <label id="btnImageOcrPick" class="ocr-file-button"><span id="btnImageOcrPickText">选择图片识别</span><input id="imageOcrInput" class="ocr-native-file-input" type="file" accept="image/*" /></label>
+                <label id="btnImageOcrCamera" class="ocr-file-button ocr-camera-action"><span id="btnImageOcrCameraText">拍照识别</span><input id="imageOcrCameraInput" class="ocr-native-file-input" type="file" accept="image/*" capture="environment" /></label>
+                <button id="btnImageOcrClipboard" type="button">从剪贴板识别</button>
+                <select id="exportFormatSelect" aria-label="导出格式" title="导出格式">
+                  <option value="original">原始题串</option>
+                  <option value="known">已知数字串</option>
+                  <option value="candidates">候选数字串</option>
+                  <option value="sukaku">Sukaku 字串</option>
+                  <option value="library" selected>Library 题串</option>
+                  <option value="coach">To Coach</option>
+                </select>
+                <button id="btnExportPuzzle">导出题串</button>
+                <button id="btnClearSavedSession" type="button">清除本地保存</button>
+                <button id="btnRate">评分当前题目</button>
+              </div>
+              <div id="imageOcrPreviewPanel" class="ocr-image-preview-panel hidden">
+                <div class="ocr-image-preview-header">
+                  <span id="imageOcrPreviewTitle">OCR 图片预览</span>
+                  <button id="btnImageOcrPreviewClear" type="button">隐藏图片</button>
+                </div>
+                <div id="imageOcrPreviewSummary" class="ocr-image-preview-summary"></div>
+                <div class="ocr-image-preview-grid">
+                  <figure class="ocr-image-preview-figure">
+                    <figcaption id="imageOcrPreviewWarpedCaption">处理后的 576×576 棋盘</figcaption>
+                    <img id="imageOcrPreviewWarped" alt="处理后的 576×576 棋盘" />
+                  </figure>
+                </div>
+              </div>
+              <pre id="out"></pre>
+            </details>
+            <details id="manualMarksPanel" class="manual-marks-panel">
+              <summary><span id="manualMarksTitle">手工标记</span></summary>
+              <div class="manual-marks-grid">
+                <label><span id="manualMarkModeLabel">模式</span><select id="manualMarkMode">
+                  <option value="off">关闭标记</option>
+                  <option value="cellColor">整格上色</option>
+                  <option value="candidateColor">候选上色</option>
+                  <option value="circle">候选画圈</option>
+                  <option value="preElim">预备删数</option>
+                  <option value="elim">正式删数</option>
+                  <option value="chain">手动画链</option>
+                  <option value="block">区块标记</option>
+                </select></label>
+                <label><span id="manualMarkLineLabel">链线</span><select id="manualMarkLineType">
+                  <option value="strong">强链（实线）</option>
+                  <option value="weak">弱链（虚线）</option>
+                  <option value="constructionStrong">构造强链</option>
+                  <option value="constructionWeak">构造弱链</option>
+                </select></label>
+              </div>
+              <div class="manual-mark-actions" role="group" aria-label="manual mark action">
+                <button id="manualMarkPrimary" type="button" class="compact active">添加</button>
+                <button id="manualMarkSecondary" type="button" class="compact">清除</button>
+              </div>
+              <div class="manual-mark-color-row">
+                <span id="manualMarkColorLabel">颜色</span>
+                <input id="manualMarkCustomColor" type="color" value="#FFD54A" aria-label="custom mark color" />
+                <button id="manualMarkAddColor" type="button" class="compact"><span id="manualMarkAddColorText">添加自定义色</span></button>
+              </div>
+              <div id="manualMarkSwatches" class="manual-mark-swatches" aria-label="manual mark colors"></div>
+              <div class="manual-mark-buttons">
+                <button id="manualMarkApplyElims" type="button" class="compact primary">应用全部删数</button>
+                <label class="manual-mark-cleaning"><input id="manualMarkCleanEasy" type="checkbox" /> <span id="manualMarkCleanEasyLabel">清除简单步骤</span></label>
+                <button id="manualMarkClear" type="button" class="compact">清空标记</button>
+                <button id="manualMarkUndoLine" type="button" class="compact">撤销线</button>
+                <button id="manualMarkCancelChain" type="button" class="compact">取消起点</button>
+                <button id="manualMarkFinishBlock" type="button" class="compact">完成区块</button>
+                <button id="manualMarkUndoBlock" type="button" class="compact">撤销区块</button>
+              </div>
+              <div id="manualMarkStatus" class="manual-mark-status">关闭标记。</div>
+            </details>
+
+            <details class="input-panel batch-panel">
+              <summary>批量任务</summary>
+              <div class="batch-grid">
+                <label>
+                  <span>模式</span>
+                  <select id="batchMode">
+                    <option value="generate" selected>批量出题</option>
+                    <option value="solve">批量解题</option>
+                  </select>
+                </label>
+                <label>
+                  <span>输出文件名</span>
+                  <input id="batchFilename" type="text" value="sudoku-batch.txt">
+                </label>
+                <label class="batch-solve-file-label hidden">
+                  <span>解题输入文件</span>
+                  <input id="batchSolveFile" type="file" accept=".txt,.csv,.tsv,text/plain">
+                </label>
+              </div>
+              <div class="batch-actions">
+                <button id="btnBatchGenerate" class="compact primary" type="button">开始</button>
+                <button id="btnBatchStop" class="compact" type="button" disabled>停止</button>
+              </div>
+              <div id="batchStatus" class="batch-status">批量出题/批量解题共用面板。批量出题持续写入输出文件，批量解题从文本文件读取，一行一题。</div>
+            </details>
+
+              <details id="tlgSolverPanel" class="tlg-solver-panel">
+                <summary><span id="tlgSolverTitle">TLG Solver</span></summary>
+                <div class="tlg-solver-grid">
+                  <label><input id="tlgSolverEnable" type="checkbox" /> <span id="tlgSolverEnableLabel">启用 TLG 编辑</span></label>
+                  <label><span id="tlgSolverModeLabel">输入模式</span>
+                    <select id="tlgSolverMode">
+                      <option value="truths">Truths</option>
+                      <option value="links">Links</option>
+                      <option value="virtualSet">Virtual Set</option>
+                      <option value="aur">AUR</option>
+                      <option value="daur">DAUR</option>
+                    </select>
+                  </label>
+                  <label id="tlgSolverAurGroupWrap" hidden><span id="tlgSolverAurGroupLabel">AUR 分组</span>
+                    <select id="tlgSolverAurGroup">
+                      <option value="0">AUR 1</option>
+                      <option value="1">AUR 2</option>
+                    </select>
+                  </label>
+                  <label><span id="tlgSolverLinkTypeLabel">Link 类型</span>
+                    <select id="tlgSolverLinkType">
+                      <option value="auto">自动</option>
+                      <option value="rowColumn">行/列</option>
+                      <option value="box">宫</option>
+                      <option value="cell">单元格</option>
+                    </select>
+                  </label>
+                  <label><span id="tlgSolverTruthsToApplyLabel">应用 Truths 数</span>
+                    <input id="tlgSolverTruthsToApply" type="number" min="0" max="81" value="0" />
+                  </label>
+                  <label><span id="tlgSolverAurPremiseModeLabel">唯一性门控</span>
+                    <select id="tlgSolverAurPremiseMode">
+                      <option value="unique-puzzle-derived" selected>唯一解：核验初始可交换局面</option>
+                      <option value="candidate-grid-asserted">训练盘：允许初始缺数</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="tlg-solver-controls" role="group" aria-label="TLG Solver 操作">
+                  <button id="btnTlgImportCandidates" type="button" class="compact">导入 TLG 候选盘面</button>
+                  <button id="btnTlgFindEliminations" type="button" class="compact primary">查找删数</button>
+                  <button id="btnTlgConvertTruths" type="button" class="compact" disabled>转换冗余 Truths</button>
+                  <button id="btnTlgRemoveUnused" type="button" class="compact" disabled>移除未使用 Links</button>
+                  <button id="btnTlgClear" type="button" class="compact">清空 TLG 状态</button>
+                </div>
+                <div id="tlgSolverStatus" class="tlg-solver-status">TLG Solver 是可选附加功能；未启用 TLG 编辑时不会影响现有解题流程。</div>
+                <div id="tlgSolverSolutionPanel" class="tlg-solver-solution-panel" aria-live="polite" hidden>
+                  <div id="tlgSolverSolutionTitle" class="tlg-solver-solution-title">Truths/Links Solution</div>
+                  <pre id="tlgSolverSolution" class="tlg-solver-solution" hidden></pre>
+                </div>
+                <div class="tlg-solver-state-panel" aria-live="polite">
+                  <div id="tlgSolverStateTitle" class="tlg-solver-state-title">当前 TLG 状态</div>
+                  <div id="tlgSolverStateList" class="tlg-solver-state-list">暂无 TLG 输入。</div>
+                </div>
+                <details id="tlgSolverDebug" class="tlg-solver-debug" hidden>
+                  <summary id="tlgSolverDebugSummary">调试 / 导入</summary>
+                  <textarea id="tlgSolverImportText" class="tlg-solver-textarea" spellcheck="false" placeholder="仅用于调试导入；TLG 主要通过盘面点击输入。"></textarea>
+                  <pre id="tlgSolverRaw" class="tlg-solver-json" hidden></pre>
+                </details>
+              </details>
               <div class="yzf-debug-panel">
                 <div class="yzf-debug-title">YZF typ=4 debug sample</div>
               <div class="yzf-debug-controls">
@@ -3907,121 +4453,7 @@
                 </details>
               </div>
               <!-- Manual Advanced was a debug-only panel and is intentionally omitted from the production UI. -->
-              <label class="generate-options">
-                <span>难度</span>
-              <select id="difficultySelect" title="生成题目时使用参考项目的 ER 难度分档">
-                <option value="0">Random (ER 0-12.0)</option>
-                <option value="1">Easy (ER 0-1.5)</option>
-                <option value="2">Medium (ER 1.5-2.8)</option>
-                <option value="3">Hard (ER 2.8-6.0)</option>
-                <option value="4">Unfair (ER 6.0-8.0)</option>
-                <option value="5">Extreme (ER 8.0-9.3)</option>
-                <option value="6">Insane (ER 9.3-12.0)</option>
-              </select>
-            </label>
-            <label class="generate-options">
-              <span>训练</span>
-              <select id="trainingTechniqueSelect" title="生成解题路径中包含指定技巧的题目"></select>
-            </label>
 
-            <div id="numpad" class="numpad" aria-label="number pad"></div>
-
-
-            <details id="manualMarksPanel" class="manual-marks-panel">
-              <summary><span id="manualMarksTitle">手工标记</span></summary>
-              <div class="manual-marks-grid">
-                <label><span id="manualMarkModeLabel">模式</span><select id="manualMarkMode">
-                  <option value="off">关闭标记</option>
-                  <option value="cellColor">整格上色</option>
-                  <option value="candidateColor">候选上色</option>
-                  <option value="circle">候选画圈</option>
-                  <option value="preElim">预备删数</option>
-                  <option value="elim">正式删数</option>
-                  <option value="chain">手动画链</option>
-                  <option value="block">区块标记</option>
-                </select></label>
-                <label><span id="manualMarkLineLabel">链线</span><select id="manualMarkLineType">
-                  <option value="strong">强链（实线）</option>
-                  <option value="weak">弱链（虚线）</option>
-                  <option value="constructionStrong">构造强链</option>
-                  <option value="constructionWeak">构造弱链</option>
-                </select></label>
-              </div>
-              <div class="manual-mark-actions" role="group" aria-label="manual mark action">
-                <button id="manualMarkPrimary" type="button" class="compact active">添加</button>
-                <button id="manualMarkSecondary" type="button" class="compact">清除</button>
-              </div>
-              <div class="manual-mark-color-row">
-                <span id="manualMarkColorLabel">颜色</span>
-                <input id="manualMarkCustomColor" type="color" value="#FFD54A" aria-label="custom mark color" />
-                <button id="manualMarkAddColor" type="button" class="compact"><span id="manualMarkAddColorText">添加自定义色</span></button>
-              </div>
-              <div id="manualMarkSwatches" class="manual-mark-swatches" aria-label="manual mark colors"></div>
-              <div class="manual-mark-buttons">
-                <button id="manualMarkApplyElims" type="button" class="compact primary">应用全部删数</button>
-                <label class="manual-mark-cleaning"><input id="manualMarkCleanEasy" type="checkbox" /> <span id="manualMarkCleanEasyLabel">清除简单步骤</span></label>
-                <button id="manualMarkClear" type="button" class="compact">清空标记</button>
-                <button id="manualMarkUndoLine" type="button" class="compact">撤销线</button>
-                <button id="manualMarkCancelChain" type="button" class="compact">取消起点</button>
-                <button id="manualMarkFinishBlock" type="button" class="compact">完成区块</button>
-                <button id="manualMarkUndoBlock" type="button" class="compact">撤销区块</button>
-              </div>
-              <div id="manualMarkStatus" class="manual-mark-status">关闭标记。</div>
-            </details>
-
-            <details class="input-panel batch-panel">
-              <summary>批量出题</summary>
-              <div class="batch-grid">
-                <label>
-                  <span>数量</span>
-                  <input id="batchCount" type="number" min="1" max="500" step="1" value="10">
-                </label>
-                <label>
-                  <span>文件名</span>
-                  <input id="batchFilename" type="text" value="sudoku-batch.txt">
-                </label>
-              </div>
-              <div class="batch-actions">
-                <button id="btnBatchGenerate" class="compact primary" type="button">开始出题</button>
-                <button id="btnBatchStop" class="compact" type="button" disabled>停止</button>
-              </div>
-              <div id="batchStatus" class="batch-status">按当前难度批量生成，写入磁盘文件。</div>
-            </details>
-
-            <details class="input-panel">
-              <summary>更多：题面输入与导出评分</summary>
-              <textarea id="givens">53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79</textarea>
-              <div class="ocr-import-actions">
-                <label id="btnImageOcrPick" class="ocr-file-button"><span id="btnImageOcrPickText">选择图片识别</span><input id="imageOcrInput" class="ocr-native-file-input" type="file" accept="image/*" /></label>
-                <label id="btnImageOcrCamera" class="ocr-file-button ocr-camera-action"><span id="btnImageOcrCameraText">拍照识别</span><input id="imageOcrCameraInput" class="ocr-native-file-input" type="file" accept="image/*" capture="environment" /></label>
-                <button id="btnImageOcrClipboard" type="button">从剪贴板识别</button>
-                <select id="exportFormatSelect" aria-label="导出格式" title="导出格式">
-                  <option value="original">原始题串</option>
-                  <option value="known">已知数字串</option>
-                  <option value="candidates">候选数字串</option>
-                  <option value="sukaku">Sukaku 字串</option>
-                  <option value="library" selected>Library 题串</option>
-                  <option value="coach">To Coach</option>
-                </select>
-                <button id="btnExportPuzzle">导出题串</button>
-                <button id="btnClearSavedSession" type="button">清除本地保存</button>
-                <button id="btnRate">评分当前题目</button>
-              </div>
-              <div id="imageOcrPreviewPanel" class="ocr-image-preview-panel hidden">
-                <div class="ocr-image-preview-header">
-                  <span id="imageOcrPreviewTitle">OCR 图片预览</span>
-                  <button id="btnImageOcrPreviewClear" type="button">隐藏图片</button>
-                </div>
-                <div id="imageOcrPreviewSummary" class="ocr-image-preview-summary"></div>
-                <div class="ocr-image-preview-grid">
-                  <figure class="ocr-image-preview-figure">
-                    <figcaption id="imageOcrPreviewWarpedCaption">处理后的 576×576 棋盘</figcaption>
-                    <img id="imageOcrPreviewWarped" alt="处理后的 576×576 棋盘" />
-                  </figure>
-                </div>
-              </div>
-              <pre id="out"></pre>
-            </details>
           </section>
 
           <section id="tabTechniques" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnTechniques" data-tab-panel="techniques" hidden>
@@ -4172,6 +4604,6 @@
         document.addEventListener('DOMContentLoaded', scheduleDynamicBoardSizeForLayoutMode);
       })();
     </script>
-    <script type="module" src="./app.js?v=20260605-v444-single-language-ui"></script>
+    <script type="module" src="./app.js?v=20260623-v586-tlg-truth-coverage-native-order"></script>
   </body>
 </html>

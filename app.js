@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=20260528-v223-blossom-checkwk-short-loop";
+import createModule from "./sudoku_wasm.js?v=20260623-v586-tlg-truth-coverage-native-order";
 
-const APP_VERSION = "20260602-v424_board_size_hard_lock";
+const APP_VERSION = "20260623-v586_tlg_truth_coverage_native_order";
 
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
 const COACH_BASE32_REVERSE = new Map([...COACH_BASE32_CHARS].map((ch, index) => [ch, index]));
@@ -46,6 +46,27 @@ const btnManualAdvancedClear = document.getElementById("btnManualAdvancedClear")
 const manualAdvancedStatus = document.getElementById("manualAdvancedStatus");
 const manualAdvancedJson = document.getElementById("manualAdvancedJson");
 const manualAdvancedSmokeOutput = document.getElementById("manualAdvancedSmokeOutput");
+
+const tlgSolverPanel = document.getElementById("tlgSolverPanel");
+const tlgSolverEnable = document.getElementById("tlgSolverEnable");
+const tlgSolverMode = document.getElementById("tlgSolverMode");
+const tlgSolverAurGroupWrap = document.getElementById("tlgSolverAurGroupWrap");
+const tlgSolverAurGroup = document.getElementById("tlgSolverAurGroup");
+const tlgSolverLinkType = document.getElementById("tlgSolverLinkType");
+const tlgSolverTruthsToApply = document.getElementById("tlgSolverTruthsToApply");
+const tlgSolverAurPremiseMode = document.getElementById("tlgSolverAurPremiseMode");
+const btnTlgImportCandidates = document.getElementById("btnTlgImportCandidates");
+const btnTlgFindEliminations = document.getElementById("btnTlgFindEliminations");
+const btnTlgConvertTruths = document.getElementById("btnTlgConvertTruths");
+const btnTlgRemoveUnused = document.getElementById("btnTlgRemoveUnused");
+const btnTlgClear = document.getElementById("btnTlgClear");
+const tlgSolverStatus = document.getElementById("tlgSolverStatus");
+const tlgSolverStateList = document.getElementById("tlgSolverStateList");
+const tlgSolverImportText = document.getElementById("tlgSolverImportText");
+const tlgSolverRaw = document.getElementById("tlgSolverRaw");
+const tlgSolverDebug = document.getElementById("tlgSolverDebug");
+const tlgSolverSolution = document.getElementById("tlgSolverSolution");
+const tlgSolverSolutionPanel = document.getElementById("tlgSolverSolutionPanel");
 const btnGenerate = document.getElementById("btnGenerate");
 const btnGenerateTraining = document.getElementById("btnGenerateTraining");
 const btnBatchGenerate = document.getElementById("btnBatchGenerate");
@@ -155,8 +176,9 @@ const manualMarkFinishBlock = document.getElementById("manualMarkFinishBlock");
 const manualMarkUndoBlock = document.getElementById("manualMarkUndoBlock");
 const manualMarkStatus = document.getElementById("manualMarkStatus");
 const difficultySelect = document.getElementById("difficultySelect");
-const batchCount = document.getElementById("batchCount");
+const batchMode = document.getElementById("batchMode");
 const batchFilename = document.getElementById("batchFilename");
+const batchSolveFile = document.getElementById("batchSolveFile");
 const batchStatus = document.getElementById("batchStatus");
 const trainingTechniqueSelect = document.getElementById("trainingTechniqueSelect");
 const techniqueList = document.getElementById("techniqueList");
@@ -174,6 +196,9 @@ let solverWorker = null;
 let solverTaskSeq = 0;
 const solverWorkerRequests = new Map();
 let solverBusyTask = "";
+let batchWorker = null;
+let batchTaskSeq = 0;
+let batchWorkerActiveReject = null;
 let lastSolveData = null;
 let lastAllStepsData = null;
 let allStepsFilterState = { query: "", technique: "", sortMode: "default", replaceableOnly: false };
@@ -491,12 +516,146 @@ const uiText = {
     exitFullscreen: "退出全屏",
     difficulty: "难度",
     training: "训练",
-    batchGenerate: "批量出题",
-    count: "数量",
-    filename: "文件名",
-    startBatch: "开始出题",
+    tlgSolverTitle: "TLG Solver",
+    tlgSolverEnable: "启用 TLG 编辑",
+    tlgSolverModeLabel: "输入模式",
+    tlgModeTruths: "Truths",
+    tlgModeLinks: "Links",
+    tlgModeVirtualSet: "Virtual Set",
+    tlgModeAur: "AUR",
+    tlgModeDaur: "DAUR",
+    tlgAurGroupLabel: "AUR 分组",
+    tlgAurGroup1: "AUR 1",
+    tlgAurGroup2: "AUR 2",
+    tlgSolverLinkTypeLabel: "Link 类型",
+    tlgLinkAuto: "自动",
+    tlgLinkRowColumn: "行/列",
+    tlgLinkBox: "宫",
+    tlgLinkCell: "单元格",
+    tlgTruthsToApply: "应用 Truths 数",
+    tlgAurPremiseModeLabel: "唯一性门控",
+    tlgAurPremiseUnique: "唯一解：核验初始可交换局面",
+    tlgAurPremiseTraining: "训练盘：允许初始缺数",
+    tlgImportCandidates: "导入 TLG 候选盘面",
+    tlgFindEliminations: "查找删数",
+    tlgConvertTruths: "转换冗余 Truths",
+    tlgRemoveUnused: "移除未使用 Links",
+    tlgClearState: "清空 TLG 状态",
+    tlgStatusOptional: "TLG Solver 是可选附加功能，放在操作区最下方；未启用 TLG 编辑时不会影响现有解题流程。",
+    tlgEditingEnabled: "TLG 编辑已启用",
+    tlgStateTitle: "当前 TLG 状态",
+    tlgSolutionTitle: "Truths/Links 结果",
+    tlgNoInput: "暂无 TLG 输入。",
+    tlgDebugImport: "调试 / 导入",
+    tlgDebugPlaceholder: "仅用于调试导入；TLG 主要通过盘面点击输入。",
+    tlgTruths: "Truths",
+    tlgLinks: "Links",
+    tlgVirtualSet: "Virtual Set",
+    tlgAurCorners: "AUR Corners",
+    tlgDaurCandidates: "DAUR 候选池",
+    tlgDaurCandidateAdded: "已加入 DAUR 候选池：{value}",
+    tlgDaurCandidateRemoved: "已移除 DAUR 候选池：{value}",
+    tlgAurCornerAddedGroup: "已加入 {group} 角候选：{value}",
+    tlgAurCornerRemovedGroup: "已移除 {group} 角候选：{value}",
+    tlgRemove: "删除",
+    tlgRemoved: "已移除 {category}: {value}",
+    tlgVirtualCandidateAdded: "已加入 Virtual Set 候选：{value}",
+    tlgVirtualCandidateRemoved: "已移除 Virtual Set 候选：{value}",
+    tlgAurCornerAdded: "已加入 AUR 角候选：{value}",
+    tlgAurCornerRemoved: "已移除 AUR 角候选：{value}",
+    tlgEndpointSelected: "已选端点：{value}。请选择第二个候选。",
+    tlgTruthAdded: "已添加 truth：{value}",
+    tlgTruthRemoved: "已移除 truth：{value}",
+    tlgLinkAdded: "已添加 link：{value}",
+    tlgLinkRemoved: "已移除 link：{value}",
+    tlgCellTruthAdded: "已添加 cell truth：{value}",
+    tlgCellTruthRemoved: "已移除 cell truth：{value}",
+    tlgUnavailable: "tlgSolverFindEliminationsV440 不可用；应用 v440/v441 后需要重新编译 wasm。",
+    tlgResponse: "TLG Solver 响应",
+    tlgParseFailed: "TLG_SOLVER_RESPONSE_PARSE_FAILED",
+    tlgFailed: "TLG Solver 失败：{error}",
+    tlgFindRunning: "正在查找删数并规范化 Links…",
+    tlgConvertRunning: "正在按稳定顺序转换 Truths To Links…",
+    tlgRemoveRunning: "正在按稳定顺序移除未使用 Links…",
+    tlgConvertSummary: "转换完成：Truths={truths}，Links={links}，转换={moved}，删数={elims}",
+    tlgRemoveSummary: "清理完成：Truths={truths}，Links={links}，移除={removed}，删数={elims}",
+    tlgPhase1Summary: "查找完成：Truths={truths}，Links={links}，删数={elims}",
+    tlgNoConsequencesSummary: "计算完成，但没有找到 Links 或删数：Truths={truths}",
+    tlgParsedOnlySummary: "TLG 已解析，但尚未计算删数：Truths={truths}，Links={links}",
+    tlgCandidateGridImportedUnique: "TLG 候选盘面已导入：{candidates} 个候选。已保存为初始候选盘，并按唯一解模式核验 AUR/DUR 的初始交换前提。",
+    tlgCandidateGridImportedTraining: "TLG 训练候选盘已导入：{candidates} 个候选。训练模式允许初始缺数，只核验当前 deadly completion。",
+    tlgSummaryTruths: "Truths={count}",
+    tlgSummaryLinks: "Links={count}",
+    tlgSummaryVirtual: "Virtual={count}",
+    tlgSummaryAurs: "AUR={count}",
+    tlgSummaryAurCorners: "AUR 角候选={count}",
+    tlgSummaryDaurCandidates: "DAUR 候选={count}",
+    tlgSummaryPremiseUnique: "门控=唯一解",
+    tlgSummaryPremiseTraining: "门控=训练盘",
+    tlgSummaryDaurExpanded: "DAUR→AUR/DUR={count}",
+    tlgSummaryGrid: "候选盘={count} 个候选",
+    tlgSummarySelected: "已选={count}",
+    tlgSummaryEndpoint: "端点={value}",
+    tlgSolutionTruths: "{count} Truths = {{body}}",
+    tlgSolutionLinks: "{count} Links = {{body}}",
+    tlgSolutionAurs: "{count} 个定式 AUR = {body}",
+    tlgSolutionDaurPool: "DAUR 候选池 = {{body}}",
+    tlgSolutionDaurExpanded: "DAUR 展开 AUR/DUR 约束 = {count}",
+    tlgSolutionEliminations: "{count} 个删数 --> {body}",
+    tlgSolutionNoEliminations: "0 个删数",
+    tlgSolutionAssignments: "{count} 个出数 --> {body}",
+    tlgResultActionFailed: "TLG 操作失败",
+    tlgBackendSolutionBudget: "投影解数量超过预算",
+    tlgBackendSearchBudget: "投影搜索节点超过预算",
+    tlgBackendIncompleteSolutionBudget: "投影搜索未完成，无法生成删数：投影解数量超过预算",
+    tlgBackendIncompleteSearchBudget: "投影搜索未完成，无法生成删数：搜索节点超过预算",
+    tlgBackendInvalidPlan: "规范化方案无效，无法建立投影上下文",
+    tlgBackendNoProjection: "该结构没有合法投影解，无法生成结果",
+    tlgBackendNoDaurForms: "DAUR 候选池没有展开出有效的定式 AUR 或六格 DUR",
+    tlgBackendNoInitialSwap: "DAUR 候选池没有任何满足初始可交换前提的构型",
+    tlgBackendFixedAurInitialSwap: "初始盘面没有同时支持定式 AUR 的两个可交换完成",
+    tlgBackendSixCellInitialSwap: "初始盘面没有支持该六格 DUR 的可交换完成对：",
+    tlgBackendTrainingGrid: "使用了 TLG 训练候选盘；未核验唯一解前提",
+    tlgActionsAria: "TLG Solver 操作",
+    tlgCandidateGridEmpty: "输入框为空；请先粘贴 Sukaku 候选盘面。",
+    tlgCandidateGridInvalid: "无法识别 TLG 候选盘面：需要 729 字符 Sukaku，或 81 个候选单元格。",
+    tlgCandidateGridEmptyCell: "TLG 候选盘面包含无候选单元格：{cell}。",
+    tlgContextCandidate: "候选数 {value}",
+    tlgContextCandidates: "已选 {count} 个候选数",
+    tlgAddSubTruth: "添加/移除 Truth",
+    tlgAddSubLink: "添加/移除 Link",
+    tlgMenuRow: "行",
+    tlgMenuColumn: "列",
+    tlgMenuCell: "单元格",
+    tlgMenuBox: "宫",
+    tlgMenuClearAll: "全部清除",
+    tlgToggleVirtualBatch: "切换到 Virtual Set",
+    tlgClearVirtualBatch: "清空 Virtual Set",
+    tlgToggleAurBatch: "切换 AUR 角候选",
+    tlgToggleDaurBatch: "切换 DAUR 候选池",
+    tlgClearAurBatch: "清空 AUR 角候选",
+    tlgClearAllLogic: "清空全部逻辑",
+    tlgCandidatesSelected: "已选择 {count} 个候选数；右键打开 TLG 菜单。",
+    tlgBatchAdded: "已添加 {count} 个 {kind}。",
+    tlgBatchRemoved: "已移除 {count} 个 {kind}。",
+    tlgBatchToggledOn: "已加入 {count} 个候选数到 {kind}。",
+    tlgBatchToggledOff: "已从 {kind} 移除 {count} 个候选数。",
+    tlgTruthsCleared: "已清空全部 Truths。",
+    tlgLinksCleared: "已清空全部 Links。",
+    tlgVirtualCleared: "已清空 Virtual Set。",
+    tlgAurCleared: "已清空全部 AUR 角候选。",
+    tlgDaurCleared: "已清空 DAUR 候选池。",
+    tlgLogicCleared: "已清空全部 TLG 逻辑；候选盘面保持不变。",
+    batchGenerate: "批量任务",
+    batchMode: "模式",
+    batchModeGenerate: "批量出题",
+    batchModeSolve: "批量解题",
+    batchSolveFile: "解题输入文件",
+    batchSolveFileHint: "从文本文件载入，一行一题。",
+    filename: "输出文件名",
+    startBatch: "开始",
     stop: "停止",
-    batchStatusIdle: "按当前难度批量生成，写入磁盘文件。",
+    batchStatusIdle: "批量出题/批量解题共用面板。批量出题持续写入输出文件，批量解题从文本文件读取，一行一题。",
     moreInput: "更多：题面输入与导出评分",
     exportPuzzle: "导出题串",
     exportFormatLabel: "导出格式",
@@ -642,21 +801,25 @@ const uiText = {
     ratingFailed: "评分未通过：{rating}",
     seconds: "{seconds} 秒",
     stoppingBatch: "正在停止批量出题...",
-    batchTrainingStart: "批量训练题库开始：目标 {target} 题，技巧 {technique}，难度 {difficulty}。",
-    batchStart: "批量出题开始：目标 {target} 题，难度 {difficulty}。",
+    batchTrainingStart: "批量训练题库开始：技巧 {technique}，难度 {difficulty}。点击停止结束并写入文件。",
+    batchStart: "批量出题开始：难度 {difficulty}。点击停止结束并写入文件。",
+    batchSolveStart: "批量解题开始：目标 {target} 题。",
     batchStoppingPrefix: "正在停止，",
     batchLastPuzzle: "，上一题 {attempts}",
-    batchTrainingProgress: "{prefix}批量训练题库中：{generated}/{target}，批次 {attempts}，失败 {failed} 次{last}，已用时 {elapsed}。",
-    batchProgress: "{prefix}批量出题中：{generated}/{target}，批次 {attempts}，失败 {failed} 次{last}，已用时 {elapsed}。",
+    batchTrainingProgress: "{prefix}批量训练题库中：已生成 {generated} 题，批次 {attempts}，失败 {failed} 次{last}，已用时 {elapsed}。",
+    batchProgress: "{prefix}批量出题中：已生成 {generated} 题，批次 {attempts}，失败 {failed} 次{last}，已用时 {elapsed}。",
+    batchSolveProgress: "{prefix}批量解题中：{generated}/{target}，失败 {failed} 次{last}，已用时 {elapsed}。",
     batchLatest: "{status} 最新 {rating}。",
     batchSearchAttempts: "搜索 {attempts} 次",
     batchGenerateAttempts: "生成 {attempts} 次",
     batchWrittenDirect: "已写入磁盘文件",
     batchDownloadReady: "已生成下载文件",
-    batchTrainingDone: "{mode}：{filename}，训练技巧 {technique}，成功 {generated}/{target}，批次 {attempts}，总用时 {elapsed}。",
-    batchDone: "{mode}：{filename}，成功 {generated}/{target}，尝试 {attempts} 次，总用时 {elapsed}。",
-    batchCancelled: "批量出题已取消。",
-    batchFailed: "批量出题失败：{error}",
+    batchTrainingDone: "{mode}：{filename}，训练技巧 {technique}，成功 {generated} 题，批次 {attempts}，总用时 {elapsed}。",
+    batchDone: "{mode}：{filename}，成功 {generated} 题，尝试 {attempts} 次，总用时 {elapsed}。",
+    batchSolveDone: "{mode}：{filename}，解题 {generated}/{target}，失败 {failed} 次，总用时 {elapsed}。",
+    batchCancelled: "批量任务已停止。",
+    batchFailed: "批量任务失败：{error}",
+    batchSolveNoInput: "请先选择批量解题输入文件。文件需为纯文本，一行一题。",
     batchInvalidStep: "批量出题发现技巧错误，已停止：{detail}",
     invalidStep: "步骤无效",
     trainingNeedTechnique: "请先在“训练”下拉框选择一个技巧。",
@@ -801,12 +964,146 @@ const uiText = {
     exitFullscreen: "Exit fullscreen",
     difficulty: "Difficulty",
     training: "Training",
-    batchGenerate: "Batch generation",
-    count: "Count",
-    filename: "Filename",
+    tlgSolverTitle: "TLG Solver",
+    tlgSolverEnable: "Enable TLG editing",
+    tlgSolverModeLabel: "Input Mode",
+    tlgModeTruths: "Truths",
+    tlgModeLinks: "Links",
+    tlgModeVirtualSet: "Virtual Set",
+    tlgModeAur: "AUR",
+    tlgModeDaur: "DAUR",
+    tlgAurGroupLabel: "AUR Group",
+    tlgAurGroup1: "AUR 1",
+    tlgAurGroup2: "AUR 2",
+    tlgSolverLinkTypeLabel: "Link Type",
+    tlgLinkAuto: "Auto",
+    tlgLinkRowColumn: "Row/Column",
+    tlgLinkBox: "Box",
+    tlgLinkCell: "Cell",
+    tlgTruthsToApply: "Truths to Apply",
+    tlgAurPremiseModeLabel: "Uniqueness Gate",
+    tlgAurPremiseUnique: "Unique puzzle: verify initial swap pair",
+    tlgAurPremiseTraining: "Training grid: allow missing initial candidates",
+    tlgImportCandidates: "Import TLG Candidate Grid",
+    tlgFindEliminations: "Find Eliminations",
+    tlgConvertTruths: "Convert Redundant Truths",
+    tlgRemoveUnused: "Remove Unused Links",
+    tlgClearState: "Clear TLG State",
+    tlgStatusOptional: "TLG Solver is optional and parked at the bottom of Controls. Existing solver behavior is unchanged unless TLG editing is enabled.",
+    tlgEditingEnabled: "TLG editing enabled",
+    tlgStateTitle: "Current TLG State",
+    tlgSolutionTitle: "Truths/Links 结果",
+    tlgNoInput: "No TLG input yet.",
+    tlgDebugImport: "Debug / Import",
+    tlgDebugPlaceholder: "Debug import only. Board input is the primary TLG workflow.",
+    tlgTruths: "Truths",
+    tlgLinks: "Links",
+    tlgVirtualSet: "Virtual Set",
+    tlgAurCorners: "AUR Corners",
+    tlgDaurCandidates: "DAUR Candidate Pool",
+    tlgDaurCandidateAdded: "Added to DAUR candidate pool: {value}",
+    tlgDaurCandidateRemoved: "Removed from DAUR candidate pool: {value}",
+    tlgAurCornerAddedGroup: "Added {group} corner: {value}",
+    tlgAurCornerRemovedGroup: "Removed {group} corner: {value}",
+    tlgRemove: "Remove",
+    tlgRemoved: "Removed {category}: {value}",
+    tlgVirtualCandidateAdded: "Added virtual candidate: {value}",
+    tlgVirtualCandidateRemoved: "Removed virtual candidate: {value}",
+    tlgAurCornerAdded: "Added AUR corner: {value}",
+    tlgAurCornerRemoved: "Removed AUR corner: {value}",
+    tlgEndpointSelected: "Selected endpoint: {value}. Choose a second candidate.",
+    tlgTruthAdded: "Added truth: {value}",
+    tlgTruthRemoved: "Removed truth: {value}",
+    tlgLinkAdded: "Added link: {value}",
+    tlgLinkRemoved: "Removed link: {value}",
+    tlgCellTruthAdded: "Added cell truth: {value}",
+    tlgCellTruthRemoved: "Removed cell truth: {value}",
+    tlgUnavailable: "tlgSolverFindEliminationsV440 is not available; rebuild wasm after applying v440/v441.",
+    tlgResponse: "TLG Solver response",
+    tlgParseFailed: "TLG_SOLVER_RESPONSE_PARSE_FAILED",
+    tlgFailed: "TLG Solver failed: {error}",
+    tlgFindRunning: "Finding eliminations and normalizing links…",
+    tlgConvertRunning: "Converting Truths To Links in deterministic order…",
+    tlgRemoveRunning: "Removing unused Links in deterministic order…",
+    tlgConvertSummary: "Convert complete: Truths={truths}, Links={links}, Moved={moved}, Eliminations={elims}",
+    tlgRemoveSummary: "Cleanup complete: Truths={truths}, Links={links}, Removed={removed}, Eliminations={elims}",
+    tlgPhase1Summary: "Find completed: Truths={truths}, Links={links}, Eliminations={elims}",
+    tlgNoConsequencesSummary: "Computed, but no Links or eliminations were found: Truths={truths}",
+    tlgParsedOnlySummary: "TLG parsed, but eliminations were not computed: Truths={truths}, Links={links}",
+    tlgCandidateGridImportedUnique: "TLG candidate grid imported: {candidates} candidates. It is preserved as the initial candidate grid, and AUR/DUR swap premises will be verified in unique-puzzle mode.",
+    tlgCandidateGridImportedTraining: "TLG training grid imported: {candidates} candidates. Training mode allows missing initial candidates and checks only the current deadly completion.",
+    tlgSummaryTruths: "Truths={count}",
+    tlgSummaryLinks: "Links={count}",
+    tlgSummaryVirtual: "Virtual={count}",
+    tlgSummaryAurs: "AURs={count}",
+    tlgSummaryAurCorners: "AUR Corners={count}",
+    tlgSummaryDaurCandidates: "DAUR Candidates={count}",
+    tlgSummaryPremiseUnique: "Gate=Unique",
+    tlgSummaryPremiseTraining: "Gate=Training",
+    tlgSummaryDaurExpanded: "DAUR→AUR/DUR={count}",
+    tlgSummaryGrid: "Grid={count} Candidates",
+    tlgSummarySelected: "Selected={count}",
+    tlgSummaryEndpoint: "Endpoint={value}",
+    tlgSolutionTruths: "{count} Truths = {{body}}",
+    tlgSolutionLinks: "{count} Links = {{body}}",
+    tlgSolutionAurs: "{count} Fixed AURs = {body}",
+    tlgSolutionDaurPool: "DAUR Pool = {{body}}",
+    tlgSolutionDaurExpanded: "DAUR Expanded AUR/DUR Constraints = {count}",
+    tlgSolutionEliminations: "{count} Eliminations --> {body}",
+    tlgSolutionNoEliminations: "0 Eliminations",
+    tlgSolutionAssignments: "{count} Assignments --> {body}",
+    tlgResultActionFailed: "TLG action failed",
+    tlgBackendSolutionBudget: "solution budget exceeded",
+    tlgBackendSearchBudget: "search-node budget exceeded",
+    tlgBackendIncompleteSolutionBudget: "Cannot materialize eliminations because the projection search exceeded the solution budget.",
+    tlgBackendIncompleteSearchBudget: "Cannot materialize eliminations because the projection search exceeded the search-node budget.",
+    tlgBackendInvalidPlan: "Cannot build a projection context from an invalid normalized plan.",
+    tlgBackendNoProjection: "The structure has no valid projection solution to materialize.",
+    tlgBackendNoDaurForms: "The DAUR candidate pool did not expand to any valid fixed AUR or six-cell DUR form.",
+    tlgBackendNoInitialSwap: "The DAUR candidate pool has no form satisfying the initial swap premise.",
+    tlgBackendFixedAurInitialSwap: "The initial grid does not support both swappable completions of the fixed AUR.",
+    tlgBackendSixCellInitialSwap: "The initial grid has no swappable completion pair for this six-cell DUR: ",
+    tlgBackendTrainingGrid: "A TLG training candidate grid was used; the uniqueness premise was not verified.",
+    tlgActionsAria: "TLG Solver actions",
+    tlgCandidateGridEmpty: "The input box is empty. Paste a Sukaku candidate grid first.",
+    tlgCandidateGridInvalid: "Unrecognized TLG candidate grid. Use a 729-character Sukaku or 81 candidate-cell tokens.",
+    tlgCandidateGridEmptyCell: "The TLG candidate grid contains a cell with no candidates: {cell}.",
+    tlgContextCandidate: "Candidate {value}",
+    tlgContextCandidates: "{count} Candidates selected",
+    tlgAddSubTruth: "Add/Sub Truth",
+    tlgAddSubLink: "Add/Sub Link",
+    tlgMenuRow: "Row",
+    tlgMenuColumn: "Column",
+    tlgMenuCell: "Cell",
+    tlgMenuBox: "Box",
+    tlgMenuClearAll: "Clear All",
+    tlgToggleVirtualBatch: "Toggle in Virtual Set",
+    tlgClearVirtualBatch: "Clear the Virtual Set",
+    tlgToggleAurBatch: "Toggle AUR Corner",
+    tlgToggleDaurBatch: "Toggle DAUR Candidate Pool",
+    tlgClearAurBatch: "Clear AUR Corners",
+    tlgClearAllLogic: "Clear All Logic",
+    tlgCandidatesSelected: "{count} candidates selected; right-click to open the TLG menu.",
+    tlgBatchAdded: "Added {count} {kind} descriptors.",
+    tlgBatchRemoved: "Removed {count} {kind} descriptors.",
+    tlgBatchToggledOn: "Added {count} candidates to {kind}.",
+    tlgBatchToggledOff: "Removed {count} candidates from {kind}.",
+    tlgTruthsCleared: "Cleared all Truths.",
+    tlgLinksCleared: "Cleared all Links.",
+    tlgVirtualCleared: "Cleared the Virtual Set.",
+    tlgAurCleared: "Cleared all AUR corners.",
+    tlgDaurCleared: "Cleared the DAUR candidate pool.",
+    tlgLogicCleared: "Cleared all TLG logic; the candidate grid was preserved.",
+    batchGenerate: "Batch tasks",
+    batchMode: "Mode",
+    batchModeGenerate: "Batch generation",
+    batchModeSolve: "Batch solving",
+    batchSolveFile: "Solve input file",
+    batchSolveFileHint: "Load a text file; one puzzle per line.",
+    filename: "Output filename",
     startBatch: "Start",
     stop: "Stop",
-    batchStatusIdle: "Generate a batch at the current difficulty and write it to a disk file.",
+    batchStatusIdle: "Shared panel for batch generation and solving. Generation writes continuously; solving reads a text file, one puzzle per line.",
     moreInput: "More: puzzle input, export, and rating",
     exportPuzzle: "Export puzzle",
     exportFormatLabel: "Export format",
@@ -952,21 +1249,25 @@ const uiText = {
     ratingFailed: "Rating failed: {rating}",
     seconds: "{seconds}s",
     stoppingBatch: "Stopping batch generation...",
-    batchTrainingStart: "Training batch started: target {target}, technique {technique}, difficulty {difficulty}.",
-    batchStart: "Batch generation started: target {target}, difficulty {difficulty}.",
+    batchTrainingStart: "Training batch started: technique {technique}, difficulty {difficulty}. Click Stop to finish and write the file.",
+    batchStart: "Batch generation started: difficulty {difficulty}. Click Stop to finish and write the file.",
+    batchSolveStart: "Batch solving started: target {target} puzzles.",
     batchStoppingPrefix: "Stopping, ",
     batchLastPuzzle: ", previous puzzle {attempts}",
-    batchTrainingProgress: "{prefix}Training batch: {generated}/{target}, batches {attempts}, failures {failed}{last}, elapsed {elapsed}.",
-    batchProgress: "{prefix}Batch generation: {generated}/{target}, attempts {attempts}, failures {failed}{last}, elapsed {elapsed}.",
+    batchTrainingProgress: "{prefix}Training batch: generated {generated}, batches {attempts}, failures {failed}{last}, elapsed {elapsed}.",
+    batchProgress: "{prefix}Batch generation: generated {generated}, attempts {attempts}, failures {failed}{last}, elapsed {elapsed}.",
+    batchSolveProgress: "{prefix}Batch solving: {generated}/{target}, failures {failed}{last}, elapsed {elapsed}.",
     batchLatest: "{status} Latest {rating}.",
     batchSearchAttempts: "searched {attempts} times",
     batchGenerateAttempts: "generated {attempts} times",
     batchWrittenDirect: "Written to disk file",
     batchDownloadReady: "Download file generated",
-    batchTrainingDone: "{mode}: {filename}, technique {technique}, success {generated}/{target}, batches {attempts}, total time {elapsed}.",
-    batchDone: "{mode}: {filename}, success {generated}/{target}, attempts {attempts}, total time {elapsed}.",
-    batchCancelled: "Batch generation cancelled.",
-    batchFailed: "Batch generation failed: {error}",
+    batchTrainingDone: "{mode}: {filename}, technique {technique}, success {generated}, batches {attempts}, total time {elapsed}.",
+    batchDone: "{mode}: {filename}, success {generated}, attempts {attempts}, total time {elapsed}.",
+    batchSolveDone: "{mode}: {filename}, solved {generated}/{target}, failures {failed}, total time {elapsed}.",
+    batchCancelled: "Batch task stopped.",
+    batchFailed: "Batch task failed: {error}",
+    batchSolveNoInput: "Choose a batch solving input file first. It must be plain text, one puzzle per line.",
     batchInvalidStep: "Batch stopped on an invalid step: {detail}",
     invalidStep: "Invalid step",
     trainingNeedTechnique: "Choose a technique in the Training dropdown first.",
@@ -1337,6 +1638,12 @@ function buildManualMarkSwatches() {
 }
 
 function applyManualMarksToCellElement(cellNode, cellIndex) {
+  // TLG editing owns the board while enabled. Preserve manual marks in memory,
+  // but do not mix their visual language with Truth/Link/AUR/elimination marks.
+  if (tlgSolverEditingActive()) {
+    applyTlgSolverMarksToCellElement(cellNode, cellIndex);
+    return;
+  }
   const cellColor = manualMarks.cellColors.get(cellIndex);
   if (cellColor) {
     const color = manualMarkColorById(cellColor.colorId) || currentManualMarkColor();
@@ -1371,6 +1678,7 @@ function applyManualMarksToCellElement(cellNode, cellIndex) {
     if (manualMarks.preEliminations.has(key)) candidate.classList.add("manual-pre-elim");
     if (manualMarks.eliminations.has(key)) candidate.classList.add("manual-elim");
   });
+  applyTlgSolverMarksToCellElement(cellNode, cellIndex);
 }
 
 function manualMarkDirectCandidateClickAllowed(candidate, event) {
@@ -1386,8 +1694,9 @@ function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
       candidate.dataset.manualPointerType = event.pointerType || "";
     }, { passive: true });
     candidate.addEventListener("click", (event) => {
-      if (!manualMarksActive()) return;
       const digit = Number(candidate.dataset.digit || 0);
+      if (handleTlgSolverCandidateClick(cellIndex, digit, event, candidate)) return;
+      if (!manualMarksActive()) return;
       if (!digit || !candidate.textContent.trim()) return;
       if (!manualMarkDirectCandidateClickAllowed(candidate, event)) {
         // Touch/pen flow: do not consume the candidate tap. Let the parent cell
@@ -1400,8 +1709,9 @@ function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
       applyManualMarkTarget(cellIndex, digit, "primary");
     });
     candidate.addEventListener("contextmenu", (event) => {
-      if (!manualMarksActive()) return;
       const digit = Number(candidate.dataset.digit || 0);
+      if (openTlgSolverContextMenu(cellIndex, digit, event, candidate)) return;
+      if (!manualMarksActive()) return;
       if (!digit || !candidate.textContent.trim()) return;
       // Only desktop/fine-pointer right click maps to the secondary action.
       // Touch devices use the explicit Add/Erase button instead.
@@ -1508,6 +1818,7 @@ function addManualChainEndpointClass(cell, digit, className) {
 
 function applyManualChainEndpointHighlights() {
   clearManualChainEndpointHighlights();
+  if (tlgSolverEditingActive()) return;
 
   if (manualChainStart) {
     addManualChainEndpointClass(manualChainStart.cell, manualChainStart.digit, "manual-chain-start");
@@ -1618,6 +1929,7 @@ function renderManualBlockMarks(svg) {
 
 function renderManualMarkOverlay() {
   clearManualMarkOverlay();
+  if (tlgSolverEditingActive()) return;
   const hasBlocks = manualMarks.blocks.length > 0 || (manualBlockDraft?.nodes?.length > 0);
   if (!boardStage || (manualMarks.chains.length === 0 && !hasBlocks)) return;
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -2401,7 +2713,7 @@ function applyStaticLanguage() {
   document.documentElement.lang = lang.value === "en" ? "en" : "zh-CN";
   const linkLangSuffix = `?lang=${encodeURIComponent(lang.value || "zh")}`;
   const manualLinkEl = document.getElementById("manualLink");
-  if (manualLinkEl) manualLinkEl.href = `./user_manual.html${linkLangSuffix}`;
+  if (manualLinkEl) manualLinkEl.href = `./user_manual.html${linkLangSuffix}&v=${encodeURIComponent(APP_VERSION)}`;
   const techniquesLinkEl = document.getElementById("techniquesLink");
   if (techniquesLinkEl) techniquesLinkEl.href = `./techniques.html${linkLangSuffix}`;
   setTextById("brandSubtitle", ui("brandSubtitle"));
@@ -2445,10 +2757,54 @@ function applyStaticLanguage() {
   setInputLabelByControl("trainingTechniqueSelect", ui("training"));
   if (difficultySelect) difficultySelect.title = ui("difficultyTitle");
   if (trainingTechniqueSelect) trainingTechniqueSelect.title = ui("trainingTitle");
+  setTextById("tlgSolverTitle", ui("tlgSolverTitle"));
+  setTextById("tlgSolverEnableLabel", ui("tlgSolverEnable"));
+  setTextById("tlgSolverModeLabel", ui("tlgSolverModeLabel"));
+  setTextById("tlgSolverAurGroupLabel", ui("tlgAurGroupLabel"));
+  setTextById("tlgSolverLinkTypeLabel", ui("tlgSolverLinkTypeLabel"));
+  setTextById("tlgSolverTruthsToApplyLabel", ui("tlgTruthsToApply"));
+  setTextById("tlgSolverAurPremiseModeLabel", ui("tlgAurPremiseModeLabel"));
+  setTextById("btnTlgImportCandidates", ui("tlgImportCandidates"));
+  setTextById("btnTlgFindEliminations", ui("tlgFindEliminations"));
+  setTextById("btnTlgConvertTruths", ui("tlgConvertTruths"));
+  setTextById("btnTlgRemoveUnused", ui("tlgRemoveUnused"));
+  setTextById("btnTlgClear", ui("tlgClearState"));
+  setTextById("tlgSolverStateTitle", ui("tlgStateTitle"));
+  setTextById("tlgSolverSolutionTitle", ui("tlgSolutionTitle"));
+  setTextById("tlgSolverDebugSummary", ui("tlgDebugImport"));
+  document.querySelector(".tlg-solver-controls")?.setAttribute("aria-label", ui("tlgActionsAria"));
+  if (tlgSolverImportText) tlgSolverImportText.placeholder = ui("tlgDebugPlaceholder");
+  if (tlgSolverMode) {
+    const modeLabels = { truths: "tlgModeTruths", links: "tlgModeLinks", virtualSet: "tlgModeVirtualSet", aur: "tlgModeAur", daur: "tlgModeDaur" };
+    [...tlgSolverMode.options].forEach((option) => { const key = modeLabels[option.value]; if (key) option.textContent = ui(key); });
+  }
+  if (tlgSolverAurGroup) {
+    const aurGroupLabels = { "0": "tlgAurGroup1", "1": "tlgAurGroup2" };
+    [...tlgSolverAurGroup.options].forEach((option) => { const key = aurGroupLabels[option.value]; if (key) option.textContent = ui(key); });
+  }
+  if (tlgSolverLinkType) {
+    const typeLabels = { auto: "tlgLinkAuto", rowColumn: "tlgLinkRowColumn", box: "tlgLinkBox", cell: "tlgLinkCell" };
+    [...tlgSolverLinkType.options].forEach((option) => { const key = typeLabels[option.value]; if (key) option.textContent = ui(key); });
+  }
+  if (tlgSolverAurPremiseMode) {
+    const premiseLabels = {
+      "unique-puzzle-derived": "tlgAurPremiseUnique",
+      "candidate-grid-asserted": "tlgAurPremiseTraining",
+    };
+    [...tlgSolverAurPremiseMode.options].forEach((option) => {
+      const key = premiseLabels[option.value];
+      if (key) option.textContent = ui(key);
+    });
+  }
+  if (tlgSolverStatus && (tlgSolverStatus.textContent === uiText.zh.tlgStatusOptional || tlgSolverStatus.textContent === uiText.en.tlgStatusOptional || /TLG Solver/.test(tlgSolverStatus.textContent))) {
+    updateTlgSolverUi();
+  }
   const batchSummary = document.querySelector(".input-panel.batch-panel summary") || [...document.querySelectorAll(".input-panel summary")].find((el) => /批量|Batch/i.test(el.textContent));
   if (batchSummary) batchSummary.textContent = ui("batchGenerate");
-  setInputLabelByControl("batchCount", ui("count"));
+  setInputLabelByControl("batchMode", ui("batchMode"));
   setInputLabelByControl("batchFilename", ui("filename"));
+  setInputLabelByControl("batchSolveFile", ui("batchSolveFile"));
+  updateBatchModeLabels();
   setTextById("btnBatchGenerate", ui("startBatch"));
   setTextById("btnBatchStop", ui("stop"));
   if (batchStatus && (batchStatus.textContent === uiText.zh.batchStatusIdle || batchStatus.textContent === uiText.en.batchStatusIdle)) {
@@ -8561,6 +8917,9 @@ function renderCandidates(candidates, removals, focus = null, colorMap = null) {
 }
 
 function renderBoardSnapshot(snapshot, hint = currentHint) {
+  // Do not blend solver/step highlights into the dedicated TLG editing view.
+  if (tlgSolverEditingActive()) hint = null;
+  snapshot = tlgSolverEffectiveSnapshot(snapshot);
   board.replaceChildren();
 
   if (!snapshot) {
@@ -8588,7 +8947,8 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     node.className = makeCellClass(index, hint);
     node.dataset.cellIndex = String(index);
     node.title = `r${Math.floor(index / 9) + 1}c${(index % 9) + 1}`;
-    node.addEventListener("click", () => {
+    node.addEventListener("click", (event) => {
+      if (handleTlgSolverCellClick(index, event)) return;
       selectedIndex = index;
       handleCellTap(index);
     });
@@ -8963,6 +9323,11 @@ async function runSolverWorkerTask(task, payload) {
         String(payload?.snapshotLibrary || ""),
         Number(payload?.sourceStepIndex || 0)
       );
+    } else if (task === "tlg") {
+      if (typeof engine.tlgSolverFindEliminationsV440 !== "function") {
+        throw new Error(ui("tlgUnavailable"));
+      }
+      resultText = engine.tlgSolverFindEliminationsV440(String(payload?.requestJson || ""));
     } else {
       throw new Error(ui("workerUnsupported"));
     }
@@ -9345,6 +9710,202 @@ function updateBatchStatus(message) {
     batchStatus.textContent = message;
   }
   setStatus(message);
+}
+
+function updateBatchModeLabels() {
+  if (batchMode) {
+    const generateOption = batchMode.querySelector('option[value="generate"]');
+    const solveOption = batchMode.querySelector('option[value="solve"]');
+    if (generateOption) generateOption.textContent = ui("batchModeGenerate");
+    if (solveOption) solveOption.textContent = ui("batchModeSolve");
+  }
+  updateBatchModeUi();
+}
+
+function updateBatchModeUi() {
+  const mode = batchMode?.value || "generate";
+  const solving = mode === "solve";
+  if (batchSolveFile) {
+    batchSolveFile.closest("label")?.classList.toggle("hidden", !solving);
+  }
+  if (batchStatus && !batchStatus.textContent.trim()) {
+    batchStatus.textContent = ui("batchStatusIdle");
+  }
+}
+
+function isEditablePasteTarget(target) {
+  const el = target instanceof Element ? target : target?.parentElement;
+  return Boolean(el?.closest?.("input, textarea, select, [contenteditable='true'], [contenteditable='']"));
+}
+
+async function collectBatchSolveInputLinesFromFile() {
+  const file = batchSolveFile?.files?.[0] || null;
+  if (!file) return [];
+  const raw = await file.text();
+  return raw.split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"));
+}
+
+function batchSolveLine(result, index) {
+  const rating = result.rating || {};
+  return [
+    index,
+    result.puzzle || result.input || "",
+    result.solution || "",
+    result.status || "",
+    result.steps ?? "",
+    rating.score ?? result.yzfRate ?? "",
+    rating.hardestKind || "",
+    rating.hardestRank ?? "",
+    rating.hardestTitle || "",
+    result.error || "",
+  ].join("\t") + "\n";
+}
+
+function getBatchWorker() {
+  if (window.YZF_STANDALONE || typeof Worker === "undefined") return null;
+  if (!batchWorker) {
+    batchWorker = new Worker(`./batch-worker.js?v=${APP_VERSION}`, { type: "module" });
+  }
+  return batchWorker;
+}
+
+function terminateBatchWorker() {
+  if (batchWorker) {
+    batchWorker.terminate();
+    batchWorker = null;
+  }
+  if (batchWorkerActiveReject) {
+    batchWorkerActiveReject(new Error(ui("batchCancelled")));
+    batchWorkerActiveReject = null;
+  }
+}
+
+function runBatchTaskInWorker(config, handlers) {
+  const worker = getBatchWorker();
+  if (!worker) {
+    return runBatchTaskInMainEngine(config, handlers);
+  }
+  const taskId = ++batchTaskSeq;
+  return new Promise((resolve, reject) => {
+    batchWorkerActiveReject = reject;
+    let itemChain = Promise.resolve();
+    const cleanup = () => {
+      worker.removeEventListener("message", onMessage);
+      worker.removeEventListener("error", onError);
+      if (batchWorkerActiveReject === reject) batchWorkerActiveReject = null;
+    };
+    const finishResolve = (value) => {
+      itemChain.then(() => {
+        cleanup();
+        resolve(value);
+      }, (error) => {
+        cleanup();
+        reject(error);
+      });
+    };
+    const onMessage = (event) => {
+      const message = event.data || {};
+      if (message.taskId !== taskId) return;
+      if (message.type === "item") {
+        itemChain = itemChain.then(() => handlers.onItem?.(message.result));
+      } else if (message.type === "progress") {
+        handlers.onProgress?.(message);
+      } else if (message.type === "invalid_step") {
+        itemChain = itemChain.then(() => handlers.onInvalidStep?.(message.result));
+        finishResolve({ status: "invalid_step", ...message });
+      } else if (message.type === "done") {
+        finishResolve(message);
+      } else if (message.type === "cancelled") {
+        finishResolve(message);
+      } else if (message.type === "error") {
+        cleanup();
+        reject(new Error(message.error || ui("batchFailed")));
+      }
+    };
+    const onError = (event) => {
+      cleanup();
+      reject(new Error(event.message || ui("batchFailed")));
+    };
+    worker.addEventListener("message", onMessage);
+    worker.addEventListener("error", onError);
+    worker.postMessage({ type: "start", taskId, config });
+  });
+}
+
+async function runBatchTaskInMainEngine(config, handlers) {
+  if (!engine) throw new Error(ui("wasmLoadFailed"));
+  const techniqueConfig = config.techniqueConfig;
+  if (techniqueConfig && typeof engine.set_techniques_json === "function") {
+    engine.set_techniques_json(JSON.stringify(techniqueConfig));
+  }
+  let generated = 0;
+  let attempts = 0;
+  let failed = 0;
+  const puzzles = Array.isArray(config.puzzles) ? config.puzzles : [];
+  const target = config.mode === "solve" ? puzzles.length : Number(config.target || 0);
+  const hasFiniteTarget = config.mode === "solve" || target > 0;
+  const emitProgress = () => handlers.onProgress?.({ generated, attempts, failed, target: hasFiniteTarget ? target : 0 });
+  while (!batchAbortRequested && (!hasFiniteTarget || generated < target)) {
+    attempts += 1;
+    let result = null;
+    if (config.mode === "solve") {
+      const input = puzzles[generated];
+      const imported = parseJson(engine.import_puzzle_json(input));
+      if (!imported?.ok) {
+        failed += 1;
+        result = { ok: false, input, error: imported?.error || "import failed" };
+      } else {
+        const solve = parseJson(engine.solve_summary_json(Number(config.maxSteps || 500)));
+        result = {
+          ok: solve?.ok !== false,
+          input,
+          puzzle: imported.puzzle || imported.givens || input,
+          solution: imported.solution || "",
+          status: solve?.status || "unknown",
+          steps: solve?.steps ?? "",
+          yzfRate: solve?.yzfRate ?? "",
+          rating: solve?.rating || {},
+          solve,
+        };
+        if (solve?.status === "invalid_step") {
+          result.solve = solve;
+          handlers.onInvalidStep?.(result);
+          return { status: "invalid_step", generated, failed, attempts, target };
+        }
+      }
+      generated += 1;
+      handlers.onItem?.(result);
+    } else {
+      const trainingKind = config.trainingKind || "";
+      const text = trainingKind
+        ? engine.generate_training_puzzle_summary_json(trainingKind, Number(config.difficulty || 0), Number(config.maxAttempts || 0))
+        : engine.generate_puzzle_difficulty_json(Number(config.difficulty || 0), 0);
+      result = parseJson(text);
+      if (result?.ok) {
+        if (!trainingKind) {
+          const solve = parseJson(engine.solve_summary_json(500));
+          if (solve?.status === "invalid_step") {
+            result.solve = solve;
+            handlers.onInvalidStep?.(result);
+            return { status: "invalid_step", generated, failed, attempts, target };
+          }
+        }
+        generated += 1;
+        handlers.onItem?.(result);
+      } else {
+        failed += 1;
+        if (result?.status === "invalid_step") {
+          handlers.onInvalidStep?.(result);
+          return { status: "invalid_step", generated, failed, attempts, target };
+        }
+      }
+    }
+    emitProgress();
+    if ((attempts & 7) === 0) await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  return { status: batchAbortRequested ? "cancelled" : "done", generated, failed, attempts, target };
 }
 
 function chainNodeText(node) {
@@ -10104,6 +10665,1447 @@ function renderAllStepsPath(text) {
   }
 }
 
+
+const tlgSolverState = {
+  selectedEndpoint: null,
+  selectedCandidates: new Set(),
+  busyTask: "",
+  truths: [],
+  links: [],
+  virtualCandidates: new Set(),
+  aurGroups: [new Set(), new Set()],
+  dynamicAurCandidates: new Set(),
+  eliminations: [],
+  assignments: [],
+  lastResponse: null,
+  lastStatusResponse: null,
+  lastMessage: "",
+  lastTone: "",
+  candidateGrid: null,
+};
+
+function tlgSolverCandidateKey(cellIndex, digit) {
+  return `${cellIndex}:${digit}`;
+}
+
+function tlgSolverNrc(cellIndex, digit) {
+  return `${digit}r${Math.floor(cellIndex / 9) + 1}c${(cellIndex % 9) + 1}`;
+}
+
+function tlgSolverCellText(cellIndex) {
+  return `r${Math.floor(cellIndex / 9) + 1}c${(cellIndex % 9) + 1}`;
+}
+
+function tlgSolverBoxIndex(cellIndex) {
+  const row = Math.floor(cellIndex / 9);
+  const col = cellIndex % 9;
+  return Math.floor(row / 3) * 3 + Math.floor(col / 3) + 1;
+}
+
+function tlgSolverEditingActive() {
+  return !!tlgSolverEnable?.checked;
+}
+
+function tlgSolverEffectiveSnapshot(snapshot = currentSnapshot) {
+  if (tlgSolverEditingActive() && tlgSolverState.candidateGrid?.snapshot) {
+    return tlgSolverState.candidateGrid.snapshot;
+  }
+  return snapshot;
+}
+
+function tlgSolverCellAcceptsInput(cellIndex) {
+  const cell = tlgSolverEffectiveSnapshot()?.cells?.[cellIndex];
+  return !!cell && Number(cell.value || 0) <= 0;
+}
+
+function consumeTlgSolverFixedCellEvent(event) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  return true;
+}
+
+function parseTlgCandidateGridText(rawText) {
+  const text = String(rawText || "").trim();
+  if (!text) return { ok: false, errorKey: "tlgCandidateGridEmpty" };
+
+  let cells = null;
+  const compact = [...text].filter((ch) => /[0-9.]/.test(ch));
+  if (compact.length === 729) {
+    cells = Array.from({ length: 81 }, (_, cellIndex) => {
+      const digits = [];
+      for (let offset = 0; offset < 9; offset += 1) {
+        const ch = compact[cellIndex * 9 + offset];
+        if (ch >= "1" && ch <= "9") {
+          const digit = Number(ch);
+          if (!digits.includes(digit)) digits.push(digit);
+        }
+      }
+      return digits.sort((a, b) => a - b);
+    });
+  } else {
+    const tokens = text
+      .replace(/[|,;]+/g, " ")
+      .split(/\s+/)
+      .map((token) => token.replace(/[^1-9]/g, ""))
+      .filter(Boolean);
+    if (tokens.length === 81) {
+      cells = tokens.map((token) => [...new Set([...token].map(Number))].sort((a, b) => a - b));
+    }
+  }
+
+  if (!cells || cells.length !== 81) {
+    return { ok: false, errorKey: "tlgCandidateGridInvalid" };
+  }
+  const emptyCell = cells.findIndex((digits) => !digits.length);
+  if (emptyCell >= 0) {
+    return {
+      ok: false,
+      errorKey: "tlgCandidateGridEmptyCell",
+      errorArgs: { cell: tlgSolverCellText(emptyCell) },
+    };
+  }
+
+  const activeCandidates = new Set();
+  cells.forEach((digits, cellIndex) => {
+    digits.forEach((digit) => activeCandidates.add(tlgSolverCandidateKey(cellIndex, digit)));
+  });
+  const snapshot = {
+    board: ".".repeat(81),
+    givens: ".".repeat(81),
+    cells: cells.map((candidates, index) => ({ index, value: 0, candidates: [...candidates] })),
+    revision: "TLG",
+    source: "tlg-candidate-grid",
+    hasCandidates: true,
+  };
+  return {
+    ok: true,
+    activeCandidates,
+    initialCandidates: new Set(activeCandidates),
+    snapshot,
+    count: activeCandidates.size,
+    format: compact.length === 729 ? "sukaku729" : "candidateCells81",
+  };
+}
+
+function importTlgCandidateGridFromMainInput() {
+  if (!tlgSolverEditingActive() || tlgSolverState.busyTask) return;
+  const parsed = parseTlgCandidateGridText(givens?.value || "");
+  if (!parsed.ok) {
+    const message = parsed.errorArgs ? uif(parsed.errorKey, parsed.errorArgs) : ui(parsed.errorKey);
+    setTlgSolverStatus(message, "error");
+    return;
+  }
+  clearTlgSolverComputedResult();
+  closeTlgSolverContextMenu();
+  tlgSolverState.selectedEndpoint = null;
+  tlgSolverState.selectedCandidates.clear();
+  tlgSolverState.candidateGrid = parsed;
+  selectedIndex = -1;
+  const premiseMode = tlgSolverAurPremiseMode?.value || "unique-puzzle-derived";
+  const message = uif(
+    premiseMode === "candidate-grid-asserted" ? "tlgCandidateGridImportedTraining" : "tlgCandidateGridImportedUnique",
+    { candidates: parsed.count },
+  );
+  tlgSolverState.lastMessage = message;
+  tlgSolverState.lastTone = "ok";
+  renderBoardSnapshot(currentSnapshot, null);
+  updateTlgSolverUi();
+}
+
+function setTlgSolverStatus(text, tone = "") {
+  if (!tlgSolverStatus) return;
+  tlgSolverStatus.textContent = text;
+  if (tone) tlgSolverStatus.dataset.tone = tone;
+  else tlgSolverStatus.removeAttribute("data-tone");
+}
+
+function clearTlgSolverComputedResult() {
+  tlgSolverState.eliminations = [];
+  tlgSolverState.assignments = [];
+  tlgSolverState.lastResponse = null;
+  tlgSolverState.lastStatusResponse = null;
+  if (tlgSolverSolutionPanel) tlgSolverSolutionPanel.hidden = true;
+  if (tlgSolverSolution) {
+    tlgSolverSolution.hidden = true;
+    tlgSolverSolution.textContent = "";
+  }
+  if (tlgSolverRaw) {
+    tlgSolverRaw.hidden = true;
+    tlgSolverRaw.textContent = "";
+  }
+}
+
+function announceTlgSolver(text, tone = "ok") {
+  // Any edit invalidates the previously computed Links/eliminations.
+  clearTlgSolverComputedResult();
+  tlgSolverState.lastMessage = text;
+  tlgSolverState.lastTone = tone;
+  setTlgSolverStatus(`${text} | ${summarizeTlgSolverState()}`, tone);
+}
+
+function tlgSolverPrettyValue(value) {
+  return String(value || "")
+    .replace(/^descriptor-truth:/, "")
+    .replace(/^descriptor-link:/, "")
+    .replace(/^cell-truth:/, "")
+    .replace(/^row-truth:/, "")
+    .replace(/^column-truth:/, "")
+    .replace(/^box-truth:/, "")
+    .replace(/^row-link:/, "")
+    .replace(/^column-link:/, "")
+    .replace(/^box-link:/, "")
+    .replace(/^cell-link:/, "")
+    .replace(/^link:/, "");
+}
+
+function tlgSolverCandidateKeyToNrc(key) {
+  const [cellText, digitText] = String(key || "").split(":");
+  const cellIndex = Number(cellText);
+  const digit = Number(digitText);
+  if (!Number.isFinite(cellIndex) || !Number.isFinite(digit)) return String(key || "");
+  return tlgSolverNrc(cellIndex, digit);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function groupTlgDescriptors(items, truthStyle = false) {
+  const groups = new Map();
+  const order = [];
+  for (const rawItem of items || []) {
+    const value = tlgSolverPrettyValue(rawItem);
+    const match = /^([1-9])([rcnb])([1-9])$/i.exec(value);
+    if (!match) {
+      order.push({ fallback: value });
+      continue;
+    }
+    const digit = Number(match[1]);
+    const type = match[2].toLowerCase();
+    const index = match[3];
+    const key = `${type}:${index}`;
+    if (!groups.has(key)) {
+      const record = { key, type, index, digits: [] };
+      groups.set(key, record);
+      order.push(record);
+    }
+    const record = groups.get(key);
+    if (!record.digits.includes(digit)) record.digits.push(digit);
+  }
+  return order.map((record) => {
+    if (record.fallback != null) return record.fallback;
+    const digits = record.digits.slice().sort((a, b) => a - b).join("");
+    const type = truthStyle ? record.type.toUpperCase() : record.type;
+    return `${digits}${type}${record.index}`;
+  });
+}
+
+function formatTlgAurGroup(group) {
+  const points = [...(group || [])].map((key) => {
+    const [cellText, digitText] = String(key).split(":");
+    const cell = Number(cellText);
+    const digit = Number(digitText);
+    return {
+      digit,
+      row: Math.floor(cell / 9) + 1,
+      column: (cell % 9) + 1,
+      token: tlgSolverCandidateKeyToNrc(key),
+    };
+  }).filter((point) => Number.isInteger(point.digit) && point.digit >= 1 && point.digit <= 9);
+  const uniqueDesc = (values) => [...new Set(values)].sort((a, b) => b - a);
+  const digits = uniqueDesc(points.map((point) => point.digit));
+  const rows = uniqueDesc(points.map((point) => point.row));
+  const columns = uniqueDesc(points.map((point) => point.column));
+  if (digits.length === 2 && rows.length === 2 && columns.length === 2) {
+    return `(${digits.join("")})R${rows.join("")}C${columns.join("")}`;
+  }
+  return `{${points.map((point) => point.token).join(" ")}}`;
+}
+
+function normalizeTlgResponseCandidate(candidate) {
+  if (!candidate || typeof candidate !== "object") return null;
+  const digit = Number(candidate.digit || 0);
+  let cell = Number(candidate.cell);
+  if (!Number.isInteger(cell) || cell < 0 || cell >= 81) {
+    const row = Number(candidate.row);
+    const column = Number(candidate.column);
+    if (Number.isInteger(row) && row >= 1 && row <= 9 && Number.isInteger(column) && column >= 1 && column <= 9) {
+      cell = (row - 1) * 9 + (column - 1);
+    }
+  }
+  if (!Number.isInteger(cell) || cell < 0 || cell >= 81 || !Number.isInteger(digit) || digit < 1 || digit > 9) return null;
+  return { cell, digit, row: Math.floor(cell / 9) + 1, column: (cell % 9) + 1 };
+}
+
+function formatTlgElimination(candidate) {
+  const normalized = normalizeTlgResponseCandidate(candidate);
+  return normalized ? `r${normalized.row}c${normalized.column}<>${normalized.digit}` : String(candidate?.token || "");
+}
+
+function formatTlgAssignment(candidate) {
+  const normalized = normalizeTlgResponseCandidate(candidate);
+  return normalized ? `r${normalized.row}c${normalized.column}=${normalized.digit}` : String(candidate?.token || "");
+}
+
+function buildTlgSolutionText(response) {
+  const truthItems = response?.truthsCanonical || tlgSolverState.truths;
+  const linkItems = response?.linksCanonical || tlgSolverState.links;
+  const truths = groupTlgDescriptors(truthItems, true);
+  const links = groupTlgDescriptors(linkItems, false);
+  const activeAurGroups = tlgSolverState.aurGroups.filter((group) => group.size > 0);
+  const eliminations = (Array.isArray(response?.eliminations) ? response.eliminations : []).map(formatTlgElimination).filter(Boolean);
+  const assignments = (Array.isArray(response?.assignments) ? response.assignments : []).map(formatTlgAssignment).filter(Boolean);
+  const lines = [];
+  lines.push(`     ${uif("tlgSolutionTruths", { count: truthItems.length, body: truths.join(" ") })}`);
+  lines.push(`     ${uif("tlgSolutionLinks", { count: linkItems.length, body: links.join(" ") })}`);
+  if (activeAurGroups.length > 0) {
+    lines.push(`     ${uif("tlgSolutionAurs", {
+      count: activeAurGroups.length,
+      body: activeAurGroups.map(formatTlgAurGroup).join(", "),
+    })}`);
+  }
+  if (tlgSolverState.dynamicAurCandidates.size > 0) {
+    const expanded = Number(response?.counts?.daurExpandedAurs || 0);
+    lines.push(`     ${uif("tlgSolutionDaurPool", {
+      body: [...tlgSolverState.dynamicAurCandidates].map(tlgSolverCandidateKeyToNrc).join(" "),
+    })}`);
+    lines.push(`     ${uif("tlgSolutionDaurExpanded", { count: expanded })}`);
+  }
+  if (eliminations.length > 0) {
+    lines.push(`     ${uif("tlgSolutionEliminations", { count: eliminations.length, body: eliminations.join(", ") })}`);
+  } else {
+    lines.push(`     ${ui("tlgSolutionNoEliminations")}`);
+  }
+  if (assignments.length > 0) {
+    lines.push(`     ${uif("tlgSolutionAssignments", { count: assignments.length, body: assignments.join(", ") })}`);
+  }
+  return lines.join("\n");
+}
+
+function renderTlgSolverChipList(title, items, category, mapper = (v) => v) {
+  if (!items.length) return "";
+  const lis = items.map((value) => {
+    const raw = String(value);
+    const label = String(mapper(value));
+    return `<li class="tlg-solver-chip"><span>${escapeHtml(label)}</span><button type="button" title="${escapeHtml(ui("tlgRemove"))}" aria-label="${escapeHtml(ui("tlgRemove"))} ${escapeHtml(label)}" data-tlg-remove-category="${escapeHtml(category)}" data-tlg-remove-value="${escapeHtml(raw)}">×</button></li>`;
+  }).join("");
+  return `<div class="tlg-solver-state-group"><div class="tlg-solver-state-group-title">${escapeHtml(title)} (${items.length})</div><ul class="tlg-solver-state-items">${lis}</ul></div>`;
+}
+
+function renderTlgSolverStateList() {
+  if (!tlgSolverStateList) return;
+  const parts = [];
+  parts.push(renderTlgSolverChipList(ui("tlgTruths"), tlgSolverState.truths, "truths", tlgSolverPrettyValue));
+  parts.push(renderTlgSolverChipList(ui("tlgLinks"), tlgSolverState.links, "links", tlgSolverPrettyValue));
+  parts.push(renderTlgSolverChipList(ui("tlgVirtualSet"), [...tlgSolverState.virtualCandidates], "virtual", tlgSolverCandidateKeyToNrc));
+  parts.push(renderTlgSolverChipList(`${ui("tlgAurCorners")} 1`, [...tlgSolverState.aurGroups[0]], "aur0", tlgSolverCandidateKeyToNrc));
+  parts.push(renderTlgSolverChipList(`${ui("tlgAurCorners")} 2`, [...tlgSolverState.aurGroups[1]], "aur1", tlgSolverCandidateKeyToNrc));
+  parts.push(renderTlgSolverChipList(ui("tlgDaurCandidates"), [...tlgSolverState.dynamicAurCandidates], "daur", tlgSolverCandidateKeyToNrc));
+  const html = parts.filter(Boolean).join("");
+  tlgSolverStateList.innerHTML = html || ui("tlgNoInput");
+}
+
+function removeTlgSolverStateItem(category, value) {
+  if (category === "truths") tlgSolverState.truths = tlgSolverState.truths.filter((item) => item !== value);
+  else if (category === "links") tlgSolverState.links = tlgSolverState.links.filter((item) => item !== value);
+  else if (category === "virtual") tlgSolverState.virtualCandidates.delete(value);
+  else if (category === "aur0") tlgSolverState.aurGroups[0].delete(value);
+  else if (category === "aur1") tlgSolverState.aurGroups[1].delete(value);
+  else if (category === "daur") tlgSolverState.dynamicAurCandidates.delete(value);
+  tlgSolverState.selectedEndpoint = null;
+  const candidateCategory = category === "virtual" || category === "aur0" || category === "aur1" || category === "daur";
+  const categoryLabels = {
+    truths: ui("tlgTruths"),
+    links: ui("tlgLinks"),
+    virtual: ui("tlgVirtualSet"),
+    aur0: ui("tlgAurGroup1"),
+    aur1: ui("tlgAurGroup2"),
+    daur: ui("tlgDaurCandidates"),
+  };
+  announceTlgSolver(uif("tlgRemoved", {
+    category: categoryLabels[category] || category,
+    value: tlgSolverPrettyValue(candidateCategory ? tlgSolverCandidateKeyToNrc(value) : value),
+  }));
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  updateTlgSolverUi();
+}
+
+function updateTlgSolverActionGate(response = tlgSolverState.lastResponse) {
+  const actions = response?.actions || {};
+  const busy = !!tlgSolverState.busyTask;
+  const convertEnabled = actions?.convertTruthsToLinks?.enabled === true;
+  const removeEnabled = actions?.removeUnusedLinks?.enabled === true;
+  if (btnTlgConvertTruths) btnTlgConvertTruths.disabled = busy || !convertEnabled;
+  if (btnTlgRemoveUnused) btnTlgRemoveUnused.disabled = busy || !removeEnabled;
+}
+
+function setTlgSolverBusy(task, busy) {
+  tlgSolverState.busyTask = busy ? String(task || "tlg") : "";
+  updateTlgSolverUi();
+}
+
+function summarizeTlgSolverState(prefix = "") {
+  const parts = [];
+  if (prefix) parts.push(prefix);
+  parts.push(uif("tlgSummaryTruths", { count: tlgSolverState.truths.length }));
+  parts.push(uif("tlgSummaryLinks", { count: tlgSolverState.links.length }));
+  parts.push(uif("tlgSummaryVirtual", { count: tlgSolverState.virtualCandidates.size }));
+  const activeAurGroups = tlgSolverState.aurGroups.filter((group) => group.size > 0);
+  const aurCorners = activeAurGroups.reduce((sum, group) => sum + group.size, 0);
+  parts.push(uif("tlgSummaryAurs", { count: activeAurGroups.length }));
+  parts.push(uif("tlgSummaryAurCorners", { count: aurCorners }));
+  parts.push(uif("tlgSummaryDaurCandidates", { count: tlgSolverState.dynamicAurCandidates.size }));
+  parts.push(ui((tlgSolverAurPremiseMode?.value || "unique-puzzle-derived") === "candidate-grid-asserted"
+    ? "tlgSummaryPremiseTraining"
+    : "tlgSummaryPremiseUnique"));
+  const expandedDaurAurs = Number(tlgSolverState.lastResponse?.counts?.daurExpandedAurs || 0);
+  if (tlgSolverState.dynamicAurCandidates.size > 0 && expandedDaurAurs > 0) {
+    parts.push(uif("tlgSummaryDaurExpanded", { count: expandedDaurAurs }));
+  }
+  if (tlgSolverState.candidateGrid) parts.push(uif("tlgSummaryGrid", { count: tlgSolverState.candidateGrid.count }));
+  if (tlgSolverState.selectedCandidates.size) parts.push(uif("tlgSummarySelected", { count: tlgSolverState.selectedCandidates.size }));
+  if (tlgSolverState.selectedEndpoint) parts.push(uif("tlgSummaryEndpoint", {
+    value: tlgSolverNrc(tlgSolverState.selectedEndpoint.cellIndex, tlgSolverState.selectedEndpoint.digit),
+  }));
+  return parts.join(" | ");
+}
+
+function updateTlgSolverUi() {
+  const enabled = tlgSolverEditingActive();
+  const busy = !!tlgSolverState.busyTask;
+  if (tlgSolverEnable) tlgSolverEnable.disabled = busy;
+  if (tlgSolverMode) tlgSolverMode.disabled = !enabled || busy;
+  if (tlgSolverAurPremiseMode) tlgSolverAurPremiseMode.disabled = !enabled || busy;
+  if (btnTlgImportCandidates) btnTlgImportCandidates.disabled = !enabled || busy;
+  const aurMode = (tlgSolverMode?.value || "truths") === "aur";
+  if (tlgSolverAurGroupWrap) tlgSolverAurGroupWrap.hidden = !aurMode;
+  if (tlgSolverAurGroup) tlgSolverAurGroup.disabled = !enabled || !aurMode || busy;
+  if (tlgSolverLinkType) tlgSolverLinkType.disabled = !enabled || busy;
+  if (btnTlgFindEliminations) {
+    btnTlgFindEliminations.disabled = !enabled || busy;
+    btnTlgFindEliminations.setAttribute("aria-busy", busy ? "true" : "false");
+  }
+  if (btnTlgClear) btnTlgClear.disabled = busy;
+  updateTlgSolverActionGate();
+  renderTlgSolverStateList();
+  if (tlgSolverDebug) tlgSolverDebug.hidden = !APP_DEBUG_MODE;
+  if (tlgSolverSolution) {
+    if (enabled && tlgSolverState.lastResponse) {
+      if (tlgSolverSolutionPanel) tlgSolverSolutionPanel.hidden = false;
+      tlgSolverSolution.hidden = false;
+      tlgSolverSolution.textContent = buildTlgSolutionText(tlgSolverState.lastResponse);
+    } else {
+      if (tlgSolverSolutionPanel) tlgSolverSolutionPanel.hidden = true;
+      tlgSolverSolution.hidden = true;
+      tlgSolverSolution.textContent = "";
+    }
+  }
+  if (!enabled) {
+    setTlgSolverStatus(ui("tlgStatusOptional"));
+  } else if (tlgSolverState.lastMessage) {
+    setTlgSolverStatus(`${tlgSolverState.lastMessage} | ${summarizeTlgSolverState(ui("tlgEditingEnabled"))}`, tlgSolverState.lastTone || "ok");
+  } else {
+    setTlgSolverStatus(summarizeTlgSolverState(ui("tlgEditingEnabled")));
+  }
+}
+
+const TLG_HOUSE_TYPE_ORDER = ["r", "c", "b"];
+const TLG_HOUSE_TYPE_COLORS = Object.freeze({
+  r: "#0f9d8b",
+  c: "#d4a017",
+  b: "#8b5cf6",
+});
+
+function tlgCandidateEndpointTokens(value) {
+  const endpoints = [];
+  const pattern = /([1-9])r([1-9])c([1-9])/gi;
+  let match;
+  while ((match = pattern.exec(String(value || ""))) !== null) {
+    endpoints.push({
+      digit: Number(match[1]),
+      row: Number(match[2]),
+      column: Number(match[3]),
+    });
+  }
+  return endpoints;
+}
+
+function tlgCandidateBelongsToManualHouseDescriptor(rawValue, type, cellIndex, digit) {
+  const value = String(rawValue || "");
+  const row = Math.floor(cellIndex / 9) + 1;
+  const column = (cellIndex % 9) + 1;
+  const box = tlgSolverBoxIndex(cellIndex);
+  const endpoints = tlgCandidateEndpointTokens(value);
+  if (!endpoints.length) return false;
+
+  // A normal row/column/box Link uses one digit.  Highlight the complete
+  // active candidate set represented by that house descriptor.  Malformed or
+  // deliberately mixed-digit endpoint input is kept conservative: only the
+  // explicitly selected endpoints are highlighted.
+  const endpointDigits = [...new Set(endpoints.map((point) => point.digit))];
+  if (endpointDigits.length === 1 && endpointDigits[0] === digit) {
+    if (type === "r") {
+      const header = /(?:^|:)r([1-9])(?=:)/i.exec(value);
+      const house = header ? Number(header[1]) : endpoints[0].row;
+      return row === house;
+    }
+    if (type === "c") {
+      const header = /(?:^|:)c([1-9])(?=:)/i.exec(value);
+      const house = header ? Number(header[1]) : endpoints[0].column;
+      return column === house;
+    }
+    if (type === "b") {
+      const header = /(?:^|:)b([1-9])(?=:)/i.exec(value);
+      const endpointCell = (endpoints[0].row - 1) * 9 + (endpoints[0].column - 1);
+      const house = header ? Number(header[1]) : tlgSolverBoxIndex(endpointCell);
+      return box === house;
+    }
+  }
+
+  return endpoints.some((point) => point.digit === digit && point.row === row && point.column === column);
+}
+
+function tlgCandidateHouseTypes(items, cellIndex, digit, role) {
+  const row = Math.floor(cellIndex / 9) + 1;
+  const column = (cellIndex % 9) + 1;
+  const box = tlgSolverBoxIndex(cellIndex);
+  const found = new Set();
+
+  for (const rawItem of items || []) {
+    const raw = String(rawItem || "");
+    const value = tlgSolverPrettyValue(raw).toLowerCase();
+    const descriptor = /^([1-9])([rcb])([1-9])$/.exec(value);
+    if (descriptor) {
+      const descriptorDigit = Number(descriptor[1]);
+      const type = descriptor[2];
+      const index = Number(descriptor[3]);
+      if (descriptorDigit !== digit) continue;
+      if ((type === "r" && row === index) ||
+          (type === "c" && column === index) ||
+          (type === "b" && box === index)) {
+        found.add(type);
+      }
+      continue;
+    }
+
+    if (role !== "link") continue;
+
+    if (/^row-link:/i.test(raw) && tlgCandidateBelongsToManualHouseDescriptor(raw, "r", cellIndex, digit)) found.add("r");
+    if (/^column-link:/i.test(raw) && tlgCandidateBelongsToManualHouseDescriptor(raw, "c", cellIndex, digit)) found.add("c");
+    if (/^box-link:/i.test(raw) && tlgCandidateBelongsToManualHouseDescriptor(raw, "b", cellIndex, digit)) found.add("b");
+  }
+
+  return TLG_HOUSE_TYPE_ORDER.filter((type) => found.has(type));
+}
+
+function tlgCellHasDescriptor(items, cellIndex, role) {
+  const row = Math.floor(cellIndex / 9) + 1;
+  const column = (cellIndex % 9) + 1;
+  const canonical = `${row}n${column}`;
+
+  for (const rawItem of items || []) {
+    const raw = String(rawItem || "");
+    const value = tlgSolverPrettyValue(raw).toLowerCase();
+    if (value === canonical) return true;
+
+    if (role === "truth") {
+      const match = /^cell-truth:r([1-9])c([1-9])$/i.exec(raw);
+      if (match && Number(match[1]) === row && Number(match[2]) === column) return true;
+      continue;
+    }
+
+    if (role === "link" && /^cell-link:/i.test(raw)) {
+      const endpoints = tlgCandidateEndpointTokens(raw);
+      if (endpoints.length === 2 && endpoints.every((point) => point.row === row && point.column === column)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function tlgPolarPoint(cx, cy, radius, angle) {
+  return {
+    x: cx + radius * Math.cos(angle),
+    y: cy + radius * Math.sin(angle),
+  };
+}
+
+function tlgCreateSvgElement(tagName, attributes = {}) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tagName);
+  Object.entries(attributes).forEach(([name, value]) => node.setAttribute(name, String(value)));
+  return node;
+}
+
+function tlgArcPath(cx, cy, radius, startAngle, sweepAngle, includeCenter = false) {
+  const start = tlgPolarPoint(cx, cy, radius, startAngle);
+  const end = tlgPolarPoint(cx, cy, radius, startAngle + sweepAngle);
+  const largeArc = sweepAngle > Math.PI ? 1 : 0;
+  const prefix = includeCenter ? `M ${cx} ${cy} L ${start.x} ${start.y}` : `M ${start.x} ${start.y}`;
+  return `${prefix} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}${includeCenter ? " Z" : ""}`;
+}
+
+function tlgAppendSegmentedCircle(svg, types, layer) {
+  if (!types.length) return;
+  const count = types.length;
+  const sweep = (Math.PI * 2) / count;
+  const radius = layer === "truth" ? 42 : 33;
+
+  types.forEach((type, index) => {
+    const color = TLG_HOUSE_TYPE_COLORS[type];
+    if (!color) return;
+    if (count === 1) {
+      svg.appendChild(tlgCreateSvgElement("circle", {
+        cx: 50,
+        cy: 50,
+        r: radius,
+        fill: layer === "link" ? color : "none",
+        "fill-opacity": layer === "link" ? 0.42 : 0,
+        stroke: layer === "truth" ? color : "none",
+        "stroke-width": layer === "truth" ? 8 : 0,
+      }));
+      return;
+    }
+
+    const path = tlgCreateSvgElement("path", {
+      d: tlgArcPath(50, 50, radius, index * sweep, sweep, layer === "link"),
+      fill: layer === "link" ? color : "none",
+      "fill-opacity": layer === "link" ? 0.42 : 0,
+      stroke: layer === "truth" ? color : "none",
+      "stroke-width": layer === "truth" ? 8 : 0,
+      "stroke-linecap": "butt",
+      "stroke-linejoin": "round",
+    });
+    svg.appendChild(path);
+  });
+}
+
+function tlgShouldShowLinkHighlight(cellHasTruth, truthTypes, isElimination) {
+  return !!cellHasTruth || truthTypes.length > 0 || !!isElimination;
+}
+
+function tlgApplyHouseMembershipOverlay(candidate, truthTypes, linkTypes) {
+  if (!truthTypes.length && !linkTypes.length) return;
+  const svg = tlgCreateSvgElement("svg", {
+    viewBox: "0 0 100 100",
+    "aria-hidden": "true",
+    focusable: "false",
+  });
+  svg.classList.add("tlg-house-overlay");
+  // Link membership is the candidate's own background. Truth membership is
+  // the slightly larger outer ring. Both use the same 0° start and stable
+  // R→C→B ordering, so segmented memberships never jump.
+  tlgAppendSegmentedCircle(svg, linkTypes, "link");
+  tlgAppendSegmentedCircle(svg, truthTypes, "truth");
+  candidate.classList.add("tlg-house-membership");
+  candidate.appendChild(svg);
+}
+
+function applyTlgSolverMarksToCellElement(cellNode, cellIndex) {
+  if (!tlgSolverEditingActive()) return;
+  if (!tlgSolverCellAcceptsInput(cellIndex)) return;
+  const cellHasTruth = tlgCellHasDescriptor(tlgSolverState.truths, cellIndex, "truth");
+  const cellHasLink = tlgCellHasDescriptor(tlgSolverState.links, cellIndex, "link");
+  if (cellHasLink) {
+    // Cell Links retain their original cell-level meaning: tint the whole cell.
+    // V574's candidate-level Link rendering applies only to row/column/box Links.
+    cellNode.classList.add("tlg-cell-link");
+  }
+  if (cellHasTruth) {
+    cellNode.classList.add("tlg-cell-truth");
+  }
+
+  const candidates = [...cellNode.querySelectorAll(".candidate[data-digit]")];
+
+  candidates.forEach((candidate) => {
+    const digit = Number(candidate.dataset.digit || 0);
+    if (!digit || !candidate.textContent.trim()) return;
+    const key = tlgSolverCandidateKey(cellIndex, digit);
+    if (tlgSolverState.selectedCandidates.has(key)) candidate.classList.add("tlg-multi-selected");
+    if (tlgSolverState.virtualCandidates.has(key)) candidate.classList.add("tlg-virtual-candidate");
+    if (tlgSolverState.aurGroups[0].has(key)) candidate.classList.add("tlg-aur-corner");
+    if (tlgSolverState.aurGroups[1].has(key)) candidate.classList.add("tlg-aur-corner-secondary");
+    if (tlgSolverState.dynamicAurCandidates.has(key)) candidate.classList.add("tlg-daur-candidate");
+
+    const isElimination = tlgSolverState.eliminations.some(
+      (item) => item.cell === cellIndex && item.digit === digit,
+    );
+    if (isElimination) candidate.classList.add("tlg-elimination");
+
+    const truthTypes = tlgCandidateHouseTypes(tlgSolverState.truths, cellIndex, digit, "truth");
+    let linkTypes = tlgCandidateHouseTypes(tlgSolverState.links, cellIndex, digit, "link");
+
+    // Row/column/box Links are candidate-level memberships. Show them
+    // only where that candidate is Truth-covered or is a final elimination.
+    if (!tlgShouldShowLinkHighlight(cellHasTruth, truthTypes, isElimination)) {
+      linkTypes = [];
+    }
+
+    tlgApplyHouseMembershipOverlay(candidate, truthTypes, linkTypes);
+    const ep = tlgSolverState.selectedEndpoint;
+    if (ep && ep.cellIndex === cellIndex && ep.digit === digit) candidate.classList.add("tlg-selected-endpoint");
+  });
+}
+
+let tlgContextMenuNode = null;
+let tlgContextMenuListenersInstalled = false;
+
+function tlgSelectedCandidatePoints() {
+  return [...tlgSolverState.selectedCandidates].map((key) => {
+    const [cellText, digitText] = String(key).split(":");
+    const cellIndex = Number(cellText);
+    const digit = Number(digitText);
+    return { key, cellIndex, digit };
+  }).filter((point) => Number.isInteger(point.cellIndex) && point.cellIndex >= 0 && point.cellIndex < 81 && Number.isInteger(point.digit) && point.digit >= 1 && point.digit <= 9);
+}
+
+function tlgCandidatePointFromNrc(value) {
+  const match = /^([1-9])r([1-9])c([1-9])$/i.exec(String(value || "").trim());
+  if (!match) return null;
+  return { digit: Number(match[1]), row: Number(match[2]), column: Number(match[3]) };
+}
+
+function tlgDescriptorFromEndpointPair(rawValue) {
+  const raw = String(rawValue || "").trim().toLowerCase();
+  const matches = [...raw.matchAll(/([1-9]r[1-9]c[1-9])/g)];
+  if (matches.length < 2) return "";
+  const a = tlgCandidatePointFromNrc(matches[0][1]);
+  const b = tlgCandidatePointFromNrc(matches[1][1]);
+  if (!a || !b) return "";
+  const sameCell = a.row === b.row && a.column === b.column;
+  const sameDigit = a.digit === b.digit;
+  const sameRow = a.row === b.row;
+  const sameColumn = a.column === b.column;
+  const boxOf = (point) => Math.floor((point.row - 1) / 3) * 3 + Math.floor((point.column - 1) / 3) + 1;
+  const sameBox = boxOf(a) === boxOf(b);
+
+  if (raw.startsWith("cell-") || (sameCell && !raw.startsWith("row-") && !raw.startsWith("column-") && !raw.startsWith("box-"))) {
+    return sameCell ? `${a.row}n${a.column}` : "";
+  }
+  if (raw.startsWith("row-")) return sameDigit && sameRow ? `${a.digit}r${a.row}` : "";
+  if (raw.startsWith("column-")) return sameDigit && sameColumn ? `${a.digit}c${a.column}` : "";
+  if (raw.startsWith("box-")) return sameDigit && sameBox ? `${a.digit}b${boxOf(a)}` : "";
+  if (sameCell) return `${a.row}n${a.column}`;
+  if (sameDigit && sameRow) return `${a.digit}r${a.row}`;
+  if (sameDigit && sameColumn) return `${a.digit}c${a.column}`;
+  if (sameDigit && sameBox) return `${a.digit}b${boxOf(a)}`;
+  return "";
+}
+
+function tlgCanonicalDescriptor(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  const stripped = raw.replace(
+    /^(descriptor-truth:|descriptor-link:|truth-descriptor:|link-descriptor:|row-truth:|column-truth:|box-truth:)/,
+    "",
+  );
+  if (/^[1-9][rcnb][1-9]$/.test(stripped)) return stripped;
+  const cellTruth = /^cell-truth:r([1-9])c([1-9])$/.exec(raw);
+  if (cellTruth) return `${cellTruth[1]}n${cellTruth[2]}`;
+  return tlgDescriptorFromEndpointPair(raw);
+}
+
+function tlgCanonicalDescriptorState(values, kind) {
+  const prefix = kind === "links" ? "descriptor-link:" : "descriptor-truth:";
+  const out = [];
+  const seen = new Set();
+  for (const value of values || []) {
+    const canonical = tlgCanonicalDescriptor(value);
+    const key = canonical || `raw:${String(value || "")}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(canonical ? `${prefix}${canonical}` : value);
+  }
+  return out;
+}
+
+function tlgDescriptorForCandidate(cellIndex, digit, family) {
+  const row = Math.floor(cellIndex / 9) + 1;
+  const column = (cellIndex % 9) + 1;
+  if (family === "row") return `${digit}r${row}`;
+  if (family === "column") return `${digit}c${column}`;
+  if (family === "cell") return `${row}n${column}`;
+  if (family === "box") return `${digit}b${tlgSolverBoxIndex(cellIndex)}`;
+  return "";
+}
+
+function tlgBatchToggleDescriptors(kind, tokens, label = kind) {
+  const normalizedState = tlgCanonicalDescriptorState(
+    kind === "links" ? tlgSolverState.links : tlgSolverState.truths,
+    kind,
+  );
+  if (kind === "links") tlgSolverState.links = normalizedState;
+  else tlgSolverState.truths = normalizedState;
+  const target = kind === "links" ? tlgSolverState.links : tlgSolverState.truths;
+  const normalized = [...new Set((tokens || []).map((token) => String(token || "").toLowerCase()).filter((token) => /^[1-9][rcnb][1-9]$/.test(token)))];
+  if (!normalized.length) return;
+  const tokenSet = new Set(normalized);
+  const existing = new Set(target.map(tlgCanonicalDescriptor).filter(Boolean));
+  const remove = normalized.every((token) => existing.has(token));
+  let changedCount = 0;
+  if (remove) {
+    const next = target.filter((item) => {
+      const matched = tokenSet.has(tlgCanonicalDescriptor(item));
+      if (matched) changedCount += 1;
+      return !matched;
+    });
+    if (kind === "links") tlgSolverState.links = next;
+    else tlgSolverState.truths = next;
+  } else {
+    const prefix = kind === "links" ? "descriptor-link:" : "descriptor-truth:";
+    for (const token of normalized) {
+      if (existing.has(token)) continue;
+      target.push(`${prefix}${token}`);
+      existing.add(token);
+      changedCount += 1;
+    }
+  }
+  tlgSolverState.selectedEndpoint = null;
+  tlgSolverState.selectedCandidates.clear();
+  announceTlgSolver(uif(remove ? "tlgBatchRemoved" : "tlgBatchAdded", { count: changedCount, kind: label }));
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  updateTlgSolverUi();
+}
+
+function tlgBatchToggleCandidateSet(target, label) {
+  const keys = [...tlgSolverState.selectedCandidates];
+  if (!keys.length) return;
+  const remove = keys.every((key) => target.has(key));
+  for (const key of keys) {
+    if (remove) target.delete(key);
+    else target.add(key);
+  }
+  tlgSolverState.selectedEndpoint = null;
+  tlgSolverState.selectedCandidates.clear();
+  announceTlgSolver(uif(remove ? "tlgBatchToggledOff" : "tlgBatchToggledOn", { count: keys.length, kind: label }));
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  updateTlgSolverUi();
+}
+
+function clearTlgSolverLogicOnly(messageKey = "tlgLogicCleared") {
+  tlgSolverState.selectedEndpoint = null;
+  tlgSolverState.selectedCandidates.clear();
+  tlgSolverState.truths = [];
+  tlgSolverState.links = [];
+  tlgSolverState.virtualCandidates.clear();
+  tlgSolverState.aurGroups.forEach((group) => group.clear());
+  tlgSolverState.dynamicAurCandidates.clear();
+  clearTlgSolverComputedResult();
+  tlgSolverState.lastMessage = ui(messageKey);
+  tlgSolverState.lastTone = "ok";
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  updateTlgSolverUi();
+}
+
+function closeTlgSolverContextMenu() {
+  tlgContextMenuNode?.remove();
+  tlgContextMenuNode = null;
+}
+
+function tlgMenuButton(label, handler, className = "") {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `tlg-context-item ${className}`.trim();
+  button.setAttribute("role", "menuitem");
+  button.textContent = label;
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    handler();
+    closeTlgSolverContextMenu();
+  });
+  return button;
+}
+
+function tlgMenuSubmenu(label, entries) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "tlg-context-submenu-wrap";
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "tlg-context-item tlg-context-submenu-trigger";
+  trigger.setAttribute("aria-haspopup", "menu");
+  trigger.textContent = label;
+  const submenu = document.createElement("div");
+  submenu.className = "tlg-context-submenu";
+  submenu.setAttribute("role", "menu");
+  for (const entry of entries) {
+    if (entry.separator) {
+      const separator = document.createElement("div");
+      separator.className = "tlg-context-separator";
+      separator.setAttribute("role", "separator");
+      submenu.appendChild(separator);
+    } else {
+      submenu.appendChild(tlgMenuButton(entry.label, entry.handler));
+    }
+  }
+  wrapper.append(trigger, submenu);
+  return wrapper;
+}
+
+function installTlgContextMenuListeners() {
+  if (tlgContextMenuListenersInstalled) return;
+  tlgContextMenuListenersInstalled = true;
+  document.addEventListener("pointerdown", (event) => {
+    if (tlgContextMenuNode && !tlgContextMenuNode.contains(event.target)) closeTlgSolverContextMenu();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeTlgSolverContextMenu();
+  });
+  window.addEventListener("blur", closeTlgSolverContextMenu);
+  window.addEventListener("resize", closeTlgSolverContextMenu);
+  window.addEventListener("scroll", closeTlgSolverContextMenu, true);
+}
+
+function openTlgSolverContextMenu(cellIndex, digit, event, candidate) {
+  if (!tlgSolverEditingActive()) return false;
+  if (tlgSolverState.busyTask) return consumeTlgSolverFixedCellEvent(event);
+  if (!tlgSolverCellAcceptsInput(cellIndex)) return consumeTlgSolverFixedCellEvent(event);
+  if (!digit || !candidate?.textContent?.trim()) return false;
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  closeTlgSolverContextMenu();
+  installTlgContextMenuListeners();
+
+  const key = tlgSolverCandidateKey(cellIndex, digit);
+  const additive = !!(event?.ctrlKey || event?.metaKey);
+  if (!tlgSolverState.selectedCandidates.has(key)) {
+    if (!additive) tlgSolverState.selectedCandidates.clear();
+    tlgSolverState.selectedCandidates.add(key);
+  }
+  tlgSolverState.selectedEndpoint = null;
+  selectedIndex = cellIndex;
+  renderBoardSnapshot(currentSnapshot, currentHint);
+
+  const points = tlgSelectedCandidatePoints();
+  const root = document.createElement("div");
+  root.className = "tlg-context-menu";
+  root.setAttribute("role", "menu");
+  root.addEventListener("contextmenu", (menuEvent) => menuEvent.preventDefault());
+  const header = document.createElement("div");
+  header.className = "tlg-context-header";
+  header.textContent = points.length === 1
+    ? uif("tlgContextCandidate", { value: tlgSolverNrc(points[0].cellIndex, points[0].digit) })
+    : uif("tlgContextCandidates", { count: points.length });
+  root.appendChild(header);
+
+  const familyEntries = (kind) => [
+    ["row", "tlgMenuRow"], ["column", "tlgMenuColumn"], ["cell", "tlgMenuCell"], ["box", "tlgMenuBox"],
+  ].map(([family, labelKey]) => ({
+    label: ui(labelKey),
+    handler: () => tlgBatchToggleDescriptors(kind, points.map((point) => tlgDescriptorForCandidate(point.cellIndex, point.digit, family)), kind === "links" ? ui("tlgLinks") : ui("tlgTruths")),
+  }));
+  root.appendChild(tlgMenuSubmenu(ui("tlgAddSubTruth"), familyEntries("truths")));
+  root.appendChild(tlgMenuSubmenu(ui("tlgAddSubLink"), familyEntries("links")));
+
+  const separator1 = document.createElement("div");
+  separator1.className = "tlg-context-separator";
+  separator1.setAttribute("role", "separator");
+  root.appendChild(separator1);
+  root.appendChild(tlgMenuButton(ui("tlgToggleVirtualBatch"), () => tlgBatchToggleCandidateSet(tlgSolverState.virtualCandidates, ui("tlgVirtualSet"))));
+  root.appendChild(tlgMenuButton(ui("tlgToggleAurBatch"), () => {
+    const groupIndex = Math.max(0, Math.min(1, Number(tlgSolverAurGroup?.value || 0) || 0));
+    tlgBatchToggleCandidateSet(tlgSolverState.aurGroups[groupIndex], ui(groupIndex === 0 ? "tlgAurGroup1" : "tlgAurGroup2"));
+  }));
+  root.appendChild(tlgMenuButton(ui("tlgToggleDaurBatch"), () => {
+    tlgBatchToggleCandidateSet(tlgSolverState.dynamicAurCandidates, ui("tlgDaurCandidates"));
+  }));
+  const separator2 = document.createElement("div");
+  separator2.className = "tlg-context-separator";
+  separator2.setAttribute("role", "separator");
+  root.appendChild(separator2);
+  root.appendChild(tlgMenuButton(ui("tlgClearAllLogic"), () => clearTlgSolverLogicOnly()));
+
+  document.body.appendChild(root);
+  const menuWidth = root.offsetWidth || 250;
+  const menuHeight = root.offsetHeight || 360;
+  const margin = 8;
+  let left = Math.max(margin, Math.min(Number(event?.clientX || 0), window.innerWidth - menuWidth - margin));
+  let top = Math.max(margin, Math.min(Number(event?.clientY || 0), window.innerHeight - menuHeight - margin));
+  root.style.left = `${left}px`;
+  root.style.top = `${top}px`;
+  if (left + menuWidth + 250 > window.innerWidth) root.classList.add("tlg-context-open-left");
+  tlgContextMenuNode = root;
+  setTlgSolverStatus(uif("tlgCandidatesSelected", { count: points.length }));
+  return true;
+}
+
+function inferTlgSetFromEndpoints(a, b, mode) {
+  const ar = Math.floor(a.cellIndex / 9), ac = a.cellIndex % 9;
+  const br = Math.floor(b.cellIndex / 9), bc = b.cellIndex % 9;
+  const sameCell = a.cellIndex === b.cellIndex;
+  const sameDigit = a.digit === b.digit;
+  const sameRow = ar === br;
+  const sameCol = ac === bc;
+  const sameBox = tlgSolverBoxIndex(a.cellIndex) === tlgSolverBoxIndex(b.cellIndex);
+  if (mode === "links") {
+    const forced = tlgSolverLinkType?.value || "auto";
+    if ((forced === "cell" || forced === "auto") && sameCell) {
+      return `cell-link:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
+    }
+    if (forced === "box" && sameBox) return `box-link:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
+    if (sameRow) return `row-link:r${ar + 1}:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
+    if (sameCol) return `column-link:c${ac + 1}:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
+    if (sameBox) return `box-link:b${tlgSolverBoxIndex(a.cellIndex)}:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
+    return `link:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
+  }
+  if (sameCell) return `cell-truth:${tlgSolverCellText(a.cellIndex)}`;
+  if (sameDigit && sameRow) return `row-truth:${a.digit}r${ar + 1}`;
+  if (sameDigit && sameCol) return `column-truth:${a.digit}c${ac + 1}`;
+  if (sameDigit && sameBox) return `box-truth:${a.digit}b${tlgSolverBoxIndex(a.cellIndex)}`;
+  return `truth:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
+}
+
+function toggleTlgDescriptorValue(array, value, kind) {
+  const canonical = tlgCanonicalDescriptor(value);
+  if (!canonical) {
+    const idx = array.indexOf(value);
+    if (idx >= 0) {
+      array.splice(idx, 1);
+      return false;
+    }
+    array.push(value);
+    return true;
+  }
+  const matches = [];
+  for (let index = 0; index < array.length; index += 1) {
+    if (tlgCanonicalDescriptor(array[index]) === canonical) matches.push(index);
+  }
+  if (matches.length) {
+    for (let index = matches.length - 1; index >= 0; index -= 1) array.splice(matches[index], 1);
+    return false;
+  }
+  const prefix = kind === "links" ? "descriptor-link:" : "descriptor-truth:";
+  array.push(`${prefix}${canonical}`);
+  return true;
+}
+
+function handleTlgSolverCandidateClick(cellIndex, digit, event, candidate) {
+  if (!tlgSolverEditingActive()) return false;
+  if (tlgSolverState.busyTask) return consumeTlgSolverFixedCellEvent(event);
+  if (!tlgSolverCellAcceptsInput(cellIndex)) return consumeTlgSolverFixedCellEvent(event);
+  if (!digit || !candidate?.textContent?.trim()) return false;
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  closeTlgSolverContextMenu();
+  selectedIndex = cellIndex;
+  const mode = tlgSolverMode?.value || "truths";
+  const key = tlgSolverCandidateKey(cellIndex, digit);
+  if (event?.ctrlKey || event?.metaKey) {
+    if (tlgSolverState.selectedCandidates.has(key)) tlgSolverState.selectedCandidates.delete(key);
+    else tlgSolverState.selectedCandidates.add(key);
+    tlgSolverState.selectedEndpoint = null;
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    setTlgSolverStatus(uif("tlgCandidatesSelected", { count: tlgSolverState.selectedCandidates.size }));
+    return true;
+  }
+  if (tlgSolverState.selectedCandidates.size) tlgSolverState.selectedCandidates.clear();
+  if (mode === "virtualSet") {
+    const added = !tlgSolverState.virtualCandidates.has(key);
+    if (added) tlgSolverState.virtualCandidates.add(key);
+    else tlgSolverState.virtualCandidates.delete(key);
+    tlgSolverState.selectedEndpoint = null;
+    announceTlgSolver(uif(added ? "tlgVirtualCandidateAdded" : "tlgVirtualCandidateRemoved", { value: tlgSolverNrc(cellIndex, digit) }));
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    updateTlgSolverUi();
+    return true;
+  }
+  if (mode === "aur") {
+    const groupIndex = Math.max(0, Math.min(1, Number(tlgSolverAurGroup?.value || 0) || 0));
+    const group = tlgSolverState.aurGroups[groupIndex];
+    const added = !group.has(key);
+    if (added) group.add(key);
+    else group.delete(key);
+    tlgSolverState.selectedEndpoint = null;
+    announceTlgSolver(uif(added ? "tlgAurCornerAddedGroup" : "tlgAurCornerRemovedGroup", {
+      group: ui(groupIndex === 0 ? "tlgAurGroup1" : "tlgAurGroup2"),
+      value: tlgSolverNrc(cellIndex, digit),
+    }));
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    updateTlgSolverUi();
+    return true;
+  }
+  if (mode === "daur") {
+    const added = !tlgSolverState.dynamicAurCandidates.has(key);
+    if (added) tlgSolverState.dynamicAurCandidates.add(key);
+    else tlgSolverState.dynamicAurCandidates.delete(key);
+    tlgSolverState.selectedEndpoint = null;
+    announceTlgSolver(uif(added ? "tlgDaurCandidateAdded" : "tlgDaurCandidateRemoved", {
+      value: tlgSolverNrc(cellIndex, digit),
+    }));
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    updateTlgSolverUi();
+    return true;
+  }
+  const point = { cellIndex, digit };
+  if (!tlgSolverState.selectedEndpoint) {
+    tlgSolverState.selectedEndpoint = point;
+    announceTlgSolver(uif("tlgEndpointSelected", { value: tlgSolverNrc(cellIndex, digit) }));
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    updateTlgSolverUi();
+    return true;
+  }
+  const value = inferTlgSetFromEndpoints(tlgSolverState.selectedEndpoint, point, mode);
+  const added = mode === "links" ? toggleTlgDescriptorValue(tlgSolverState.links, value, "links") : toggleTlgDescriptorValue(tlgSolverState.truths, value, "truths");
+  announceTlgSolver(uif(mode === "links" ? (added ? "tlgLinkAdded" : "tlgLinkRemoved") : (added ? "tlgTruthAdded" : "tlgTruthRemoved"), { value: tlgSolverPrettyValue(value) }));
+  tlgSolverState.selectedEndpoint = null;
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  updateTlgSolverUi();
+  return true;
+}
+
+function handleTlgSolverCellClick(cellIndex, event) {
+  if (!tlgSolverEditingActive()) return false;
+  if (tlgSolverState.busyTask) return consumeTlgSolverFixedCellEvent(event);
+  if (!tlgSolverCellAcceptsInput(cellIndex)) return consumeTlgSolverFixedCellEvent(event);
+  if ((tlgSolverMode?.value || "truths") !== "truths") return false;
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  closeTlgSolverContextMenu();
+  tlgSolverState.selectedCandidates.clear();
+  selectedIndex = cellIndex;
+  const value = `cell-truth:${tlgSolverCellText(cellIndex)}`;
+  const added = toggleTlgDescriptorValue(tlgSolverState.truths, value, "truths");
+  tlgSolverState.selectedEndpoint = null;
+  announceTlgSolver(uif(added ? "tlgCellTruthAdded" : "tlgCellTruthRemoved", { value: tlgSolverCellText(cellIndex) }));
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  updateTlgSolverUi();
+  return true;
+}
+
+function tlgCandidateKeysToPayload(keys) {
+  return [...new Set(keys)].map((key) => {
+    const [cellText, digitText] = String(key).split(":");
+    const cellIndex = Number(cellText);
+    const digit = Number(digitText);
+    return {
+      digit,
+      cellIndex,
+      row: Math.floor(cellIndex / 9) + 1,
+      column: (cellIndex % 9) + 1,
+      source: tlgSolverNrc(cellIndex, digit),
+    };
+  }).filter((candidate) =>
+    Number.isInteger(candidate.cellIndex) && candidate.cellIndex >= 0 && candidate.cellIndex < 81 &&
+    Number.isInteger(candidate.digit) && candidate.digit >= 1 && candidate.digit <= 9
+  );
+}
+
+function tlgSolverActiveCandidatePayload() {
+  const keys = tlgSolverState.candidateGrid
+    ? [...tlgSolverState.candidateGrid.activeCandidates]
+    : (tlgSolverEffectiveSnapshot()?.cells || []).flatMap((cell, cellIndex) => {
+        if (Number(cell?.value || 0) > 0) return [];
+        return (Array.isArray(cell?.candidates) ? cell.candidates : [])
+          .map((digit) => tlgSolverCandidateKey(cellIndex, Number(digit)));
+      });
+  return tlgCandidateKeysToPayload(keys);
+}
+
+function tlgSolverInitialCandidatePayload() {
+  if (tlgSolverState.candidateGrid?.initialCandidates) {
+    return tlgCandidateKeysToPayload([...tlgSolverState.candidateGrid.initialCandidates]);
+  }
+
+  const givensText = snapshotGivensString(currentSnapshot);
+  if (givensText.length !== 81) return [];
+  const keys = [];
+  for (let cellIndex = 0; cellIndex < 81; cellIndex += 1) {
+    if (/[1-9]/.test(givensText[cellIndex] || ".")) continue;
+    const mask = legalCandidateMaskForBoard(givensText, cellIndex);
+    for (let digit = 1; digit <= 9; digit += 1) {
+      if ((mask & (1 << digit)) !== 0) keys.push(tlgSolverCandidateKey(cellIndex, digit));
+    }
+  }
+  return tlgCandidateKeysToPayload(keys);
+}
+
+function buildTlgSolverRequestV440(action = "findAllEliminations") {
+  const virtualCandidates = [...tlgSolverState.virtualCandidates].map((key) => {
+    const [cellText, digitText] = key.split(":");
+    const cellIndex = Number(cellText);
+    const digit = Number(digitText);
+    return { digit, cellIndex, row: Math.floor(cellIndex / 9) + 1, column: (cellIndex % 9) + 1, source: tlgSolverNrc(cellIndex, digit) };
+  });
+  const aurGroups = tlgSolverState.aurGroups
+    .map((group) => [...group].map((key) => {
+      const [cellText, digitText] = key.split(":");
+      const cellIndex = Number(cellText);
+      const digit = Number(digitText);
+      return { digit, cellIndex, row: Math.floor(cellIndex / 9) + 1, column: (cellIndex % 9) + 1, source: tlgSolverNrc(cellIndex, digit) };
+    }))
+    .filter((corners) => corners.length > 0)
+    .map((corners) => ({ corners }));
+  const legacyAur = aurGroups.length === 1 ? { corners: aurGroups[0].corners } : undefined;
+  const dynamicAurCandidates = [...tlgSolverState.dynamicAurCandidates].map((key) => {
+    const [cellText, digitText] = key.split(":");
+    const cellIndex = Number(cellText);
+    const digit = Number(digitText);
+    return { digit, cellIndex, row: Math.floor(cellIndex / 9) + 1, column: (cellIndex % 9) + 1, source: tlgSolverNrc(cellIndex, digit) };
+  });
+  const activeCandidates = tlgSolverActiveCandidatePayload();
+  const aurPremiseMode = tlgSolverAurPremiseMode?.value || "unique-puzzle-derived";
+  const initialCandidates = aurPremiseMode === "unique-puzzle-derived"
+    ? tlgSolverInitialCandidatePayload()
+    : [];
+  return {
+    inputKind: "tlg-solver-board-first-v440",
+    action,
+    visibleName: "TLG Solver",
+    interaction: "board-first",
+    candidateStateMode: "tlg-only",
+    aurPremiseMode,
+    activeCandidates,
+    ...(aurPremiseMode === "unique-puzzle-derived" ? { initialCandidates } : {}),
+    editingEnabled: tlgSolverEditingActive(),
+    inputMode: tlgSolverMode?.value || "truths",
+    linkType: tlgSolverLinkType?.value || "auto",
+    truths: tlgCanonicalDescriptorState(tlgSolverState.truths, "truths"),
+    links: tlgCanonicalDescriptorState(tlgSolverState.links, "links"),
+    virtualSet: { candidates: virtualCandidates },
+    aurs: aurGroups,
+    daurs: dynamicAurCandidates.length ? [{ candidates: dynamicAurCandidates }] : [],
+    ...(legacyAur ? { aur: legacyAur } : {}),
+    assumptions: { truthsToApply: Number(tlgSolverTruthsToApply?.value || 0) || 0 },
+    debugImportText: String(tlgSolverImportText?.value || ""),
+    pipeline: ["find-all-eliminations", "convert-redundant-truths-to-links", "remove-unused-links"],
+    actionGate: { convertAndRemoveRequireEliminationsOrAssignments: true },
+  };
+}
+
+function callTlgSolverFindEliminationsV440(optionsOrJson = null) {
+  if (!engine || typeof engine.tlgSolverFindEliminationsV440 !== "function") {
+    throw new Error(ui("tlgUnavailable"));
+  }
+  const request = optionsOrJson || buildTlgSolverRequestV440();
+  const requestJson = typeof request === "string" ? request : JSON.stringify(request);
+  return engine.tlgSolverFindEliminationsV440(requestJson);
+}
+
+function localizeTlgBackendMessage(value) {
+  const source = String(value || "");
+  if (!source || lang.value !== "zh") return source;
+  const exact = new Map([
+    ["TLG_ACTION_FAILED", ui("tlgResultActionFailed")],
+    ["solution-budget-exceeded", ui("tlgBackendSolutionBudget")],
+    ["search-budget-exceeded", ui("tlgBackendSearchBudget")],
+    ["cannot materialize an incomplete projection search: solution-budget-exceeded", ui("tlgBackendIncompleteSolutionBudget")],
+    ["cannot materialize an incomplete projection search: search-budget-exceeded", ui("tlgBackendIncompleteSearchBudget")],
+    ["cannot build projection context from an invalid normalized plan", ui("tlgBackendInvalidPlan")],
+    ["cannot materialize a structure with no projection solutions", ui("tlgBackendNoProjection")],
+    ["candidate pool did not expand to any valid fixed AUR or six-cell DUR forms", ui("tlgBackendNoDaurForms")],
+    ["candidate pool has no form with an initially swappable completion pair", ui("tlgBackendNoInitialSwap")],
+    ["initial grid does not contain both swappable 2x2 completions", ui("tlgBackendFixedAurInitialSwap")],
+    ["a TLG-only candidate grid was used; uniqueness was not checked", ui("tlgBackendTrainingGrid")],
+  ]);
+  if (exact.has(source)) return exact.get(source);
+  const sixCellPrefix = "initial grid contains no swappable six-cell completion pair for ";
+  if (source.startsWith(sixCellPrefix)) {
+    return `${ui("tlgBackendSixCellInitialSwap")}${source.slice(sixCellPrefix.length)}`;
+  }
+  return source;
+}
+
+function formatTlgResponseStatus(response) {
+  const counts = response?.counts || {};
+  const rank = response?.rank || {};
+  let summary = localizeTlgBackendMessage(response?.result || response?.status || ui("tlgResponse"));
+  if (response?.ok !== false && (response?.phase === "find-eliminations" || response?.phase === "find-eliminations-phase1")) {
+    const foundLinks = counts.links ?? tlgSolverState.links.length;
+    const foundElims = counts.eliminations ?? 0;
+    summary = foundLinks === 0 && foundElims === 0
+      ? uif("tlgNoConsequencesSummary", { truths: counts.truths ?? tlgSolverState.truths.length })
+      : uif("tlgPhase1Summary", {
+          rank: rank.available ? rank.excess : "?",
+          truths: counts.truths ?? tlgSolverState.truths.length,
+          links: foundLinks,
+          elims: foundElims,
+        });
+  } else if (response?.ok !== false && response?.phase === "convert-truths-to-links") {
+    summary = uif("tlgConvertSummary", {
+      truths: counts.truths ?? tlgSolverState.truths.length,
+      links: counts.links ?? tlgSolverState.links.length,
+      moved: response?.mutation?.movedTruthsToLinks?.length ?? counts.redundantTruths ?? 0,
+      elims: counts.eliminations ?? 0,
+    });
+  } else if (response?.ok !== false && response?.phase === "remove-unused-links") {
+    summary = uif("tlgRemoveSummary", {
+      truths: counts.truths ?? tlgSolverState.truths.length,
+      links: counts.links ?? tlgSolverState.links.length,
+      removed: response?.mutation?.removedLinks?.length ?? counts.unusedLinks ?? 0,
+      elims: counts.eliminations ?? 0,
+    });
+  } else if (response?.ok !== false && response?.phase === "parsed-only") {
+    summary = uif("tlgParsedOnlySummary", {
+      truths: counts.truths ?? tlgSolverState.truths.length,
+      links: counts.links ?? tlgSolverState.links.length,
+    });
+  }
+  const errors = Array.isArray(response?.validationErrors) && response.validationErrors.length
+    ? ` | ${response.validationErrors.map(localizeTlgBackendMessage).join("; ")}`
+    : "";
+  const localizedResult = localizeTlgBackendMessage(response?.result || "");
+  const result = response?.ok === false && localizedResult && localizedResult !== summary ? ` | ${localizedResult}` : "";
+  return {
+    text: `${summary}${result}${errors}`,
+    tone: response?.ok === false ? "error" : "ok",
+  };
+}
+
+function renderTlgSolverResponse(response, rawText) {
+  const responseOk = response?.ok !== false;
+  if (responseOk) {
+    if (Array.isArray(response?.truthsState)) tlgSolverState.truths = [...response.truthsState];
+    if (Array.isArray(response?.linksState)) tlgSolverState.links = [...response.linksState];
+    tlgSolverState.eliminations = (Array.isArray(response?.eliminations) ? response.eliminations : [])
+      .map(normalizeTlgResponseCandidate)
+      .filter(Boolean);
+    tlgSolverState.assignments = (Array.isArray(response?.assignments) ? response.assignments : [])
+      .map(normalizeTlgResponseCandidate)
+      .filter(Boolean);
+    tlgSolverState.lastResponse = response;
+    updateTlgSolverActionGate(response);
+    if (tlgSolverSolutionPanel) tlgSolverSolutionPanel.hidden = false;
+    if (tlgSolverSolution) {
+      tlgSolverSolution.hidden = false;
+      tlgSolverSolution.textContent = buildTlgSolutionText(response);
+    }
+  }
+  if (tlgSolverRaw) {
+    tlgSolverRaw.hidden = !APP_DEBUG_MODE;
+    tlgSolverRaw.textContent = APP_DEBUG_MODE ? (rawText || JSON.stringify(response, null, 2)) : "";
+  }
+  tlgSolverState.lastStatusResponse = response;
+  const formattedStatus = formatTlgResponseStatus(response);
+  const statusText = formattedStatus.text;
+  tlgSolverState.lastMessage = statusText;
+  tlgSolverState.lastTone = formattedStatus.tone;
+  setTlgSolverStatus(statusText, tlgSolverState.lastTone);
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  renderTlgSolverStateList();
+}
+
+async function runTlgSolverAction(action, runningMessage) {
+  if (tlgSolverState.busyTask) return null;
+  setTlgSolverBusy(action, true);
+  try {
+    if (runningMessage) setTlgSolverStatus(runningMessage);
+    const requestJson = JSON.stringify(buildTlgSolverRequestV440(action));
+    const workerResult = await runSolverWorkerTask("tlg", { requestJson });
+    const raw = String(workerResult?.resultText || "");
+    const response = parseJson(raw) || { ok: false, result: ui("tlgParseFailed") };
+    renderTlgSolverResponse(response, raw);
+    return response;
+  } catch (error) {
+    console.error(error);
+    tlgSolverState.lastMessage = uif("tlgFailed", { error: error?.message || error });
+    tlgSolverState.lastTone = "error";
+    setTlgSolverStatus(tlgSolverState.lastMessage, "error");
+    return null;
+  } finally {
+    setTlgSolverBusy(action, false);
+  }
+}
+
+async function runTlgSolverFindEliminations() {
+  return runTlgSolverAction("findAllEliminations", ui("tlgFindRunning"));
+}
+
+async function runTlgSolverConvertTruths() {
+  return runTlgSolverAction("convertTruthsToLinks", ui("tlgConvertRunning"));
+}
+
+async function runTlgSolverRemoveUnusedLinks() {
+  return runTlgSolverAction("removeUnusedLinks", ui("tlgRemoveRunning"));
+}
+
+function clearTlgSolverState() {
+  closeTlgSolverContextMenu();
+  tlgSolverState.selectedEndpoint = null;
+  tlgSolverState.selectedCandidates.clear();
+  tlgSolverState.busyTask = "";
+  tlgSolverState.truths = [];
+  tlgSolverState.links = [];
+  tlgSolverState.virtualCandidates.clear();
+  tlgSolverState.aurGroups.forEach((group) => group.clear());
+  tlgSolverState.dynamicAurCandidates.clear();
+  tlgSolverState.eliminations = [];
+  tlgSolverState.assignments = [];
+  tlgSolverState.lastResponse = null;
+  tlgSolverState.lastMessage = "";
+  tlgSolverState.lastTone = "";
+  tlgSolverState.candidateGrid = null;
+  if (tlgSolverImportText) tlgSolverImportText.value = "";
+  if (tlgSolverSolutionPanel) tlgSolverSolutionPanel.hidden = true;
+  if (tlgSolverSolution) {
+    tlgSolverSolution.hidden = true;
+    tlgSolverSolution.textContent = "";
+  }
+  if (tlgSolverRaw) {
+    tlgSolverRaw.hidden = true;
+    tlgSolverRaw.textContent = "";
+  }
+  if (btnTlgConvertTruths) btnTlgConvertTruths.disabled = true;
+  if (btnTlgRemoveUnused) btnTlgRemoveUnused.disabled = true;
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  updateTlgSolverUi();
+}
+
+function initTlgSolverControls() {
+  if (!tlgSolverPanel) return;
+  tlgSolverEnable?.addEventListener("change", () => {
+    closeTlgSolverContextMenu();
+    tlgSolverState.selectedEndpoint = null;
+    tlgSolverState.selectedCandidates.clear();
+    selectedIndex = -1;
+    if (!tlgSolverEditingActive()) {
+      tlgSolverState.candidateGrid = null;
+      clearTlgSolverComputedResult();
+      tlgSolverState.lastMessage = "";
+      tlgSolverState.lastTone = "";
+    }
+    // TLG is a dedicated proof view: solver hints, chain overlays and manual
+    // annotations remain stored, but are visually suppressed until TLG exits.
+    renderBoardSnapshot(currentSnapshot, tlgSolverEditingActive() ? null : currentHint);
+    updateTlgSolverUi();
+  });
+  tlgSolverMode?.addEventListener("change", () => {
+    closeTlgSolverContextMenu();
+    tlgSolverState.selectedEndpoint = null;
+    tlgSolverState.selectedCandidates.clear();
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    updateTlgSolverUi();
+  });
+  tlgSolverAurGroup?.addEventListener("change", () => {
+    tlgSolverState.selectedEndpoint = null;
+    updateTlgSolverUi();
+  });
+  tlgSolverLinkType?.addEventListener("change", updateTlgSolverUi);
+  tlgSolverAurPremiseMode?.addEventListener("change", () => {
+    clearTlgSolverComputedResult();
+    tlgSolverState.lastMessage = "";
+    tlgSolverState.lastTone = "";
+    updateTlgSolverUi();
+  });
+  btnTlgImportCandidates?.addEventListener("click", importTlgCandidateGridFromMainInput);
+  btnTlgFindEliminations?.addEventListener("click", () => { void runTlgSolverFindEliminations(); });
+  btnTlgConvertTruths?.addEventListener("click", () => { void runTlgSolverConvertTruths(); });
+  btnTlgRemoveUnused?.addEventListener("click", () => { void runTlgSolverRemoveUnusedLinks(); });
+  btnTlgClear?.addEventListener("click", clearTlgSolverState);
+  tlgSolverStateList?.addEventListener("click", (event) => {
+    if (tlgSolverState.busyTask) return;
+    const button = event.target?.closest?.("button[data-tlg-remove-category]");
+    if (!button) return;
+    removeTlgSolverStateItem(button.dataset.tlgRemoveCategory || "", button.dataset.tlgRemoveValue || "");
+  });
+  installTlgContextMenuListeners();
+  if (tlgSolverDebug) tlgSolverDebug.hidden = !APP_DEBUG_MODE;
+  updateTlgSolverUi();
+}
+
 function getManualAdvancedDefaultPuzzle() {
   const fromInput = (givens?.value || "").trim();
   if (fromInput) {
@@ -10145,6 +12147,8 @@ async function init() {
   if (APP_DEBUG_MODE) {
     window.manualAdvancedStepTest = manualAdvancedStepTest;
     window.runManualAdvancedTechnique = runManualAdvancedTechnique;
+    window.tlgSolverRequestV440 = buildTlgSolverRequestV440;
+    window.tlgSolverFindEliminationsV440 = callTlgSolverFindEliminationsV440;
   }
   buildNumpad();
   loadTechniqueState();
@@ -10161,6 +12165,7 @@ async function init() {
   }
   initYzfTyp4DebugOverlayControls();
   initManualAdvancedControls();
+  initTlgSolverControls();
   initManualMarksControls();
   const params = APP_URL_PARAMS;
   if (params.get("manualAdvancedSmoke") === "1") {
@@ -10196,6 +12201,7 @@ for (const button of tabButtons) {
 }
 
 trainingTechniqueSelect?.addEventListener("change", updateTrainingTechniqueSelectColor);
+batchMode?.addEventListener("change", updateBatchModeUi);
 
 async function readClipboardTextForLoad() {
   if (!navigator.clipboard?.readText) {
@@ -10366,28 +12372,13 @@ imageOcrCameraInput?.addEventListener("change", async () => {
   await recognizeAndImportImageFile(file);
 });
 
-function isEditablePasteTarget(target) {
-  if (!target) return false;
-  const el = target instanceof Element ? target : target?.parentElement;
-  if (!el) return false;
-
-  return Boolean(
-    el.closest("input, textarea, select, [contenteditable='true'], [contenteditable='']")
-  );
-}
-
 window.addEventListener("paste", async (event) => {
-  if (isEditablePasteTarget(event.target)) {
-    return;
-  }
-
+  if (isEditablePasteTarget(event.target)) return;
   const items = Array.from(event.clipboardData?.items || []);
   const imageItem = items.find((item) => item.type?.startsWith?.("image/"));
   if (!imageItem) return;
-
   const file = imageItem.getAsFile();
   if (!file) return;
-
   event.preventDefault();
   await recognizeAndImportImageFile(file);
 });
@@ -10414,15 +12405,22 @@ btnGenerate.addEventListener("click", () => {
 btnBatchStop?.addEventListener("click", () => {
   batchAbortRequested = true;
   updateBatchStatus(ui("stoppingBatch"));
+  batchWorker?.postMessage({ type: "cancel" });
 });
 
 btnBatchGenerate?.addEventListener("click", async () => {
   if (!engine) return;
-  const target = Math.max(1, Math.min(500, Number(batchCount?.value || 1)));
-  const filename = sanitizeFilename(batchFilename?.value || "sudoku-batch.txt");
+  const mode = batchMode?.value === "solve" ? "solve" : "generate";
+  const filename = sanitizeFilename(batchFilename?.value || (mode === "solve" ? "sudoku-batch-solve.tsv" : "sudoku-batch.txt"));
   const difficulty = Number(difficultySelect.value || 0);
-  const trainingKind = trainingTechniqueSelect?.value || "";
+  const trainingKind = mode === "generate" ? (trainingTechniqueSelect?.value || "") : "";
   const trainingLabel = trainingTechniqueSelect?.selectedOptions?.[0]?.textContent || trainingKind;
+  const puzzles = mode === "solve" ? await collectBatchSolveInputLinesFromFile() : [];
+  if (mode === "solve" && !puzzles.length) {
+    updateBatchStatus(ui("batchSolveNoInput"));
+    return;
+  }
+
   let writer = null;
   let generated = 0;
   let attempts = 0;
@@ -10436,60 +12434,75 @@ btnBatchGenerate?.addEventListener("click", async () => {
 
   try {
     writer = await openBatchWriter(filename);
-    await writer.write("index\ttechnique\tpuzzle\tsolution\tdifficulty\ttrainingAttempts\tclues\tER\tEP\tED\tAIG\n");
-    updateBatchStatus(trainingKind
-      ? uif("batchTrainingStart", { target, technique: trainingLabel, difficulty: selectedDifficultyLabel() })
-      : uif("batchStart", { target, difficulty: selectedDifficultyLabel() }));
+    // Output is one result per line. No header row, so generated/solved files can be chained directly.
+    updateBatchStatus(mode === "solve"
+      ? uif("batchSolveStart", { target: puzzles.length })
+      : (trainingKind
+        ? uif("batchTrainingStart", { technique: trainingLabel, difficulty: selectedDifficultyLabel() })
+        : uif("batchStart", { difficulty: selectedDifficultyLabel() })));
+
     const batchProgressStatus = () => {
       const prefix = batchAbortRequested ? ui("batchStoppingPrefix") : "";
       const lastText = lastPuzzleAttempts ? uif("batchLastPuzzle", { attempts: lastPuzzleAttempts }) : "";
-      const values = { prefix, generated, target, attempts, failed, last: lastText, elapsed: formatElapsedSeconds(startTime) };
+      const values = { prefix, generated, target: puzzles.length, attempts, failed, last: lastText, elapsed: formatElapsedSeconds(startTime) };
+      if (mode === "solve") return uif("batchSolveProgress", values);
       return trainingKind ? uif("batchTrainingProgress", values) : uif("batchProgress", values);
     };
     timer = window.setInterval(() => {
       updateBatchStatus(batchProgressStatus());
     }, 1000);
-    await paintBeforeLongTask();
 
-    while (generated < target && !batchAbortRequested) {
-      attempts += 1;
-      const resultText = trainingKind
-        ? await generateTrainingPuzzleInWorker(trainingKind, difficulty, 0, true)
-        : engine.generate_puzzle_difficulty_json(difficulty, 0);
-      const result = parseJson(resultText);
-      if (result?.ok) {
-        if (!trainingKind) {
-          const solve = parseJson(engine.solve_summary_json(500));
-          if (solve?.status === "invalid_step") {
-            result.solve = solve;
-            await stopBatchOnInvalidStep(writer, result, trainingKind);
-            await writer.close();
-            return;
-          }
+    const config = {
+      mode,
+      target: mode === "solve" ? puzzles.length : 0,
+      difficulty,
+      trainingKind,
+      maxAttempts: 0,
+      maxSteps: 500,
+      puzzles,
+      techniqueConfig: getTechniqueConfigPayload(techniqueState.length ? techniqueState : loadTechniqueState()),
+    };
+
+    const final = await runBatchTaskInWorker(config, {
+      onItem: async (result) => {
+        if (batchAbortRequested) return;
+        if (mode === "solve") {
+          generated += 1;
+          if (!result?.ok) failed += 1;
+          await writer.write(batchSolveLine(result, generated));
+          lastPuzzleAttempts = result?.status || "";
+        } else {
+          generated += 1;
+          await writer.write(batchLine(result, generated));
+          lastPuzzleAttempts = trainingKind
+            ? uif("batchSearchAttempts", { attempts: result.attempts ?? "?" })
+            : uif("batchGenerateAttempts", { attempts: result.attempts ?? "?" });
         }
-        generated += 1;
-        await writer.write(batchLine(result, generated));
-        lastPuzzleAttempts = trainingKind
-          ? uif("batchSearchAttempts", { attempts: result.attempts ?? "?" })
-          : uif("batchGenerateAttempts", { attempts: result.attempts ?? "?" });
-        updateBatchStatus(uif("batchLatest", { status: batchProgressStatus(), rating: formatRating(result.rating) }));
-      } else {
-        if (result?.status === "invalid_step") {
-          await stopBatchOnInvalidStep(writer, result, trainingKind);
-          await writer.close();
-          return;
-        }
-        failed += 1;
+        updateBatchStatus(mode === "generate"
+          ? uif("batchLatest", { status: batchProgressStatus(), rating: formatRating(result?.rating) })
+          : batchProgressStatus());
+      },
+      onProgress: (progress) => {
+        attempts = Number(progress.attempts ?? attempts);
+        failed = Number(progress.failed ?? failed);
         updateBatchStatus(batchProgressStatus());
-      }
-      await paintBeforeLongTask();
-    }
+      },
+      onInvalidStep: async (result) => {
+        await stopBatchOnInvalidStep(writer, result, trainingKind);
+      },
+    });
 
     await writer.close();
-    const mode = writer.direct ? ui("batchWrittenDirect") : ui("batchDownloadReady");
-    updateBatchStatus(trainingKind
-      ? uif("batchTrainingDone", { mode, filename, technique: trainingLabel, generated, target, attempts, elapsed: formatElapsedSeconds(startTime) })
-      : uif("batchDone", { mode, filename, generated, target, attempts, elapsed: formatElapsedSeconds(startTime) }));
+    const outMode = writer.direct ? ui("batchWrittenDirect") : ui("batchDownloadReady");
+    if (final?.status === "cancelled" || batchAbortRequested) {
+      updateBatchStatus(ui("batchCancelled"));
+    } else if (mode === "solve") {
+      updateBatchStatus(uif("batchSolveDone", { mode: outMode, filename, generated, target: puzzles.length, failed, elapsed: formatElapsedSeconds(startTime) }));
+    } else {
+      updateBatchStatus(trainingKind
+        ? uif("batchTrainingDone", { mode: outMode, filename, technique: trainingLabel, generated, attempts, elapsed: formatElapsedSeconds(startTime) })
+        : uif("batchDone", { mode: outMode, filename, generated, attempts, elapsed: formatElapsedSeconds(startTime) }));
+    }
   } catch (error) {
     if (error?.name === "AbortError") {
       updateBatchStatus(ui("batchCancelled"));
@@ -11062,6 +13075,12 @@ btnTechBraidRating?.addEventListener("click", () => applyTechniquePreset("braidR
 
 lang.addEventListener("change", () => {
   applyStaticLanguage();
+  if (tlgSolverState.lastStatusResponse) {
+    const formattedStatus = formatTlgResponseStatus(tlgSolverState.lastStatusResponse);
+    tlgSolverState.lastMessage = formattedStatus.text;
+    tlgSolverState.lastTone = formattedStatus.tone;
+    updateTlgSolverUi();
+  }
   relocalizeIfExactText(out, "wasmLoaded");
   relocalizeIfExactText(hintPanel, "waitingWasm");
   relocalizeIfExactText(hintPanel, "initialHint");

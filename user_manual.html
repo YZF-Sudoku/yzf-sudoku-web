@@ -117,6 +117,98 @@
       text-align: center;
     }
     .small { color: var(--muted); font-size: 13px; }
+    .manual-language-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: 1180px;
+      margin: 14px auto 0;
+      padding: 0 16px;
+    }
+    .manual-language-toolbar button {
+      border: 1px solid rgba(255,255,255,.62);
+      border-radius: 999px;
+      padding: 6px 12px;
+      color: #fff;
+      background: rgba(255,255,255,.12);
+      cursor: pointer;
+    }
+    .manual-language-toolbar button[aria-pressed="true"] {
+      color: #1d4ed8;
+      background: #fff;
+    }
+    body[data-manual-lang="zh"] .pair > .en,
+    body[data-manual-lang="en"] .pair > .zh { display: none; }
+    body[data-manual-lang="zh"] .pair,
+    body[data-manual-lang="en"] .pair { grid-template-columns: 1fr; }
+
+    .tlg-visual-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .tlg-visual-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-height: 92px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+    .tlg-demo-candidate {
+      position: relative;
+      width: 58px;
+      height: 58px;
+      flex: 0 0 58px;
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .tlg-demo-candidate .link-fill,
+    .tlg-demo-candidate .truth-ring {
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+    .tlg-demo-candidate .link-fill {
+      inset: 11px;
+      background: conic-gradient(from 90deg, rgba(15,157,139,.48) 0 50%, rgba(139,92,246,.48) 50% 100%);
+    }
+    .tlg-demo-candidate .truth-ring {
+      inset: 2px;
+      background: conic-gradient(from 90deg, #0f9d8b 0 33.333%, #d4a017 33.333% 66.666%, #8b5cf6 66.666% 100%);
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 0);
+      mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 0);
+    }
+    .tlg-demo-candidate strong { position: relative; z-index: 2; }
+    .tlg-demo-cell {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      flex: 0 0 72px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      place-items: center;
+      border: 1px solid #94a3b8;
+      background: rgba(14,165,233,.14);
+      color: #475569;
+      font-size: 13px;
+    }
+    .tlg-demo-cell::after {
+      content: "";
+      position: absolute;
+      inset: 4px;
+      border: 3px solid rgba(20,102,204,.68);
+      border-radius: 3px;
+    }
+    .tlg-swatch { display: inline-flex; align-items: center; gap: 6px; margin-right: 12px; white-space: nowrap; }
+    .tlg-swatch::before { content: ""; width: 13px; height: 13px; border-radius: 999px; background: var(--swatch); }
     footer { max-width: 1180px; margin: 0 auto 40px; padding: 0 16px; color: var(--muted); }
     @media (max-width: 820px) {
       .pair { grid-template-columns: 1fr; }
@@ -137,7 +229,12 @@
       <h1>YZF Sudoku 使用手册 / User Manual</h1>
       <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
       <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-      <div class="meta">Version: Manual v1.0 · Updated: 2026-06-04</div>
+      <div class="meta">Version: Manual v1.3 · Updated: 2026-06-22</div>
+    </div>
+    <div class="manual-language-toolbar" role="group" aria-label="Manual language view / 手册语言视图">
+      <button type="button" data-manual-lang-button="bilingual" aria-pressed="true">双语 / Bilingual</button>
+      <button type="button" data-manual-lang-button="zh" aria-pressed="false">中文</button>
+      <button type="button" data-manual-lang-button="en" aria-pressed="false">English</button>
     </div>
   </header>
 
@@ -154,6 +251,7 @@
         <li><a href="#solve">自动解题 / Auto Solve</a></li>
         <li><a href="#all-steps">所有步骤 / All Steps</a></li>
         <li><a href="#techniques">技巧与高亮 / Techniques and Highlights</a></li>
+        <li><a href="#tlg-solver">TLG Solver / Truth-Link Logic</a></li>
         <li><a href="#superhard">内置超难题库 / Built-in Superhard Bank</a></li>
         <li><a href="#export">导出与分享 / Export and Sharing</a></li>
         <li><a href="#mobile">手机端使用 / Mobile Use</a></li>
@@ -428,8 +526,198 @@ python -m http.server 8000</pre>
       </div>
     </section>
 
+    <section id="tlg-solver">
+      <h2>10. TLG Solver / Truth-Link Logic</h2>
+      <div class="pair">
+        <div class="zh">
+          <p>TLG Solver 用 Truths、Links、Virtual Set、定式 AUR 和 DAUR/DUR 描述集合逻辑，并搜索这些约束共同推出的删数或出数。只有勾选<strong>启用 TLG 编辑</strong>后，TLG 才会接管盘面点击和专属高亮。</p>
+          <p>TLG 编辑期间，普通技巧高亮、链路和手工标记只会暂时隐藏；关闭 TLG 编辑后会恢复，原数据不会被删除。</p>
+        </div>
+        <div class="en">
+          <p>TLG Solver describes a set-logic proof with Truths, Links, a Virtual Set, fixed AURs, and DAUR/DUR constraints, then searches for eliminations or assignments implied by the combined structure. It takes over board input only while <strong>Enable TLG editing</strong> is checked.</p>
+          <p>Ordinary technique highlights, chain overlays, and manual marks are only hidden while TLG editing is active. They return when TLG editing is disabled; their data is not deleted.</p>
+        </div>
+      </div>
+
+      <h3>核心对象 / Core Objects</h3>
+      <div class="pair">
+        <div class="zh">
+          <ul>
+            <li><strong>Truth：</strong>投影中必须恰好覆盖一次的集合，可使用行、列、宫或单元格描述符。</li>
+            <li><strong>Link：</strong>投影中最多覆盖一次的集合，也用于判断集合外候选是否可删。</li>
+            <li><strong>Virtual Set：</strong>由用户直接给出的虚拟约束集合。</li>
+            <li><strong>定式 AUR：</strong>明确指定的四格位置与本体数对 <code>{a,b}</code>。它禁止四格全部由本体数占据，即 <code>maxBodyFootprint ≤ 3</code>。</li>
+            <li><strong>DAUR：</strong>用户只标记潜在本体候选池；程序从中动态发现四格 AUR，以及六格 2×3 / 3×2 DUR。所有展开出的约束地位相同，最终必须全部满足。</li>
+            <li><strong>六格 DUR：</strong>六格位置与一个三数组的可交换完成对。它禁止六格全部落入该 deadly completion，即 <code>maxBodyFootprint ≤ 5</code>。</li>
+          </ul>
+          <div class="note">直接使用 <code>maxBodyFootprint</code> 与构造一个“至少一个 guardian 为真”的 1-Truth guardian 集合等价，但不需要先识别 inside/outside guardians。</div>
+        </div>
+        <div class="en">
+          <ul>
+            <li><strong>Truth:</strong> a set that must be covered exactly once by a projection. Row, column, box, and cell descriptors are supported.</li>
+            <li><strong>Link:</strong> a set covered at most once by a projection; it also participates in external-candidate elimination tests.</li>
+            <li><strong>Virtual Set:</strong> a user-supplied virtual constraint set.</li>
+            <li><strong>Fixed AUR:</strong> an explicit four-cell position plus a body pair <code>{a,b}</code>. It forbids all four cells from being occupied by body digits, represented as <code>maxBodyFootprint ≤ 3</code>.</li>
+            <li><strong>DAUR:</strong> the user marks only a pool of potential body candidates. The program dynamically discovers fixed four-cell AURs and six-cell 2×3 / 3×2 DURs. Every expanded constraint has equal status and all of them must be satisfied.</li>
+            <li><strong>Six-cell DUR:</strong> a six-cell position and a swappable completion pair for a three-digit set. It forbids all six cells from occupying that deadly completion, represented as <code>maxBodyFootprint ≤ 5</code>.</li>
+          </ul>
+          <div class="note">A direct <code>maxBodyFootprint</code> constraint is equivalent to a one-Truth guardian set saying that at least one guardian must be true, without first classifying inside and outside guardians.</div>
+        </div>
+      </div>
+
+      <h3>初始候选与唯一性门控 / Initial Candidates and the Uniqueness Gate</h3>
+      <div class="pair">
+        <div class="zh">
+          <p>TLG 会分开保存<strong>初始候选盘</strong>与<strong>当前候选盘</strong>。Sukaku 只是输入格式，并不自动等同于多解训练盘。</p>
+          <ul>
+            <li><strong>唯一解：核验初始可交换局面（默认）</strong><br />定式四格 AUR 的初始候选必须同时支持 <code>abba</code> 与 <code>baab</code> 两个可交换完成；当前候选至少保留其中一个。六格 DUR 的初始候选必须支持一对可交换 Latin completion，当前候选至少保留这对中的一个。</li>
+            <li><strong>训练盘：允许初始缺数</strong><br />仅用于人为构造的多解/Rank 训练候选盘。此模式不核验原始唯一性前提，只要求当前候选仍存在至少一个 deadly completion。</li>
+          </ul>
+          <div class="warn">普通数独和唯一解 Sukaku 应保持默认严格模式。只有明确用于训练的多解候选盘才应选择“训练盘”。错误放宽可能把不具备交换前提的结构当成 AUR/DUR，产生伪删数。</div>
+        </div>
+        <div class="en">
+          <p>TLG stores the <strong>initial candidate grid</strong> separately from the <strong>current candidate grid</strong>. Sukaku is only an input format and is not automatically treated as a multi-solution training grid.</p>
+          <ul>
+            <li><strong>Unique puzzle: verify initial swap pair (default)</strong><br />For a fixed four-cell AUR, the initial grid must support both swappable <code>abba</code> and <code>baab</code> completions; the current grid must retain at least one. For a six-cell DUR, the initial grid must support a pair of swappable Latin completions, and the current grid must retain at least one member of that pair.</li>
+            <li><strong>Training grid: allow missing initial candidates</strong><br />This mode is only for deliberately constructed multi-solution or Rank-training candidate grids. It skips the original uniqueness premise and requires only a current deadly completion.</li>
+          </ul>
+          <div class="warn">Keep the default strict mode for ordinary puzzles and unique-solution Sukaku. Select Training mode only for an explicitly constructed training grid. An inappropriate relaxation can accept an AUR/DUR without a valid swap premise and produce false eliminations.</div>
+        </div>
+      </div>
+
+      <h3>输入流程 / Input Workflow</h3>
+      <div class="pair">
+        <div class="zh">
+          <ol>
+            <li>在“操作”页签底部展开 <strong>TLG Solver</strong>，勾选“启用 TLG 编辑”。</li>
+            <li>需要使用候选盘时，把 729 字符 Sukaku 或 81 个候选单元格粘贴到题面输入框，选择正确的“唯一性门控”，再点击“导入 TLG 候选盘面”。导入时的候选会固定保存为初始候选，之后的编辑只改变当前候选。</li>
+            <li><strong>Truths：</strong>点击两个共享同一行、列或宫且数字相同的候选，加入对应 House Truth；点击空单元格背景可切换 Cell Truth。</li>
+            <li><strong>Links：</strong>选择自动、行/列、宫或单元格类型，再依次点击两个候选。自动模式下，同一单元格内的两个候选优先解释为 Cell Link。</li>
+            <li><strong>批量选择：</strong>按住 <span class="kbd">Ctrl</span>（macOS 使用 <span class="kbd">Command</span>）点击候选，再右键打开菜单。可批量添加/移除 Truth 或 Link 的行、列、单元格、宫描述符，也可切换 Virtual Set、AUR 角候选和 DAUR 候选池。</li>
+            <li><strong>定式 AUR：</strong>选择 AUR 1 或 AUR 2，标记该组四角的实际本体候选。严格模式下，门控会回看初始候选盘验证交换前提。</li>
+            <li><strong>DAUR：</strong>标记潜在本体候选池。程序会动态枚举“4 格位置 + 数对”的定式 AUR，以及“6 格位置 + 三数组交换对”的六格 DUR。</li>
+            <li>点击“查找删数”。结果区列出 Truths/Links、定式 AUR、DAUR 展开数量、删数和出数；盘面以红叉显示删数。</li>
+            <li>得到有效结果后，可使用“转换冗余 Truths”和“移除未使用 Links”整理结构。转换失败时会保留上一轮有效删数和结果。</li>
+          </ol>
+          <div class="note">“查找删数”“转换冗余 Truths”和“移除未使用 Links”会在后台 Worker 中运行。右键菜单“清空全部逻辑”保留临时候选盘；面板按钮“清空 TLG 状态”会同时清除临时候选盘。</div>
+        </div>
+        <div class="en">
+          <ol>
+            <li>Open <strong>TLG Solver</strong> at the bottom of the Controls tab and check “Enable TLG editing”.</li>
+            <li>To use a candidate grid, paste a 729-character Sukaku or 81 candidate-cell tokens into the puzzle input, select the correct Uniqueness Gate, and press “Import TLG Candidate Grid”. The imported candidates are preserved as the initial grid; later edits change only the current grid.</li>
+            <li><strong>Truths:</strong> click two same-digit candidates sharing a row, column, or box to add the corresponding House Truth. Click an empty cell background to toggle a Cell Truth.</li>
+            <li><strong>Links:</strong> choose Auto, Row/Column, Box, or Cell, then click two candidates. In Auto mode, two candidates in the same cell are interpreted as a Cell Link first.</li>
+            <li><strong>Batch selection:</strong> hold <span class="kbd">Ctrl</span> (<span class="kbd">Command</span> on macOS), select candidates, then right-click. The menu can batch add/remove Row, Column, Cell, or Box Truth/Link descriptors and toggle the Virtual Set, AUR corners, or the DAUR candidate pool.</li>
+            <li><strong>Fixed AUR:</strong> select AUR 1 or AUR 2 and mark the actual body candidates at its four corners. In strict mode, the gate checks the initial candidate grid for the swap premise.</li>
+            <li><strong>DAUR:</strong> mark a pool of potential body candidates. The program dynamically enumerates fixed AURs as “four-cell position + digit pair” and six-cell DURs as “six-cell position + swappable three-digit completion pair”.</li>
+            <li>Press “Find Eliminations”. The result lists Truths/Links, fixed AURs, the number of DAUR-expanded constraints, eliminations, and assignments. Eliminations receive a red cross on the board.</li>
+            <li>After a valid result, use “Convert Redundant Truths” and “Remove Unused Links” to simplify the structure. A failed conversion preserves the previous valid eliminations and result.</li>
+          </ol>
+          <div class="note">Find Eliminations, Convert Redundant Truths, and Remove Unused Links run in a background Worker. “Clear All Logic” in the context menu preserves the temporary candidate grid; “Clear TLG State” also removes that grid.</div>
+        </div>
+      </div>
+
+      <h3>右键菜单 / Candidate Context Menu</h3>
+      <div class="pair">
+        <div class="zh">
+          <p>启用 TLG 编辑后，候选右键菜单只保留以下逻辑操作：</p>
+          <ul>
+            <li>添加/移除 Truth → 行、列、单元格、宫</li>
+            <li>添加/移除 Link → 行、列、单元格、宫</li>
+            <li>切换到 Virtual Set</li>
+            <li>切换 AUR 角候选</li>
+            <li>切换 DAUR 候选池</li>
+            <li>清空全部逻辑</li>
+          </ul>
+          <p>执行上述批量动作后，候选选择标记会自动清除。</p>
+        </div>
+        <div class="en">
+          <p>While TLG editing is enabled, the candidate context menu contains only these proof operations:</p>
+          <ul>
+            <li>Add/Remove Truth → Row, Column, Cell, Box</li>
+            <li>Add/Remove Link → Row, Column, Cell, Box</li>
+            <li>Toggle in Virtual Set</li>
+            <li>Toggle AUR Corner</li>
+            <li>Toggle DAUR Candidate Pool</li>
+            <li>Clear All Logic</li>
+          </ul>
+          <p>The multi-candidate selection mark is cleared automatically after any of these batch actions.</p>
+        </div>
+      </div>
+
+      <h3>高亮图例 / Highlight Legend</h3>
+      <div class="pair">
+        <div class="zh">
+          <p>House 集合使用固定颜色并按 <strong>R → C → B</strong> 排列：</p>
+          <p><span class="tlg-swatch" style="--swatch:#0f9d8b">R：青绿</span><span class="tlg-swatch" style="--swatch:#d4a017">C：金黄</span><span class="tlg-swatch" style="--swatch:#8b5cf6">B：紫色</span></p>
+          <ul>
+            <li><strong>House Truth：</strong>候选外围的分色圆环。</li>
+            <li><strong>House Link：</strong>候选数字后的分色底色；只有该候选同时被某个 Truth 覆盖或属于最终删数时才显示。</li>
+            <li><strong>Cell Truth：</strong>单元格内缩蓝色边框。</li>
+            <li><strong>Cell Link：</strong>只要存在 Cell Link，就给整个单元格浅蓝底色；它不受候选相关性门槛限制。</li>
+            <li><strong>Virtual Set：</strong>紫色实线圆形标记。</li>
+            <li><strong>AUR：</strong>AUR 1 为橙色虚线圈，AUR 2 为蓝色虚线圈。</li>
+            <li><strong>DAUR：</strong>青色点线圈，表示潜在本体候选池；实际展开的 AUR/DUR 数量显示在状态栏和结果区。</li>
+            <li><strong>Elimination：</strong>红色候选和红色交叉线，始终显示在最上层。</li>
+          </ul>
+        </div>
+        <div class="en">
+          <p>House sets use fixed colors in the order <strong>R → C → B</strong>:</p>
+          <p><span class="tlg-swatch" style="--swatch:#0f9d8b">R: teal</span><span class="tlg-swatch" style="--swatch:#d4a017">C: amber</span><span class="tlg-swatch" style="--swatch:#8b5cf6">B: violet</span></p>
+          <ul>
+            <li><strong>House Truth:</strong> a segmented ring around the candidate.</li>
+            <li><strong>House Link:</strong> a segmented background behind the digit, shown only when the candidate is also covered by a Truth or is a final elimination.</li>
+            <li><strong>Cell Truth:</strong> an inset blue border inside the cell.</li>
+            <li><strong>Cell Link:</strong> the whole cell receives a light-blue fill whenever a Cell Link exists; it is not gated by candidate relevance.</li>
+            <li><strong>Virtual Set:</strong> a solid violet circular mark.</li>
+            <li><strong>AUR:</strong> AUR 1 uses an orange dashed ring; AUR 2 uses a blue dashed ring.</li>
+            <li><strong>DAUR:</strong> a cyan dotted ring marking the potential body-candidate pool. The number of expanded AUR/DUR constraints is shown in the status and result panels.</li>
+            <li><strong>Elimination:</strong> a red candidate with a red cross, always drawn on top.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="tlg-visual-grid" aria-label="TLG highlight examples">
+        <div class="tlg-visual-card">
+          <div class="tlg-demo-candidate"><span class="link-fill"></span><span class="truth-ring"></span><strong>4</strong></div>
+          <div><strong>House Truth + House Link</strong><br><span class="small">外圈表示 Truth；数字底色表示相关 Link。<br>Outer ring = Truth; digit background = relevant Link.</span></div>
+        </div>
+        <div class="tlg-visual-card">
+          <div class="tlg-demo-cell"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div>
+          <div><strong>Cell Truth + Cell Link</strong><br><span class="small">内边框表示 Cell Truth；整格底色表示 Cell Link。<br>Inset border = Cell Truth; the cell fill represents a Cell Link.</span></div>
+        </div>
+      </div>
+
+      <h3>结果阅读与预算状态 / Reading Results and Budget Status</h3>
+      <div class="pair">
+        <div class="zh">
+          <p>结果区采用紧凑集合表示法，例如：</p>
+          <pre>28 Truths = {...}
+50 Links = {...}
+1 个定式 AUR = ...
+DAUR 候选池 = {...}
+DAUR 展开 AUR/DUR 约束 = 14
+57 个删数 --&gt; r1c1&lt;&gt;1, ...</pre>
+          <p>大写 R/C/B/N 表示 Truth，小写 r/c/b/n 表示 Link；N/n 表示单元格集合。状态栏还会显示当前唯一性门控、候选盘规模和 DAUR 展开数量。</p>
+          <div class="warn">出现“投影解数量超过预算”或“搜索节点超过预算”时，搜索没有完成；此时显示的“0 个删数”不能解释为已证明无删数。应减少结构规模、整理 Truth/Link，或在 native 环境中提高预算继续测试。</div>
+        </div>
+        <div class="en">
+          <p>The result panel uses compact set notation, for example:</p>
+          <pre>28 Truths = {...}
+50 Links = {...}
+1 Fixed AUR = ...
+DAUR Pool = {...}
+DAUR Expanded AUR/DUR Constraints = 14
+57 Eliminations --&gt; r1c1&lt;&gt;1, ...</pre>
+          <p>Uppercase R/C/B/N denotes a Truth; lowercase r/c/b/n denotes a Link. N/n is a cell set. The status line also shows the active uniqueness gate, candidate-grid size, and DAUR expansion count.</p>
+          <div class="warn">“Solution budget exceeded” or “search-node budget exceeded” means the search was incomplete. A displayed count of zero eliminations is not proof that no elimination exists. Reduce the structure, simplify Truths/Links, or continue with a larger budget in a native build.</div>
+        </div>
+      </div>
+    </section>
+
+
     <section id="superhard">
-      <h2>10. 内置超难题库 / Built-in Superhard Bank</h2>
+      <h2>11. 内置超难题库 / Built-in Superhard Bank</h2>
       <div class="pair">
         <div class="zh">
           <p>项目支持内置超难题库。点击生成超难题时，会从压缩内置题库随机抽取一题，解压并导入当前盘面。</p>
@@ -453,7 +741,7 @@ python -m http.server 8000</pre>
     </section>
 
     <section id="export">
-      <h2>11. 导出与分享 / Export and Sharing</h2>
+      <h2>12. 导出与分享 / Export and Sharing</h2>
       <div class="pair">
         <div class="zh">
           <p>你可以导出当前盘面用于分享、复现或调试。常见导出内容包括：</p>
@@ -479,7 +767,7 @@ python -m http.server 8000</pre>
     </section>
 
     <section id="mobile">
-      <h2>12. 手机端使用 / Mobile Use</h2>
+      <h2>13. 手机端使用 / Mobile Use</h2>
       <div class="pair">
         <div class="zh">
           <ul>
@@ -505,7 +793,7 @@ python -m http.server 8000</pre>
     </section>
 
     <section id="standalone">
-      <h2>13. Standalone 版本 / Standalone Version</h2>
+      <h2>14. Standalone 版本 / Standalone Version</h2>
       <div class="pair">
         <div class="zh">
           <p>Standalone 版的目标是离线使用，不需要本地服务器。为了支持图片识别，构建脚本需要把 OCR JS、ORT runtime、WASM 和模型文件内联或打包进单文件 HTML。</p>
@@ -531,7 +819,7 @@ python -m http.server 8000</pre>
     </section>
 
     <section id="troubleshooting">
-      <h2>14. 常见问题 / Troubleshooting</h2>
+      <h2>15. 常见问题 / Troubleshooting</h2>
       <table>
         <thead>
           <tr>
@@ -581,7 +869,7 @@ python -m http.server 8000</pre>
     </section>
 
     <section id="credits">
-      <h2>15. 模型与来源声明 / Credits</h2>
+      <h2>16. 模型与来源声明 / Credits</h2>
       <div class="pair">
         <div class="zh">
           <p>数独图片识别功能使用本地模型，模型来源于 Alex Kubiesa / Sudoku OCR 训练的识别模型。项目只在浏览器本地进行识别，不上传图片，也不使用在线 fallback。</p>
@@ -597,5 +885,23 @@ python -m http.server 8000</pre>
     </section>
   </main>
 
+  <script>
+    (() => {
+      const requested = new URLSearchParams(location.search).get("lang");
+      const initial = requested === "zh" || requested === "en" ? requested : "bilingual";
+      const setLanguageView = (value) => {
+        const mode = value === "zh" || value === "en" ? value : "bilingual";
+        document.body.dataset.manualLang = mode;
+        document.documentElement.lang = mode === "en" ? "en" : "zh-CN";
+        document.querySelectorAll("[data-manual-lang-button]").forEach((button) => {
+          button.setAttribute("aria-pressed", button.dataset.manualLangButton === mode ? "true" : "false");
+        });
+      };
+      document.querySelectorAll("[data-manual-lang-button]").forEach((button) => {
+        button.addEventListener("click", () => setLanguageView(button.dataset.manualLangButton));
+      });
+      setLanguageView(initial);
+    })();
+  </script>
 </body>
 </html>

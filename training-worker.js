@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=20260520-v108-broken-wing";
+import createModule from "./sudoku_wasm.js?v=20260623-v586-tlg-truth-coverage-native-order";
 
-const APP_VERSION = "20260520-v108-broken-wing";
+const APP_VERSION = "20260623-v586-tlg-truth-coverage-native-order";
 
 let enginePromise = null;
 

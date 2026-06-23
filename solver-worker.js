@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=20260528-v227-whip-perf-memory-mode";
+import createModule from "./sudoku_wasm.js?v=20260623-v586-tlg-truth-coverage-native-order";
 
-const APP_VERSION = "20260528-v227-whip-perf-memory-mode";
+const APP_VERSION = "20260623-v586-tlg-truth-coverage-native-order";
 
 let enginePromise = null;
 
@@ -20,7 +20,7 @@ function applyTechniqueConfig(engine, config) {
 
 self.addEventListener("message", async (event) => {
   const message = event.data || {};
-  if (message.type !== "solve" && message.type !== "findall") return;
+  if (message.type !== "solve" && message.type !== "findall" && message.type !== "tlg") return;
 
   const startedAt = performance.now();
   try {
@@ -33,11 +33,16 @@ self.addEventListener("message", async (event) => {
         String(message.snapshotLibrary || ""),
         Number(message.maxSteps || 500)
       );
-    } else {
+    } else if (message.type === "findall") {
       resultText = engine.all_steps_for_import_json(
         String(message.snapshotLibrary || ""),
         Number(message.sourceStepIndex || 0)
       );
+    } else {
+      if (typeof engine.tlgSolverFindEliminationsV440 !== "function") {
+        throw new Error("TLG solver entry point is not available in this WASM build.");
+      }
+      resultText = engine.tlgSolverFindEliminationsV440(String(message.requestJson || ""));
     }
 
     self.postMessage({
