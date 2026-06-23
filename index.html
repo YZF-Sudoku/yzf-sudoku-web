@@ -2259,6 +2259,10 @@
     details > summary::marker {
       color: var(--accent);
     }
+    /* V434: the visible heading moved into the topbar, so its legacy wrapper must
+       not remain as an auto-placed grid item. Otherwise it creates an implicit
+       fourth row and can push the centered board above the clipped panel. */
+    .board-heading-row,
     .board-wrap h3,
     .board-meta {
       display: none !important;
@@ -4165,7 +4169,7 @@
             <div class="brand-title">YZF_Sudoku</div>
             <div id="brandSubtitle" class="brand-subtitle">移动优先逻辑训练器</div>
           </div>
-          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260623-v586-tlg-truth-coverage-native-order" target="_blank" rel="noopener">使用手册</a>
+          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260623-v588-board-border-clip" target="_blank" rel="noopener">使用手册</a>
           <button id="btnStepExplain" class="step-explain-button" type="button" disabled title="当前没有可解释的步骤。" aria-label="当前没有可解释的步骤。">解释</button>
           <a id="techniquesLink" class="manual-link" href="./techniques.html" target="_blank" rel="noopener">技巧说明</a>
           <label>
@@ -4530,6 +4534,12 @@
           const viewportGuard = 6;
           const wrapTopInViewport = Math.max(0, wrapRect.top || 0);
           const stageTopInViewport = Math.max(wrapTopInViewport + paddingTop, stageRect.top || 0);
+          // In desktop landscape the stage is vertically centered inside the whole left grid area.
+          // Its current top therefore contains the *existing* blank space. Using that value as a
+          // height constraint creates a feedback loop: after maximizing, the old small board leaves
+          // a large top gap, which is then subtracted again and prevents the board from filling the
+          // newly available height. Use the stable panel boundary instead.
+          const landscapeBoardTop = wrapTopInViewport + paddingTop;
           const isCompactLandscape = window.matchMedia('(orientation: landscape) and (max-height: 640px)').matches;
           const isLandscapeGrid = window.matchMedia('(orientation: landscape) and (min-width: 700px)').matches || isCompactLandscape;
 
@@ -4538,9 +4548,10 @@
           if (isLandscapeGrid) {
             const rightMin = isCompactLandscape ? 220 : 280;
             const availableW = Math.max(0, (wrapRect.width || viewportW) - paddingX - rightMin - gap);
-            // Do not use the whole viewport height blindly: the board area often starts below the top
-            // of the visual viewport because of app/card padding. Subtract that real top whitespace.
-            maxByHeight = Math.max(0, viewportH - stageTopInViewport - paddingBottom - viewportGuard);
+            // Measure from the stable left-panel boundary, not from the currently centered stage.
+            // This preserves real app/card padding without treating the board's own centering gap as
+            // unavailable space.
+            maxByHeight = Math.max(0, viewportH - landscapeBoardTop - paddingBottom - viewportGuard);
             size = Math.floor(Math.min(availableW, maxByHeight));
           } else {
             const topbarH = topbar ? topbar.getBoundingClientRect().height : 0;
@@ -4556,7 +4567,7 @@
           const minSize = viewportW < 420 ? 216 : 270;
           const maxSize = Math.max(
             BOARD_SIZE_QUANTUM,
-            Math.min(918, viewportW - 8, Math.max(BOARD_SIZE_QUANTUM, maxByHeight || viewportH - 8))
+            Math.min(viewportW - 8, Math.max(BOARD_SIZE_QUANTUM, maxByHeight || viewportH - 8))
           );
           const finalSize = quantizeBoardSize(size, minSize, maxSize);
           const currentSize = Number.parseFloat(wrap.style.getPropertyValue('--yzf-board-size')) || 0;
@@ -4578,10 +4589,10 @@
           raf = requestAnimationFrame(setDynamicBoardSize);
         };
 
-        // V424: the Sudoku board owns an independent visual panel. Do not resize it from
-        // business/content updates such as generation, auto-solve, step rendering, status text,
-        // right-panel scrolling, or visualViewport resize noise. Recompute only on explicit layout
-        // mode changes: first load, orientation change, fullscreen change, and manual-mark focus.
+        // V433: the Sudoku board owns an independent visual panel. Business/content updates
+        // in the right panel must not resize it. Browser viewport changes are different: normal
+        // window resizing and desktop page zoom both dispatch window.resize, so handle only that
+        // external signal (debounced) and keep ResizeObserver/right-panel observers out of this path.
         let lastAppliedBoardSize = 0;
         const applyDynamicBoardSize = () => {
           const wrap = document.querySelector('.board-wrap');
@@ -4597,6 +4608,15 @@
           raf = requestAnimationFrame(applyDynamicBoardSize);
         };
 
+        let viewportResizeTimer = 0;
+        const scheduleDynamicBoardSizeForViewport = () => {
+          // Browser zoom can emit several resize events while the zoom level settles. Debouncing
+          // prevents visible size stepping, while right-panel DOM/content changes never enter here.
+          window.clearTimeout(viewportResizeTimer);
+          viewportResizeTimer = window.setTimeout(scheduleDynamicBoardSizeForLayoutMode, 120);
+        };
+
+        window.addEventListener('resize', scheduleDynamicBoardSizeForViewport, { passive: true });
         window.addEventListener('orientationchange', scheduleDynamicBoardSizeForLayoutMode, { passive: true });
         document.addEventListener('fullscreenchange', scheduleDynamicBoardSizeForLayoutMode);
         document.addEventListener('webkitfullscreenchange', scheduleDynamicBoardSizeForLayoutMode);
@@ -4604,6 +4624,6 @@
         document.addEventListener('DOMContentLoaded', scheduleDynamicBoardSizeForLayoutMode);
       })();
     </script>
-    <script type="module" src="./app.js?v=20260623-v586-tlg-truth-coverage-native-order"></script>
+    <script type="module" src="./app.js?v=20260623-v589-board-maximize-fill"></script>
   </body>
 </html>
