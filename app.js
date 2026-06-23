@@ -1,6 +1,7 @@
 import createModule from "./sudoku_wasm.js?v=20260623-v586-tlg-truth-coverage-native-order";
 
-const APP_VERSION = "20260623-v586_tlg_truth_coverage_native_order";
+const APP_VERSION = "20260624-v596_mobile_solve_refinements";
+const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
 const COACH_BASE32_REVERSE = new Map([...COACH_BASE32_CHARS].map((ch, index) => [ch, index]));
@@ -31,8 +32,6 @@ const btnYzfDebugLoad = document.getElementById("btnYzfDebugLoad");
 const btnYzfDebugClear = document.getElementById("btnYzfDebugClear");
 const yzfOverlayStatus = document.getElementById("yzfOverlayStatus");
 const yzfOverlayModeNote = document.getElementById("yzfOverlayModeNote");
-const yzfBranchControls = document.getElementById("yzfBranchControls");
-const yzfBranchSelect = document.getElementById("yzfBranchSelect");
 const manualAdvancedTypSelect = document.getElementById("manualAdvancedTypSelect");
 const manualAdvancedInputFormatSelect = document.getElementById("manualAdvancedInputFormatSelect");
 const manualAllowGrouped = document.getElementById("manualAllowGrouped");
@@ -190,6 +189,32 @@ const btnTechBraidRating = document.getElementById("btnTechBraidRating");
 const tabButtons = [...document.querySelectorAll(".tab-button")];
 const tabPanels = [...document.querySelectorAll("[data-tab-panel]")];
 const btnFullscreen = document.getElementById("btnFullscreen");
+const btnMobileSolveMode = document.getElementById("btnMobileSolveMode");
+const mobileSolveShell = document.getElementById("mobileSolveShell");
+const mobileSolveBoardHost = document.getElementById("mobileSolveBoardHost");
+const mobileSolveNumpadHost = document.getElementById("mobileSolveNumpadHost");
+const mobileSolveMarksHost = document.getElementById("mobileSolveMarksHost");
+const mobileSolveMarksDrawerHost = document.getElementById("mobileSolveMarksDrawerHost");
+const mobileSolveStatus = document.getElementById("mobileSolveStatus");
+const mobileSolveInputState = document.getElementById("mobileSolveInputState");
+const mobileSolveDrawer = document.getElementById("mobileSolveDrawer");
+const mobileSolveBackdrop = document.getElementById("mobileSolveBackdrop");
+const mobileSolveLang = document.getElementById("mobileSolveLang");
+const btnMobileSolveExit = document.getElementById("btnMobileSolveExit");
+const btnMobileSolveFullscreen = document.getElementById("btnMobileSolveFullscreen");
+const btnMobileSolveClear = document.getElementById("btnMobileSolveClear");
+const btnMobileSolveUndo = document.getElementById("btnMobileSolveUndo");
+const btnMobileSolveRedo = document.getElementById("btnMobileSolveRedo");
+const btnMobileSolveMarks = document.getElementById("btnMobileSolveMarks");
+const btnMobileSolveMore = document.getElementById("btnMobileSolveMore");
+const btnMobileSolveDrawerClose = document.getElementById("btnMobileSolveDrawerClose");
+const btnMobileSolveHint = document.getElementById("btnMobileSolveHint");
+const btnMobileSolveApply = document.getElementById("btnMobileSolveApply");
+const btnMobileSolveAllSteps = document.getElementById("btnMobileSolveAllSteps");
+const btnMobileSolveInput = document.getElementById("btnMobileSolveInput");
+const btnMobileSolveCandidates = document.getElementById("btnMobileSolveCandidates");
+const btnMobileSolveSameDigit = document.getElementById("btnMobileSolveSameDigit");
+const btnMobileSolveAnalysis = document.getElementById("btnMobileSolveAnalysis");
 
 let engine = null;
 let solverWorker = null;
@@ -216,6 +241,18 @@ let currentPreviewRecord = null;
 let selectedIndex = -1;
 let selectedDigit = 1;
 let inputMode = "value";
+let mobileSolveActive = false;
+let mobileSolveDrawerOpen = false;
+let mobileSolveLayoutRaf = 0;
+let mobileSolveScrollY = 0;
+let mobileSolveBoardHomeMarker = null;
+let mobileSolveNumpadHomeMarker = null;
+let mobileSolveManualMarksHomeMarker = null;
+let mobileSolveManualMarksWasOpen = false;
+let mobileSolveMarksOpen = false;
+let mobileSolveMarksPlacement = "";
+let mobileSolveCandidatesVisible = true;
+let mobileSolveSameDigitHighlight = true;
 let ocrDraftValueRole = "given";
 let techniqueState = [];
 let whipMemoryMode = "auto";
@@ -223,6 +260,14 @@ let batchAbortRequested = false;
 let yzfDebugSampleData = null;
 let yzfDebugControlsInitialized = false;
 let yzfSelectedBranchMode = "all";
+let yzfBranchContext = {
+  active: false,
+  branches: [],
+  branchTexts: [],
+  summaryText: "",
+  contextKey: "",
+};
+let yzfHintBaseText = "";
 
 const APP_URL_PARAMS = new URLSearchParams(window.location.search);
 const APP_DEBUG_MODE = (
@@ -489,6 +534,11 @@ const uiText = {
     initialHint: "等待加载题面。",
     branch: "分支",
     allBranches: "全部分支",
+    expandBranches: "展开分支选择",
+    collapseBranches: "收起分支选择",
+    branchPickerLabel: "选择显示的分支",
+    branchShortcutHint: "快捷键：←/→ 或 [ / ] 顺序切换分支",
+    branchOverview: "全部分支",
     mainActionsLabel: "主要操作",
     numberPadLabel: "数字键盘",
     manualMarkActionLabel: "手工标记操作",
@@ -514,6 +564,27 @@ const uiText = {
     close: "关闭",
     fullscreen: "全屏",
     exitFullscreen: "退出全屏",
+    mobileSolveEntry: "做题",
+    mobileSolveMode: "做题模式",
+    mobileSolveExit: "返回",
+    mobileSolveMore: "更多",
+    mobileSolveMoreTitle: "更多功能",
+    mobileSolveClear: "清除",
+    mobileSolveInput: "题面输入",
+    mobileSolveAnalysis: "分析模式",
+    mobileSolveLanguage: "语言",
+    mobileSolveActions: "做题操作",
+    mobileSolveMarks: "标记",
+    mobileSolveMarksActive: "标记中",
+    mobileSolveHideMarks: "收起",
+    mobileSolveMarksTitle: "手工标记",
+    mobileSolveHideCandidates: "隐藏候选数",
+    mobileSolveShowCandidates: "显示候选数",
+    mobileSolveDisableSameDigit: "关闭同数字高亮",
+    mobileSolveEnableSameDigit: "开启同数字高亮",
+    mobileInputState: "{mode} · {digit}",
+    mobileSelectCellFirst: "请先选择一个单元格。",
+    mobileNothingToClear: "当前单元格没有可清除的内容。",
     difficulty: "难度",
     training: "训练",
     tlgSolverTitle: "TLG Solver",
@@ -937,6 +1008,11 @@ const uiText = {
     initialHint: "Waiting for puzzle to load.",
     branch: "Branch",
     allBranches: "All branches",
+    expandBranches: "Expand branch selector",
+    collapseBranches: "Collapse branch selector",
+    branchPickerLabel: "Choose the branch to display",
+    branchShortcutHint: "Shortcut: ←/→ or [ / ] cycles branches",
+    branchOverview: "All branches",
     mainActionsLabel: "Main actions",
     numberPadLabel: "Number pad",
     manualMarkActionLabel: "Manual mark actions",
@@ -962,6 +1038,27 @@ const uiText = {
     close: "Close",
     fullscreen: "Fullscreen",
     exitFullscreen: "Exit fullscreen",
+    mobileSolveEntry: "Solve",
+    mobileSolveMode: "Solve mode",
+    mobileSolveExit: "Back",
+    mobileSolveMore: "More",
+    mobileSolveMoreTitle: "More tools",
+    mobileSolveClear: "Clear",
+    mobileSolveInput: "Puzzle input",
+    mobileSolveAnalysis: "Analysis mode",
+    mobileSolveLanguage: "Language",
+    mobileSolveActions: "Solve controls",
+    mobileSolveMarks: "Marks",
+    mobileSolveMarksActive: "Marking",
+    mobileSolveHideMarks: "Hide",
+    mobileSolveMarksTitle: "Manual marks",
+    mobileSolveHideCandidates: "Hide candidates",
+    mobileSolveShowCandidates: "Show candidates",
+    mobileSolveDisableSameDigit: "Disable same-digit highlight",
+    mobileSolveEnableSameDigit: "Enable same-digit highlight",
+    mobileInputState: "{mode} · {digit}",
+    mobileSelectCellFirst: "Select a cell first.",
+    mobileNothingToClear: "There is nothing to clear in this cell.",
     difficulty: "Difficulty",
     training: "Training",
     tlgSolverTitle: "TLG Solver",
@@ -1504,6 +1601,10 @@ function currentManualMarkColor() {
 
 function setManualMarkStatus(message) {
   if (manualMarkStatus) manualMarkStatus.textContent = message;
+  if (mobileSolveActive && mobileSolveMarksOpen && mobileSolveStatus) {
+    mobileSolveStatus.textContent = String(message || "");
+    mobileSolveStatus.title = String(message || "");
+  }
 }
 
 function manualBlockEndpointKey(endpoint) {
@@ -1601,8 +1702,16 @@ function updateManualMarkControls() {
   }
   if (manualMarksPanel) {
     manualMarksPanel.classList.toggle("active", active);
-    manualMarksPanel.open = active;
+    manualMarksPanel.dataset.mobileMarkMode = mode;
+    manualMarksPanel.open = mobileSolveActive && mobileSolveMarksOpen ? true : active;
   }
+  if (mobileSolveActive && manualMarkNeedsDigit(mode) && !mobileSolveCandidatesVisible) {
+    mobileSolveCandidatesVisible = true;
+    saveMobileSolvePreferences();
+    applyMobileSolvePreferences();
+  }
+  if (mobileSolveActive) updateMobileSolveMarksButton();
+  if (mobileSolveActive && mobileSolveMarksOpen) scheduleMobileSolveLayout();
   manualMarkPrimary?.classList.toggle("active", manualMarkButton === "primary");
   manualMarkSecondary?.classList.toggle("active", manualMarkButton === "secondary");
   manualMarkSwatches?.querySelectorAll(".manual-mark-swatch").forEach((button) => {
@@ -2720,14 +2829,13 @@ function applyStaticLanguage() {
   setTextById("manualLink", ui("manualLink"));
   setTextById("techniquesLink", ui("techniqueHelp"));
   setTextById("boardHeading", ui("boardHeading"));
-  if (hintPanel && hintPanel.textContent === (lang.value === "en" ? uiText.zh.initialHint : uiText.en.initialHint)) {
-    hintPanel.textContent = ui("initialHint");
+  if (yzfHintBaseText === (lang.value === "en" ? uiText.zh.initialHint : uiText.en.initialHint)) {
+    yzfHintBaseText = ui("initialHint");
   }
-  if (hintPanel && !currentHint && !currentSnapshot && !lastSolveData) {
-    hintPanel.textContent = ui("initialHint");
+  if (!currentHint && !currentSnapshot && !lastSolveData) {
+    yzfHintBaseText = ui("initialHint");
   }
-  setTextById("yzfBranchLabelText", ui("branch"));
-  if (yzfBranchSelect?.options?.[0]) yzfBranchSelect.options[0].textContent = ui("allBranches");
+  renderYzfBranchHintPanel();
   document.querySelector(".global-actions")?.setAttribute("aria-label", ui("mainActionsLabel"));
   if (numpad) numpad.setAttribute("aria-label", ui("numberPadLabel"));
   setButtonText(btnGenerate, ui("generate"));
@@ -2744,6 +2852,7 @@ function applyStaticLanguage() {
   setTextById("stepExplainDialogClose", ui("close"));
   updateStepExplainButtonState();
   updateFullscreenButton();
+  updateMobileSolveLanguage();
   setTextById("tabBtnControls", ui("controls"));
   setTextById("tabBtnTechniques", ui("techniques"));
   setTextById("tabBtnPath", ui("path"));
@@ -2957,7 +3066,8 @@ function relocalizeIfExactText(element, key) {
 }
 
 function setStatus(message) {
-  hintPanel.textContent = message;
+  clearYzfBranchContext({ preserveHint: false });
+  setYzfHintBaseText(message);
 }
 
 function activateTab(name) {
@@ -6307,7 +6417,7 @@ function clearRenderedChainOverlay() {
   clearBoardChainHighlights();
   yzfUnderlay?.replaceChildren();
   yzfOverlay?.replaceChildren();
-  yzfBranchControls?.classList.add("hidden");
+  clearYzfBranchContext();
 }
 
 function renderChainOverlay(sampleJson) {
@@ -6316,7 +6426,7 @@ function renderChainOverlay(sampleJson) {
   yzfOverlay.replaceChildren();
   const overlaySample = normalizeYzfOverlaySample(sampleJson);
   yzfDebugSampleData = overlaySample;
-  updateYzfBranchControls(overlaySample);
+  updateYzfBranchNavigation(overlaySample);
   const renderSample = overlaySampleForBranchMode(overlaySample);
 
   const pathNodes = renderSample?.path?.nodes || [];
@@ -6437,9 +6547,9 @@ async function loadYzfTyp4DebugSample(sampleName) {
   if (overlaySample.isManualPromotedStepResult && overlaySample.puzzleSource === "fallback") {
     console.debug("YZF typ=4 promoted sample fallback puzzle used", sampleName);
   }
-  hintPanel.textContent = overlaySample.isManualPromotedStepResult
+  setYzfHintBaseText(overlaySample.isManualPromotedStepResult
     ? "YZF typ=4 promoted manual StepResult sample loaded. not from default solver"
-    : "YZF typ=4 debug sample loaded.";
+    : "YZF typ=4 debug sample loaded.");
   renderBoardSnapshot(currentSnapshot, null);
   renderChainOverlay(sampleJson);
   return true;
@@ -6464,18 +6574,36 @@ function initYzfTyp4DebugOverlayControls() {
 
   btnYzfDebugClear?.addEventListener("click", () => {
     clearChainOverlay("YZF typ=4 debug overlay cleared.");
-    hintPanel.textContent = "YZF typ=4 debug overlay cleared.";
+    setYzfHintBaseText("YZF typ=4 debug overlay cleared.");
   });
 
   yzfDebugControlsInitialized = true;
 }
 
-yzfBranchSelect?.addEventListener("change", () => {
-  yzfSelectedBranchMode = yzfBranchSelect.value || "all";
-  if (yzfDebugSampleData) {
-    renderChainOverlay(yzfDebugSampleData);
-  }
-});
+function isBranchShortcutEditableTarget(target) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest("input, textarea, select, button, [contenteditable=\"true\"], [role=\"textbox\"]"));
+}
+
+function installYzfBranchKeyboardNavigation() {
+  document.addEventListener("keydown", (event) => {
+    if (!yzfBranchContext.active || yzfBranchContext.branches.length <= 1) return;
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.target?.closest?.(".forcing-branch-nav")) return;
+    if (isBranchShortcutEditableTarget(event.target)) return;
+
+    let delta = 0;
+    if (event.key === "ArrowRight" || event.key === "]") delta = 1;
+    else if (event.key === "ArrowLeft" || event.key === "[") delta = -1;
+    if (!delta) return;
+
+    event.preventDefault();
+    cycleYzfBranch(delta);
+  });
+}
+
+installYzfBranchKeyboardNavigation();
+
 
 if (APP_DEBUG_MODE) {
   window.initYzfTyp4DebugOverlayControls = initYzfTyp4DebugOverlayControls;
@@ -6609,7 +6737,7 @@ function stepResultHasRenderableChain(stepResult) {
 
 
 function isForceChainRenderOverlay(overlaySample) {
-  return /\bForce Chain\b/i.test(String(overlaySample?.title || ""));
+  return isForceChainStepResult(overlaySample);
 }
 
 function isBraidRenderOverlay(overlaySample) {
@@ -6780,42 +6908,167 @@ function overlaySampleForBranchMode(overlaySample) {
   return combineOverlayBranches(overlaySample, branches);
 }
 
-function updateYzfBranchControls(overlaySample) {
+function branchContextKey(overlaySample, branches) {
+  const labels = branches.map((branch) => String(branch?.label || "")).join("\u241f");
+  return [
+    String(overlaySample?.sourceKind || ""),
+    String(overlaySample?.title || ""),
+    String(overlaySample?.chainType || ""),
+    labels,
+  ].join("\u241e");
+}
+
+function forcingBranchDisplayTexts(step, branches) {
+  const details = forceChainDescriptionDetails(step);
+  const detailBranches = details.filter((line) => /^branch\s+\d+\s*:/i.test(line));
+  return branches.map((branch, index) => {
+    const detail = String(detailBranches[index] || "").replace(/^branch\s+\d+\s*:\s*/i, "").trim();
+    return detail || String(branch?.label || `${ui("branch")} ${index + 1}`).trim();
+  });
+}
+
+
+function forcingBranchSummaryText(step, fallback = "") {
+  const text = extractStepDescriptionChainText(step);
+  const [, reasonPart = ""] = text.split(/\s+\|\s+/, 2);
+  const title = String(step?.title || step?.chainType || techniqueName(step) || "Forcing Chain").trim();
+  if (reasonPart.trim()) return `${title}: ${reasonPart.trim()}`;
+  return String(fallback || title).trim();
+}
+
+function clearYzfBranchContext(options = {}) {
+  const { preserveHint = true } = options;
+  yzfBranchContext = { active: false, branches: [], branchTexts: [], summaryText: "", contextKey: "" };
+  yzfSelectedBranchMode = "all";
+  if (preserveHint) renderYzfBranchHintPanel();
+}
+
+function setYzfHintBaseText(text) {
+  yzfHintBaseText = String(text || "");
+  renderYzfBranchHintPanel();
+  syncMobileSolveStatus();
+}
+
+function branchModeSequence() {
+  if (!yzfBranchContext.active) return ["all"];
+  return ["all", ...yzfBranchContext.branches.map((_, index) => String(index + 1))];
+}
+
+function selectYzfBranchMode(mode, options = {}) {
+  const { focusSelected = false } = options;
+  const sequence = branchModeSequence();
+  const normalized = sequence.includes(String(mode)) ? String(mode) : "all";
+  if (normalized === yzfSelectedBranchMode && !focusSelected) return;
+  yzfSelectedBranchMode = normalized;
+  if (yzfDebugSampleData) renderChainOverlay(yzfDebugSampleData);
+  else renderYzfBranchHintPanel();
+  if (focusSelected) {
+    window.requestAnimationFrame(() => {
+      hintPanel?.querySelector(`[data-branch-mode="${CSS.escape(normalized)}"]`)?.focus({ preventScroll: true });
+    });
+  }
+}
+
+function cycleYzfBranch(delta) {
+  const sequence = branchModeSequence();
+  if (sequence.length <= 1) return;
+  const currentIndex = Math.max(0, sequence.indexOf(yzfSelectedBranchMode));
+  const nextIndex = (currentIndex + Number(delta || 0) + sequence.length) % sequence.length;
+  selectYzfBranchMode(sequence[nextIndex]);
+}
+
+function renderYzfBranchHintPanel() {
+  if (!hintPanel) return;
+  hintPanel.replaceChildren();
+  const message = document.createElement("div");
+  message.className = "hint-main-text";
+  message.textContent = yzfBranchContext.active
+    ? (yzfBranchContext.summaryText || yzfHintBaseText || ui("initialHint"))
+    : (yzfHintBaseText || ui("initialHint"));
+  hintPanel.appendChild(message);
+
+  if (!yzfBranchContext.active || yzfBranchContext.branches.length <= 1) return;
+
+  const nav = document.createElement("div");
+  nav.className = "forcing-branch-nav";
+  nav.setAttribute("role", "listbox");
+  nav.setAttribute("aria-label", ui("branchPickerLabel"));
+
+  const entries = [
+    { mode: "all", text: ui("branchOverview"), indexText: "Σ" },
+    ...yzfBranchContext.branches.map((branch, index) => ({
+      mode: String(index + 1),
+      text: yzfBranchContext.branchTexts[index] || branch?.label || `${ui("branch")} ${index + 1}`,
+      indexText: String(index + 1),
+    })),
+  ];
+
+  entries.forEach((entry) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "forcing-branch-line";
+    button.dataset.branchMode = entry.mode;
+    button.setAttribute("role", "option");
+    const selected = entry.mode === yzfSelectedBranchMode;
+    button.classList.toggle("is-selected", selected);
+    button.setAttribute("aria-selected", selected ? "true" : "false");
+    button.title = entry.text;
+
+    const index = document.createElement("span");
+    index.className = "forcing-branch-index";
+    index.textContent = entry.indexText;
+    const text = document.createElement("span");
+    text.className = "forcing-branch-text";
+    text.textContent = entry.text;
+    button.append(index, text);
+
+    button.addEventListener("click", () => selectYzfBranchMode(entry.mode));
+    button.addEventListener("keydown", (event) => {
+      let delta = 0;
+      if (event.key === "ArrowRight" || event.key === "ArrowDown") delta = 1;
+      else if (event.key === "ArrowLeft" || event.key === "ArrowUp") delta = -1;
+      if (!delta) return;
+      event.preventDefault();
+      cycleYzfBranch(delta);
+      window.requestAnimationFrame(() => {
+        hintPanel?.querySelector(`[data-branch-mode="${CSS.escape(yzfSelectedBranchMode)}"]`)?.focus({ preventScroll: true });
+      });
+    });
+    nav.appendChild(button);
+  });
+
+  const shortcut = document.createElement("div");
+  shortcut.className = "forcing-branch-shortcut";
+  shortcut.textContent = ui("branchShortcutHint");
+  nav.appendChild(shortcut);
+  hintPanel.appendChild(nav);
+
+  window.requestAnimationFrame(() => {
+    hintPanel.querySelector(".forcing-branch-line.is-selected")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
+}
+
+function updateYzfBranchNavigation(overlaySample) {
   const branches = Array.isArray(overlaySample?.branches) ? overlaySample.branches : [];
-  if (!yzfBranchControls || !yzfBranchSelect) return;
-  if (branches.length <= 1) {
-    yzfBranchControls.classList.add("hidden");
-    yzfBranchSelect.replaceChildren();
-    const option = document.createElement("option");
-    option.value = "all";
-    option.textContent = "all branches";
-    yzfBranchSelect.appendChild(option);
-    yzfSelectedBranchMode = "all";
+  const isForcing = branches.length > 1 && isForceChainRenderOverlay(overlaySample);
+  if (!isForcing) {
+    clearYzfBranchContext();
     return;
   }
-  let previous = yzfSelectedBranchMode || yzfBranchSelect.value || "all";
-  if (isBraidRenderOverlay(overlaySample)) {
-    // Match the FB drawing model: Braid/g-Braid normally shows all chains at
-    // once (blue support branches first, red FB branch 0/main chain last).
-    // The dropdown still allows inspecting FB branch 0 alone, but the frontend
-    // must not silently hide the blue support branches by default.
-    previous = "all";
-  }
-  yzfBranchSelect.replaceChildren();
-  const allOption = document.createElement("option");
-  allOption.value = "all";
-  allOption.textContent = `all branches (${branches.length})`;
-  yzfBranchSelect.appendChild(allOption);
-  branches.forEach((branch, index) => {
-    const option = document.createElement("option");
-    option.value = String(index + 1);
-    option.textContent = branch?.label || `branch ${index + 1}`;
-    yzfBranchSelect.appendChild(option);
-  });
-  const valid = previous === "all" || (Number(previous) >= 1 && Number(previous) <= branches.length);
-  yzfSelectedBranchMode = valid ? previous : "all";
-  yzfBranchSelect.value = yzfSelectedBranchMode;
-  yzfBranchControls.classList.remove("hidden");
+
+  const nextKey = branchContextKey(overlaySample, branches);
+  const changed = nextKey !== yzfBranchContext.contextKey;
+  yzfBranchContext = {
+    active: true,
+    branches,
+    branchTexts: forcingBranchDisplayTexts(currentHint || overlaySample, branches),
+    summaryText: forcingBranchSummaryText(currentHint || overlaySample, yzfHintBaseText),
+    contextKey: nextKey,
+  };
+  if (changed) yzfSelectedBranchMode = "all";
+  const sequence = branchModeSequence();
+  if (!sequence.includes(yzfSelectedBranchMode)) yzfSelectedBranchMode = "all";
+  renderYzfBranchHintPanel();
 }
 
 function normalizeManualAdvancedStepResult(stepResult, puzzle, responseMeta = {}) {
@@ -7111,8 +7364,9 @@ function isGenericAicConclusionDescription(text) {
 }
 
 function isForceChainStepResult(stepResult) {
-  const title = String(stepResult?.title || "").trim();
-  return /\bForce Chain\b/i.test(title);
+  const text = [stepResult?.kind, stepResult?.title, stepResult?.chainType].map((value) => String(value || "")).join(" ");
+  return !/\b(?:g-?Braid|Braid)\b/i.test(text) &&
+    /(?:\bForce(?:ing)? Chain\b|Cell\s*\/?\s*Region\s*FC|CellRegionFC|Dynamic\s+(?:Forcing\s+)?Chain)/i.test(text);
 }
 
 function isBraidStepResult(stepResult) {
@@ -8926,7 +9180,8 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     boardMeta.textContent = "";
     clearManualChainEndpointHighlights();
     clearManualMarkOverlay();
-    hintPanel.textContent = ui("waitingWasm");
+    clearYzfBranchContext({ preserveHint: false });
+    setYzfHintBaseText(ui("waitingWasm"));
     renderStepExplanation(null, null);
     return;
   }
@@ -8995,7 +9250,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
   renderManualMarkOverlay();
 
   if (hint?.valid) {
-    hintPanel.textContent = formatHintDesc(hint);
+    setYzfHintBaseText(formatHintDesc(hint));
     renderStepExplanation(hint, snapshot);
     if (isChainHint) {
       setYzfOverlayModeNote("default solver result");
@@ -9005,6 +9260,8 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
       clearRenderedChainOverlay();
     }
   } else {
+    clearYzfBranchContext({ preserveHint: false });
+    renderYzfBranchHintPanel();
     renderStepExplanation(null, snapshot);
     setYzfOverlayModeNote("");
     clearRenderedChainOverlay();
@@ -9014,6 +9271,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
   // Re-apply manual-chain endpoint classes last so the user's hand-drawn
   // start/end markers remain visible and are not masked by solver highlights.
   applyManualChainEndpointHighlights();
+  syncMobileSolveDigitHighlights();
 }
 
 function clearStepViewState(options = {}) {
@@ -9217,6 +9475,8 @@ function updateInputControls() {
     ? `, ${ui(ocrDraftValueRole === "given" ? "ocrDraftRoleGiven" : "ocrDraftRoleSolved")}`
     : "";
   numpad.title = `${ui("currentInput")}: ${inputMode === "candidate" ? ui("candidateMode") : ui("valueMode")} ${selectedDigit}${roleText}. ${ui("inputModeTitle")}`;
+  updateMobileSolveInputState();
+  syncMobileSolveDigitHighlights();
 }
 
 function loadTechniqueState() {
@@ -12922,6 +13182,496 @@ btnSolve.addEventListener("click", async () => {
     setSolverBusy("solve", false);
   }
 });
+
+function ensureMobileSolveHomeMarkers() {
+  if (!mobileSolveBoardHomeMarker && boardStage?.parentNode) {
+    mobileSolveBoardHomeMarker = document.createComment("mobile-solve-board-home");
+    boardStage.parentNode.insertBefore(mobileSolveBoardHomeMarker, boardStage);
+  }
+  if (!mobileSolveNumpadHomeMarker && numpad?.parentNode) {
+    mobileSolveNumpadHomeMarker = document.createComment("mobile-solve-numpad-home");
+    numpad.parentNode.insertBefore(mobileSolveNumpadHomeMarker, numpad);
+  }
+  if (!mobileSolveManualMarksHomeMarker && manualMarksPanel?.parentNode) {
+    mobileSolveManualMarksHomeMarker = document.createComment("mobile-solve-manual-marks-home");
+    manualMarksPanel.parentNode.insertBefore(mobileSolveManualMarksHomeMarker, manualMarksPanel);
+  }
+}
+
+function restoreMobileSolveElement(marker, element) {
+  if (!marker?.parentNode || !element) return;
+  marker.parentNode.insertBefore(element, marker.nextSibling);
+}
+
+function loadMobileSolvePreferences() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(MOBILE_SOLVE_PREFERENCES_KEY) || "null");
+    if (typeof saved?.candidatesVisible === "boolean") {
+      mobileSolveCandidatesVisible = saved.candidatesVisible;
+    }
+    if (typeof saved?.sameDigitHighlight === "boolean") {
+      mobileSolveSameDigitHighlight = saved.sameDigitHighlight;
+    }
+  } catch (_) {
+    // Keep defaults when storage is unavailable or an old value is malformed.
+  }
+}
+
+function saveMobileSolvePreferences() {
+  try {
+    localStorage.setItem(MOBILE_SOLVE_PREFERENCES_KEY, JSON.stringify({
+      candidatesVisible: mobileSolveCandidatesVisible,
+      sameDigitHighlight: mobileSolveSameDigitHighlight,
+    }));
+  } catch (_) {
+    // The mode remains fully usable when persistent storage is blocked.
+  }
+}
+
+function clearMobileSolveDigitHighlights() {
+  board?.querySelectorAll(".sudoku-cell.mobile-same-digit").forEach((cell) => {
+    cell.classList.remove("mobile-same-digit");
+  });
+}
+
+function syncMobileSolveDigitHighlights() {
+  clearMobileSolveDigitHighlights();
+  if (!mobileSolveActive || !mobileSolveSameDigitHighlight || !currentSnapshot) return;
+  const digit = Number(selectedDigit || 0);
+  if (!Number.isInteger(digit) || digit < 1 || digit > 9) return;
+  for (const node of board?.querySelectorAll(".sudoku-cell[data-cell-index]") || []) {
+    const index = Number(node.dataset.cellIndex);
+    if (Number(currentSnapshot.cells?.[index]?.value || 0) === digit) {
+      node.classList.add("mobile-same-digit");
+    }
+  }
+}
+
+function updateMobileSolvePreferenceButtons() {
+  if (btnMobileSolveCandidates) {
+    const candidatesHidden = !mobileSolveCandidatesVisible;
+    const label = ui(candidatesHidden ? "mobileSolveShowCandidates" : "mobileSolveHideCandidates");
+    setButtonText(btnMobileSolveCandidates, label);
+    btnMobileSolveCandidates.title = label;
+    btnMobileSolveCandidates.setAttribute("aria-label", label);
+    btnMobileSolveCandidates.setAttribute("aria-pressed", candidatesHidden ? "true" : "false");
+  }
+  if (btnMobileSolveSameDigit) {
+    const label = ui(mobileSolveSameDigitHighlight ? "mobileSolveDisableSameDigit" : "mobileSolveEnableSameDigit");
+    setButtonText(btnMobileSolveSameDigit, label);
+    btnMobileSolveSameDigit.title = label;
+    btnMobileSolveSameDigit.setAttribute("aria-label", label);
+    btnMobileSolveSameDigit.setAttribute("aria-pressed", mobileSolveSameDigitHighlight ? "true" : "false");
+  }
+}
+
+function applyMobileSolvePreferences() {
+  mobileSolveShell?.classList.toggle("mobile-hide-candidates", !mobileSolveCandidatesVisible);
+  updateMobileSolvePreferenceButtons();
+  syncMobileSolveDigitHighlights();
+}
+
+function toggleMobileSolveCandidates() {
+  mobileSolveCandidatesVisible = !mobileSolveCandidatesVisible;
+  saveMobileSolvePreferences();
+  applyMobileSolvePreferences();
+}
+
+function toggleMobileSolveSameDigitHighlight() {
+  mobileSolveSameDigitHighlight = !mobileSolveSameDigitHighlight;
+  saveMobileSolvePreferences();
+  applyMobileSolvePreferences();
+}
+
+function updateMobileSolveMarksButton() {
+  if (!btnMobileSolveMarks) return;
+  const markActive = manualMarksActive();
+  const label = ui(mobileSolveMarksOpen ? "mobileSolveHideMarks" : (markActive ? "mobileSolveMarksActive" : "mobileSolveMarks"));
+  setButtonText(btnMobileSolveMarks, label);
+  btnMobileSolveMarks.title = ui("mobileSolveMarksTitle");
+  btnMobileSolveMarks.setAttribute("aria-label", ui("mobileSolveMarksTitle"));
+  btnMobileSolveMarks.setAttribute("aria-pressed", mobileSolveMarksOpen ? "true" : "false");
+  btnMobileSolveMarks.dataset.markActive = markActive ? "true" : "false";
+}
+
+function mountMobileSolveManualMarks(host, placement) {
+  if (!manualMarksPanel || !host) return false;
+  manualMarksPanel.classList.add("mobile-manual-marks");
+  manualMarksPanel.dataset.mobileMarkMode = manualMarkModeValue();
+  manualMarksPanel.open = true;
+  host.hidden = false;
+  host.appendChild(manualMarksPanel);
+  mobileSolveMarksPlacement = placement;
+  return true;
+}
+
+function restoreMobileSolveManualMarks() {
+  if (!manualMarksPanel) return;
+  manualMarksPanel.classList.remove("mobile-manual-marks");
+  manualMarksPanel.removeAttribute("data-mobile-mark-mode");
+  restoreMobileSolveElement(mobileSolveManualMarksHomeMarker, manualMarksPanel);
+  manualMarksPanel.open = manualMarksActive() || mobileSolveManualMarksWasOpen;
+  if (mobileSolveMarksHost) mobileSolveMarksHost.hidden = true;
+  if (mobileSolveMarksDrawerHost) mobileSolveMarksDrawerHost.hidden = true;
+  mobileSolveShell?.classList.remove("mobile-marks-inline");
+  mobileSolveDrawer?.classList.remove("mobile-marks-view");
+  mobileSolveMarksPlacement = "";
+}
+
+function mobileSolveInlineMarksSpace() {
+  if (!mobileSolveActive || !mobileSolveShell?.classList.contains("is-portrait")) return -1;
+  const viewport = mobileSolveViewport();
+  const shellStyle = window.getComputedStyle(mobileSolveShell);
+  const paddingX = (Number.parseFloat(shellStyle.paddingLeft) || 0) + (Number.parseFloat(shellStyle.paddingRight) || 0);
+  const paddingY = (Number.parseFloat(shellStyle.paddingTop) || 0) + (Number.parseFloat(shellStyle.paddingBottom) || 0);
+  const gap = Number.parseFloat(shellStyle.gap) || 5;
+  const availableWidth = Math.max(108, viewport.width - paddingX);
+  const availableHeight = Math.max(108, viewport.height - paddingY);
+  const top = mobileSolveShell.querySelector(".mobile-solve-topbar")?.getBoundingClientRect().height || 44;
+  const status = mobileSolveStatus?.getBoundingClientRect().height || 29;
+  const pad = mobileSolveNumpadHost?.getBoundingClientRect().height || 89;
+  const actions = mobileSolveShell.querySelector(".mobile-solve-actions")?.getBoundingClientRect().height || 38;
+  const fixedHeight = top + status + pad + actions + gap * 4;
+  return availableHeight - availableWidth - fixedHeight;
+}
+
+function shouldInlineMobileSolveMarks() {
+  const viewport = mobileSolveViewport();
+  if (viewport.width > viewport.height) return false;
+  return viewport.width >= 360 && mobileSolveInlineMarksSpace() >= 228;
+}
+
+function openMobileSolveMarks() {
+  if (!mobileSolveActive || !manualMarksPanel) return;
+  ensureMobileSolveHomeMarkers();
+  mobileSolveManualMarksWasOpen = manualMarksPanel.open;
+  mobileSolveMarksOpen = true;
+  if (shouldInlineMobileSolveMarks()) {
+    setMobileSolveDrawer(false, { preserveMarks: true });
+    mobileSolveShell?.classList.add("mobile-marks-inline");
+    mountMobileSolveManualMarks(mobileSolveMarksHost, "inline");
+  } else {
+    mobileSolveShell?.classList.remove("mobile-marks-inline");
+    mountMobileSolveManualMarks(mobileSolveMarksDrawerHost, "drawer");
+    mobileSolveDrawer?.classList.add("mobile-marks-view");
+    setMobileSolveDrawer(true, { preserveMarks: true });
+  }
+  updateManualMarkControls();
+  updateMobileSolveMarksButton();
+  scheduleMobileSolveLayout();
+}
+
+function closeMobileSolveMarks(options = {}) {
+  const { closeDrawer = true } = options;
+  if (!mobileSolveMarksOpen) return;
+  const wasDrawer = mobileSolveMarksPlacement === "drawer";
+  mobileSolveMarksOpen = false;
+  restoreMobileSolveManualMarks();
+  updateMobileSolveMarksButton();
+  syncMobileSolveStatus();
+  if (wasDrawer && closeDrawer) setMobileSolveDrawer(false, { preserveMarks: true });
+  scheduleMobileSolveLayout();
+}
+
+function toggleMobileSolveMarks() {
+  if (mobileSolveMarksOpen) closeMobileSolveMarks();
+  else openMobileSolveMarks();
+}
+
+function reconcileMobileSolveMarksPlacement() {
+  if (!mobileSolveMarksOpen || !manualMarksPanel) return;
+  const inline = shouldInlineMobileSolveMarks();
+  if (inline && mobileSolveMarksPlacement !== "inline") {
+    setMobileSolveDrawer(false, { preserveMarks: true });
+    mobileSolveDrawer?.classList.remove("mobile-marks-view");
+    if (mobileSolveMarksDrawerHost) mobileSolveMarksDrawerHost.hidden = true;
+    mobileSolveShell?.classList.add("mobile-marks-inline");
+    mountMobileSolveManualMarks(mobileSolveMarksHost, "inline");
+  } else if (!inline && mobileSolveMarksPlacement !== "drawer") {
+    if (mobileSolveMarksHost) mobileSolveMarksHost.hidden = true;
+    mobileSolveShell?.classList.remove("mobile-marks-inline");
+    mountMobileSolveManualMarks(mobileSolveMarksDrawerHost, "drawer");
+    mobileSolveDrawer?.classList.add("mobile-marks-view");
+    setMobileSolveDrawer(true, { preserveMarks: true });
+  }
+  updateMobileSolveMarksButton();
+}
+
+function mobileSolveViewport() {
+  const visual = window.visualViewport;
+  return {
+    width: Math.max(1, Number(visual?.width || window.innerWidth || document.documentElement.clientWidth || 1)),
+    height: Math.max(1, Number(visual?.height || window.innerHeight || document.documentElement.clientHeight || 1)),
+    offsetLeft: Number(visual?.offsetLeft || 0),
+    offsetTop: Number(visual?.offsetTop || 0),
+  };
+}
+
+function isMobileSolveRecommendedViewport() {
+  const viewport = mobileSolveViewport();
+  return viewport.width <= 900 || window.matchMedia?.("(pointer: coarse)")?.matches === true;
+}
+
+function mobileSolveFloorToCell(value) {
+  return Math.max(108, Math.floor(Math.max(0, value) / 9) * 9);
+}
+
+function setMobileSolveBoardSize(rawSize) {
+  if (!mobileSolveShell) return 0;
+  const size = mobileSolveFloorToCell(rawSize);
+  mobileSolveShell.style.setProperty("--mobile-board-size", `${size}px`);
+  mobileSolveShell.style.setProperty("--yzf-board-size", `${size}px`);
+  mobileSolveShell.style.setProperty("--yzf-cell-size", `${size / 9}px`);
+  mobileSolveShell.style.setProperty("--yzf-value-font-size", `${Math.max(20, Math.min(62, Math.round((size / 9) * 0.62)))}px`);
+  mobileSolveShell.style.setProperty("--yzf-candidate-font-size", `${Math.max(7, Math.min(20, Math.round((size / 9) * 0.22)))}px`);
+  mobileSolveShell.style.setProperty("--yzf-candidate-grid-padding", `${Math.max(1, Math.min(4, Math.round((size / 9) * 0.04)))}px`);
+  return size;
+}
+
+function applyMobileSolveLayout() {
+  if (!mobileSolveActive || !mobileSolveShell) return;
+  const viewport = mobileSolveViewport();
+  const landscape = viewport.width > viewport.height;
+  mobileSolveShell.classList.toggle("is-landscape", landscape);
+  mobileSolveShell.classList.toggle("is-portrait", !landscape);
+  reconcileMobileSolveMarksPlacement();
+  mobileSolveShell.style.left = `${viewport.offsetLeft}px`;
+  mobileSolveShell.style.top = `${viewport.offsetTop}px`;
+  mobileSolveShell.style.width = `${viewport.width}px`;
+  mobileSolveShell.style.height = `${viewport.height}px`;
+
+  const shellStyle = window.getComputedStyle(mobileSolveShell);
+  const paddingX = (Number.parseFloat(shellStyle.paddingLeft) || 0) + (Number.parseFloat(shellStyle.paddingRight) || 0);
+  const paddingY = (Number.parseFloat(shellStyle.paddingTop) || 0) + (Number.parseFloat(shellStyle.paddingBottom) || 0);
+  const gap = Number.parseFloat(shellStyle.gap) || 5;
+  const availableWidth = Math.max(108, viewport.width - paddingX);
+  const availableHeight = Math.max(108, viewport.height - paddingY);
+
+  if (landscape) {
+    const sideWidth = Math.max(150, Math.min(360, viewport.width * 0.38));
+    setMobileSolveBoardSize(Math.min(availableHeight, availableWidth - sideWidth - 8));
+    return;
+  }
+
+  // First use all available width. On the next frame, measure the real toolbar,
+  // status, keypad and action heights and reduce only when a short viewport needs it.
+  setMobileSolveBoardSize(availableWidth);
+  window.requestAnimationFrame(() => {
+    if (!mobileSolveActive || !mobileSolveShell?.classList.contains("is-portrait")) return;
+    const top = mobileSolveShell.querySelector(".mobile-solve-topbar")?.getBoundingClientRect().height || 0;
+    const status = mobileSolveStatus?.getBoundingClientRect().height || 0;
+    const pad = mobileSolveNumpadHost?.getBoundingClientRect().height || 0;
+    const actions = mobileSolveShell.querySelector(".mobile-solve-actions")?.getBoundingClientRect().height || 0;
+    const marks = !mobileSolveMarksHost?.hidden ? (mobileSolveMarksHost.getBoundingClientRect().height || 0) : 0;
+    const fixedHeight = top + status + pad + actions + marks + gap * (marks > 0 ? 5 : 4);
+    setMobileSolveBoardSize(Math.min(availableWidth, availableHeight - fixedHeight));
+  });
+}
+
+function scheduleMobileSolveLayout() {
+  if (!mobileSolveActive) return;
+  window.cancelAnimationFrame(mobileSolveLayoutRaf);
+  mobileSolveLayoutRaf = window.requestAnimationFrame(applyMobileSolveLayout);
+}
+
+function compactMobileSolveStatusText() {
+  const base = String(hintPanel?.innerText || yzfHintBaseText || ui("initialHint")).trim();
+  return base.split(/\r?\n/).find((line) => line.trim())?.trim() || ui("initialHint");
+}
+
+function syncMobileSolveStatus() {
+  if (!mobileSolveStatus) return;
+  const text = compactMobileSolveStatusText();
+  mobileSolveStatus.textContent = text;
+  mobileSolveStatus.title = text;
+}
+
+function updateMobileSolveInputState() {
+  if (!mobileSolveInputState) return;
+  const mode = inputMode === "candidate" ? ui("candidateMode") : ui("valueMode");
+  mobileSolveInputState.textContent = uif("mobileInputState", { mode, digit: selectedDigit });
+}
+
+function updateMobileSolveLanguage() {
+  setTextById("btnMobileSolveMode", ui("mobileSolveEntry"));
+  setTitleAndAria(btnMobileSolveMode, ui("mobileSolveMode"));
+  setTextById("mobileSolveTitle", ui("mobileSolveMode"));
+  setTextById("btnMobileSolveExit", ui("mobileSolveExit"));
+  setTextById("btnMobileSolveClear", ui("mobileSolveClear"));
+  updateMobileSolveMarksButton();
+  setTextById("btnMobileSolveUndo", ui("undo"));
+  setTextById("btnMobileSolveRedo", ui("redo"));
+  setTextById("btnMobileSolveMore", ui("mobileSolveMore"));
+  setTextById("mobileSolveDrawerTitle", ui(mobileSolveMarksOpen && mobileSolveMarksPlacement === "drawer" ? "mobileSolveMarksTitle" : "mobileSolveMoreTitle"));
+  setTextById("btnMobileSolveDrawerClose", ui("close"));
+  setTextById("btnMobileSolveHint", ui("step"));
+  setTextById("btnMobileSolveApply", ui("apply"));
+  setTextById("btnMobileSolveAllSteps", ui("allSteps"));
+  setTextById("btnMobileSolveInput", ui("mobileSolveInput"));
+  setTextById("btnMobileSolveAnalysis", ui("mobileSolveAnalysis"));
+  setTextById("mobileSolveLanguageLabel", ui("mobileSolveLanguage"));
+  mobileSolveShell?.setAttribute("aria-label", ui("mobileSolveMode"));
+  mobileSolveShell?.querySelector(".mobile-solve-actions")?.setAttribute("aria-label", ui("mobileSolveActions"));
+  mobileSolveDrawer?.setAttribute("aria-label", ui("mobileSolveMoreTitle"));
+  if (mobileSolveLang) mobileSolveLang.value = lang.value || "zh";
+  updateMobileSolvePreferenceButtons();
+  updateMobileSolveInputState();
+  syncMobileSolveStatus();
+}
+
+function setMobileSolveDrawer(open, options = {}) {
+  const { preserveMarks = false } = options;
+  if (!open && !preserveMarks && mobileSolveMarksOpen && mobileSolveMarksPlacement === "drawer") {
+    mobileSolveMarksOpen = false;
+    restoreMobileSolveManualMarks();
+    updateMobileSolveMarksButton();
+    syncMobileSolveStatus();
+  }
+  mobileSolveDrawerOpen = Boolean(open && mobileSolveActive);
+  if (mobileSolveDrawer) {
+    mobileSolveDrawer.hidden = !mobileSolveDrawerOpen;
+    mobileSolveDrawer.classList.toggle("mobile-marks-view", mobileSolveDrawerOpen && mobileSolveMarksOpen && mobileSolveMarksPlacement === "drawer");
+  }
+  if (mobileSolveBackdrop) mobileSolveBackdrop.hidden = !mobileSolveDrawerOpen;
+  btnMobileSolveMore?.setAttribute("aria-expanded", mobileSolveDrawerOpen && mobileSolveMarksPlacement !== "drawer" ? "true" : "false");
+  setTextById("mobileSolveDrawerTitle", ui(mobileSolveMarksOpen && mobileSolveMarksPlacement === "drawer" ? "mobileSolveMarksTitle" : "mobileSolveMoreTitle"));
+  if (mobileSolveDrawerOpen) btnMobileSolveDrawerClose?.focus?.({ preventScroll: true });
+}
+
+function enterMobileSolveMode() {
+  if (!mobileSolveShell || !boardStage || !numpad) return false;
+  if (mobileSolveActive) {
+    scheduleMobileSolveLayout();
+    return true;
+  }
+  ensureMobileSolveHomeMarkers();
+  mobileSolveScrollY = window.scrollY || 0;
+  mobileSolveBoardHost?.appendChild(boardStage);
+  mobileSolveNumpadHost?.appendChild(numpad);
+  mobileSolveMarksOpen = false;
+  mobileSolveMarksPlacement = "";
+  if (mobileSolveMarksHost) mobileSolveMarksHost.hidden = true;
+  if (mobileSolveMarksDrawerHost) mobileSolveMarksDrawerHost.hidden = true;
+  mobileSolveActive = true;
+  mobileSolveShell.hidden = false;
+  document.body.classList.add("mobile-solve-mode");
+  if (mobileSolveLang) mobileSolveLang.value = lang.value || "zh";
+  updateMobileSolveLanguage();
+  applyMobileSolvePreferences();
+  setMobileSolveDrawer(false);
+  scheduleMobileSolveLayout();
+  window.setTimeout(scheduleMobileSolveLayout, 140);
+  return true;
+}
+
+async function exitMobileSolveMode(options = {}) {
+  const { exitFullscreen = true } = options;
+  if (!mobileSolveActive) return;
+  if (mobileSolveMarksOpen) closeMobileSolveMarks({ closeDrawer: false });
+  setMobileSolveDrawer(false, { preserveMarks: true });
+  restoreMobileSolveElement(mobileSolveBoardHomeMarker, boardStage);
+  restoreMobileSolveElement(mobileSolveNumpadHomeMarker, numpad);
+  restoreMobileSolveManualMarks();
+  clearMobileSolveDigitHighlights();
+  mobileSolveActive = false;
+  mobileSolveShell.hidden = true;
+  mobileSolveShell.style.removeProperty("left");
+  mobileSolveShell.style.removeProperty("top");
+  mobileSolveShell.style.removeProperty("width");
+  mobileSolveShell.style.removeProperty("height");
+  document.body.classList.remove("mobile-solve-mode");
+  window.scrollTo({ top: mobileSolveScrollY, left: 0, behavior: "auto" });
+  window.dispatchEvent(new Event("yzf-layout-modechange"));
+  if (exitFullscreen && isFullscreen()) {
+    try { await exitFullscreenSafe(); } catch (_) { /* keep analysis mode usable */ }
+  }
+}
+
+function clearMobileSolveSelection() {
+  if (!engine || !currentSnapshot || selectedIndex < 0) {
+    setStatus(ui("mobileSelectCellFirst"));
+    return false;
+  }
+  if (isFixedCell(selectedIndex)) {
+    setStatus(ui("fixedCell"));
+    return false;
+  }
+  const cell = currentSnapshot.cells?.[selectedIndex];
+  if (cell?.value > 0) {
+    return refreshAfterEdit(engine.set_value_json(selectedIndex, 0));
+  }
+  if (inputMode === "candidate" && cell?.candidates?.includes(selectedDigit)) {
+    return refreshAfterEdit(engine.toggle_candidate_json(selectedIndex, selectedDigit));
+  }
+  setStatus(ui("mobileNothingToClear"));
+  return false;
+}
+
+function openPuzzleInputFromMobile() {
+  exitMobileSolveMode({ exitFullscreen: false }).then(() => {
+    activateTab("controls");
+    const inputDetails = givens?.closest("details");
+    if (inputDetails) inputDetails.open = true;
+    window.requestAnimationFrame(() => {
+      inputDetails?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+      givens?.focus?.({ preventScroll: true });
+    });
+  });
+}
+
+function installMobileSolveMode() {
+  ensureMobileSolveHomeMarkers();
+  loadMobileSolvePreferences();
+  applyMobileSolvePreferences();
+  const hintObserver = new MutationObserver(syncMobileSolveStatus);
+  if (hintPanel) hintObserver.observe(hintPanel, { childList: true, subtree: true, characterData: true });
+
+  btnMobileSolveMode?.addEventListener("click", enterMobileSolveMode);
+  btnMobileSolveExit?.addEventListener("click", () => exitMobileSolveMode());
+  btnMobileSolveFullscreen?.addEventListener("click", toggleFullscreen);
+  btnMobileSolveClear?.addEventListener("click", clearMobileSolveSelection);
+  btnMobileSolveUndo?.addEventListener("click", () => btnUndo?.click());
+  btnMobileSolveRedo?.addEventListener("click", () => btnRedo?.click());
+  btnMobileSolveMarks?.addEventListener("click", toggleMobileSolveMarks);
+  btnMobileSolveMore?.addEventListener("click", () => {
+    if (mobileSolveMarksOpen && mobileSolveMarksPlacement === "drawer") {
+      closeMobileSolveMarks();
+      return;
+    }
+    setMobileSolveDrawer(!mobileSolveDrawerOpen);
+  });
+  btnMobileSolveDrawerClose?.addEventListener("click", () => setMobileSolveDrawer(false));
+  mobileSolveBackdrop?.addEventListener("click", () => setMobileSolveDrawer(false));
+  btnMobileSolveHint?.addEventListener("click", () => { setMobileSolveDrawer(false); btnStep?.click(); });
+  btnMobileSolveApply?.addEventListener("click", () => { setMobileSolveDrawer(false); btnApply?.click(); });
+  btnMobileSolveAllSteps?.addEventListener("click", () => {
+    setMobileSolveDrawer(false);
+    exitMobileSolveMode({ exitFullscreen: false }).then(() => btnAllSteps?.click());
+  });
+  btnMobileSolveInput?.addEventListener("click", openPuzzleInputFromMobile);
+  btnMobileSolveCandidates?.addEventListener("click", toggleMobileSolveCandidates);
+  btnMobileSolveSameDigit?.addEventListener("click", toggleMobileSolveSameDigitHighlight);
+  btnMobileSolveAnalysis?.addEventListener("click", () => exitMobileSolveMode());
+  mobileSolveLang?.addEventListener("change", () => {
+    lang.value = mobileSolveLang.value;
+    lang.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  window.addEventListener("resize", scheduleMobileSolveLayout, { passive: true });
+  window.addEventListener("orientationchange", scheduleMobileSolveLayout, { passive: true });
+  window.visualViewport?.addEventListener("resize", scheduleMobileSolveLayout, { passive: true });
+  window.visualViewport?.addEventListener("scroll", scheduleMobileSolveLayout, { passive: true });
+  document.addEventListener("fullscreenchange", scheduleMobileSolveLayout);
+  document.addEventListener("webkitfullscreenchange", scheduleMobileSolveLayout);
+  document.addEventListener("keydown", (event) => {
+    if (!mobileSolveActive || event.key !== "Escape") return;
+    if (mobileSolveDrawerOpen) {
+      event.preventDefault();
+      setMobileSolveDrawer(false);
+    }
+  });
+  updateMobileSolveLanguage();
+}
+
 function isFullscreen() {
   return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
 }
@@ -12975,12 +13725,9 @@ function setActionButtonLabel(button, label, icon = null) {
 }
 
 function updateFullscreenButton() {
-  if (!btnFullscreen) return;
-  if (isFullscreen()) {
-    setActionButtonLabel(btnFullscreen, ui("exitFullscreen"));
-  } else {
-    setActionButtonLabel(btnFullscreen, ui("fullscreen"));
-  }
+  const label = isFullscreen() ? ui("exitFullscreen") : ui("fullscreen");
+  if (btnFullscreen) setActionButtonLabel(btnFullscreen, label);
+  if (btnMobileSolveFullscreen) setButtonText(btnMobileSolveFullscreen, label);
 }
 
 async function toggleFullscreen() {
@@ -12988,6 +13735,7 @@ async function toggleFullscreen() {
     if (isFullscreen()) {
       await exitFullscreenSafe();
     } else {
+      if (!mobileSolveActive && isMobileSolveRecommendedViewport()) enterMobileSolveMode();
       const ok = await enterFullscreen();
       if (!ok) {
         setStatus(ui("unsupportedFullscreen"));
@@ -13109,6 +13857,7 @@ window.addEventListener("beforeunload", () => {
   saveAppSessionNow();
 });
 
+installMobileSolveMode();
 applyStaticLanguage();
 
 init().catch((err) => {

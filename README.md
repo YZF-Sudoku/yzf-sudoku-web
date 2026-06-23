@@ -44,7 +44,19 @@ Main files and folders:
 - `training-worker.js` - background training / analysis worker
 - `user_manual.html` - user manual
 - `ocr/` - local OCR runtime, OCR model files, and OCR documentation
-- `debug_samples/` - sample step-result files used for frontend highlight/debug verification
+
+
+## Mobile Solve Mode
+
+On phones and narrow touch devices, use the **Solve / 做题** button in the board header to enter the dedicated mobile solve layout.
+
+- Portrait: the board uses nearly the full screen width and the number pad remains docked at the bottom.
+- Landscape: the board uses nearly the full screen height and the number pad moves to the right side.
+- The solve viewport does not rely on document scrolling; the board and input controls remain visible together.
+- **More / 更多** opens hints, apply, all steps, puzzle input, language, and the return-to-analysis action without resizing the board.
+- On mobile viewports, the existing fullscreen button enters solve mode before requesting browser fullscreen. The solve layout still works if the browser declines fullscreen.
+
+The active puzzle, selected digit, input mode, undo/redo history, and language are preserved when rotating the device or returning to analysis mode.
 
 ## WebAssembly Solver
 

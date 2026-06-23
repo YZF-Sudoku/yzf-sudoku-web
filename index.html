@@ -4158,7 +4158,1277 @@
     .step-explain-dialog-content li { margin: 5px 0; }
 
 
-  </style>
+    /* V436: visual and usability refresh. This block intentionally lives last so
+       it can refine the long-lived responsive rules without changing JS behavior. */
+    :root {
+      --bg: #eaf0f8;
+      --surface: #ffffff;
+      --surface-soft: #f7f9fc;
+      --surface-muted: #eef3f9;
+      --border: #d7e0ec;
+      --border-strong: #bdcadb;
+      --muted: #64748b;
+      --ink: #172033;
+      --accent: #2563eb;
+      --accent-strong: #1d4ed8;
+      --accent-soft: #eaf2ff;
+      --accent-faint: #f5f8ff;
+      --place: #07805a;
+      --delete: #c2413a;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 10px 30px rgba(38, 55, 84, 0.10);
+      --shadow-board: 0 14px 34px rgba(24, 39, 69, 0.16), 0 2px 6px rgba(15, 23, 42, 0.10);
+      color-scheme: light;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 15% 10%, rgba(59, 130, 246, 0.10), transparent 32rem),
+        linear-gradient(145deg, #f2f6fb 0%, var(--bg) 52%, #e6edf6 100%);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    button,
+    select,
+    textarea,
+    input {
+      font: inherit;
+    }
+    button,
+    select,
+    input[type="text"],
+    input[type="number"],
+    input[type="search"],
+    textarea {
+      border-color: var(--border);
+      transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease, color 140ms ease, transform 80ms ease;
+    }
+    button:hover:not(:disabled) {
+      border-color: #9dbcf3;
+      color: var(--accent-strong);
+      background: var(--accent-faint);
+    }
+    button:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+    button:focus-visible,
+    select:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    summary:focus-visible,
+    a:focus-visible {
+      outline: 3px solid rgba(37, 99, 235, 0.22);
+      outline-offset: 2px;
+      border-color: var(--accent) !important;
+    }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.48;
+      filter: grayscale(0.15);
+    }
+    button.primary {
+      border-color: var(--accent);
+      background: linear-gradient(180deg, #3478f6, var(--accent));
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.20);
+    }
+    button.primary:hover:not(:disabled) {
+      border-color: var(--accent-strong);
+      background: linear-gradient(180deg, #2f70e8, var(--accent-strong));
+      color: #fff;
+    }
+
+    .card {
+      border-color: rgba(189, 202, 219, 0.78);
+      box-shadow: var(--shadow-md);
+    }
+
+    .board-stage {
+      filter: drop-shadow(0 12px 25px rgba(27, 43, 72, 0.12));
+    }
+    .sudoku-board {
+      border-width: 3px;
+      border-color: #172033;
+      background: #172033;
+      box-shadow: var(--shadow-board);
+    }
+    .sudoku-cell {
+      border-color: #9ba9bd;
+    }
+    .sudoku-cell.box-right { border-right-color: #172033; }
+    .sudoku-cell.box-bottom { border-bottom-color: #172033; }
+    .sudoku-cell.selected {
+      background: #dceafe;
+      box-shadow: inset 0 0 0 3px #3478f6;
+    }
+
+    .topbar {
+      gap: 7px;
+      padding: 6px 10px !important;
+      border: 1px solid rgba(189, 202, 219, 0.78);
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(8px);
+      overflow: visible !important;
+    }
+    .brand {
+      align-items: flex-start;
+      margin-right: auto;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .brand-title {
+      color: #12213b;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+    .brand-subtitle {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 550;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+    .manual-link,
+    .step-explain-button,
+    .topbar select {
+      min-height: 30px;
+      border-color: var(--border);
+      border-radius: 9px;
+      background: var(--surface-soft);
+      font-size: 12px;
+      font-weight: 650;
+      box-shadow: none;
+    }
+    .manual-link {
+      color: #36557f;
+    }
+    .manual-link:hover,
+    .manual-link:focus {
+      border-color: #9dbcf3;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+    }
+
+    .hint-panel {
+      position: relative;
+      margin: 0 !important;
+      padding: 10px 12px 10px 16px !important;
+      border: 1px solid #c9daf4 !important;
+      border-left: 4px solid var(--accent) !important;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #f8fbff, #edf5ff) !important;
+      color: #29415f;
+      font-size: 13px;
+      box-shadow: var(--shadow-sm);
+      scrollbar-width: thin;
+      scrollbar-color: #a8bdd8 transparent;
+    }
+
+    .tab-shell {
+      margin: 0 !important;
+      padding: 10px;
+      border: 1px solid rgba(189, 202, 219, 0.82) !important;
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: var(--shadow-md);
+      overflow: hidden !important;
+    }
+
+    .global-actions {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 7px;
+      margin: 0 0 10px;
+      padding: 0 0 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .global-actions .action-button,
+    .global-actions .action-button.primary {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 50px;
+      padding: 6px 4px;
+      border-color: var(--border);
+      border-radius: 10px;
+      background: var(--surface-soft);
+      color: #33445e;
+      box-shadow: none;
+    }
+    .global-actions .action-button:hover:not(:disabled),
+    .global-actions .action-button.primary:hover:not(:disabled) {
+      border-color: #9dbcf3;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.10);
+    }
+    .global-actions .action-button:is(#btnSolve, #btnStep, #btnApply) {
+      border-color: #b8cef6;
+      background: #f1f6ff;
+      color: #1d4ed8;
+    }
+    .global-actions .action-button:is(#btnGenerate, #btnLoad) {
+      border-color: #b9dfd2;
+      background: #f1fbf7;
+      color: #08785a;
+    }
+    .global-actions .action-icon svg {
+      width: 20px;
+      height: 20px;
+      stroke-width: 1.9;
+    }
+    .global-actions .action-label {
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 0;
+      overflow: visible;
+      clip: auto;
+      color: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.05;
+      white-space: nowrap;
+    }
+
+    .tab-list {
+      position: relative;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface-muted);
+    }
+    .tab-button {
+      min-height: 36px;
+      padding: 6px 8px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      background: transparent;
+      color: #56657a;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .tab-button:hover:not(.active) {
+      border-color: transparent;
+      background: rgba(255, 255, 255, 0.72);
+      color: #2f425e;
+    }
+    .tab-button.active {
+      border-color: rgba(37, 99, 235, 0.24);
+      background: #fff;
+      color: var(--accent-strong);
+      box-shadow: 0 2px 7px rgba(24, 45, 78, 0.10);
+    }
+
+    .tab-panel {
+      flex: 1 1 auto;
+      min-height: 0;
+      margin-top: 8px;
+      padding: 2px 3px 6px;
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: #b6c4d6 transparent;
+    }
+    .tab-panel::-webkit-scrollbar { width: 8px; }
+    .tab-panel::-webkit-scrollbar-thumb {
+      border: 2px solid transparent;
+      border-radius: 999px;
+      background: #b6c4d6;
+      background-clip: padding-box;
+    }
+    #tabTechniques {
+      max-height: none;
+    }
+
+    #tabControls:not([hidden]) {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-content: start;
+      gap: 8px;
+    }
+    #tabControls > .generate-options {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      min-height: 43px;
+      margin: 0;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface-soft);
+      color: #526278;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    #tabControls > .generate-options select {
+      width: 100%;
+      height: 31px;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 12px;
+    }
+    #tabControls > :is(#numpad, details, .yzf-debug-panel) {
+      grid-column: 1 / -1;
+    }
+
+    .numpad {
+      gap: 7px;
+      margin: 0;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface-soft);
+    }
+    .numpad button {
+      min-height: 43px;
+      border-color: #cbd6e4;
+      border-radius: 10px;
+      background: #fff;
+      color: #1f2d42;
+      font-size: 18px;
+      font-weight: 750;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .numpad button:hover:not(:disabled) {
+      border-color: #93b6f4;
+      background: var(--accent-faint);
+    }
+    .numpad button.active {
+      border-color: var(--accent);
+      background: linear-gradient(180deg, #edf5ff, #dbeafe);
+      color: var(--accent-strong);
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.16), 0 3px 8px rgba(37, 99, 235, 0.12);
+    }
+    .numpad .mode-toggle {
+      color: #143f84;
+      background: #edf4ff;
+    }
+
+    #tabControls > details,
+    .tlg-solver-panel,
+    .manual-marks-panel,
+    .input-panel {
+      margin: 0;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      overflow: clip;
+      box-shadow: var(--shadow-sm);
+    }
+    #tabControls > details > summary,
+    .tlg-solver-panel > summary,
+    .manual-marks-panel > summary,
+    .input-panel > summary {
+      position: relative;
+      min-height: 40px;
+      padding: 10px 36px 10px 12px;
+      color: #34445b;
+      background: var(--surface-soft);
+      font-size: 13px;
+      font-weight: 750;
+      list-style: none;
+    }
+    #tabControls > details > summary::-webkit-details-marker { display: none; }
+    #tabControls > details > summary::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: 14px;
+      width: 7px;
+      height: 7px;
+      border-right: 2px solid #75849a;
+      border-bottom: 2px solid #75849a;
+      transform: translateY(-65%) rotate(45deg);
+      transition: transform 160ms ease;
+    }
+    #tabControls > details[open] > summary {
+      border-bottom: 1px solid var(--border);
+      background: #f4f7fb;
+      color: #21334e;
+    }
+    #tabControls > details[open] > summary::after {
+      transform: translateY(-30%) rotate(225deg);
+    }
+    #tabControls > details[open] > :not(summary) {
+      margin-left: 10px;
+      margin-right: 10px;
+    }
+    #tabControls > details[open] > :last-child {
+      margin-bottom: 10px;
+    }
+
+    textarea,
+    input[type="text"],
+    input[type="number"],
+    input[type="search"],
+    select {
+      border-radius: 9px;
+      background: #fff;
+      color: var(--ink);
+    }
+    textarea:hover,
+    input[type="text"]:hover,
+    input[type="number"]:hover,
+    input[type="search"]:hover,
+    select:hover {
+      border-color: #afc1d8;
+    }
+
+    .technique-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      gap: 6px;
+      margin: 0 0 8px;
+      padding: 6px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(8px);
+    }
+    .technique-toolbar button {
+      min-height: 34px;
+      padding: 5px 6px;
+      border-radius: 8px;
+      font-size: 11px;
+    }
+    .technique-table {
+      border-spacing: 0 5px;
+    }
+    .technique-row td {
+      border-color: #dde5ef;
+      background: #fff;
+    }
+    .technique-row:hover td {
+      border-color: #b7caf0;
+      background: #f7faff;
+    }
+
+    .json-treeview,
+    #tree,
+    #allStepsTree {
+      border-radius: 12px;
+    }
+    .tree-row {
+      border-radius: 6px;
+    }
+    .branch-panel {
+      border-radius: 11px;
+      box-shadow: var(--shadow-sm);
+    }
+    .all-steps-filter {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(8px);
+    }
+
+    .tlg-solver-panel {
+      background: #fff;
+    }
+    .tlg-solver-grid {
+      gap: 8px;
+      padding-top: 2px;
+    }
+    .tlg-solver-controls {
+      gap: 7px;
+    }
+    .tlg-solver-controls button {
+      min-height: 34px;
+      border-radius: 8px;
+    }
+    .tlg-solver-status,
+    .batch-status,
+    .manual-mark-status {
+      border-radius: 8px;
+    }
+
+    @media (orientation: landscape) and (min-width: 700px) {
+      .app-shell {
+        padding: 8px !important;
+      }
+      .workspace {
+        height: calc(100dvh - 16px) !important;
+        max-height: calc(100dvh - 16px) !important;
+      }
+      .board-wrap,
+      :fullscreen .board-wrap,
+      :-webkit-full-screen .board-wrap {
+        height: calc(100dvh - 16px) !important;
+        max-height: calc(100dvh - 16px) !important;
+        padding: 8px !important;
+        column-gap: 12px;
+        row-gap: 8px;
+        --yzf-right-panel-min: 340px;
+        grid-template-columns: minmax(0, var(--yzf-board-size, min(62vw, calc(100dvh - 32px)))) minmax(var(--yzf-right-panel-min), 1fr);
+        grid-template-rows: 44px var(--yzf-hint-panel-height) minmax(0, 1fr) !important;
+        border: 0;
+        background: rgba(237, 243, 250, 0.70);
+        box-shadow: none;
+      }
+      .topbar {
+        height: 44px !important;
+        min-height: 44px !important;
+        max-height: 44px !important;
+      }
+      .tab-shell {
+        min-height: 0;
+      }
+    }
+
+    @media (orientation: landscape) and (max-height: 720px) {
+      .board-wrap,
+      :fullscreen .board-wrap,
+      :-webkit-full-screen .board-wrap {
+        --yzf-right-panel-min: 300px;
+      }
+      .brand-subtitle { display: none; }
+      .topbar {
+        padding: 4px 7px !important;
+      }
+      .manual-link,
+      .step-explain-button,
+      .topbar select {
+        min-height: 28px;
+        padding: 3px 7px;
+        font-size: 11px;
+      }
+      .global-actions {
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        gap: 4px;
+      }
+      .global-actions .action-button,
+      .global-actions .action-button.primary {
+        min-height: 34px;
+        padding: 5px 3px;
+      }
+      .global-actions .action-label { display: none; }
+      .tab-button { min-height: 32px; }
+      .numpad button { min-height: 36px; }
+      #tabControls > .generate-options { min-height: 36px; padding: 3px 6px; }
+    }
+
+    @media (orientation: landscape) and (min-width: 700px) and (max-width: 1100px) {
+      .brand-subtitle { display: none; }
+      .brand-title { font-size: 13px; }
+      .topbar {
+        gap: 4px;
+        padding: 4px 6px !important;
+      }
+      .manual-link,
+      .step-explain-button,
+      .topbar select {
+        min-height: 28px;
+        padding: 3px 5px;
+        font-size: 10.5px;
+      }
+    }
+
+    @media (orientation: landscape) and (max-height: 640px) and (max-width: 1180px) {
+      .board-wrap,
+      :fullscreen .board-wrap,
+      :-webkit-full-screen .board-wrap {
+        grid-template-rows: 38px var(--yzf-hint-panel-height) minmax(0, 1fr) !important;
+      }
+      .topbar,
+      :fullscreen .topbar,
+      :-webkit-full-screen .topbar {
+        height: 38px !important;
+        min-height: 38px !important;
+        max-height: 38px !important;
+      }
+    }
+
+    @media (orientation: portrait), (max-width: 699px) {
+      body {
+        background: #eef3f9;
+      }
+      .app-shell {
+        padding: 4px;
+      }
+      .board-wrap {
+        gap: 7px;
+        padding: 6px;
+        background: transparent;
+      }
+      .topbar {
+        min-height: 42px;
+        padding: 5px 7px !important;
+        flex-wrap: wrap;
+      }
+      .brand-subtitle { display: none; }
+      .manual-link,
+      .step-explain-button,
+      .topbar select {
+        min-height: 28px;
+        padding: 3px 7px;
+        font-size: 11px;
+      }
+      .tab-shell {
+        padding: 8px;
+      }
+      .global-actions {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+      .global-actions .action-label {
+        display: none;
+      }
+      .global-actions .action-button,
+      .global-actions .action-button.primary {
+        min-height: 38px;
+      }
+      #tabControls:not([hidden]) {
+        grid-template-columns: 1fr;
+      }
+      #tabControls > :is(.generate-options, #numpad, details, .yzf-debug-panel) {
+        grid-column: 1;
+      }
+      .tab-button {
+        padding: 5px 3px;
+        font-size: 12px;
+      }
+    }
+
+
+  
+
+    /* V438: forcing-chain branches are selected from the explanation text.
+       No branch widget is attached to the board, so branch switching cannot
+       cover, move, or resize the grid. */
+    .hint-panel .forcing-branch-nav {
+      display: grid;
+      gap: 4px;
+      margin-top: 8px;
+      padding-top: 7px;
+      border-top: 1px solid rgba(104, 139, 188, 0.28);
+    }
+    .hint-panel .forcing-branch-line {
+      display: flex;
+      width: 100%;
+      min-height: 28px;
+      margin: 0;
+      padding: 5px 8px;
+      align-items: flex-start;
+      justify-content: flex-start;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      color: #294b78;
+      box-shadow: none;
+      font: inherit;
+      line-height: 1.35;
+      text-align: left;
+      cursor: pointer;
+    }
+    .hint-panel .forcing-branch-line:hover {
+      border-color: rgba(87, 130, 194, 0.38);
+      background: rgba(219, 234, 254, 0.64);
+      color: #173f79;
+    }
+    .hint-panel .forcing-branch-line.is-selected {
+      border-color: rgba(37, 99, 235, 0.56);
+      background: rgba(219, 234, 254, 0.92);
+      color: #123d7a;
+      font-weight: 750;
+    }
+    .hint-panel .forcing-branch-index {
+      flex: 0 0 auto;
+      min-width: 2.2em;
+      color: #5b7293;
+      font-weight: 800;
+    }
+    .hint-panel .forcing-branch-text {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+    .hint-panel .forcing-branch-shortcut {
+      margin-top: 2px;
+      color: #64748b;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+    @media (orientation: portrait), (max-width: 699px) {
+      .hint-panel .forcing-branch-nav {
+        gap: 3px;
+        margin-top: 6px;
+        padding-top: 5px;
+      }
+      .hint-panel .forcing-branch-line {
+        min-height: 26px;
+        padding: 4px 6px;
+        font-size: 12px;
+      }
+      .hint-panel .forcing-branch-shortcut {
+        display: none;
+      }
+    }
+
+    /* V439: dedicated mobile solve mode. The live board and number pad are
+       temporarily moved into this fixed viewport shell, so portrait and
+       landscape controls remain visible without scrolling the analysis UI. */
+    .mobile-solve-entry {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      margin: 0;
+      padding: 4px 9px;
+      border: 1px solid #9dbcf3;
+      border-radius: 9px;
+      background: #edf5ff;
+      color: #174a91;
+      font-size: 12px;
+      font-weight: 750;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+    @media (max-width: 900px), (pointer: coarse) {
+      .mobile-solve-entry { display: inline-flex; }
+    }
+
+    body.mobile-solve-mode {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: manipulation;
+      background: #eaf0f7;
+    }
+    body.mobile-solve-mode .app-shell { display: none !important; }
+
+    .mobile-solve-shell[hidden] { display: none !important; }
+    .mobile-solve-shell {
+      --mobile-board-size: 360px;
+      --yzf-board-size: var(--mobile-board-size);
+      --yzf-cell-size: calc(var(--mobile-board-size) / 9);
+      --yzf-value-font-size: clamp(20px, calc(var(--mobile-board-size) / 15), 62px);
+      --yzf-candidate-font-size: clamp(7px, calc(var(--mobile-board-size) / 43), 20px);
+      --yzf-candidate-grid-padding: clamp(1px, calc(var(--mobile-board-size) / 180), 4px);
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      width: 100vw;
+      height: 100dvh;
+      min-width: 0;
+      min-height: 0;
+      padding:
+        max(4px, env(safe-area-inset-top))
+        max(4px, env(safe-area-inset-right))
+        max(4px, env(safe-area-inset-bottom))
+        max(4px, env(safe-area-inset-left));
+      gap: 5px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(219, 234, 254, 0.82), transparent 42%),
+        linear-gradient(180deg, #f6f9fd, #e9f0f8);
+      color: var(--ink);
+    }
+    .mobile-solve-shell.is-portrait {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: auto auto auto auto auto auto;
+      grid-template-areas:
+        "mobile-top"
+        "mobile-board"
+        "mobile-status"
+        "mobile-numpad"
+        "mobile-actions"
+        "mobile-marks";
+      align-content: start;
+    }
+    .mobile-solve-shell.is-landscape {
+      display: grid;
+      grid-template-columns: var(--mobile-board-size) minmax(150px, 1fr);
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      grid-template-areas:
+        "mobile-board mobile-top"
+        "mobile-board mobile-status"
+        "mobile-board mobile-numpad"
+        "mobile-board mobile-actions";
+      column-gap: 8px;
+      row-gap: 5px;
+    }
+
+    .mobile-solve-topbar {
+      grid-area: mobile-top;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 6px;
+      min-height: 38px;
+      padding: 4px 5px;
+      border: 1px solid rgba(183, 199, 220, 0.88);
+      border-radius: 11px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 3px 12px rgba(28, 48, 78, 0.08);
+      backdrop-filter: blur(8px);
+    }
+    .mobile-solve-topbar button,
+    .mobile-solve-actions button,
+    .mobile-solve-drawer button {
+      min-width: 0;
+      min-height: 34px;
+      margin: 0;
+      padding: 5px 9px;
+      border-radius: 9px;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+    .mobile-solve-title-wrap {
+      min-width: 0;
+      text-align: center;
+    }
+    .mobile-solve-title {
+      overflow: hidden;
+      color: #152744;
+      font-size: 14px;
+      font-weight: 850;
+      line-height: 1.1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .mobile-solve-input-state {
+      margin-top: 1px;
+      overflow: hidden;
+      color: #62748c;
+      font-size: 10px;
+      font-weight: 650;
+      line-height: 1.15;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mobile-solve-board-host {
+      grid-area: mobile-board;
+      display: flex;
+      min-width: 0;
+      min-height: 0;
+      align-items: center;
+      justify-content: center;
+      overflow: visible;
+    }
+    .mobile-solve-shell.is-portrait .mobile-solve-board-host {
+      align-items: flex-start;
+    }
+    .mobile-solve-shell .board-stage {
+      width: var(--mobile-board-size) !important;
+      height: var(--mobile-board-size) !important;
+      max-width: none !important;
+      margin: 0 !important;
+      flex: 0 0 var(--mobile-board-size);
+      filter: drop-shadow(0 9px 20px rgba(22, 41, 70, 0.16));
+    }
+
+    /* V440: mobile solving refinements. Candidate visibility is a presentation
+       preference only; keeping the grid in flow preserves cell geometry. */
+    .mobile-solve-shell.mobile-hide-candidates .candidate-grid {
+      visibility: hidden;
+    }
+    .mobile-solve-shell .sudoku-cell.mobile-same-digit {
+      background: #fff3c4;
+      box-shadow: inset 0 0 0 2px #f0a51a;
+    }
+    .mobile-solve-shell .sudoku-cell.mobile-same-digit .cell-value {
+      color: #9a4f08;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+    }
+    .mobile-solve-shell .sudoku-cell.mobile-same-digit.selected {
+      background: #dceafe;
+      box-shadow: inset 0 0 0 3px #3478f6;
+    }
+    .mobile-solve-shell .sudoku-cell.mobile-same-digit.selected .cell-value {
+      color: inherit;
+      text-shadow: none;
+    }
+
+    .mobile-solve-status {
+      grid-area: mobile-status;
+      min-width: 0;
+      min-height: 29px;
+      max-height: 42px;
+      padding: 5px 9px;
+      overflow: hidden;
+      border: 1px solid #c7d8ef;
+      border-left: 4px solid var(--accent);
+      border-radius: 9px;
+      background: rgba(248, 251, 255, 0.96);
+      color: #304b6f;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mobile-solve-numpad-host {
+      grid-area: mobile-numpad;
+      min-width: 0;
+      min-height: 0;
+      align-self: center;
+    }
+    .mobile-solve-shell .numpad {
+      display: grid !important;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      gap: 5px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    .mobile-solve-shell.is-portrait .numpad {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+    .mobile-solve-shell.is-landscape .numpad {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-content: center;
+    }
+    .mobile-solve-shell .numpad button {
+      min-width: 0;
+      min-height: 42px;
+      margin: 0;
+      padding: 4px 2px;
+      border-radius: 10px;
+      font-size: clamp(16px, 4.8vw, 22px);
+      touch-action: manipulation;
+    }
+    .mobile-solve-shell.is-landscape .numpad button {
+      min-height: 34px;
+      font-size: clamp(14px, 4.5vh, 19px);
+    }
+    .mobile-solve-shell.is-landscape .numpad .mode-toggle,
+    .mobile-solve-shell.is-landscape .numpad .ocr-role-toggle:not([hidden]) {
+      grid-column: 1 / -1;
+    }
+
+    .mobile-solve-actions {
+      grid-area: mobile-actions;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 5px;
+      min-width: 0;
+    }
+    .mobile-solve-actions button {
+      min-height: 38px;
+      padding: 5px 4px;
+      background: rgba(255, 255, 255, 0.96);
+      color: #28415f;
+      font-size: 12px;
+      touch-action: manipulation;
+    }
+    .mobile-solve-actions button.mobile-primary {
+      border-color: #9ebcf1;
+      background: #edf5ff;
+      color: #164990;
+    }
+    .mobile-solve-actions button[data-mark-active="true"] {
+      border-color: #8eb3f2;
+      background: #e9f2ff;
+      color: #164990;
+      box-shadow: inset 0 0 0 1px rgba(52, 120, 246, 0.12);
+    }
+
+    /* V440: adaptive mobile manual-mark workspace. The existing live panel is
+       moved here on tall portrait screens, or into the overlay drawer when the
+       viewport is too short. No duplicate mark state or controls are created. */
+    .mobile-solve-marks-host[hidden],
+    .mobile-solve-marks-drawer-host[hidden] {
+      display: none !important;
+    }
+    .mobile-solve-marks-host {
+      grid-area: mobile-marks;
+      min-width: 0;
+      min-height: 0;
+      overflow: visible;
+    }
+    .mobile-solve-shell.is-landscape .mobile-solve-marks-host {
+      display: none !important;
+    }
+    .mobile-solve-marks-drawer-host {
+      min-width: 0;
+      margin-top: 4px;
+    }
+    .mobile-solve-drawer.mobile-marks-view .mobile-solve-drawer-grid,
+    .mobile-solve-drawer.mobile-marks-view .mobile-solve-language-row {
+      display: none !important;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      margin: 0;
+      padding: 6px;
+      overflow: hidden;
+      border: 1px solid #b9cce7;
+      border-radius: 11px;
+      background: rgba(248, 251, 255, 0.98);
+      box-shadow: 0 4px 14px rgba(32, 57, 91, 0.09);
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks > summary {
+      display: none !important;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-marks-content {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(118px, 0.72fr);
+      grid-template-areas:
+        "mark-modes mark-actions"
+        "mark-color mark-color"
+        "mark-swatches mark-swatches"
+        "mark-buttons mark-buttons";
+      gap: 5px 6px;
+      min-width: 0;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-marks-grid {
+      grid-area: mark-modes;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 4px;
+      margin: 0;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-marks-grid label {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+      font-size: 10px;
+      white-space: nowrap;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks:not([data-mobile-mark-mode="chain"]) .manual-marks-grid label:nth-child(2) {
+      display: none;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-marks-grid select {
+      min-width: 0;
+      height: 30px;
+      padding: 2px 5px;
+      font-size: 11px;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-actions {
+      grid-area: mark-actions;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      align-self: start;
+      margin: 0;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-actions button {
+      min-height: 30px;
+      padding: 3px 4px;
+      font-size: 10.5px;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-color-row {
+      grid-area: mark-color;
+      display: grid;
+      grid-template-columns: auto 30px minmax(0, 1fr);
+      gap: 5px;
+      margin: 0;
+      font-size: 10px;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-color-row input[type="color"] {
+      width: 30px;
+      height: 28px;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-color-row button {
+      height: 28px;
+      padding: 2px 5px;
+      font-size: 10.5px;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-swatches {
+      grid-area: mark-swatches;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+      min-height: 31px;
+      margin: 0;
+      padding: 0 0 1px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-swatch {
+      flex: 0 0 31px;
+      width: 31px;
+      min-width: 31px;
+      height: 31px;
+      min-height: 31px;
+      border-radius: 9px;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-swatch::after {
+      width: 23px;
+      height: 23px;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-swatch.active::after {
+      width: 25px;
+      height: 25px;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-buttons {
+      grid-area: mark-buttons;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 4px;
+      margin: 0;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-buttons button,
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-cleaning {
+      min-width: 0;
+      min-height: 32px;
+      margin: 0;
+      padding: 3px 3px;
+      overflow: hidden;
+      font-size: 10px;
+      line-height: 1.08;
+      text-align: center;
+      white-space: normal;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-cleaning {
+      grid-column: auto;
+      justify-content: center;
+      gap: 3px;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks:not([data-mobile-mark-mode="chain"]) #manualMarkUndoLine,
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks:not([data-mobile-mark-mode="chain"]) #manualMarkCancelChain,
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks:not([data-mobile-mark-mode="block"]) #manualMarkFinishBlock,
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks:not([data-mobile-mark-mode="block"]) #manualMarkUndoBlock {
+      display: none !important;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-cleaning input {
+      flex: 0 0 auto;
+      width: 14px;
+      height: 14px;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-mark-status {
+      display: none;
+    }
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks[data-mobile-mark-mode="chain"] .manual-mark-buttons,
+    .mobile-solve-shell .manual-marks-panel.mobile-manual-marks[data-mobile-mark-mode="block"] .manual-mark-buttons {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    @media (max-width: 360px) {
+      .mobile-solve-actions { gap: 3px; }
+      .mobile-solve-actions button { padding-inline: 2px; }
+      .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-marks-content {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+          "mark-modes"
+          "mark-actions"
+          "mark-color"
+          "mark-swatches"
+          "mark-buttons";
+      }
+    }
+
+    .mobile-solve-backdrop[hidden],
+    .mobile-solve-drawer[hidden] { display: none !important; }
+    .mobile-solve-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      background: rgba(15, 23, 42, 0.36);
+      backdrop-filter: blur(2px);
+    }
+    .mobile-solve-drawer {
+      position: absolute;
+      z-index: 6;
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid rgba(170, 190, 218, 0.9);
+      background: rgba(255, 255, 255, 0.98);
+      box-shadow: 0 -10px 35px rgba(15, 23, 42, 0.22);
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+    .mobile-solve-shell.is-portrait .mobile-solve-drawer {
+      left: 4px;
+      right: 4px;
+      bottom: max(4px, env(safe-area-inset-bottom));
+      max-height: min(58dvh, 430px);
+      border-radius: 16px 16px 10px 10px;
+    }
+    .mobile-solve-shell.is-landscape .mobile-solve-drawer {
+      top: 4px;
+      right: 4px;
+      bottom: 4px;
+      width: min(360px, 48vw);
+      border-radius: 14px;
+      box-shadow: -10px 0 35px rgba(15, 23, 42, 0.22);
+    }
+    .mobile-solve-drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 9px;
+    }
+    .mobile-solve-drawer-title {
+      color: #172a46;
+      font-size: 15px;
+      font-weight: 850;
+    }
+    .mobile-solve-drawer-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+    .mobile-solve-drawer-grid button {
+      min-height: 42px;
+      margin: 0;
+      background: #f8fafc;
+      color: #29415f;
+    }
+    .mobile-solve-drawer-grid button[aria-pressed="true"] {
+      border-color: #8eb3f2;
+      background: #e9f2ff;
+      color: #164990;
+      box-shadow: inset 0 0 0 1px rgba(52, 120, 246, 0.12);
+    }
+    .mobile-solve-language-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding-top: 9px;
+      border-top: 1px solid var(--border);
+      color: #526278;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .mobile-solve-language-row select {
+      width: 100%;
+      min-width: 0;
+      height: 36px;
+      margin: 0;
+    }
+
+    @media (max-width: 360px) {
+      .mobile-solve-topbar button { padding-inline: 6px; font-size: 11px; }
+      .mobile-solve-actions button { font-size: 11px; }
+      .mobile-solve-shell .numpad button { min-height: 38px; }
+    }
+
+</style>
 </head>
 <body>
   <main class="app-shell">
@@ -4172,6 +5442,7 @@
           <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260623-v588-board-border-clip" target="_blank" rel="noopener">使用手册</a>
           <button id="btnStepExplain" class="step-explain-button" type="button" disabled title="当前没有可解释的步骤。" aria-label="当前没有可解释的步骤。">解释</button>
           <a id="techniquesLink" class="manual-link" href="./techniques.html" target="_blank" rel="noopener">技巧说明</a>
+          <button id="btnMobileSolveMode" class="mobile-solve-entry" type="button" title="做题模式" aria-label="做题模式">做题</button>
           <label>
             <span class="hidden">Language</span>
             <select id="lang">
@@ -4198,10 +5469,6 @@
           </div>
           <div id="stepExplainDialogContent" class="step-explain-dialog-content"></div>
         </dialog>
-        <div id="yzfBranchControls" class="yzf-branch-controls hidden">
-          <label><span id="yzfBranchLabelText">分支</span> <select id="yzfBranchSelect"><option value="all">全部分支</option></select></label>
-        </div>
-
         <div class="tab-shell">
           <div class="global-actions" aria-label="主要操作">
             <button id="btnGenerate" class="action-button compact primary" type="button" title="生成" aria-label="生成"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-hidden="true"><rect x="3.5" y="3.5" width="13" height="13" rx="1.5"></rect><path d="M8 3.5v13M12.5 3.5v13M3.5 8h13M3.5 12.5h13"></path><circle cx="18.5" cy="18.5" r="4"></circle><path d="M18.5 16.7v3.6M16.7 18.5h3.6"></path></svg></span><span class="action-label">生成</span></button>
@@ -4279,6 +5546,7 @@
             </details>
             <details id="manualMarksPanel" class="manual-marks-panel">
               <summary><span id="manualMarksTitle">手工标记</span></summary>
+              <div class="manual-marks-content">
               <div class="manual-marks-grid">
                 <label><span id="manualMarkModeLabel">模式</span><select id="manualMarkMode">
                   <option value="off">关闭标记</option>
@@ -4317,6 +5585,7 @@
                 <button id="manualMarkUndoBlock" type="button" class="compact">撤销区块</button>
               </div>
               <div id="manualMarkStatus" class="manual-mark-status">关闭标记。</div>
+              </div>
             </details>
 
             <details class="input-panel batch-panel">
@@ -4492,6 +5761,52 @@
     </div>
   </main>
 
+  <section id="mobileSolveShell" class="mobile-solve-shell is-portrait" hidden aria-label="手机做题模式">
+    <header class="mobile-solve-topbar">
+      <button id="btnMobileSolveExit" type="button">返回</button>
+      <div class="mobile-solve-title-wrap">
+        <div id="mobileSolveTitle" class="mobile-solve-title">做题模式</div>
+        <div id="mobileSolveInputState" class="mobile-solve-input-state">出数 · 1</div>
+      </div>
+      <button id="btnMobileSolveFullscreen" type="button">全屏</button>
+    </header>
+    <div id="mobileSolveBoardHost" class="mobile-solve-board-host"></div>
+    <div id="mobileSolveStatus" class="mobile-solve-status" aria-live="polite">等待加载题面。</div>
+    <div id="mobileSolveNumpadHost" class="mobile-solve-numpad-host"></div>
+    <div class="mobile-solve-actions" aria-label="做题操作">
+      <button id="btnMobileSolveClear" type="button">清除</button>
+      <button id="btnMobileSolveUndo" type="button">撤销</button>
+      <button id="btnMobileSolveRedo" type="button">重做</button>
+      <button id="btnMobileSolveMarks" type="button" aria-pressed="false">标记</button>
+      <button id="btnMobileSolveMore" class="mobile-primary" type="button">更多</button>
+    </div>
+    <div id="mobileSolveMarksHost" class="mobile-solve-marks-host" hidden></div>
+    <div id="mobileSolveBackdrop" class="mobile-solve-backdrop" hidden></div>
+    <aside id="mobileSolveDrawer" class="mobile-solve-drawer" hidden aria-label="更多功能">
+      <div class="mobile-solve-drawer-header">
+        <strong id="mobileSolveDrawerTitle" class="mobile-solve-drawer-title">更多功能</strong>
+        <button id="btnMobileSolveDrawerClose" type="button">关闭</button>
+      </div>
+      <div class="mobile-solve-drawer-grid">
+        <button id="btnMobileSolveHint" type="button">提示一步</button>
+        <button id="btnMobileSolveApply" type="button">应用提示</button>
+        <button id="btnMobileSolveAllSteps" type="button">可选步骤</button>
+        <button id="btnMobileSolveInput" type="button">题面输入</button>
+        <button id="btnMobileSolveCandidates" type="button" aria-pressed="false">隐藏候选数</button>
+        <button id="btnMobileSolveSameDigit" type="button" aria-pressed="true">关闭同数字高亮</button>
+        <button id="btnMobileSolveAnalysis" type="button">分析模式</button>
+      </div>
+      <div id="mobileSolveMarksDrawerHost" class="mobile-solve-marks-drawer-host" hidden></div>
+      <label class="mobile-solve-language-row">
+        <span id="mobileSolveLanguageLabel">语言</span>
+        <select id="mobileSolveLang" aria-label="语言">
+          <option value="zh">中文</option>
+          <option value="en">English</option>
+        </select>
+      </label>
+    </aside>
+  </section>
+
 
     <script>
       (() => {
@@ -4546,7 +5861,8 @@
           let size;
           let maxByHeight;
           if (isLandscapeGrid) {
-            const rightMin = isCompactLandscape ? 220 : 280;
+            const configuredRightMin = getPx(wrapStyle, '--yzf-right-panel-min');
+            const rightMin = configuredRightMin || (isCompactLandscape ? 220 : 280);
             const availableW = Math.max(0, (wrapRect.width || viewportW) - paddingX - rightMin - gap);
             // Measure from the stable left-panel boundary, not from the currently centered stage.
             // This preserves real app/card padding without treating the board's own centering gap as
@@ -4624,6 +5940,6 @@
         document.addEventListener('DOMContentLoaded', scheduleDynamicBoardSizeForLayoutMode);
       })();
     </script>
-    <script type="module" src="./app.js?v=20260623-v589-board-maximize-fill"></script>
+    <script type="module" src="./app.js?v=20260624-v596-mobile-solve-refinements"></script>
   </body>
 </html>
