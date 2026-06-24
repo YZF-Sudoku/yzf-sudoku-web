@@ -1,6 +1,6 @@
 import createModule from "./sudoku_wasm.js?v=20260623-v586-tlg-truth-coverage-native-order";
 
-const APP_VERSION = "20260624-v596_mobile_solve_refinements";
+const APP_VERSION = "20260624-v598_mobile_solve_refinements_candidate_grid_import_corrected";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
@@ -4106,10 +4106,62 @@ async function inflateCoachBytes(bytes) {
   throw new Error(ui("coachDecompressUnsupported"));
 }
 
+function candidateGridTokensForImport(text) {
+  const raw = String(text || "").trim();
+  if (!raw) return null;
+
+  const tokens = raw
+    .replace(/[|,;]+/g, " ")
+    .split(/\s+/)
+    .map((token) => token.replace(/[^1-9]/g, ""))
+    .filter(Boolean);
+  if (tokens.length !== 81) return null;
+
+  // Framed ASCII grids are unambiguous.  For plain whitespace input, require
+  // at least one multi-digit cell so an ordinary spaced 81-digit puzzle is not
+  // rewritten as a candidate-state import.
+  const framedAscii = /-{3,}/.test(raw) && raw.includes("|");
+  const hasMultiCandidate = tokens.some((token) => token.length > 1);
+  if (!framedAscii && !hasMultiCandidate) return null;
+
+  return tokens.map((token) => [...new Set([...token])].sort().join(""));
+}
+
+function candidateGridTokensToCoachJson(tokens) {
+  if (!Array.isArray(tokens) || tokens.length !== 81) return "";
+
+  const givenDigits = tokens
+    .map((token) => token.length === 1 ? token : ".")
+    .join("");
+  const userCellCandidates = tokens
+    .map((token) => {
+      if (token.length === 1) return "0";
+      let mask = 0;
+      for (const ch of token) mask |= 1 << Number(ch);
+      return String(mask);
+    })
+    .join("-");
+
+  // The bundled WASM already supports Sudoku Coach JSON carrying givens plus
+  // per-cell candidate masks.  This preserves the established candidate-grid
+  // meaning: singleton cells become large solved digits, while multi-digit
+  // cells remain restricted candidate sets.
+  return JSON.stringify({
+    givenDigits,
+    userDigits: ".".repeat(81),
+    userCellCandidates,
+  });
+}
+
+function normalizeCandidateGridImportText(text) {
+  const tokens = candidateGridTokensForImport(text);
+  return tokens ? candidateGridTokensToCoachJson(tokens) : "";
+}
+
 async function preprocessImportText(text) {
   const raw = (text || "").trim();
   if (!raw.startsWith("SCv7_32_")) {
-    return raw;
+    return normalizeCandidateGridImportText(raw) || raw;
   }
   const compressed = decodeCoachBase32(raw.slice(8));
   const jsonBytes = await inflateCoachBytes(compressed);
