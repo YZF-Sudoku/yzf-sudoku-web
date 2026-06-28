@@ -97,11 +97,15 @@ let appSessionRestoring = false;
 function loadScriptOnce(src) {
   const existing = document.querySelector(`script[data-yzf-src="${src}"]`);
   if (existing) {
+    if (existing.dataset.failed === "1") {
+      existing.remove();
+    } else {
     if (existing.dataset.loaded === "1") return Promise.resolve();
     return new Promise((resolve, reject) => {
       existing.addEventListener("load", resolve, { once: true });
       existing.addEventListener("error", () => reject(new Error(uif("scriptLoadFailed", { src }))), { once: true });
     });
+    }
   }
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
@@ -112,7 +116,11 @@ function loadScriptOnce(src) {
       script.dataset.loaded = "1";
       resolve();
     }, { once: true });
-    script.addEventListener("error", () => reject(new Error(uif("scriptLoadFailed", { src }))), { once: true });
+    script.addEventListener("error", () => {
+      script.dataset.failed = "1";
+      script.remove();
+      reject(new Error(uif("scriptLoadFailed", { src })));
+    }, { once: true });
     document.head.appendChild(script);
   });
 }
