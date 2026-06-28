@@ -45,31 +45,33 @@ let ortRuntimeConfigPromise = null;
 let ortRuntimeModuleUrl = null;
 let ortRuntimeWasmBinary = null;
 
+const FETCH_CACHE_MODES = ["default", "no-cache", "reload"];
+
+async function fetchWithRetry(url, label) {
+  let lastError = null;
+  for (const cacheMode of FETCH_CACHE_MODES) {
+    try {
+      const response = await fetch(url, { cache: cacheMode });
+      if (!response.ok) {
+        lastError = new Error(`${label} load failed: ${response.status} ${url} [cache=${cacheMode}]`);
+        continue;
+      }
+      return response;
+    } catch (error) {
+      const message = error?.message || error || "unknown fetch error";
+      lastError = new Error(`${label} fetch failed: ${message} (${url}) [cache=${cacheMode}]`);
+    }
+  }
+  throw lastError || new Error(`${label} fetch failed: unknown error (${url})`);
+}
+
 async function fetchBinaryOrThrow(url, label) {
-  let response;
-  try {
-    response = await fetch(url, { cache: "force-cache" });
-  } catch (error) {
-    const message = error?.message || error || "unknown fetch error";
-    throw new Error(`${label} fetch failed: ${message} (${url})`);
-  }
-  if (!response.ok) {
-    throw new Error(`${label} load failed: ${response.status} ${url}`);
-  }
+  const response = await fetchWithRetry(url, label);
   return new Uint8Array(await response.arrayBuffer());
 }
 
 async function fetchTextOrThrow(url, label) {
-  let response;
-  try {
-    response = await fetch(url, { cache: "force-cache" });
-  } catch (error) {
-    const message = error?.message || error || "unknown fetch error";
-    throw new Error(`${label} fetch failed: ${message} (${url})`);
-  }
-  if (!response.ok) {
-    throw new Error(`${label} load failed: ${response.status} ${url}`);
-  }
+  const response = await fetchWithRetry(url, label);
   return response.text();
 }
 
