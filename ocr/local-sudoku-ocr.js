@@ -9,6 +9,13 @@ const CLASSIFIER_MODEL = "puzzle_classifier.ort";
 const BOARD_SIZE = 576;
 const LOCALIZER_SIZE = 256;
 const CELL_SIZE = BOARD_SIZE / 9;
+const OCR_RESOURCE_VERSION = "20260629-pages-stable-v3";
+
+function versionedAssetUrl(name, base) {
+  const url = new URL(name, base);
+  url.searchParams.set("v", OCR_RESOURCE_VERSION);
+  return url.href;
+}
 
 function standaloneAssets() {
   return globalThis.YZF_OCR_STANDALONE_ASSETS || null;
@@ -43,37 +50,7 @@ let localizerSessionPromise = null;
 let classifierSessionPromise = null;
 let ortRuntimeConfigPromise = null;
 let ortRuntimeModuleUrl = null;
-let ortRuntimeWasmBinary = null;
-
-const FETCH_CACHE_MODES = ["default", "no-cache", "reload"];
-
-async function fetchWithRetry(url, label) {
-  let lastError = null;
-  for (const cacheMode of FETCH_CACHE_MODES) {
-    try {
-      const response = await fetch(url, { cache: cacheMode });
-      if (!response.ok) {
-        lastError = new Error(`${label} load failed: ${response.status} ${url} [cache=${cacheMode}]`);
-        continue;
-      }
-      return response;
-    } catch (error) {
-      const message = error?.message || error || "unknown fetch error";
-      lastError = new Error(`${label} fetch failed: ${message} (${url}) [cache=${cacheMode}]`);
-    }
-  }
-  throw lastError || new Error(`${label} fetch failed: unknown error (${url})`);
-}
-
-async function fetchBinaryOrThrow(url, label) {
-  const response = await fetchWithRetry(url, label);
-  return new Uint8Array(await response.arrayBuffer());
-}
-
-async function fetchTextOrThrow(url, label) {
-  const response = await fetchWithRetry(url, label);
-  return response.text();
-}
+let ortRuntimeWasmUrl = null;
 
 function requireOrt() {
   const ort = globalThis.ort;
@@ -83,15 +60,30 @@ function requireOrt() {
   return ort;
 }
 
+async function fetchRuntimeModuleText(mjsUrl) {
+  let response;
+  try {
+    response = await fetch(mjsUrl, { cache: "force-cache", credentials: "same-origin" });
+  } catch (error) {
+    throw new Error(`ONNX Runtime Web module fetch failed: ${error?.message || error} (${mjsUrl})`);
+  }
+  if (!response.ok) {
+    throw new Error(`ONNX Runtime Web module load failed: HTTP ${response.status} (${mjsUrl})`);
+  }
+  return response.text();
+}
+
 async function configureOrtRuntime(ort) {
   if (!ort.env?.wasm) return;
   if (ortRuntimeConfigPromise) return ortRuntimeConfigPromise;
-  ortRuntimeConfigPromise = (async () => {
-    // Force the smallest plain WASM runtime. No JSEP, no asyncify, no worker/proxy.
-    // In standalone file:// mode, the .mjs and .wasm are loaded from embedded base64
-    // assets and exposed through Blob URLs, so no local HTTP server is needed.
+
+  const configPromise = (async () => {
+    // GitHub Pages path:
+    // fetch only the small ESM wrapper, then import it through a Blob URL.
+    // Keep the 12 MB WASM and both models URL-backed so mobile Chrome does not
+    // duplicate all binary assets in the JavaScript heap or redownload them in loops.
     let moduleSource = getStandaloneAssetText("ort-wasm-simd-threaded.mjs");
-    let wasmUrl = null;
+    let wasmUrl;
 
     if (moduleSource != null) {
       if (!ortRuntimeModuleUrl) {
@@ -100,55 +92,75 @@ async function configureOrtRuntime(ort) {
       if (!standaloneWasmBlobUrl) {
         const wasmBytes = getStandaloneAssetBytes("ort-wasm-simd-threaded.wasm");
         if (!wasmBytes) throw new Error("Standalone OCR is missing ort-wasm-simd-threaded.wasm");
-        ortRuntimeWasmBinary = wasmBytes;
         standaloneWasmBlobUrl = URL.createObjectURL(new Blob([wasmBytes], { type: "application/wasm" }));
       }
       wasmUrl = standaloneWasmBlobUrl;
     } else {
-      const mjsUrl = new URL("ort-wasm-simd-threaded.mjs", DEFAULT_ORT_BASE).href;
-      wasmUrl = new URL("ort-wasm-simd-threaded.wasm", DEFAULT_ORT_BASE).href;
+      const mjsUrl = versionedAssetUrl("ort-wasm-simd-threaded.mjs", DEFAULT_ORT_BASE);
+      wasmUrl = versionedAssetUrl("ort-wasm-simd-threaded.wasm", DEFAULT_ORT_BASE);
       if (!ortRuntimeModuleUrl) {
-        const moduleText = await fetchTextOrThrow(mjsUrl, "ONNX Runtime Web module");
-        ortRuntimeModuleUrl = URL.createObjectURL(new Blob([moduleText], { type: "text/javascript" }));
-      }
-      if (!ortRuntimeWasmBinary) {
-        ortRuntimeWasmBinary = await fetchBinaryOrThrow(wasmUrl, "ONNX Runtime Web wasm");
+        moduleSource = await fetchRuntimeModuleText(mjsUrl);
+        ortRuntimeModuleUrl = URL.createObjectURL(new Blob([moduleSource], { type: "text/javascript" }));
       }
     }
 
+    ortRuntimeWasmUrl = wasmUrl;
     ort.env.wasm.wasmPaths = {
       mjs: ortRuntimeModuleUrl,
       wasm: wasmUrl,
     };
-    if (ortRuntimeWasmBinary) {
-      ort.env.wasm.wasmBinary = ortRuntimeWasmBinary;
-    }
+    // The distributed filename contains "threaded"; numThreads=1 explicitly
+    // selects single-thread operation and does not require cross-origin isolation.
     ort.env.wasm.numThreads = 1;
     ort.env.wasm.proxy = false;
   })();
-  return ortRuntimeConfigPromise;
+
+  ortRuntimeConfigPromise = configPromise;
+  try {
+    return await configPromise;
+  } catch (error) {
+    if (ortRuntimeConfigPromise === configPromise) ortRuntimeConfigPromise = null;
+    throw error;
+  }
 }
+
 async function createSession(modelUrl, embeddedName = "") {
   const ort = requireOrt();
   await configureOrtRuntime(ort);
   const embeddedModel = embeddedName ? getStandaloneAssetBytes(embeddedName) : null;
-  const modelBytes = embeddedModel || await fetchBinaryOrThrow(modelUrl, `OCR model ${embeddedName || modelUrl}`);
-  return ort.InferenceSession.create(modelBytes, {
-    executionProviders: ["wasm"],
-    graphOptimizationLevel: "all",
-  });
+  const source = embeddedModel || modelUrl;
+  try {
+    return await ort.InferenceSession.create(source, {
+      executionProviders: ["wasm"],
+      graphOptimizationLevel: "all",
+    });
+  } catch (error) {
+    const label = embeddedModel ? `embedded model ${embeddedName}` : modelUrl;
+    const wasmLabel = ortRuntimeWasmUrl || "unresolved";
+    throw new Error(`OCR session initialization failed: ${error?.message || error} (model=${label}; wasm=${wasmLabel})`);
+  }
 }
 
 async function getLocalizerSession() {
   if (!localizerSessionPromise) {
-    localizerSessionPromise = createSession(DEFAULT_MODEL_BASE + LOCALIZER_MODEL, LOCALIZER_MODEL);
+    const modelUrl = versionedAssetUrl(LOCALIZER_MODEL, DEFAULT_MODEL_BASE);
+    const sessionPromise = createSession(modelUrl, LOCALIZER_MODEL);
+    localizerSessionPromise = sessionPromise;
+    sessionPromise.catch(() => {
+      if (localizerSessionPromise === sessionPromise) localizerSessionPromise = null;
+    });
   }
   return localizerSessionPromise;
 }
 
 async function getClassifierSession() {
   if (!classifierSessionPromise) {
-    classifierSessionPromise = createSession(DEFAULT_MODEL_BASE + CLASSIFIER_MODEL, CLASSIFIER_MODEL);
+    const modelUrl = versionedAssetUrl(CLASSIFIER_MODEL, DEFAULT_MODEL_BASE);
+    const sessionPromise = createSession(modelUrl, CLASSIFIER_MODEL);
+    classifierSessionPromise = sessionPromise;
+    sessionPromise.catch(() => {
+      if (classifierSessionPromise === sessionPromise) classifierSessionPromise = null;
+    });
   }
   return classifierSessionPromise;
 }
@@ -566,6 +578,22 @@ function buildOcrPreview(canvas, warpedRgba) {
     originalDataUrl: canvasToPreviewDataUrl(canvas, 720),
     warpedDataUrl: canvasToPreviewDataUrl(warpedCanvas, 720),
   };
+}
+
+
+export function resetLocalSudokuOcrRuntime() {
+  localizerSessionPromise = null;
+  classifierSessionPromise = null;
+  ortRuntimeConfigPromise = null;
+  if (ortRuntimeModuleUrl?.startsWith?.("blob:")) {
+    try { URL.revokeObjectURL(ortRuntimeModuleUrl); } catch (_) {}
+  }
+  ortRuntimeModuleUrl = null;
+  ortRuntimeWasmUrl = null;
+  if (standaloneWasmBlobUrl?.startsWith?.("blob:")) {
+    try { URL.revokeObjectURL(standaloneWasmBlobUrl); } catch (_) {}
+  }
+  standaloneWasmBlobUrl = null;
 }
 
 export async function recognizeSudokuImageToCoachJson(fileOrBlob, options = {}) {

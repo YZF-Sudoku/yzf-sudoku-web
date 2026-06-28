@@ -3,6 +3,7 @@ import createModule from "./sudoku_wasm.js?v=wasm-2371e7c5b4a00756";
 const APP_VERSION = "wasm-2371e7c5b4a00756";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
+const OCR_ASSET_VERSION = "20260629-pages-stable-v3";
 
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
 const COACH_BASE32_REVERSE = new Map([...COACH_BASE32_CHARS].map((ch, index) => [ch, index]));
@@ -87,6 +88,7 @@ const btnImageOcrPreviewClear = document.getElementById("btnImageOcrPreviewClear
 
 let localSudokuOcrModulePromise = null;
 let ortScriptPromise = null;
+let localSudokuOcrLoadAttempt = 0;
 let lastOcrDraftCoachJson = null;
 const APP_SESSION_STORAGE_KEY = "yzf_sudoku_session_v1";
 const EXPORT_FORMAT_STORAGE_KEY = "yzf_sudoku_export_format_v1";
@@ -99,14 +101,16 @@ function loadScriptOnce(src) {
   if (existing) {
     if (existing.dataset.failed === "1") {
       existing.remove();
+    } else if (existing.dataset.loaded === "1") {
+      return Promise.resolve();
     } else {
-    if (existing.dataset.loaded === "1") return Promise.resolve();
-    return new Promise((resolve, reject) => {
-      existing.addEventListener("load", resolve, { once: true });
-      existing.addEventListener("error", () => reject(new Error(uif("scriptLoadFailed", { src }))), { once: true });
-    });
+      return new Promise((resolve, reject) => {
+        existing.addEventListener("load", resolve, { once: true });
+        existing.addEventListener("error", () => reject(new Error(uif("scriptLoadFailed", { src }))), { once: true });
+      });
     }
   }
+
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = src;
@@ -126,28 +130,77 @@ function loadScriptOnce(src) {
 }
 
 async function loadLocalSudokuOcrModule() {
-  if (!localSudokuOcrModulePromise) {
-    localSudokuOcrModulePromise = (async () => {
-      if (globalThis.YZF_STANDALONE) {
-        if (typeof recognizeSudokuImageToCoachJson !== "function") {
-          throw new Error("Standalone OCR bundle incomplete: local OCR module was not inlined");
-        }
-        return {
-          recognizeSudokuImageToCoachJson,
-          localSudokuOcrAttribution: typeof localSudokuOcrAttribution === "function" ? localSudokuOcrAttribution : null,
-        };
+  if (localSudokuOcrModulePromise) return localSudokuOcrModulePromise;
+
+  const attempt = ++localSudokuOcrLoadAttempt;
+  const loadPromise = (async () => {
+    if (globalThis.YZF_STANDALONE) {
+      if (typeof recognizeSudokuImageToCoachJson !== "function") {
+        throw new Error("Standalone OCR bundle incomplete: local OCR module was not inlined");
       }
-      if (!globalThis.ort) {
-        if (!ortScriptPromise) {
-          const ortScriptUrl = new URL("./ocr/ort/ort.min.js?v=20260603-v419-ocr-given-user", import.meta.url).href;
-          ortScriptPromise = loadScriptOnce(ortScriptUrl);
-        }
+      return {
+        recognizeSudokuImageToCoachJson,
+        localSudokuOcrAttribution: typeof localSudokuOcrAttribution === "function" ? localSudokuOcrAttribution : null,
+      };
+    }
+
+    if (!globalThis.ort) {
+      if (!ortScriptPromise) {
+        const ortScriptUrl = new URL(
+          `./ocr/ort/ort.min.js?v=${encodeURIComponent(OCR_ASSET_VERSION)}`,
+          import.meta.url,
+        ).href;
+        ortScriptPromise = loadScriptOnce(ortScriptUrl);
+      }
+      try {
         await ortScriptPromise;
+      } catch (error) {
+        ortScriptPromise = null;
+        throw error;
       }
-      return import("./ocr/local-sudoku-ocr.js?v=20260603-v419-ocr-given-user");
-    })();
+    }
+
+    // A failed dynamic import is cached by its exact URL in browsers.
+    // The attempt suffix allows a real retry without reloading the whole page.
+    const moduleUrl = new URL(
+      `./ocr/local-sudoku-ocr.js?v=${encodeURIComponent(OCR_ASSET_VERSION)}&attempt=${attempt}`,
+      import.meta.url,
+    ).href;
+    return import(moduleUrl);
+  })();
+
+  localSudokuOcrModulePromise = loadPromise;
+  try {
+    return await loadPromise;
+  } catch (error) {
+    if (localSudokuOcrModulePromise === loadPromise) localSudokuOcrModulePromise = null;
+    throw error;
   }
-  return localSudokuOcrModulePromise;
+}
+
+
+function isLocalSudokuOcrRuntimeLoadError(error) {
+  const message = String(error?.message || error || "");
+  return /(?:ONNX Runtime|OCR session initialization failed|no available backend|Failed to fetch|dynamically imported module|WebAssembly backend)/i.test(message);
+}
+
+async function resetLocalSudokuOcrLoaderAfterFailure() {
+  if (globalThis.YZF_STANDALONE) return;
+  try {
+    const mod = await localSudokuOcrModulePromise;
+    if (typeof mod?.resetLocalSudokuOcrRuntime === "function") {
+      mod.resetLocalSudokuOcrRuntime();
+    }
+  } catch (_) {}
+
+  localSudokuOcrModulePromise = null;
+  ortScriptPromise = null;
+  document.querySelectorAll('script[data-yzf-src*="/ocr/ort/ort.min.js"]').forEach((script) => script.remove());
+  try {
+    delete globalThis.ort;
+  } catch (_) {
+    globalThis.ort = undefined;
+  }
 }
 
 async function localSudokuOcrAttributionSafe() {
@@ -12758,6 +12811,9 @@ async function recognizeAndImportImageFile(file) {
     return await importCoachJsonFromLocalOcr(ocr.coachJson, ocr);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (isLocalSudokuOcrRuntimeLoadError(error)) {
+      await resetLocalSudokuOcrLoaderAfterFailure();
+    }
     setStatus(uif("ocrFailed", { message }));
     log(uif("ocrFailed", { message }));
     return { ok: false, error: message };
