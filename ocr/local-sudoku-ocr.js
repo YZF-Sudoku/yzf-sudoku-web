@@ -45,6 +45,20 @@ let ortRuntimeConfigPromise = null;
 let ortRuntimeModuleUrl = null;
 let ortRuntimeWasmBinary = null;
 
+async function fetchBinaryOrThrow(url, label) {
+  let response;
+  try {
+    response = await fetch(url, { cache: "force-cache" });
+  } catch (error) {
+    const message = error?.message || error || "unknown fetch error";
+    throw new Error(`${label} fetch failed: ${message} (${url})`);
+  }
+  if (!response.ok) {
+    throw new Error(`${label} load failed: ${response.status} ${url}`);
+  }
+  return new Uint8Array(await response.arrayBuffer());
+}
+
 function requireOrt() {
   const ort = globalThis.ort;
   if (!ort) {
@@ -81,11 +95,7 @@ async function configureOrtRuntime(ort) {
         ortRuntimeModuleUrl = mjsUrl;
       }
       if (!ortRuntimeWasmBinary) {
-        const wasmResponse = await fetch(wasmUrl, { cache: "force-cache" });
-        if (!wasmResponse.ok) {
-          throw new Error(`ONNX Runtime Web wasm load failed: ${wasmResponse.status} ${wasmUrl}`);
-        }
-        ortRuntimeWasmBinary = new Uint8Array(await wasmResponse.arrayBuffer());
+        ortRuntimeWasmBinary = await fetchBinaryOrThrow(wasmUrl, "ONNX Runtime Web wasm");
       }
     }
 
@@ -105,7 +115,8 @@ async function createSession(modelUrl, embeddedName = "") {
   const ort = requireOrt();
   await configureOrtRuntime(ort);
   const embeddedModel = embeddedName ? getStandaloneAssetBytes(embeddedName) : null;
-  return ort.InferenceSession.create(embeddedModel || modelUrl, {
+  const modelBytes = embeddedModel || await fetchBinaryOrThrow(modelUrl, `OCR model ${embeddedName || modelUrl}`);
+  return ort.InferenceSession.create(modelBytes, {
     executionProviders: ["wasm"],
     graphOptimizationLevel: "all",
   });
