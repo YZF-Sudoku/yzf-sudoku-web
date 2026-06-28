@@ -3,7 +3,7 @@ import createModule from "./sudoku_wasm.js?v=wasm-2371e7c5b4a00756";
 const APP_VERSION = "wasm-2371e7c5b4a00756";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
-const OCR_ASSET_VERSION = "20260629-pages-stable-v3";
+const OCR_ASSET_VERSION = "20260629-pages-mobile-wasm-v4";
 
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
 const COACH_BASE32_REVERSE = new Map([...COACH_BASE32_CHARS].map((ch, index) => [ch, index]));

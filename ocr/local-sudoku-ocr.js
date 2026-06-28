@@ -9,7 +9,7 @@ const CLASSIFIER_MODEL = "puzzle_classifier.ort";
 const BOARD_SIZE = 576;
 const LOCALIZER_SIZE = 256;
 const CELL_SIZE = BOARD_SIZE / 9;
-const OCR_RESOURCE_VERSION = "20260629-pages-stable-v3";
+const OCR_RESOURCE_VERSION = "20260629-pages-mobile-wasm-v4";
 
 function versionedAssetUrl(name, base) {
   const url = new URL(name, base);
@@ -51,6 +51,9 @@ let classifierSessionPromise = null;
 let ortRuntimeConfigPromise = null;
 let ortRuntimeModuleUrl = null;
 let ortRuntimeWasmUrl = null;
+let ortRuntimeWasmBinary = null;
+let ortRuntimeWasmBinaryPromise = null;
+let ortRuntimeLoadMode = "unconfigured";
 
 function requireOrt() {
   const ort = globalThis.ort;
@@ -58,6 +61,54 @@ function requireOrt() {
     throw new Error("ONNX Runtime Web is not loaded: missing web-app/ocr/ort/ort.min.js");
   }
   return ort;
+}
+
+function shouldInjectWasmBinary() {
+  const forced = globalThis.YZF_OCR_WASM_BINARY_MODE;
+  if (forced === "binary" || forced === true) return true;
+  if (forced === "url" || forced === false) return false;
+  const mobileHint = globalThis.navigator?.userAgentData?.mobile;
+  if (mobileHint === true) return true;
+  const ua = String(globalThis.navigator?.userAgent || "");
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+}
+
+function validateWasmBinary(bytes, wasmUrl) {
+  if (!(bytes instanceof Uint8Array) || bytes.byteLength < 8) {
+    throw new Error(`ONNX Runtime Web wasm is empty or truncated (${wasmUrl})`);
+  }
+  if (bytes[0] !== 0x00 || bytes[1] !== 0x61 || bytes[2] !== 0x73 || bytes[3] !== 0x6d) {
+    throw new Error(`ONNX Runtime Web wasm has an invalid file header (${wasmUrl})`);
+  }
+  return bytes;
+}
+
+async function fetchRuntimeWasmBinaryOnce(wasmUrl) {
+  if (ortRuntimeWasmBinary) return ortRuntimeWasmBinary;
+  if (ortRuntimeWasmBinaryPromise) return ortRuntimeWasmBinaryPromise;
+
+  const fetchPromise = (async () => {
+    let response;
+    try {
+      response = await fetch(wasmUrl, { cache: "force-cache", credentials: "same-origin" });
+    } catch (error) {
+      throw new Error(`ONNX Runtime Web wasm fetch failed: ${error?.message || error} (${wasmUrl})`);
+    }
+    if (!response.ok) {
+      throw new Error(`ONNX Runtime Web wasm load failed: HTTP ${response.status} (${wasmUrl})`);
+    }
+    const bytes = validateWasmBinary(new Uint8Array(await response.arrayBuffer()), wasmUrl);
+    ortRuntimeWasmBinary = bytes;
+    return bytes;
+  })();
+
+  ortRuntimeWasmBinaryPromise = fetchPromise;
+  try {
+    return await fetchPromise;
+  } catch (error) {
+    if (ortRuntimeWasmBinaryPromise === fetchPromise) ortRuntimeWasmBinaryPromise = null;
+    throw error;
+  }
 }
 
 async function fetchRuntimeModuleText(mjsUrl) {
@@ -79,28 +130,41 @@ async function configureOrtRuntime(ort) {
 
   const configPromise = (async () => {
     // GitHub Pages path:
-    // fetch only the small ESM wrapper, then import it through a Blob URL.
-    // Keep the 12 MB WASM and both models URL-backed so mobile Chrome does not
-    // duplicate all binary assets in the JavaScript heap or redownload them in loops.
+    // - The small ESM wrapper is fetched once and imported through a Blob URL.
+    // - Mobile browsers fetch the 13 MB WASM exactly once and inject it through
+    //   wasmBinary. This bypasses the Emscripten fetch path that fails on some
+    //   mobile Chrome/GitHub Pages combinations.
+    // - Desktop keeps the normal URL-backed WASM path to avoid an extra JS-heap copy.
+    // - Model files remain URL-backed on every platform.
     let moduleSource = getStandaloneAssetText("ort-wasm-simd-threaded.mjs");
     let wasmUrl;
+    let wasmBinary = null;
 
     if (moduleSource != null) {
       if (!ortRuntimeModuleUrl) {
         ortRuntimeModuleUrl = URL.createObjectURL(new Blob([moduleSource], { type: "text/javascript" }));
       }
+      const embeddedWasm = getStandaloneAssetBytes("ort-wasm-simd-threaded.wasm");
+      if (!embeddedWasm) throw new Error("Standalone OCR is missing ort-wasm-simd-threaded.wasm");
+      wasmBinary = validateWasmBinary(embeddedWasm, "embedded:ort-wasm-simd-threaded.wasm");
+      ortRuntimeWasmBinary = wasmBinary;
       if (!standaloneWasmBlobUrl) {
-        const wasmBytes = getStandaloneAssetBytes("ort-wasm-simd-threaded.wasm");
-        if (!wasmBytes) throw new Error("Standalone OCR is missing ort-wasm-simd-threaded.wasm");
-        standaloneWasmBlobUrl = URL.createObjectURL(new Blob([wasmBytes], { type: "application/wasm" }));
+        standaloneWasmBlobUrl = URL.createObjectURL(new Blob([wasmBinary], { type: "application/wasm" }));
       }
       wasmUrl = standaloneWasmBlobUrl;
+      ortRuntimeLoadMode = "standalone-binary";
     } else {
       const mjsUrl = versionedAssetUrl("ort-wasm-simd-threaded.mjs", DEFAULT_ORT_BASE);
       wasmUrl = versionedAssetUrl("ort-wasm-simd-threaded.wasm", DEFAULT_ORT_BASE);
       if (!ortRuntimeModuleUrl) {
         moduleSource = await fetchRuntimeModuleText(mjsUrl);
         ortRuntimeModuleUrl = URL.createObjectURL(new Blob([moduleSource], { type: "text/javascript" }));
+      }
+      if (shouldInjectWasmBinary()) {
+        wasmBinary = await fetchRuntimeWasmBinaryOnce(wasmUrl);
+        ortRuntimeLoadMode = "mobile-binary";
+      } else {
+        ortRuntimeLoadMode = "desktop-url";
       }
     }
 
@@ -109,6 +173,9 @@ async function configureOrtRuntime(ort) {
       mjs: ortRuntimeModuleUrl,
       wasm: wasmUrl,
     };
+    if (wasmBinary) {
+      ort.env.wasm.wasmBinary = wasmBinary;
+    }
     // The distributed filename contains "threaded"; numThreads=1 explicitly
     // selects single-thread operation and does not require cross-origin isolation.
     ort.env.wasm.numThreads = 1;
@@ -585,6 +652,12 @@ export function resetLocalSudokuOcrRuntime() {
   localizerSessionPromise = null;
   classifierSessionPromise = null;
   ortRuntimeConfigPromise = null;
+  ortRuntimeWasmBinaryPromise = null;
+  ortRuntimeWasmBinary = null;
+  ortRuntimeLoadMode = "unconfigured";
+  try {
+    if (globalThis.ort?.env?.wasm) globalThis.ort.env.wasm.wasmBinary = undefined;
+  } catch (_) {}
   if (ortRuntimeModuleUrl?.startsWith?.("blob:")) {
     try { URL.revokeObjectURL(ortRuntimeModuleUrl); } catch (_) {}
   }
@@ -594,6 +667,68 @@ export function resetLocalSudokuOcrRuntime() {
     try { URL.revokeObjectURL(standaloneWasmBlobUrl); } catch (_) {}
   }
   standaloneWasmBlobUrl = null;
+}
+
+export function localSudokuOcrRuntimeDiagnostics() {
+  return {
+    resourceVersion: OCR_RESOURCE_VERSION,
+    loadMode: ortRuntimeLoadMode,
+    wasmUrl: ortRuntimeWasmUrl,
+    wasmBinaryBytes: ortRuntimeWasmBinary?.byteLength || 0,
+    mobileDetected: shouldInjectWasmBinary(),
+    numThreads: globalThis.ort?.env?.wasm?.numThreads ?? null,
+    proxy: globalThis.ort?.env?.wasm?.proxy ?? null,
+  };
+}
+
+export async function localSudokuOcrRuntimeSelfTest(options = {}) {
+  const localizer = await getLocalizerSession();
+  const includeClassifier = options.includeClassifier !== false;
+  const classifier = includeClassifier ? await getClassifierSession() : null;
+  let localizerOutputLength = 0;
+  let classifierOutputLength = 0;
+
+  if (options.runInference === true) {
+    const ort = requireOrt();
+    const localizerInput = localizer.inputNames?.[0] || "input";
+    const localizerResult = await localizer.run({
+      [localizerInput]: new ort.Tensor(
+        "float32",
+        new Float32Array(LOCALIZER_SIZE * LOCALIZER_SIZE),
+        [1, 1, LOCALIZER_SIZE, LOCALIZER_SIZE],
+      ),
+    });
+    const localizerOutput = localizer.outputNames?.[0]
+      ? localizerResult[localizer.outputNames[0]]
+      : Object.values(localizerResult)[0];
+    localizerOutputLength = Number(localizerOutput?.data?.length || 0);
+
+    if (classifier) {
+      const classifierInput = classifier.inputNames?.[0] || "input";
+      const classifierResult = await classifier.run({
+        [classifierInput]: new ort.Tensor(
+          "float32",
+          new Float32Array(BOARD_SIZE * BOARD_SIZE),
+          [1, 1, BOARD_SIZE, BOARD_SIZE],
+        ),
+      });
+      const classifierOutput = classifier.outputNames?.[0]
+        ? classifierResult[classifier.outputNames[0]]
+        : Object.values(classifierResult)[0];
+      classifierOutputLength = Number(classifierOutput?.data?.length || 0);
+    }
+  }
+
+  return {
+    ok: true,
+    ...localSudokuOcrRuntimeDiagnostics(),
+    localizerInputs: Array.from(localizer.inputNames || []),
+    localizerOutputs: Array.from(localizer.outputNames || []),
+    classifierInputs: Array.from(classifier?.inputNames || []),
+    classifierOutputs: Array.from(classifier?.outputNames || []),
+    localizerOutputLength,
+    classifierOutputLength,
+  };
 }
 
 export async function recognizeSudokuImageToCoachJson(fileOrBlob, options = {}) {
