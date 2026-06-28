@@ -130,7 +130,10 @@ async function loadLocalSudokuOcrModule() {
         };
       }
       if (!globalThis.ort) {
-        if (!ortScriptPromise) ortScriptPromise = loadScriptOnce("./ocr/ort/ort.min.js?v=20260603-v419-ocr-given-user");
+        if (!ortScriptPromise) {
+          const ortScriptUrl = new URL("./ocr/ort/ort.min.js?v=20260603-v419-ocr-given-user", import.meta.url).href;
+          ortScriptPromise = loadScriptOnce(ortScriptUrl);
+        }
         await ortScriptPromise;
       }
       return import("./ocr/local-sudoku-ocr.js?v=20260603-v419-ocr-given-user");

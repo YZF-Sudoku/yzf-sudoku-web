@@ -76,12 +76,7 @@ async function configureOrtRuntime(ort) {
       const mjsUrl = new URL("ort-wasm-simd-threaded.mjs", DEFAULT_ORT_BASE).href;
       wasmUrl = new URL("ort-wasm-simd-threaded.wasm", DEFAULT_ORT_BASE).href;
       if (!ortRuntimeModuleUrl) {
-        const response = await fetch(mjsUrl, { cache: "force-cache" });
-        if (!response.ok) {
-          throw new Error(`ONNX Runtime Web module load failed：${response.status} ${mjsUrl}`);
-        }
-        moduleSource = await response.text();
-        ortRuntimeModuleUrl = URL.createObjectURL(new Blob([moduleSource], { type: "text/javascript" }));
+        ortRuntimeModuleUrl = mjsUrl;
       }
     }
 
