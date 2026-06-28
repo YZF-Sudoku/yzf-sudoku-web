@@ -59,6 +59,20 @@ async function fetchBinaryOrThrow(url, label) {
   return new Uint8Array(await response.arrayBuffer());
 }
 
+async function fetchTextOrThrow(url, label) {
+  let response;
+  try {
+    response = await fetch(url, { cache: "force-cache" });
+  } catch (error) {
+    const message = error?.message || error || "unknown fetch error";
+    throw new Error(`${label} fetch failed: ${message} (${url})`);
+  }
+  if (!response.ok) {
+    throw new Error(`${label} load failed: ${response.status} ${url}`);
+  }
+  return response.text();
+}
+
 function requireOrt() {
   const ort = globalThis.ort;
   if (!ort) {
@@ -92,7 +106,8 @@ async function configureOrtRuntime(ort) {
       const mjsUrl = new URL("ort-wasm-simd-threaded.mjs", DEFAULT_ORT_BASE).href;
       wasmUrl = new URL("ort-wasm-simd-threaded.wasm", DEFAULT_ORT_BASE).href;
       if (!ortRuntimeModuleUrl) {
-        ortRuntimeModuleUrl = mjsUrl;
+        const moduleText = await fetchTextOrThrow(mjsUrl, "ONNX Runtime Web module");
+        ortRuntimeModuleUrl = URL.createObjectURL(new Blob([moduleText], { type: "text/javascript" }));
       }
       if (!ortRuntimeWasmBinary) {
         ortRuntimeWasmBinary = await fetchBinaryOrThrow(wasmUrl, "ONNX Runtime Web wasm");
