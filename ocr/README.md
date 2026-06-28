@@ -19,4 +19,10 @@ Files:
 
 ## V408 runtime path fix
 
-ONNX Runtime Web wasm/mjs assets are resolved from an absolute URL derived from `import.meta.url`. This avoids duplicated paths such as `/ocr/ort/ocr/ort/ort-wasm-simd-threaded.jsep.mjs`. The package includes both the standard threaded WASM assets and the JSEP assets requested by ORT 1.26.
+ONNX Runtime Web wasm/mjs assets are resolved from an absolute URL derived from `import.meta.url`.
+The application explicitly pins the minimal plain runtime pair:
+
+- `ort-wasm-simd-threaded.mjs`
+- `ort-wasm-simd-threaded.wasm`
+
+JSEP, JSPI and asyncify variants are deliberately not packaged because `local-sudoku-ocr.js` disables runtime auto-selection, proxy mode and alternative execution providers.

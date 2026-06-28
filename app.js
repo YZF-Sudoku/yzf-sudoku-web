@@ -1,7 +1,8 @@
-import createModule from "./sudoku_wasm.js?v=20260623-v586-tlg-truth-coverage-native-order";
+import createModule from "./sudoku_wasm.js?v=wasm-2371e7c5b4a00756";
 
-const APP_VERSION = "20260624-v598_mobile_solve_refinements_candidate_grid_import_corrected";
+const APP_VERSION = "wasm-2371e7c5b4a00756";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
+const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
 const COACH_BASE32_REVERSE = new Map([...COACH_BASE32_CHARS].map((ch, index) => [ch, index]));
@@ -74,6 +75,7 @@ const btnLoad = document.getElementById("btnLoad");
 const btnImageOcrPick = document.getElementById("btnImageOcrPick");
 const btnImageOcrCamera = document.getElementById("btnImageOcrCamera");
 const btnImageOcrClipboard = document.getElementById("btnImageOcrClipboard");
+const preferClipboardLoad = document.getElementById("preferClipboardLoad");
 const btnClearSavedSession = document.getElementById("btnClearSavedSession");
 const imageOcrInput = document.getElementById("imageOcrInput");
 const imageOcrCameraInput = document.getElementById("imageOcrCameraInput");
@@ -167,6 +169,7 @@ const manualMarkSwatches = document.getElementById("manualMarkSwatches");
 const manualMarkCustomColor = document.getElementById("manualMarkCustomColor");
 const manualMarkAddColor = document.getElementById("manualMarkAddColor");
 const manualMarkApplyElims = document.getElementById("manualMarkApplyElims");
+const manualMarkScreenshot = document.getElementById("manualMarkScreenshot");
 const manualMarkCleanEasy = document.getElementById("manualMarkCleanEasy");
 const manualMarkClear = document.getElementById("manualMarkClear");
 const manualMarkUndoLine = document.getElementById("manualMarkUndoLine");
@@ -201,7 +204,15 @@ const mobileSolveDrawer = document.getElementById("mobileSolveDrawer");
 const mobileSolveBackdrop = document.getElementById("mobileSolveBackdrop");
 const mobileSolveLang = document.getElementById("mobileSolveLang");
 const btnMobileSolveExit = document.getElementById("btnMobileSolveExit");
+const btnMobileSolveNewPuzzle = document.getElementById("btnMobileSolveNewPuzzle");
 const btnMobileSolveFullscreen = document.getElementById("btnMobileSolveFullscreen");
+const mobileSolveNewPuzzleBackdrop = document.getElementById("mobileSolveNewPuzzleBackdrop");
+const mobileSolveNewPuzzlePanel = document.getElementById("mobileSolveNewPuzzlePanel");
+const mobileSolveNewPuzzleOptions = document.getElementById("mobileSolveNewPuzzleOptions");
+const mobileSolveNewPuzzleWarning = document.getElementById("mobileSolveNewPuzzleWarning");
+const btnMobileSolveNewPuzzleClose = document.getElementById("btnMobileSolveNewPuzzleClose");
+const btnMobileSolveNewPuzzleCancel = document.getElementById("btnMobileSolveNewPuzzleCancel");
+const btnMobileSolveNewPuzzleGenerate = document.getElementById("btnMobileSolveNewPuzzleGenerate");
 const btnMobileSolveClear = document.getElementById("btnMobileSolveClear");
 const btnMobileSolveUndo = document.getElementById("btnMobileSolveUndo");
 const btnMobileSolveRedo = document.getElementById("btnMobileSolveRedo");
@@ -253,6 +264,8 @@ let mobileSolveMarksOpen = false;
 let mobileSolveMarksPlacement = "";
 let mobileSolveCandidatesVisible = true;
 let mobileSolveSameDigitHighlight = true;
+let mobileSolveNewPuzzleOpen = false;
+let mobileSolvePuzzleBaselineSignature = "";
 let ocrDraftValueRole = "given";
 let techniqueState = [];
 let whipMemoryMode = "auto";
@@ -567,6 +580,22 @@ const uiText = {
     mobileSolveEntry: "做题",
     mobileSolveMode: "做题模式",
     mobileSolveExit: "返回",
+    mobileSolveNewPuzzle: "新题",
+    mobileSolveNewPuzzleTitle: "生成新题",
+    mobileSolveNewPuzzleHint: "选择难度后生成，生成完成后继续留在做题模式。",
+    mobileSolveNewPuzzleWarning: "当前作答进度或标记将在生成新题后清除。",
+    mobileSolveNewPuzzleConfirm: "当前作答进度或标记将被清除，确定生成新题吗？",
+    mobileSolveNewPuzzleGenerate: "生成",
+    mobileSolveNewPuzzleGenerating: "生成中…",
+    mobileSolveNewPuzzleCancel: "取消",
+    mobileSolveNewPuzzleDifficulty: "难度",
+    mobileDifficultyRandom: "随机",
+    mobileDifficultyEasy: "简单",
+    mobileDifficultyMedium: "中等",
+    mobileDifficultyHard: "困难",
+    mobileDifficultyUnfair: "不公平",
+    mobileDifficultyExtreme: "极难",
+    mobileDifficultyInsane: "疯狂",
     mobileSolveMore: "更多",
     mobileSolveMoreTitle: "更多功能",
     mobileSolveClear: "清除",
@@ -641,6 +670,7 @@ const uiText = {
     tlgLinkRemoved: "已移除 link：{value}",
     tlgCellTruthAdded: "已添加 cell truth：{value}",
     tlgCellTruthRemoved: "已移除 cell truth：{value}",
+    tlgTruthPairInvalid: "未添加 truth：Truth 模式只接受同一单元格的两个不同候选，或同一 house 中同数字的两个候选。",
     tlgUnavailable: "tlgSolverFindEliminationsV440 不可用；应用 v440/v441 后需要重新编译 wasm。",
     tlgResponse: "TLG Solver 响应",
     tlgParseFailed: "TLG_SOLVER_RESPONSE_PARSE_FAILED",
@@ -728,6 +758,8 @@ const uiText = {
     stop: "停止",
     batchStatusIdle: "批量出题/批量解题共用面板。批量出题持续写入输出文件，批量解题从文本文件读取，一行一题。",
     moreInput: "更多：题面输入与导出评分",
+    preferClipboardLoad: "剪贴板优先",
+    preferClipboardLoadTitle: "加载题目时优先使用剪贴板，失败后再用文本框",
     exportPuzzle: "导出题串",
     exportFormatLabel: "导出格式",
     exportFormatOriginal: "原始题串",
@@ -823,6 +855,8 @@ const uiText = {
     ocrClipboardReadFailed: "读取剪贴板图片失败：{message}。桌面端也可以直接按 Ctrl+V 粘贴截图。",
     clipboardReadUnsupported: "当前浏览器不支持读取剪贴板",
     clipboardEmpty: "剪贴板为空",
+    clipboardPreferredLoaded: "已优先从剪贴板读取并尝试加载。",
+    clipboardPreferredFailed: "剪贴板读取/导入失败，已改用输入框内容：{error}",
     inputEmptyClipboardLoaded: "输入区为空，已从剪贴板读取并尝试加载。",
     inputEmptyClipboardFailed: "输入区为空，且无法读取剪贴板：{error}",
     workerTaskFailed: "后台任务失败",
@@ -969,8 +1003,17 @@ const uiText = {
     markCleanEasy: "清除简单步骤",
     markCleanedEasy: "已清除 {count} 个简单步骤。",
     markAppliedElimsWithClean: "已应用 {count} 个手工删数，并清除 {easy} 个简单步骤。",
+    markScreenshotButton: "截图",
+    markScreenshotTitle: "按屏幕当前显示原样截图盘面及全部手工标记。桌面端复制到剪贴板，手机端打开系统分享。",
+    markScreenshotShareTitle: "数独盘面截图",
+    markScreenshotPreparing: "正在生成盘面截图……",
     markScreenshotCopied: "已复制截图到剪贴板。",
+    markScreenshotShared: "已打开系统分享。",
+    markScreenshotShareCancelled: "已取消分享。",
     markScreenshotDownloaded: "浏览器不支持直接复制图片，已下载截图。",
+    markScreenshotShareUnavailableDownloaded: "当前手机浏览器不支持图片系统分享，已下载截图。",
+    markScreenshotShareFailedDownloaded: "系统分享失败，已下载截图：{error}",
+    markScreenshotNoBoard: "当前没有可截图的盘面。",
     markScreenshotFailed: "截图失败：{error}",
     markNoElimsButCleaned: "没有手工删数，已清除 {easy} 个简单步骤。",
     markEasyCleanStopped: "简单步骤清除已停止：{reason}",
@@ -1041,6 +1084,22 @@ const uiText = {
     mobileSolveEntry: "Solve",
     mobileSolveMode: "Solve mode",
     mobileSolveExit: "Back",
+    mobileSolveNewPuzzle: "New",
+    mobileSolveNewPuzzleTitle: "New puzzle",
+    mobileSolveNewPuzzleHint: "Choose a difficulty and generate without leaving solve mode.",
+    mobileSolveNewPuzzleWarning: "Your current progress or manual marks will be cleared when a new puzzle is generated.",
+    mobileSolveNewPuzzleConfirm: "Your current progress or manual marks will be cleared. Generate a new puzzle?",
+    mobileSolveNewPuzzleGenerate: "Generate",
+    mobileSolveNewPuzzleGenerating: "Generating…",
+    mobileSolveNewPuzzleCancel: "Cancel",
+    mobileSolveNewPuzzleDifficulty: "Difficulty",
+    mobileDifficultyRandom: "Random",
+    mobileDifficultyEasy: "Easy",
+    mobileDifficultyMedium: "Medium",
+    mobileDifficultyHard: "Hard",
+    mobileDifficultyUnfair: "Unfair",
+    mobileDifficultyExtreme: "Extreme",
+    mobileDifficultyInsane: "Insane",
     mobileSolveMore: "More",
     mobileSolveMoreTitle: "More tools",
     mobileSolveClear: "Clear",
@@ -1115,6 +1174,7 @@ const uiText = {
     tlgLinkRemoved: "Removed link: {value}",
     tlgCellTruthAdded: "Added cell truth: {value}",
     tlgCellTruthRemoved: "Removed cell truth: {value}",
+    tlgTruthPairInvalid: "Truth not added: Truth mode only accepts two different candidates in one cell, or two same-digit candidates in one house.",
     tlgUnavailable: "tlgSolverFindEliminationsV440 is not available; rebuild wasm after applying v440/v441.",
     tlgResponse: "TLG Solver response",
     tlgParseFailed: "TLG_SOLVER_RESPONSE_PARSE_FAILED",
@@ -1202,6 +1262,8 @@ const uiText = {
     stop: "Stop",
     batchStatusIdle: "Shared panel for batch generation and solving. Generation writes continuously; solving reads a text file, one puzzle per line.",
     moreInput: "More: puzzle input, export, and rating",
+    preferClipboardLoad: "Clipboard first",
+    preferClipboardLoadTitle: "Prefer clipboard when loading puzzles, then fall back to the text box",
     exportPuzzle: "Export puzzle",
     exportFormatLabel: "Export format",
     exportFormatOriginal: "Original puzzle",
@@ -1297,6 +1359,8 @@ const uiText = {
     ocrClipboardReadFailed: "Failed to read clipboard image: {message}. On desktop, you can also press Ctrl+V after copying a screenshot.",
     clipboardReadUnsupported: "This browser does not support reading text from the clipboard",
     clipboardEmpty: "Clipboard is empty",
+    clipboardPreferredLoaded: "Read the puzzle from the clipboard first and tried loading it.",
+    clipboardPreferredFailed: "Clipboard read/import failed, so the text box content was used instead: {error}",
     inputEmptyClipboardLoaded: "Input was empty; read from the clipboard and tried loading it.",
     inputEmptyClipboardFailed: "Input was empty and clipboard read failed: {error}",
     workerTaskFailed: "Background task failed",
@@ -1443,8 +1507,17 @@ const uiText = {
     markCleanEasy: "With cleaning easy steps",
     markCleanedEasy: "Cleaned {count} easy steps.",
     markAppliedElimsWithClean: "Applied {count} manual eliminations and cleaned {easy} easy steps.",
+    markScreenshotButton: "Screenshot",
+    markScreenshotTitle: "Capture the board exactly as currently displayed, including all manual marks. Copies to the clipboard on desktop and opens system share on mobile.",
+    markScreenshotShareTitle: "Sudoku board screenshot",
+    markScreenshotPreparing: "Generating board screenshot...",
     markScreenshotCopied: "Screenshot copied to clipboard.",
+    markScreenshotShared: "System share opened.",
+    markScreenshotShareCancelled: "Sharing cancelled.",
     markScreenshotDownloaded: "This browser cannot copy images directly; screenshot downloaded instead.",
+    markScreenshotShareUnavailableDownloaded: "This mobile browser cannot share image files through the system share sheet; the screenshot was downloaded instead.",
+    markScreenshotShareFailedDownloaded: "System sharing failed; the screenshot was downloaded instead: {error}",
+    markScreenshotNoBoard: "There is no board to capture.",
     markScreenshotFailed: "Screenshot failed: {error}",
     markNoElimsButCleaned: "No manual eliminations; cleaned {easy} easy steps.",
     markEasyCleanStopped: "Easy-step cleaning stopped: {reason}",
@@ -2275,350 +2348,207 @@ function canvasToPngBlob(canvas) {
   });
 }
 
-function drawCanvasLine(ctx, x1, y1, x2, y2, color, width = 2, dashed = false, arrow = false) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineWidth = width;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  if (dashed) ctx.setLineDash([width * 3, width * 2.2]);
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  if (arrow) {
-    const angle = Math.atan2(y2 - y1, x2 - x1);
-    const size = Math.max(7, width * 3.8);
-    ctx.beginPath();
-    ctx.moveTo(x2, y2);
-    ctx.lineTo(x2 - size * Math.cos(angle - Math.PI / 7), y2 - size * Math.sin(angle - Math.PI / 7));
-    ctx.lineTo(x2 - size * Math.cos(angle + Math.PI / 7), y2 - size * Math.sin(angle + Math.PI / 7));
-    ctx.closePath();
-    ctx.fill();
+let manualScreenshotDomCache = null;
+let manualScreenshotDomCacheVersion = 0;
+let manualScreenshotDomCacheTimer = 0;
+let manualScreenshotDomCachePromise = null;
+
+function manualScreenshotTransparentColor(value) {
+  const color = String(value || "").replace(/\s+/g, "").toLowerCase();
+  return !color || color === "transparent" || color === "rgba(0,0,0,0)" || color === "hsla(0,0%,0%,0)";
+}
+
+function manualScreenshotBackgroundColor() {
+  let node = boardStage;
+  while (node) {
+    const color = getComputedStyle(node).backgroundColor;
+    if (!manualScreenshotTransparentColor(color)) return color;
+    node = node.parentElement;
   }
-  ctx.restore();
+  return "#ffffff";
 }
 
-function drawCanvasRoundedRect(ctx, x, y, w, h, radius) {
-  const r = Math.max(0, Math.min(radius, Math.abs(w) / 2, Math.abs(h) / 2));
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-}
-
-function canvasManualCandidateRect(cell, digit, boardSize) {
-  const cellSize = boardSize / 9;
-  const candSize = cellSize / 3;
-  const row = Math.floor(Number(cell) / 9);
-  const col = Number(cell) % 9;
-  const d = Number(digit) - 1;
-  return {
-    x: col * cellSize + (d % 3) * candSize,
-    y: row * cellSize + Math.floor(d / 3) * candSize,
-    w: candSize,
-    h: candSize,
-    cx: col * cellSize + (d % 3) * candSize + candSize / 2,
-    cy: row * cellSize + Math.floor(d / 3) * candSize + candSize / 2,
-  };
-}
-
-function canvasShortenedLine(start, end, offset = 0) {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const len = Math.hypot(dx, dy) || 1;
-  return {
-    x1: start.x + (dx / len) * offset,
-    y1: start.y + (dy / len) * offset,
-    x2: end.x - (dx / len) * offset,
-    y2: end.y - (dy / len) * offset,
-  };
-}
-
-function canvasManualBlockPoints(block, boardSize) {
-  const points = [];
-  const seen = new Set();
-  for (const node of block?.nodes || []) {
-    const cell = Number(node.cell);
-    const digit = Number(node.digit);
-    if (!boardCandidateExists(cell, digit)) continue;
-    const key = manualMarkKey(cell, digit);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const r = canvasManualCandidateRect(cell, digit, boardSize);
-    points.push({ x: r.cx, y: r.cy, cell, digit });
+function manualScreenshotCopyAttributes(source, target) {
+  for (const attr of Array.from(source.attributes || [])) {
+    target.setAttribute(attr.name, attr.value);
   }
-  return points;
 }
 
-function canvasConvexHull(points) {
-  if (points.length <= 2) return points.slice();
-  const sorted = points.slice().sort((a, b) => (a.x - b.x) || (a.y - b.y));
-  const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
-  const lower = [];
-  for (const p of sorted) {
-    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
-    lower.push(p);
+function manualScreenshotCssText() {
+  const chunks = [];
+  for (const sheet of Array.from(document.styleSheets || [])) {
+    try {
+      for (const rule of Array.from(sheet.cssRules || [])) chunks.push(rule.cssText);
+    } catch (_) {
+      const owner = sheet.ownerNode;
+      if (owner?.tagName === "STYLE" && owner.textContent) chunks.push(owner.textContent);
+    }
   }
-  const upper = [];
-  for (let i = sorted.length - 1; i >= 0; i -= 1) {
-    const p = sorted[i];
-    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
-    upper.push(p);
-  }
-  upper.pop();
-  lower.pop();
-  return lower.concat(upper);
+  return chunks.join("\n");
 }
 
-function canvasExpandedPolygon(points, padding) {
-  if (!points.length) return [];
-  const cx = points.reduce((sum, p) => sum + p.x, 0) / points.length;
-  const cy = points.reduce((sum, p) => sum + p.y, 0) / points.length;
-  return points.map((p) => {
-    const dx = p.x - cx;
-    const dy = p.y - cy;
-    const len = Math.hypot(dx, dy) || 1;
-    return { x: p.x + (dx / len) * padding, y: p.y + (dy / len) * padding };
+function manualScreenshotCloneAncestorShell(stageClone) {
+  let content = stageClone;
+  let source = boardStage?.parentElement || null;
+  while (source && source !== document.body) {
+    const shell = source.cloneNode(false);
+    // Keep the real ancestor classes/IDs so responsive selectors such as
+    // .mobile-solve-shell .board-stage still match, while removing ancestor
+    // layout from the detached capture document.
+    shell.style.setProperty("display", "contents", "important");
+    shell.appendChild(content);
+    content = shell;
+    source = source.parentElement;
+  }
+  return content;
+}
+
+function manualScreenshotLoadImage(url) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("dom-screenshot-image"));
+    image.src = url;
   });
 }
 
-function drawManualBlocksOnCanvas(ctx, boardSize) {
-  const blocks = [...(manualMarks.blocks || [])];
-  if (manualBlockDraft?.nodes?.length) blocks.push({ ...manualBlockDraft, draft: true });
-  for (const block of blocks) {
-    const points = canvasManualBlockPoints(block, boardSize);
-    if (!points.length) continue;
-    const color = manualBlockColor(block).bg || "#f97316";
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    ctx.globalAlpha = block.draft ? 0.62 : 0.82;
-    ctx.lineWidth = Math.max(2, boardSize / 320);
-    ctx.setLineDash(block.draft ? [Math.max(5, boardSize / 120), Math.max(4, boardSize / 160)] : []);
-    if (points.length === 1) {
-      ctx.beginPath();
-      ctx.arc(points[0].x, points[0].y, boardSize / 50, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (points.length === 2) {
-      const line = canvasShortenedLine(points[0], points[1], 0);
-      ctx.lineWidth = Math.max(10, boardSize / 38);
-      ctx.globalAlpha = block.draft ? 0.18 : 0.24;
-      drawCanvasLine(ctx, line.x1, line.y1, line.x2, line.y2, color, ctx.lineWidth, !!block.draft, false);
-    } else {
-      const poly = canvasExpandedPolygon(canvasConvexHull(points), boardSize / 50);
-      if (poly.length >= 3) {
-        ctx.beginPath();
-        poly.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
-        ctx.closePath();
-        ctx.globalAlpha = block.draft ? 0.10 : 0.14;
-        ctx.fill();
-        ctx.globalAlpha = block.draft ? 0.62 : 0.82;
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
-  }
-}
-
-function drawManualChainsOnCanvas(ctx, boardSize) {
-  for (const edge of manualMarks.chains || []) {
-    if (!edge?.from || !edge?.to) continue;
-    if (!boardCandidateExists(edge.from.cell, edge.from.digit) || !boardCandidateExists(edge.to.cell, edge.to.digit)) continue;
-    const a = canvasManualCandidateRect(edge.from.cell, edge.from.digit, boardSize);
-    const b = canvasManualCandidateRect(edge.to.cell, edge.to.digit, boardSize);
-    const type = String(edge.type || "strong");
-    const construction = type === "constructionStrong" || type === "constructionWeak";
-    const weak = type === "weak" || type === "constructionWeak";
-    const color = construction ? "#f97316" : "#dc2626";
-    const width = Math.max(2.2, boardSize / 230);
-    const line = canvasShortenedLine({ x: a.cx, y: a.cy }, { x: b.cx, y: b.cy }, boardSize / 70);
-    drawCanvasLine(ctx, line.x1, line.y1, line.x2, line.y2, color, width, weak, true);
-    ctx.save();
-    ctx.fillStyle = "#ffffff";
-    ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(1.4, boardSize / 420);
-    for (const p of [{ x: a.cx, y: a.cy }, { x: b.cx, y: b.cy }]) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, Math.max(3.4, boardSize / 115), 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-}
-
-function drawManualCross(ctx, cx, cy, size, pre, elim) {
-  if (!pre && !elim) return;
-  const drawSlash = (angle, color) => {
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(angle);
-    ctx.strokeStyle = "rgba(255,255,255,0.92)";
-    ctx.lineWidth = Math.max(3, size * 0.18);
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-size / 2, 0);
-    ctx.lineTo(size / 2, 0);
-    ctx.stroke();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = Math.max(2, size * 0.11);
-    ctx.beginPath();
-    ctx.moveTo(-size / 2, 0);
-    ctx.lineTo(size / 2, 0);
-    ctx.stroke();
-    ctx.restore();
-  };
-  if (pre && elim) {
-    drawSlash(Math.PI / 4, "#0f7a3b");
-    drawSlash(-Math.PI / 4, "#b42318");
-  } else if (pre) {
-    drawSlash(Math.PI / 4, "#0f7a3b");
-    drawSlash(-Math.PI / 4, "#0f7a3b");
-  } else {
-    drawSlash(Math.PI / 4, "#b42318");
-    drawSlash(-Math.PI / 4, "#b42318");
-  }
-}
-
-async function captureBoardStagePngBlob() {
+async function captureBoardStageDomCanvas() {
   if (!boardStage || !currentSnapshot) throw new Error("board-stage");
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
   const rect = boardStage.getBoundingClientRect();
-  const boardSize = Math.max(1, Math.ceil(Math.min(rect.width || 0, rect.height || 0) || board.clientWidth || 720));
+  const width = Math.max(1, Math.ceil(rect.width || boardStage.clientWidth || 720));
+  const height = Math.max(1, Math.ceil(rect.height || boardStage.clientHeight || width));
+  const viewportWidth = Math.max(width, Math.ceil(window.innerWidth || document.documentElement.clientWidth || width));
+  const viewportHeight = Math.max(height, Math.ceil(window.innerHeight || document.documentElement.clientHeight || height));
   const scale = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+
+  const stageClone = boardStage.cloneNode(true);
+  stageClone.style.setProperty("position", "absolute", "important");
+  stageClone.style.setProperty("left", "0", "important");
+  stageClone.style.setProperty("top", "0", "important");
+  stageClone.style.setProperty("width", `${width}px`, "important");
+  stageClone.style.setProperty("height", `${height}px`, "important");
+  stageClone.style.setProperty("max-width", "none", "important");
+  stageClone.style.setProperty("margin", "0", "important");
+  stageClone.style.setProperty("transform", "none", "important");
+
+  const body = document.createElement("body");
+  manualScreenshotCopyAttributes(document.body, body);
+  body.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+  body.style.cssText = document.body.style.cssText;
+  const rootStyle = getComputedStyle(document.documentElement);
+  for (let i = 0; i < rootStyle.length; i += 1) {
+    const property = rootStyle[i];
+    if (property.startsWith("--")) body.style.setProperty(property, rootStyle.getPropertyValue(property));
+  }
+  body.style.setProperty("position", "relative", "important");
+  body.style.setProperty("width", `${viewportWidth}px`, "important");
+  body.style.setProperty("height", `${viewportHeight}px`, "important");
+  body.style.setProperty("min-width", "0", "important");
+  body.style.setProperty("min-height", "0", "important");
+  body.style.setProperty("margin", "0", "important");
+  body.style.setProperty("padding", "0", "important");
+  body.style.setProperty("overflow", "hidden", "important");
+  body.style.setProperty("background", manualScreenshotBackgroundColor(), "important");
+
+  const style = document.createElement("style");
+  style.textContent = manualScreenshotCssText();
+  body.append(style, manualScreenshotCloneAncestorShell(stageClone));
+
+  const serialized = new XMLSerializer().serializeToString(body);
+  const svg = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${viewportWidth}" height="${viewportHeight}" viewBox="0 0 ${viewportWidth} ${viewportHeight}">`,
+    `<foreignObject x="0" y="0" width="100%" height="100%">${serialized}</foreignObject>`,
+    "</svg>",
+  ].join("");
+
+  const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  const image = await manualScreenshotLoadImage(url);
   const canvas = document.createElement("canvas");
-  canvas.width = Math.round(boardSize * scale);
-  canvas.height = Math.round(boardSize * scale);
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("canvas-context");
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, boardSize, boardSize);
+  ctx.fillStyle = manualScreenshotBackgroundColor();
+  ctx.fillRect(0, 0, width, height);
+  ctx.drawImage(image, 0, 0, width, height, 0, 0, width, height);
+  return canvas;
+}
 
-  const cellSize = boardSize / 9;
-  const candSize = cellSize / 3;
-  const cells = currentSnapshot.cells || [];
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+async function captureBoardStagePngBlob() {
+  return await canvasToPngBlob(await captureBoardStageDomCanvas());
+}
 
-  for (let index = 0; index < 81; index += 1) {
-    const row = Math.floor(index / 9);
-    const col = index % 9;
-    const x = col * cellSize;
-    const y = row * cellSize;
-    const cell = cells[index] || { value: 0, candidates: [] };
-    const cellColor = manualMarks.cellColors.get(index);
-    ctx.fillStyle = cellColor ? (manualMarkColorById(cellColor.colorId)?.bg || "#fff8a6") : "#ffffff";
-    ctx.globalAlpha = cellColor ? 0.46 : 1;
-    ctx.fillRect(x, y, cellSize, cellSize);
-    ctx.globalAlpha = 1;
+function invalidateManualScreenshotDomCache(options = {}) {
+  manualScreenshotDomCacheVersion += 1;
+  manualScreenshotDomCache = null;
+  if (manualScreenshotDomCacheTimer) {
+    window.clearTimeout(manualScreenshotDomCacheTimer);
+    manualScreenshotDomCacheTimer = 0;
+  }
+  if (!currentSnapshot || !boardStage || !manualScreenshotPrefersSystemShare()) return;
 
-    if (cell.value > 0) {
-      ctx.font = `600 ${Math.max(20, cellSize * 0.62)}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-      ctx.fillStyle = isGiven(index, cell.value) ? "#0f172a" : "#1d4ed8";
-      ctx.fillText(String(cell.value), x + cellSize / 2, y + cellSize / 2 + cellSize * 0.015);
-      continue;
-    }
+  if (manualMarkScreenshot) {
+    manualMarkScreenshot.disabled = true;
+    manualMarkScreenshot.setAttribute("aria-busy", "true");
+  }
+  const delay = options.immediate ? 0 : 90;
+  manualScreenshotDomCacheTimer = window.setTimeout(() => {
+    manualScreenshotDomCacheTimer = 0;
+    void refreshManualScreenshotDomCache();
+  }, delay);
+}
 
-    const candidates = Array.isArray(cell.candidates) ? cell.candidates : [];
-    ctx.font = `800 ${Math.max(8, candSize * 0.52)}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-    for (const digit of candidates) {
-      const d = Number(digit);
-      if (!d) continue;
-      const r = canvasManualCandidateRect(index, d, boardSize);
-      const key = manualMarkKey(index, d);
-      const candidateColor = manualMarks.candidateColors.get(key);
-      const circle = manualMarks.circles.get(key);
-      const blockColorId = manualBlockCandidateColorId(index, d);
-      const pre = manualMarks.preEliminations.has(key);
-      const elim = manualMarks.eliminations.has(key);
-      const isPending = manualChainStart?.cell === index && manualChainStart?.digit === d;
-      const isChainStart = (manualMarks.chains || []).some((edge) => edge?.from?.cell === index && edge?.from?.digit === d);
-      const isChainOn = (manualMarks.chains || []).some((edge) => manualChainStrength(edge) === "strong" && edge?.to?.cell === index && edge?.to?.digit === d);
-      const isChainOff = (manualMarks.chains || []).some((edge) => manualChainStrength(edge) === "weak" && edge?.to?.cell === index && edge?.to?.digit === d);
-
-      if (candidateColor) {
-        const color = manualMarkColorById(candidateColor.colorId) || currentManualMarkColor();
-        ctx.save();
-        ctx.fillStyle = color.bg;
-        ctx.globalAlpha = 0.72;
-        drawCanvasRoundedRect(ctx, r.x + candSize * 0.08, r.y + candSize * 0.08, candSize * 0.84, candSize * 0.84, candSize * 0.42);
-        ctx.fill();
-        ctx.restore();
-      }
-      if (isPending || isChainStart || isChainOn || isChainOff) {
-        const bg = isPending || isChainStart ? "#ffd64a" : (isChainOn ? "#30d45f" : "#7fc7ff");
-        ctx.save();
-        ctx.fillStyle = bg;
-        ctx.globalAlpha = 0.86;
-        ctx.beginPath();
-        ctx.arc(r.cx, r.cy, candSize * (isPending ? 0.58 : 0.48), 0, Math.PI * 2);
-        ctx.fill();
-        if (isPending) {
-          ctx.strokeStyle = "#dc2626";
-          ctx.lineWidth = Math.max(1.4, boardSize / 420);
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-      if (circle) {
-        const color = manualMarkColorById(circle.colorId) || currentManualMarkColor();
-        ctx.save();
-        ctx.strokeStyle = color.bg;
-        ctx.lineWidth = Math.max(1.2, boardSize / 460);
-        ctx.beginPath();
-        ctx.arc(r.cx, r.cy, candSize * 0.46, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-      if (blockColorId) {
-        const color = manualMarkColorById(blockColorId) || currentManualMarkColor();
-        ctx.save();
-        ctx.strokeStyle = color.bg;
-        ctx.lineWidth = Math.max(1, boardSize / 520);
-        ctx.setLineDash([Math.max(2, boardSize / 280), Math.max(2, boardSize / 320)]);
-        ctx.beginPath();
-        ctx.arc(r.cx, r.cy, candSize * 0.43, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      ctx.fillStyle = candidateColor ? (manualMarkColorById(candidateColor.colorId)?.text || "#111827") : "#64748b";
-      if (pre || elim) ctx.fillStyle = "#7a0012";
-      ctx.fillText(String(d), r.cx, r.cy + candSize * 0.02);
-      drawManualCross(ctx, r.cx, r.cy, candSize * 0.92, pre, elim);
-    }
+async function refreshManualScreenshotDomCache() {
+  if (!currentSnapshot || !boardStage) return null;
+  if (manualScreenshotDomCachePromise) {
+    await manualScreenshotDomCachePromise;
+    const ready = manualScreenshotCachedBlob();
+    if (ready) return manualScreenshotDomCache;
+    return await refreshManualScreenshotDomCache();
   }
 
-  drawManualBlocksOnCanvas(ctx, boardSize);
-  drawManualChainsOnCanvas(ctx, boardSize);
+  const version = manualScreenshotDomCacheVersion;
+  manualScreenshotDomCachePromise = (async () => {
+    try {
+      const blob = await captureBoardStagePngBlob();
+      const rect = boardStage.getBoundingClientRect();
+      if (version === manualScreenshotDomCacheVersion) {
+        manualScreenshotDomCache = {
+          blob,
+          version,
+          width: Math.ceil(rect.width || 0),
+          height: Math.ceil(rect.height || 0),
+        };
+      }
+      return version === manualScreenshotDomCacheVersion ? manualScreenshotDomCache : null;
+    } catch (_) {
+      if (version === manualScreenshotDomCacheVersion) manualScreenshotDomCache = null;
+      return null;
+    } finally {
+      manualScreenshotDomCachePromise = null;
+      if (version === manualScreenshotDomCacheVersion && manualMarkScreenshot) {
+        manualMarkScreenshot.disabled = false;
+        manualMarkScreenshot.removeAttribute("aria-busy");
+      }
+    }
+  })();
 
-  ctx.save();
-  for (let i = 0; i <= 9; i += 1) {
-    ctx.beginPath();
-    ctx.strokeStyle = "#111827";
-    ctx.lineWidth = (i % 3 === 0) ? Math.max(2, boardSize / 320) : Math.max(1, boardSize / 700);
-    const p = i * cellSize;
-    ctx.moveTo(p, 0);
-    ctx.lineTo(p, boardSize);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, p);
-    ctx.lineTo(boardSize, p);
-    ctx.stroke();
-  }
-  ctx.restore();
+  const result = await manualScreenshotDomCachePromise;
+  if (version !== manualScreenshotDomCacheVersion) return await refreshManualScreenshotDomCache();
+  return result;
+}
 
-  return await canvasToPngBlob(canvas);
+function manualScreenshotCachedBlob() {
+  const cache = manualScreenshotDomCache;
+  if (!cache || cache.version !== manualScreenshotDomCacheVersion) return null;
+  const rect = boardStage?.getBoundingClientRect?.();
+  if (!rect) return null;
+  if (Math.abs(cache.width - Math.ceil(rect.width || 0)) > 1 || Math.abs(cache.height - Math.ceil(rect.height || 0)) > 1) return null;
+  return cache.blob || null;
 }
 
 function downloadBlob(blob, filename) {
@@ -2632,22 +2562,127 @@ function downloadBlob(blob, filename) {
   window.setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-async function copyManualBoardScreenshotAfterApply() {
-  try {
-    const blob = await captureBoardStagePngBlob();
-    const filename = `yzf-sudoku-${new Date().toISOString().replace(/[:.]/g, "-")}.png`;
-    if (window.isSecureContext && navigator.clipboard?.write && window.ClipboardItem) {
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-      appendManualMarkStatus(ui("markScreenshotCopied"));
-      return true;
-    }
-    downloadBlob(blob, filename);
-    appendManualMarkStatus(ui("markScreenshotDownloaded"));
-    return true;
-  } catch (error) {
-    appendManualMarkStatus(uif("markScreenshotFailed", { error: error?.message || String(error) }));
-    return false;
+function manualScreenshotPrefersSystemShare() {
+  const userAgent = String(navigator.userAgent || "");
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches === true;
+  const mobileUserAgent = /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
+  const ipadDesktopMode = /Macintosh/i.test(userAgent) && Number(navigator.maxTouchPoints || 0) > 1;
+  return mobileSolveActive || coarsePointer || mobileUserAgent || ipadDesktopMode;
+}
+
+function manualScreenshotFilename() {
+  return `yzf-sudoku-${new Date().toISOString().replace(/[:.]/g, "-")}.png`;
+}
+
+function shareManualBoardScreenshot() {
+  if (!currentSnapshot || !boardStage) {
+    setManualMarkStatus(ui("markScreenshotNoBoard"));
+    return Promise.resolve(false);
   }
+
+  const button = manualMarkScreenshot;
+  if (button) button.disabled = true;
+  setManualMarkStatus(ui("markScreenshotPreparing"));
+
+  const shareMobileBlob = (blob) => {
+    const filename = manualScreenshotFilename();
+    const file = typeof File === "function" ? new File([blob], filename, { type: "image/png" }) : null;
+    let canShareFile = false;
+    if (file && window.isSecureContext && typeof navigator.share === "function") {
+      try {
+        canShareFile = typeof navigator.canShare === "function"
+          ? navigator.canShare({ files: [file] })
+          : false;
+      } catch (_) {
+        canShareFile = false;
+      }
+    }
+
+    if (!canShareFile) {
+      downloadBlob(blob, filename);
+      setManualMarkStatus(ui("markScreenshotShareUnavailableDownloaded"));
+      if (button) button.disabled = false;
+      return Promise.resolve(true);
+    }
+
+    let shareResult;
+    try {
+      // With the mobile pre-render cache this call stays inside the original
+      // button activation, which is required by iOS/Android system sharing.
+      shareResult = navigator.share({
+        title: ui("markScreenshotShareTitle"),
+        files: [file],
+      });
+    } catch (error) {
+      downloadBlob(blob, filename);
+      setManualMarkStatus(uif("markScreenshotShareFailedDownloaded", { error: error?.message || String(error) }));
+      if (button) button.disabled = false;
+      return Promise.resolve(true);
+    }
+
+    return Promise.resolve(shareResult)
+      .then(() => {
+        setManualMarkStatus(ui("markScreenshotShared"));
+        return true;
+      })
+      .catch((error) => {
+        if (error?.name === "AbortError") {
+          setManualMarkStatus(ui("markScreenshotShareCancelled"));
+          return false;
+        }
+        downloadBlob(blob, filename);
+        setManualMarkStatus(uif("markScreenshotShareFailedDownloaded", { error: error?.message || String(error) }));
+        return true;
+      })
+      .finally(() => {
+        if (button) button.disabled = false;
+      });
+  };
+
+  if (manualScreenshotPrefersSystemShare()) {
+    const cachedBlob = manualScreenshotCachedBlob();
+    if (cachedBlob) return shareMobileBlob(cachedBlob);
+
+    // Normally unreachable because the mobile button remains disabled while
+    // the WYSIWYG cache is refreshing. Keep a fresh async fallback for unusual
+    // browsers that dispatch a click despite the disabled transition.
+    return refreshManualScreenshotDomCache()
+      .then((cache) => {
+        const blob = cache?.blob || manualScreenshotCachedBlob();
+        if (!blob) throw new Error("dom-screenshot-cache");
+        return shareMobileBlob(blob);
+      })
+      .catch((error) => {
+        setManualMarkStatus(uif("markScreenshotFailed", { error: error?.message || String(error) }));
+        if (button) button.disabled = false;
+        return false;
+      });
+  }
+
+  return (async () => {
+    try {
+      const blob = await captureBoardStagePngBlob();
+      const filename = manualScreenshotFilename();
+      if (window.isSecureContext && navigator.clipboard?.write && window.ClipboardItem) {
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+          setManualMarkStatus(ui("markScreenshotCopied"));
+          return true;
+        } catch (_) {
+          // Preserve the existing desktop fallback when image clipboard access is denied.
+        }
+      }
+
+      downloadBlob(blob, filename);
+      setManualMarkStatus(ui("markScreenshotDownloaded"));
+      return true;
+    } catch (error) {
+      setManualMarkStatus(uif("markScreenshotFailed", { error: error?.message || String(error) }));
+      return false;
+    } finally {
+      if (button) button.disabled = false;
+    }
+  })();
 }
 
 function cleanManualEasySteps(maxSteps = 200) {
@@ -2716,7 +2751,6 @@ async function applyManualMarkedEliminations() {
     cleaned = cleanResult.count || 0;
   }
 
-  const shouldCaptureScreenshot = applied > 0 || cleaned > 0;
   if (applied > 0 && cleaned > 0) {
     setManualMarkStatus(uif("markAppliedElimsWithClean", { count: applied, easy: cleaned }));
   } else if (applied > 0) {
@@ -2725,9 +2759,6 @@ async function applyManualMarkedEliminations() {
     setManualMarkStatus(uif("markNoElimsButCleaned", { easy: cleaned }));
   } else {
     setManualMarkStatus(ui("markNoElims"));
-  }
-  if (shouldCaptureScreenshot) {
-    await copyManualBoardScreenshotAfterApply();
   }
 }
 
@@ -2768,6 +2799,7 @@ function initManualMarksControls() {
     updateManualMarkControls();
   });
   manualMarkApplyElims?.addEventListener("click", applyManualMarkedEliminations);
+  manualMarkScreenshot?.addEventListener("click", shareManualBoardScreenshot);
   manualMarkClear?.addEventListener("click", clearManualMarks);
   manualMarkUndoLine?.addEventListener("click", () => {
     manualMarks.chains.pop();
@@ -2786,6 +2818,7 @@ function initManualMarksControls() {
   });
   window.addEventListener("resize", () => {
     if (manualMarks.chains.length > 0) window.requestAnimationFrame(renderManualMarkOverlay);
+    invalidateManualScreenshotDomCache();
   }, { passive: true });
   updateManualMarkControls();
 }
@@ -2921,6 +2954,8 @@ function applyStaticLanguage() {
   }
   const moreSummary = [...document.querySelectorAll(".input-panel summary")].find((el) => /更多|More/i.test(el.textContent));
   if (moreSummary) moreSummary.textContent = ui("moreInput");
+  setTextById("preferClipboardLoadLabel", ui("preferClipboardLoad"));
+  setTitleAndAria(document.getElementById("preferClipboardLoadChip"), ui("preferClipboardLoadTitle"));
   setTextById("btnExportPuzzle", ui("exportPuzzle"));
   updateExportFormatLabels();
   setTextById("btnClearSavedSession", ui("clearSavedSession"));
@@ -3002,6 +3037,8 @@ function applyStaticLanguage() {
   setTextById("manualMarkPrimary", ui("markPrimary"));
   setTextById("manualMarkSecondary", ui("markSecondary"));
   setTextById("manualMarkApplyElims", ui("markApplyElims"));
+  setTextById("manualMarkScreenshot", ui("markScreenshotButton"));
+  setTitleAndAria(manualMarkScreenshot, ui("markScreenshotTitle"));
   setTextById("manualMarkCleanEasyLabel", ui("markCleanEasy"));
   setTextById("manualMarkClear", ui("markClearAll"));
   setTextById("manualMarkUndoLine", ui("markUndoLine"));
@@ -3116,6 +3153,36 @@ function snapshotMatchesOriginal(snapshot = currentSnapshot) {
   const boardText = snapshotBoardString(snapshot);
   const givensText = snapshotGivensString(snapshot);
   return boardText.length === 81 && givensText.length === 81 && boardText === givensText;
+}
+
+function mobileSolveSnapshotSignature(snapshot = currentSnapshot) {
+  if (!snapshot) return "";
+  const cells = Array.isArray(snapshot.cells) ? snapshot.cells : [];
+  return JSON.stringify({
+    board: snapshotBoardString(snapshot),
+    givens: snapshotGivensString(snapshot),
+    cells: cells.map((cell) => [Number(cell?.value || 0), ...(Array.isArray(cell?.candidates) ? cell.candidates.map(Number) : [])]),
+  });
+}
+
+function mobileSolveManualMarksHaveContent() {
+  return manualMarks.cellColors.size > 0
+    || manualMarks.candidateColors.size > 0
+    || manualMarks.circles.size > 0
+    || manualMarks.preEliminations.size > 0
+    || manualMarks.eliminations.size > 0
+    || manualMarks.chains.length > 0
+    || manualMarks.blocks.length > 0
+    || Boolean(manualBlockDraft?.nodes?.length)
+    || Boolean(manualChainStart);
+}
+
+function mobileSolveCurrentPuzzleHasProgress() {
+  if (mobileSolveManualMarksHaveContent()) return true;
+  if (!currentSnapshot) return false;
+  const currentSignature = mobileSolveSnapshotSignature(currentSnapshot);
+  if (mobileSolvePuzzleBaselineSignature) return currentSignature !== mobileSolvePuzzleBaselineSignature;
+  return !snapshotMatchesOriginal(currentSnapshot);
 }
 
 function candidateMaskFromArray(values) {
@@ -9235,6 +9302,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     clearYzfBranchContext({ preserveHint: false });
     setYzfHintBaseText(ui("waitingWasm"));
     renderStepExplanation(null, null);
+    invalidateManualScreenshotDomCache();
     return;
   }
 
@@ -9324,6 +9392,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
   // start/end markers remain visible and are not masked by solver highlights.
   applyManualChainEndpointHighlights();
   syncMobileSolveDigitHighlights();
+  invalidateManualScreenshotDomCache();
 }
 
 function clearStepViewState(options = {}) {
@@ -9370,6 +9439,7 @@ function applySnapshotRefreshState(nextSnapshot = null) {
 
 function resetBoardContextForSnapshot(nextSnapshot = null, options = {}) {
   currentSnapshot = nextSnapshot || getCurrentSnapshot();
+  mobileSolvePuzzleBaselineSignature = mobileSolveSnapshotSignature(currentSnapshot);
   clearStepViewState(options);
   renderBoardSnapshot(currentSnapshot, null);
   scheduleAppSessionSave();
@@ -11968,7 +12038,7 @@ function inferTlgSetFromEndpoints(a, b, mode) {
   if (sameDigit && sameRow) return `row-truth:${a.digit}r${ar + 1}`;
   if (sameDigit && sameCol) return `column-truth:${a.digit}c${ac + 1}`;
   if (sameDigit && sameBox) return `box-truth:${a.digit}b${tlgSolverBoxIndex(a.cellIndex)}`;
-  return `truth:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
+  return "";
 }
 
 function toggleTlgDescriptorValue(array, value, kind) {
@@ -12061,6 +12131,13 @@ function handleTlgSolverCandidateClick(cellIndex, digit, event, candidate) {
     return true;
   }
   const value = inferTlgSetFromEndpoints(tlgSolverState.selectedEndpoint, point, mode);
+  if (!value) {
+    tlgSolverState.selectedEndpoint = null;
+    setTlgSolverStatus(ui("tlgTruthPairInvalid"), "error");
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    updateTlgSolverUi();
+    return true;
+  }
   const added = mode === "links" ? toggleTlgDescriptorValue(tlgSolverState.links, value, "links") : toggleTlgDescriptorValue(tlgSolverState.truths, value, "truths");
   announceTlgSolver(uif(mode === "links" ? (added ? "tlgLinkAdded" : "tlgLinkRemoved") : (added ? "tlgTruthAdded" : "tlgTruthRemoved"), { value: tlgSolverPrettyValue(value) }));
   tlgSolverState.selectedEndpoint = null;
@@ -12270,8 +12347,12 @@ function formatTlgResponseStatus(response) {
 function renderTlgSolverResponse(response, rawText) {
   const responseOk = response?.ok !== false;
   if (responseOk) {
+    const phase = String(response?.phase || "");
+    const usedAutoLinks = response?.usedAutoLinks === true;
     if (Array.isArray(response?.truthsState)) tlgSolverState.truths = [...response.truthsState];
-    if (Array.isArray(response?.linksState)) tlgSolverState.links = [...response.linksState];
+    if (Array.isArray(response?.linksState) && !(phase === "find-eliminations" && usedAutoLinks)) {
+      tlgSolverState.links = [...response.linksState];
+    }
     tlgSolverState.eliminations = (Array.isArray(response?.eliminations) ? response.eliminations : [])
       .map(normalizeTlgResponseCandidate)
       .filter(Boolean);
@@ -12530,8 +12611,50 @@ async function readClipboardTextForLoad() {
   }
 }
 
+function loadPuzzleFromClipboardFirstEnabled() {
+  return preferClipboardLoad?.checked !== false;
+}
+
 async function importPuzzleFromCurrentInput(options = {}) {
   if (!engine) return;
+  if (options.preferClipboardFirst && !options.clipboardAlreadyTried) {
+    const fallbackInput = (givens.value || "").trim();
+    const clipboard = await readClipboardTextForLoad();
+    if (clipboard.ok) {
+      givens.value = clipboard.text;
+      setStatus(ui("clipboardPreferredLoaded"));
+      const result = await importPuzzleFromCurrentInput({
+        ...options,
+        preferClipboardFirst: false,
+        clipboardAlreadyTried: true,
+      });
+      if (result?.ok) return result;
+      givens.value = fallbackInput;
+      if (fallbackInput) {
+        setStatus(uif("clipboardPreferredFailed", { error: result?.error || ui("importUnknownFormat") }));
+        return importPuzzleFromCurrentInput({
+          ...options,
+          preferClipboardFirst: false,
+          clipboardFallback: false,
+          clipboardAlreadyTried: true,
+        });
+      }
+      return result;
+    }
+    if (fallbackInput) {
+      givens.value = fallbackInput;
+      setStatus(uif("clipboardPreferredFailed", { error: clipboard.error }));
+      return importPuzzleFromCurrentInput({
+        ...options,
+        preferClipboardFirst: false,
+        clipboardFallback: false,
+        clipboardAlreadyTried: true,
+      });
+    }
+    setStatus(uif("inputEmptyClipboardFailed", { error: clipboard.error }));
+    log(ui("loadFailedPrefix") + uif("inputEmptyClipboardFailed", { error: clipboard.error }));
+    return { ok: false, error: clipboard.error };
+  }
   const rawInput = (givens.value || "").trim();
   if (options.clipboardFallback && !options.clipboardAlreadyTried && !rawInput) {
     const clipboard = await readClipboardTextForLoad();
@@ -12636,7 +12759,10 @@ async function recognizeAndImportImageFile(file) {
 btnImageOcrPreviewClear?.addEventListener("click", clearOcrPreview);
 
 btnLoad.addEventListener("click", async () => {
-  await importPuzzleFromCurrentInput({ clipboardFallback: true });
+  await importPuzzleFromCurrentInput({
+    clipboardFallback: true,
+    preferClipboardFirst: loadPuzzleFromClipboardFirstEnabled(),
+  });
 });
 
 
@@ -12695,15 +12821,18 @@ window.addEventListener("paste", async (event) => {
   await recognizeAndImportImageFile(file);
 });
 
-btnGenerate.addEventListener("click", () => {
-  if (!engine) return;
-  const difficulty = Number(difficultySelect.value || 0);
+function generatePuzzleAtDifficulty(difficulty) {
+  if (!engine) return null;
+  const normalizedDifficulty = Number.isInteger(Number(difficulty)) && Number(difficulty) >= 0 && Number(difficulty) <= 6
+    ? Number(difficulty)
+    : 0;
+  if (difficultySelect) difficultySelect.value = String(normalizedDifficulty);
   setStatus(uif("generatingPuzzle", { difficulty: selectedDifficultyLabel() }));
-  const result = parseJson(engine.generate_puzzle_difficulty_json(difficulty, 0));
+  const result = parseJson(engine.generate_puzzle_difficulty_json(normalizedDifficulty, 0));
   if (!result?.ok) {
     const last = result?.lastRating ? uif("lastRating", { rating: formatRating(result.lastRating) }) : "";
     setStatus(uif("generateFailed", { difficulty: result?.difficultyName || selectedDifficultyLabel(), last }));
-    return;
+    return result || { ok: false };
   }
 
   originalBoard = result.state?.givens || result.puzzle;
@@ -12712,6 +12841,11 @@ btnGenerate.addEventListener("click", () => {
   setManualAdvancedInputStateWithBoardKey(result.puzzle, "puzzle81", false, `puzzle81:${result.puzzle}`);
   setStatus(uif("generatedPuzzle", { difficulty: result.difficultyName, clues: result.clues, rating: formatRating(result.rating) }));
   updateInputControls();
+  return result;
+}
+
+btnGenerate.addEventListener("click", () => {
+  generatePuzzleAtDifficulty(Number(difficultySelect.value || 0));
 });
 
 btnBatchStop?.addEventListener("click", () => {
@@ -13549,6 +13683,20 @@ function updateMobileSolveLanguage() {
   setTitleAndAria(btnMobileSolveMode, ui("mobileSolveMode"));
   setTextById("mobileSolveTitle", ui("mobileSolveMode"));
   setTextById("btnMobileSolveExit", ui("mobileSolveExit"));
+  setTextById("btnMobileSolveNewPuzzle", ui("mobileSolveNewPuzzle"));
+  setTitleAndAria(btnMobileSolveNewPuzzle, ui("mobileSolveNewPuzzleTitle"));
+  setTextById("mobileSolveNewPuzzleTitle", ui("mobileSolveNewPuzzleTitle"));
+  setTextById("mobileSolveNewPuzzleHint", ui("mobileSolveNewPuzzleHint"));
+  setTextById("mobileSolveNewPuzzleWarning", ui("mobileSolveNewPuzzleWarning"));
+  setTextById("mobileSolveNewPuzzleDifficultyLegend", ui("mobileSolveNewPuzzleDifficulty"));
+  setTextById("btnMobileSolveNewPuzzleClose", ui("close"));
+  setTextById("btnMobileSolveNewPuzzleCancel", ui("mobileSolveNewPuzzleCancel"));
+  if (!btnMobileSolveNewPuzzleGenerate?.disabled) setTextById("btnMobileSolveNewPuzzleGenerate", ui("mobileSolveNewPuzzleGenerate"));
+  const mobileDifficultyKeys = [
+    "mobileDifficultyRandom", "mobileDifficultyEasy", "mobileDifficultyMedium", "mobileDifficultyHard",
+    "mobileDifficultyUnfair", "mobileDifficultyExtreme", "mobileDifficultyInsane",
+  ];
+  mobileDifficultyKeys.forEach((key, index) => setTextById(`mobileSolveDifficultyLabel${index}`, ui(key)));
   setTextById("btnMobileSolveClear", ui("mobileSolveClear"));
   updateMobileSolveMarksButton();
   setTextById("btnMobileSolveUndo", ui("undo"));
@@ -13569,6 +13717,87 @@ function updateMobileSolveLanguage() {
   updateMobileSolvePreferenceButtons();
   updateMobileSolveInputState();
   syncMobileSolveStatus();
+}
+
+function normalizeMobileNewPuzzleDifficulty(value) {
+  const difficulty = Number(value);
+  return Number.isInteger(difficulty) && difficulty >= 0 && difficulty <= 6 ? difficulty : 0;
+}
+
+function loadMobileNewPuzzleDifficulty() {
+  let difficulty = normalizeMobileNewPuzzleDifficulty(difficultySelect?.value || 0);
+  try {
+    const stored = localStorage.getItem(MOBILE_NEW_PUZZLE_DIFFICULTY_KEY);
+    if (stored != null) difficulty = normalizeMobileNewPuzzleDifficulty(stored);
+  } catch (_) {
+    // Keep the currently selected difficulty when storage is unavailable.
+  }
+  if (difficultySelect) difficultySelect.value = String(difficulty);
+  return difficulty;
+}
+
+function saveMobileNewPuzzleDifficulty(difficulty) {
+  const normalized = normalizeMobileNewPuzzleDifficulty(difficulty);
+  if (difficultySelect) difficultySelect.value = String(normalized);
+  try { localStorage.setItem(MOBILE_NEW_PUZZLE_DIFFICULTY_KEY, String(normalized)); } catch (_) { /* optional */ }
+  return normalized;
+}
+
+function syncMobileNewPuzzleDifficultyChoice(difficulty = difficultySelect?.value || 0) {
+  const normalized = normalizeMobileNewPuzzleDifficulty(difficulty);
+  const option = mobileSolveNewPuzzleOptions?.querySelector(`input[name="mobileSolveNewPuzzleDifficulty"][value="${normalized}"]`);
+  if (option) option.checked = true;
+  return normalized;
+}
+
+function setMobileSolveNewPuzzlePanel(open) {
+  mobileSolveNewPuzzleOpen = Boolean(open && mobileSolveActive);
+  if (mobileSolveNewPuzzlePanel) mobileSolveNewPuzzlePanel.hidden = !mobileSolveNewPuzzleOpen;
+  if (mobileSolveNewPuzzleBackdrop) mobileSolveNewPuzzleBackdrop.hidden = !mobileSolveNewPuzzleOpen;
+  btnMobileSolveNewPuzzle?.setAttribute("aria-expanded", mobileSolveNewPuzzleOpen ? "true" : "false");
+  if (mobileSolveNewPuzzleOpen) {
+    syncMobileNewPuzzleDifficultyChoice(difficultySelect?.value || loadMobileNewPuzzleDifficulty());
+    if (mobileSolveNewPuzzleWarning) mobileSolveNewPuzzleWarning.hidden = !mobileSolveCurrentPuzzleHasProgress();
+    window.requestAnimationFrame(() => {
+      const selected = mobileSolveNewPuzzleOptions?.querySelector('input[name="mobileSolveNewPuzzleDifficulty"]:checked');
+      selected?.focus?.({ preventScroll: true });
+    });
+  } else {
+    btnMobileSolveNewPuzzle?.focus?.({ preventScroll: true });
+  }
+}
+
+function openMobileSolveNewPuzzlePanel() {
+  if (!mobileSolveActive) return;
+  if (mobileSolveMarksOpen) closeMobileSolveMarks();
+  setMobileSolveDrawer(false);
+  setMobileSolveNewPuzzlePanel(true);
+}
+
+async function generateMobileSolveNewPuzzle() {
+  if (!engine || btnMobileSolveNewPuzzleGenerate?.disabled) return;
+  const checked = mobileSolveNewPuzzleOptions?.querySelector('input[name="mobileSolveNewPuzzleDifficulty"]:checked');
+  const difficulty = saveMobileNewPuzzleDifficulty(checked?.value ?? difficultySelect?.value ?? 0);
+  if (mobileSolveCurrentPuzzleHasProgress() && !window.confirm(ui("mobileSolveNewPuzzleConfirm"))) return;
+
+  btnMobileSolveNewPuzzleGenerate.disabled = true;
+  setTextById("btnMobileSolveNewPuzzleGenerate", ui("mobileSolveNewPuzzleGenerating"));
+  try {
+    setStatus(uif("generatingPuzzle", { difficulty: selectedDifficultyLabel() }));
+    await new Promise((resolve) => window.requestAnimationFrame(() => window.setTimeout(resolve, 0)));
+    const result = generatePuzzleAtDifficulty(difficulty);
+    if (!result?.ok) return;
+    clearManualMarks();
+    setStatus(uif("generatedPuzzle", { difficulty: result.difficultyName, clues: result.clues, rating: formatRating(result.rating) }));
+    setMobileSolveNewPuzzlePanel(false);
+    applyMobileSolvePreferences();
+    updateMobileSolveInputState();
+    syncMobileSolveStatus();
+    scheduleMobileSolveLayout();
+  } finally {
+    btnMobileSolveNewPuzzleGenerate.disabled = false;
+    setTextById("btnMobileSolveNewPuzzleGenerate", ui("mobileSolveNewPuzzleGenerate"));
+  }
 }
 
 function setMobileSolveDrawer(open, options = {}) {
@@ -13610,6 +13839,7 @@ function enterMobileSolveMode() {
   if (mobileSolveLang) mobileSolveLang.value = lang.value || "zh";
   updateMobileSolveLanguage();
   applyMobileSolvePreferences();
+  setMobileSolveNewPuzzlePanel(false);
   setMobileSolveDrawer(false);
   scheduleMobileSolveLayout();
   window.setTimeout(scheduleMobileSolveLayout, 140);
@@ -13620,6 +13850,7 @@ async function exitMobileSolveMode(options = {}) {
   const { exitFullscreen = true } = options;
   if (!mobileSolveActive) return;
   if (mobileSolveMarksOpen) closeMobileSolveMarks({ closeDrawer: false });
+  setMobileSolveNewPuzzlePanel(false);
   setMobileSolveDrawer(false, { preserveMarks: true });
   restoreMobileSolveElement(mobileSolveBoardHomeMarker, boardStage);
   restoreMobileSolveElement(mobileSolveNumpadHomeMarker, numpad);
@@ -13674,13 +13905,29 @@ function openPuzzleInputFromMobile() {
 function installMobileSolveMode() {
   ensureMobileSolveHomeMarkers();
   loadMobileSolvePreferences();
+  loadMobileNewPuzzleDifficulty();
+  syncMobileNewPuzzleDifficultyChoice();
   applyMobileSolvePreferences();
   const hintObserver = new MutationObserver(syncMobileSolveStatus);
   if (hintPanel) hintObserver.observe(hintPanel, { childList: true, subtree: true, characterData: true });
 
   btnMobileSolveMode?.addEventListener("click", enterMobileSolveMode);
   btnMobileSolveExit?.addEventListener("click", () => exitMobileSolveMode());
-  btnMobileSolveFullscreen?.addEventListener("click", toggleFullscreen);
+  btnMobileSolveNewPuzzle?.addEventListener("click", openMobileSolveNewPuzzlePanel);
+  btnMobileSolveFullscreen?.addEventListener("click", () => { setMobileSolveDrawer(false); toggleFullscreen(); });
+  btnMobileSolveNewPuzzleClose?.addEventListener("click", () => setMobileSolveNewPuzzlePanel(false));
+  btnMobileSolveNewPuzzleCancel?.addEventListener("click", () => setMobileSolveNewPuzzlePanel(false));
+  btnMobileSolveNewPuzzleGenerate?.addEventListener("click", generateMobileSolveNewPuzzle);
+  mobileSolveNewPuzzleBackdrop?.addEventListener("click", () => setMobileSolveNewPuzzlePanel(false));
+  mobileSolveNewPuzzleOptions?.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || target.name !== "mobileSolveNewPuzzleDifficulty") return;
+    saveMobileNewPuzzleDifficulty(target.value);
+  });
+  difficultySelect?.addEventListener("change", () => {
+    saveMobileNewPuzzleDifficulty(difficultySelect.value);
+    syncMobileNewPuzzleDifficultyChoice(difficultySelect.value);
+  });
   btnMobileSolveClear?.addEventListener("click", clearMobileSolveSelection);
   btnMobileSolveUndo?.addEventListener("click", () => btnUndo?.click());
   btnMobileSolveRedo?.addEventListener("click", () => btnRedo?.click());
@@ -13716,7 +13963,10 @@ function installMobileSolveMode() {
   document.addEventListener("webkitfullscreenchange", scheduleMobileSolveLayout);
   document.addEventListener("keydown", (event) => {
     if (!mobileSolveActive || event.key !== "Escape") return;
-    if (mobileSolveDrawerOpen) {
+    if (mobileSolveNewPuzzleOpen) {
+      event.preventDefault();
+      setMobileSolveNewPuzzlePanel(false);
+    } else if (mobileSolveDrawerOpen) {
       event.preventDefault();
       setMobileSolveDrawer(false);
     }

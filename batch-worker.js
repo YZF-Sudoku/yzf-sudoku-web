@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=20260623-v586-tlg-truth-coverage-native-order";
+import createModule from "./sudoku_wasm.js?v=wasm-ac19dd14a8326a04";
 
-const APP_VERSION = "20260623-v586-tlg-truth-coverage-native-order";
+const APP_VERSION = "wasm-ac19dd14a8326a04";
 let enginePromise = null;
 let cancelRequested = false;
 

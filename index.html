@@ -414,6 +414,38 @@
       color: var(--accent);
       outline: none;
     }
+    .ocr-toggle-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 36px;
+      margin: 0;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 14px;
+      line-height: 1.2;
+      cursor: pointer;
+      user-select: none;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    .ocr-toggle-chip:hover,
+    .ocr-toggle-chip:focus-within {
+      border-color: var(--accent);
+      color: var(--accent);
+      outline: none;
+    }
+    .ocr-toggle-chip input {
+      margin: 0;
+      inline-size: 14px;
+      block-size: 14px;
+      accent-color: #2563eb;
+    }
 
     .ocr-draft-only-action {
       border-color: #d6b45b;
@@ -5422,6 +5454,153 @@
       margin: 0;
     }
 
+    .mobile-solve-new-puzzle-backdrop[hidden],
+    .mobile-solve-new-puzzle-panel[hidden] { display: none !important; }
+    .mobile-solve-new-puzzle-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 7;
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(2px);
+    }
+    .mobile-solve-new-puzzle-panel {
+      position: absolute;
+      z-index: 8;
+      min-width: 0;
+      max-height: calc(100% - 8px);
+      padding: 12px;
+      overflow: auto;
+      border: 1px solid rgba(158, 183, 218, 0.96);
+      background: rgba(255, 255, 255, 0.99);
+      box-shadow: 0 -12px 38px rgba(15, 23, 42, 0.26);
+      overscroll-behavior: contain;
+    }
+    .mobile-solve-shell.is-portrait .mobile-solve-new-puzzle-panel {
+      left: 5px;
+      right: 5px;
+      bottom: max(5px, env(safe-area-inset-bottom));
+      border-radius: 17px 17px 11px 11px;
+    }
+    .mobile-solve-shell.is-landscape .mobile-solve-new-puzzle-panel {
+      top: 50%;
+      right: 6px;
+      width: min(400px, 49vw);
+      transform: translateY(-50%);
+      border-radius: 15px;
+      box-shadow: -12px 0 38px rgba(15, 23, 42, 0.26);
+    }
+    .mobile-solve-new-puzzle-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .mobile-solve-new-puzzle-header strong {
+      color: #172a46;
+      font-size: 16px;
+      font-weight: 850;
+    }
+    .mobile-solve-new-puzzle-header button,
+    .mobile-solve-new-puzzle-actions button {
+      min-height: 36px;
+      margin: 0;
+      padding: 6px 12px;
+      border-radius: 9px;
+      font-weight: 750;
+    }
+    .mobile-solve-new-puzzle-hint {
+      margin: 8px 0 0;
+      color: #5d6e84;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .mobile-solve-new-puzzle-warning {
+      margin: 8px 0 0;
+      padding: 7px 9px;
+      border: 1px solid #f1c48b;
+      border-radius: 9px;
+      background: #fff7e8;
+      color: #8a4b08;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+    .mobile-solve-new-puzzle-fieldset {
+      min-width: 0;
+      margin: 10px 0 0;
+      padding: 0;
+      border: 0;
+    }
+    .mobile-solve-new-puzzle-fieldset legend {
+      margin-bottom: 6px;
+      color: #425671;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .mobile-solve-new-puzzle-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+    .mobile-solve-new-puzzle-options label {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      min-height: 48px;
+      margin: 0;
+      padding: 6px 8px;
+      border: 1px solid #cbd8e8;
+      border-radius: 10px;
+      background: #f8fafc;
+      color: #29415f;
+      cursor: pointer;
+    }
+    .mobile-solve-new-puzzle-options label:has(input:checked) {
+      border-color: #73a3ee;
+      background: #eaf3ff;
+      box-shadow: inset 0 0 0 1px rgba(52, 120, 246, 0.16);
+    }
+    .mobile-solve-new-puzzle-options input {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: #3478f6;
+    }
+    .mobile-solve-new-puzzle-options span {
+      display: grid;
+      min-width: 0;
+      gap: 2px;
+    }
+    .mobile-solve-new-puzzle-options b {
+      overflow: hidden;
+      font-size: 13px;
+      line-height: 1.15;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .mobile-solve-new-puzzle-options small {
+      color: #6b7b90;
+      font-size: 10px;
+      line-height: 1.1;
+    }
+    .mobile-solve-new-puzzle-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 11px;
+    }
+    .mobile-solve-new-puzzle-actions .mobile-primary {
+      border-color: #3478f6;
+      background: #3478f6;
+      color: #fff;
+    }
+    .mobile-solve-new-puzzle-actions button:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+
     @media (max-width: 360px) {
       .mobile-solve-topbar button { padding-inline: 6px; font-size: 11px; }
       .mobile-solve-actions button { font-size: 11px; }
@@ -5514,6 +5693,10 @@
               <summary>更多：题面输入与导出评分</summary>
               <textarea id="givens">53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79</textarea>
               <div class="ocr-import-actions">
+                <label id="preferClipboardLoadChip" class="ocr-toggle-chip" title="加载题目时优先使用剪贴板，失败后再用文本框" aria-label="加载题目时优先使用剪贴板，失败后再用文本框">
+                  <input id="preferClipboardLoad" type="checkbox" checked />
+                  <span id="preferClipboardLoadLabel">剪贴板优先</span>
+                </label>
                 <label id="btnImageOcrPick" class="ocr-file-button"><span id="btnImageOcrPickText">选择图片识别</span><input id="imageOcrInput" class="ocr-native-file-input" type="file" accept="image/*" /></label>
                 <label id="btnImageOcrCamera" class="ocr-file-button ocr-camera-action"><span id="btnImageOcrCameraText">拍照识别</span><input id="imageOcrCameraInput" class="ocr-native-file-input" type="file" accept="image/*" capture="environment" /></label>
                 <button id="btnImageOcrClipboard" type="button">从剪贴板识别</button>
@@ -5577,6 +5760,7 @@
               <div id="manualMarkSwatches" class="manual-mark-swatches" aria-label="manual mark colors"></div>
               <div class="manual-mark-buttons">
                 <button id="manualMarkApplyElims" type="button" class="compact primary">应用全部删数</button>
+                <button id="manualMarkScreenshot" type="button" class="compact" title="按屏幕当前显示原样截图盘面及全部手工标记。桌面端复制到剪贴板，手机端打开系统分享。" aria-label="按屏幕当前显示原样截图盘面及全部手工标记。桌面端复制到剪贴板，手机端打开系统分享。">截图</button>
                 <label class="manual-mark-cleaning"><input id="manualMarkCleanEasy" type="checkbox" /> <span id="manualMarkCleanEasyLabel">清除简单步骤</span></label>
                 <button id="manualMarkClear" type="button" class="compact">清空标记</button>
                 <button id="manualMarkUndoLine" type="button" class="compact">撤销线</button>
@@ -5768,7 +5952,7 @@
         <div id="mobileSolveTitle" class="mobile-solve-title">做题模式</div>
         <div id="mobileSolveInputState" class="mobile-solve-input-state">出数 · 1</div>
       </div>
-      <button id="btnMobileSolveFullscreen" type="button">全屏</button>
+      <button id="btnMobileSolveNewPuzzle" type="button" aria-expanded="false">新题</button>
     </header>
     <div id="mobileSolveBoardHost" class="mobile-solve-board-host"></div>
     <div id="mobileSolveStatus" class="mobile-solve-status" aria-live="polite">等待加载题面。</div>
@@ -5794,6 +5978,7 @@
         <button id="btnMobileSolveInput" type="button">题面输入</button>
         <button id="btnMobileSolveCandidates" type="button" aria-pressed="false">隐藏候选数</button>
         <button id="btnMobileSolveSameDigit" type="button" aria-pressed="true">关闭同数字高亮</button>
+        <button id="btnMobileSolveFullscreen" type="button">全屏</button>
         <button id="btnMobileSolveAnalysis" type="button">分析模式</button>
       </div>
       <div id="mobileSolveMarksDrawerHost" class="mobile-solve-marks-drawer-host" hidden></div>
@@ -5805,6 +5990,31 @@
         </select>
       </label>
     </aside>
+    <div id="mobileSolveNewPuzzleBackdrop" class="mobile-solve-new-puzzle-backdrop" hidden></div>
+    <section id="mobileSolveNewPuzzlePanel" class="mobile-solve-new-puzzle-panel" role="dialog" aria-modal="true" aria-labelledby="mobileSolveNewPuzzleTitle" hidden>
+      <div class="mobile-solve-new-puzzle-header">
+        <strong id="mobileSolveNewPuzzleTitle">生成新题</strong>
+        <button id="btnMobileSolveNewPuzzleClose" type="button">关闭</button>
+      </div>
+      <p id="mobileSolveNewPuzzleHint" class="mobile-solve-new-puzzle-hint">选择难度后生成，生成完成后继续留在做题模式。</p>
+      <p id="mobileSolveNewPuzzleWarning" class="mobile-solve-new-puzzle-warning" hidden>当前作答进度或标记将在生成新题后清除。</p>
+      <fieldset class="mobile-solve-new-puzzle-fieldset">
+        <legend id="mobileSolveNewPuzzleDifficultyLegend">难度</legend>
+        <div id="mobileSolveNewPuzzleOptions" class="mobile-solve-new-puzzle-options" role="radiogroup" aria-labelledby="mobileSolveNewPuzzleDifficultyLegend">
+          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="0" /><span><b id="mobileSolveDifficultyLabel0">随机</b><small>ER 0–12.0</small></span></label>
+          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="1" /><span><b id="mobileSolveDifficultyLabel1">简单</b><small>ER 0–1.5</small></span></label>
+          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="2" /><span><b id="mobileSolveDifficultyLabel2">中等</b><small>ER 1.5–2.8</small></span></label>
+          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="3" /><span><b id="mobileSolveDifficultyLabel3">困难</b><small>ER 2.8–6.0</small></span></label>
+          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="4" /><span><b id="mobileSolveDifficultyLabel4">不公平</b><small>ER 6.0–8.0</small></span></label>
+          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="5" /><span><b id="mobileSolveDifficultyLabel5">极难</b><small>ER 8.0–9.3</small></span></label>
+          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="6" /><span><b id="mobileSolveDifficultyLabel6">疯狂</b><small>ER 9.3–12.0</small></span></label>
+        </div>
+      </fieldset>
+      <div class="mobile-solve-new-puzzle-actions">
+        <button id="btnMobileSolveNewPuzzleCancel" type="button">取消</button>
+        <button id="btnMobileSolveNewPuzzleGenerate" class="mobile-primary" type="button">生成</button>
+      </div>
+    </section>
   </section>
 
 
@@ -5941,6 +6151,6 @@
       })();
     </script>
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=20260624-v598-mobile-solve-refinements-candidate-grid-import-corrected"></script>
+    <script type="module" src="./app.js?v=frontend-20260629-mobile-new-puzzle"></script>
   </body>
 </html>
