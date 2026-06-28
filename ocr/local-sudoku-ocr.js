@@ -43,6 +43,7 @@ let localizerSessionPromise = null;
 let classifierSessionPromise = null;
 let ortRuntimeConfigPromise = null;
 let ortRuntimeModuleUrl = null;
+let ortRuntimeWasmBinary = null;
 
 function requireOrt() {
   const ort = globalThis.ort;
@@ -69,6 +70,7 @@ async function configureOrtRuntime(ort) {
       if (!standaloneWasmBlobUrl) {
         const wasmBytes = getStandaloneAssetBytes("ort-wasm-simd-threaded.wasm");
         if (!wasmBytes) throw new Error("Standalone OCR is missing ort-wasm-simd-threaded.wasm");
+        ortRuntimeWasmBinary = wasmBytes;
         standaloneWasmBlobUrl = URL.createObjectURL(new Blob([wasmBytes], { type: "application/wasm" }));
       }
       wasmUrl = standaloneWasmBlobUrl;
@@ -78,12 +80,22 @@ async function configureOrtRuntime(ort) {
       if (!ortRuntimeModuleUrl) {
         ortRuntimeModuleUrl = mjsUrl;
       }
+      if (!ortRuntimeWasmBinary) {
+        const wasmResponse = await fetch(wasmUrl, { cache: "force-cache" });
+        if (!wasmResponse.ok) {
+          throw new Error(`ONNX Runtime Web wasm load failed: ${wasmResponse.status} ${wasmUrl}`);
+        }
+        ortRuntimeWasmBinary = new Uint8Array(await wasmResponse.arrayBuffer());
+      }
     }
 
     ort.env.wasm.wasmPaths = {
       mjs: ortRuntimeModuleUrl,
       wasm: wasmUrl,
     };
+    if (ortRuntimeWasmBinary) {
+      ort.env.wasm.wasmBinary = ortRuntimeWasmBinary;
+    }
     ort.env.wasm.numThreads = 1;
     ort.env.wasm.proxy = false;
   })();
