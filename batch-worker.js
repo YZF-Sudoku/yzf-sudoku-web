@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-1d98d76d4091f761";
+import createModule from "./sudoku_wasm.js?v=wasm-770ecc2a27703ab1";
 
-const APP_VERSION = "wasm-1d98d76d4091f761";
+const APP_VERSION = "wasm-770ecc2a27703ab1";
 let enginePromise = null;
 let cancelRequested = false;
 
