@@ -629,49 +629,6 @@ function resizeGray(src, sw, sh, dw, dh) {
   return out;
 }
 
-function solveLinearSystem(A, b) {
-  const n = b.length;
-  const M = A.map((row, i) => row.concat([b[i]]));
-  for (let col = 0; col < n; ++col) {
-    let pivot = col;
-    let best = Math.abs(M[col][col]);
-    for (let r = col + 1; r < n; ++r) {
-      const v = Math.abs(M[r][col]);
-      if (v > best) { best = v; pivot = r; }
-    }
-    if (best < 1e-12) throw new Error("Failed to solve the board perspective transform");
-    if (pivot !== col) [M[col], M[pivot]] = [M[pivot], M[col]];
-    const div = M[col][col];
-    for (let c = col; c <= n; ++c) M[col][c] /= div;
-    for (let r = 0; r < n; ++r) {
-      if (r === col) continue;
-      const factor = M[r][col];
-      if (!factor) continue;
-      for (let c = col; c <= n; ++c) M[r][c] -= factor * M[col][c];
-    }
-  }
-  return M.map((row) => row[n]);
-}
-
-function homographyFromPairs(src, dst) {
-  const A = [];
-  const b = [];
-  for (let i = 0; i < 4; ++i) {
-    const x = src[i][0], y = src[i][1];
-    const u = dst[i][0], v = dst[i][1];
-    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]);
-    b.push(u);
-    A.push([0, 0, 0, x, y, 1, -v * x, -v * y]);
-    b.push(v);
-  }
-  const h = solveLinearSystem(A, b);
-  return [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], 1];
-}
-
-function applyHomography(H, x, y) {
-  const den = H[6] * x + H[7] * y + H[8];
-  return [(H[0] * x + H[1] * y + H[2]) / den, (H[3] * x + H[4] * y + H[5]) / den];
-}
 
 function sampleBilinear(src, w, h, x, y) {
   if (x < 0 || y < 0 || x > w - 1 || y > h - 1) return 1;
@@ -983,10 +940,9 @@ function canvasToPreviewDataUrl(canvas, maxSide = 720) {
   return out.toDataURL("image/png");
 }
 
-function buildOcrPreview(canvas, warpedRgba) {
+function buildOcrPreview(warpedRgba) {
   const warpedCanvas = rgbaToCanvas(warpedRgba, BOARD_SIZE, BOARD_SIZE);
   return {
-    originalDataUrl: canvasToPreviewDataUrl(canvas, 720),
     warpedDataUrl: canvasToPreviewDataUrl(warpedCanvas, 720),
   };
 }
@@ -1103,7 +1059,7 @@ export async function recognizeSudokuImageToCoachJson(fileOrBlob, options = {}) 
   const clueCount = [...coachJson.givenDigits].filter((ch) => ch >= "1" && ch <= "9").length;
   const userDigitCount = [...coachJson.userDigits].filter((ch) => ch >= "1" && ch <= "9").length;
   const candidateCells = cells.filter((cell) => cell.candidateMask).length;
-  const preview = options.includePreview === false ? null : buildOcrPreview(canvas, warpedRgba);
+  const preview = options.includePreview === false ? null : buildOcrPreview(warpedRgba);
   return {
     ok: true,
     format: "coach-json",

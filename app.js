@@ -74,18 +74,11 @@ const btnGenerateTraining = document.getElementById("btnGenerateTraining");
 const btnBatchGenerate = document.getElementById("btnBatchGenerate");
 const btnBatchStop = document.getElementById("btnBatchStop");
 const btnLoad = document.getElementById("btnLoad");
-const btnImageOcrPick = document.getElementById("btnImageOcrPick");
-const btnImageOcrCamera = document.getElementById("btnImageOcrCamera");
 const btnImageOcrClipboard = document.getElementById("btnImageOcrClipboard");
 const preferClipboardLoad = document.getElementById("preferClipboardLoad");
 const btnClearSavedSession = document.getElementById("btnClearSavedSession");
 const imageOcrInput = document.getElementById("imageOcrInput");
 const imageOcrCameraInput = document.getElementById("imageOcrCameraInput");
-const imageOcrPreviewPanel = document.getElementById("imageOcrPreviewPanel");
-const imageOcrPreviewSummary = document.getElementById("imageOcrPreviewSummary");
-const imageOcrPreviewOriginal = document.getElementById("imageOcrPreviewOriginal");
-const imageOcrPreviewWarped = document.getElementById("imageOcrPreviewWarped");
-const btnImageOcrPreviewClear = document.getElementById("btnImageOcrPreviewClear");
 
 let localSudokuOcrModulePromise = null;
 let ortScriptPromise = null;
@@ -916,11 +909,6 @@ const uiText = {
     ocrPickImage: "选择图片识别",
     ocrCameraImage: "拍照识别",
     ocrClipboardImage: "从剪贴板识别",
-    ocrPreviewTitle: "识别预览",
-    ocrPreviewHide: "隐藏预览",
-    ocrPreviewOriginal: "原始图片",
-    ocrPreviewWarped: "处理后的 576×576 棋盘",
-    ocrPreviewSummary: "提示数 {clue} 个，出数 {userDigits} 个，候选格 {cand} 个。可对照下方 576×576 处理图在盘面上校正。",
     ocrDraftRoleGiven: "提示",
     ocrDraftRoleSolved: "出数",
     ocrDraftRoleGivenTitle: "OCR 草稿：新输入的大数字将作为提示数；点同一个数字可切换身份或清空。",
@@ -1430,11 +1418,6 @@ const uiText = {
     ocrPickImage: "Recognize image",
     ocrCameraImage: "Take photo",
     ocrClipboardImage: "Recognize clipboard",
-    ocrPreviewTitle: "Recognition preview",
-    ocrPreviewHide: "Hide preview",
-    ocrPreviewOriginal: "Original image",
-    ocrPreviewWarped: "Processed 576×576 board",
-    ocrPreviewSummary: "{clue} givens, {userDigits} solved digits, {cand} candidate cells. Compare with the 576×576 processed board below and correct directly on the grid.",
     ocrDraftRoleGiven: "Clue",
     ocrDraftRoleSolved: "Solved",
     ocrDraftRoleGivenTitle: "OCR draft: newly entered large digits are treated as givens. Tap the same digit to switch role or clear it.",
@@ -1647,7 +1630,6 @@ function ui(key) {
 function uif(key, values = {}) {
   return ui(key).replace(/\{(\w+)\}/g, (_, name) => values[name] ?? "");
 }
-
 
 
 const MANUAL_MARK_CUSTOM_COLORS_KEY = "yzf_manual_mark_custom_colors_v1";
@@ -2266,16 +2248,6 @@ function renderManualMarkOverlay() {
   boardStage.appendChild(svg);
 }
 
-function renderManualMarks() {
-  clearManualChainEndpointHighlights();
-  if (currentSnapshot) {
-    board?.querySelectorAll(".sudoku-cell[data-cell-index]").forEach((cellNode) => {
-      applyManualMarksToCellElement(cellNode, Number(cellNode.dataset.cellIndex || -1));
-    });
-    applyManualChainEndpointHighlights();
-  }
-  renderManualMarkOverlay();
-}
 
 function clearManualMarks() {
   manualMarks.cellColors.clear();
@@ -2420,13 +2392,6 @@ function resetEngineHintCacheToCurrentSnapshot() {
   currentSnapshot = result.state || currentSnapshot;
   currentHint = null;
   return true;
-}
-
-
-function appendManualMarkStatus(extra) {
-  if (!manualMarkStatus || !extra) return;
-  const prefix = manualMarkStatus.textContent ? `${manualMarkStatus.textContent} ` : "";
-  manualMarkStatus.textContent = `${prefix}${extra}`;
 }
 
 
@@ -3055,13 +3020,6 @@ function applyStaticLanguage() {
   setTextById("btnImageOcrPickText", ui("ocrPickImage"));
   setTextById("btnImageOcrCameraText", ui("ocrCameraImage"));
   setTextById("btnImageOcrClipboard", ui("ocrClipboardImage"));
-  setTextById("imageOcrPreviewTitle", ui("ocrPreviewTitle"));
-  setTextById("btnImageOcrPreviewClear", ui("ocrPreviewHide"));
-  setTextById("imageOcrPreviewOriginalCaption", ui("ocrPreviewOriginal"));
-  setTextById("imageOcrPreviewWarpedCaption", ui("ocrPreviewWarped"));
-  if (imageOcrPreviewOriginal) imageOcrPreviewOriginal.alt = ui("ocrPreviewOriginal");
-  if (imageOcrPreviewWarped) imageOcrPreviewWarped.alt = ui("ocrPreviewWarped");
-  refreshOcrPreviewSummaryText();
   document.querySelector(".all-steps-filter")?.setAttribute("aria-label", ui("allStepsFilterAria"));
   if (allStepsFilterText) {
     allStepsFilterText.placeholder = ui("allStepsFilterPlaceholder");
@@ -3441,7 +3399,6 @@ function snapshotToLibraryString(snapshot = currentSnapshot) {
 }
 
 
-
 function snapshotToOriginalPuzzleString(snapshot = currentSnapshot) {
   const givensText = snapshotGivensString(snapshot);
   if (givensText.length !== 81) return "";
@@ -3810,42 +3767,6 @@ function toggleOcrDraftCandidate(index, digit) {
   return true;
 }
 
-function clearOcrPreview() {
-  if (imageOcrPreviewPanel) imageOcrPreviewPanel.classList.add("hidden");
-  if (imageOcrPreviewOriginal) imageOcrPreviewOriginal.removeAttribute("src");
-  if (imageOcrPreviewWarped) imageOcrPreviewWarped.removeAttribute("src");
-  if (imageOcrPreviewSummary) {
-    imageOcrPreviewSummary.textContent = "";
-    delete imageOcrPreviewSummary.dataset.clue;
-    delete imageOcrPreviewSummary.dataset.userDigits;
-    delete imageOcrPreviewSummary.dataset.cand;
-  }
-}
-
-function refreshOcrPreviewSummaryText() {
-  if (!imageOcrPreviewSummary || imageOcrPreviewPanel?.classList.contains("hidden")) return;
-  const clue = Number(imageOcrPreviewSummary.dataset.clue || 0);
-  const userDigits = Number(imageOcrPreviewSummary.dataset.userDigits || 0);
-  const cand = Number(imageOcrPreviewSummary.dataset.cand || 0);
-  imageOcrPreviewSummary.textContent = uif("ocrPreviewSummary", { clue, userDigits, cand });
-}
-
-function showOcrPreview(ocrResult, summary = {}) {
-  const preview = ocrResult?.preview || {};
-  const warpedUrl = preview.warpedDataUrl || preview.warped || "";
-  if (!imageOcrPreviewPanel || !warpedUrl) return;
-  // OCR correction is most useful against the actual 576×576 board sent to recognition.
-  // Keep the original upload out of the preview here so the panel stays large and focused.
-  if (imageOcrPreviewOriginal) imageOcrPreviewOriginal.removeAttribute("src");
-  if (imageOcrPreviewWarped) imageOcrPreviewWarped.src = warpedUrl;
-  if (imageOcrPreviewSummary) {
-    imageOcrPreviewSummary.dataset.clue = String(summary.clueCount ?? ocrResult?.clueCount ?? 0);
-    imageOcrPreviewSummary.dataset.userDigits = String(summary.userDigitCount ?? ocrResult?.userDigitCount ?? 0);
-    imageOcrPreviewSummary.dataset.cand = String(summary.candidateCells ?? ocrResult?.candidateCells ?? 0);
-    refreshOcrPreviewSummaryText();
-  }
-  imageOcrPreviewPanel.classList.remove("hidden");
-}
 
 function evaluateOcrGivenDigitsUniqueness(givenDigits) {
   const text = normalizeCoachDigitString(givenDigits || "");
@@ -3899,7 +3820,6 @@ async function importPuzzleFromOcrResult(coachJson, summary = {}) {
     givensUnique: snapshot.ocrSummary?.givensUnique === true,
     warning: snapshot.ocrSummary?.givensUniqueWarning || "",
   };
-  showOcrPreview(summary, result);
   const attribution = await localSudokuOcrAttributionSafe();
   if (attribution) {
     log(uif("ocrDoneLog", { attribution }));
@@ -4393,12 +4313,6 @@ function cellIndex(row, col) {
   return row * 9 + col;
 }
 
-function boxPositionIndex(box, position) {
-  const boxBaseRow = Math.floor((box - 1) / 3) * 3;
-  const boxBaseCol = ((box - 1) % 3) * 3;
-  const offset = position - 1;
-  return cellIndex(boxBaseRow + Math.floor(offset / 3), boxBaseCol + (offset % 3));
-}
 
 function createSvgElement(tag, attrs = {}) {
   const node = document.createElementNS(SVG_NS, tag);
@@ -6289,7 +6203,6 @@ function buildContinuousLoopClosingEdge(overlaySample, pathNodes, pathEdges) {
 }
 
 
-
 function parseUrGuardianLabelText(raw) {
   const text = String(raw || "");
   const metas = [];
@@ -7705,14 +7618,6 @@ function formatManualChainNodeDetailedWithEdge(node, edge, edges = []) {
   return formatManualChainNodeDetailed(node);
 }
 
-function chainStepTitleLine(step) {
-  const title = String(step?.title || techniqueName(step) || "").trim();
-  const chainType = String(step?.chainType || "").trim();
-  if (title && chainType && title !== chainType) {
-    return `${title} [${chainType}]`;
-  }
-  return title || chainType || "Chain";
-}
 
 function buildManualAdvancedChainTexts(stepResult) {
   const rawDescriptionChainText = extractStepDescriptionChainText(stepResult);
@@ -10244,16 +10149,6 @@ function getBatchWorker() {
   return batchWorker;
 }
 
-function terminateBatchWorker() {
-  if (batchWorker) {
-    batchWorker.terminate();
-    batchWorker = null;
-  }
-  if (batchWorkerActiveReject) {
-    batchWorkerActiveReject(new Error(ui("batchCancelled")));
-    batchWorkerActiveReject = null;
-  }
-}
 
 function runBatchTaskInWorker(config, handlers) {
   const worker = getBatchWorker();
@@ -12810,14 +12705,6 @@ async function importPuzzleFromCurrentInput(options = {}) {
 }
 
 
-
-function clearStoredOcrPreviewUrl() {
-  for (const url of lastOcrImagePreviewUrls) {
-    try { URL.revokeObjectURL(url); } catch (_) {}
-  }
-  lastOcrImagePreviewUrls = [];
-}
-
 async function importCoachJsonFromLocalOcr(coachJson, summary = {}) {
   return importPuzzleFromOcrResult(coachJson, summary);
 }
@@ -13391,7 +13278,7 @@ async function openOcrCorrection(ocr) {
     ocr,
     cells,
     originalCells: ocrCorrectionCloneCells(cells),
-    previewUrl: preview.warpedDataUrl || preview.warped || preview.originalDataUrl || preview.original || "",
+    previewUrl: preview.warpedDataUrl || preview.warped || "",
   };
   ocrCorrectionSelectedIndex = 0;
   ocrCorrectionMode = "given";
@@ -13440,7 +13327,6 @@ async function recognizeAndImportImageFile(file) {
   }
   try {
     ocrResourceProgressActive = true;
-    clearOcrPreview();
     setStatus(ui("ocrRecognizingLocal"));
     const { recognizeSudokuImageToCoachJson } = await loadLocalSudokuOcrModule();
     const ocr = await recognizeSudokuImageToCoachJson(file);
@@ -13461,7 +13347,6 @@ async function recognizeAndImportImageFile(file) {
   }
 }
 
-btnImageOcrPreviewClear?.addEventListener("click", clearOcrPreview);
 
 btnLoad.addEventListener("click", async () => {
   await importPuzzleFromCurrentInput({
