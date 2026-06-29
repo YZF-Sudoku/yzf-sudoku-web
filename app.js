@@ -4,6 +4,7 @@ const APP_VERSION = "wasm-2371e7c5b4a00756";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const OCR_ASSET_VERSION = "20260629-pages-resume-v6";
+const OCR_CORRECTION_UI_VERSION = "20260629-ocr-correction-v7.1-gridfix";
 
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
 const COACH_BASE32_REVERSE = new Map([...COACH_BASE32_CHARS].map((ch, index) => [ch, index]));
@@ -330,6 +331,12 @@ let mobileSolveCandidatesVisible = true;
 let mobileSolveSameDigitHighlight = true;
 let mobileSolveNewPuzzleOpen = false;
 let mobileSolvePuzzleBaselineSignature = "";
+let ocrCorrectionState = null;
+let ocrCorrectionRoot = null;
+let ocrCorrectionSelectedIndex = 0;
+let ocrCorrectionMode = "given";
+let ocrCorrectionHistory = [];
+let ocrCorrectionHistoryIndex = -1;
 let ocrDraftValueRole = "given";
 let techniqueState = [];
 let whipMemoryMode = "auto";
@@ -12855,6 +12862,575 @@ window.addEventListener("yzf-ocr-resource-progress", (event) => {
   }
 });
 
+
+function ocrCorrectionLanguage() {
+  return String(lang?.value || "zh").toLowerCase().startsWith("en") ? "en" : "zh";
+}
+
+function ocrCorrectionText(key) {
+  const dict = {
+    zh: {
+      title: "OCR 对照校正",
+      subtitle: "左侧对照识别图片，右侧直接修改识别结果。点图片或盘面可同步选格。",
+      source: "识别图片",
+      board: "校正盘面",
+      selected: "当前格",
+      given: "提示数",
+      solved: "出数",
+      candidate: "候选数",
+      clear: "清空",
+      previous: "上一格",
+      next: "下一格",
+      undo: "撤销",
+      redo: "重做",
+      reset: "恢复识别结果",
+      fullscreen: "全屏校正",
+      exitFullscreen: "退出全屏",
+      cancel: "取消",
+      confirm: "确认并导入",
+      clueCount: "提示数 {clue}",
+      solvedCount: "出数 {solved}",
+      candidateCount: "候选格 {candidate}",
+      empty: "空格",
+      candidateHint: "候选模式下，数字键用于添加或删除候选数。",
+      valueHint: "提示数和出数模式下，点击数字直接替换当前格。",
+      closeConfirm: "放弃本次 OCR 校正结果？",
+      noPreview: "没有可显示的识别图片",
+    },
+    en: {
+      title: "OCR Review & Correction",
+      subtitle: "Compare the recognized image on the left and edit the grid on the right. Tapping either side selects the same cell.",
+      source: "Recognized image",
+      board: "Correction grid",
+      selected: "Selected cell",
+      given: "Given",
+      solved: "Solved digit",
+      candidate: "Candidates",
+      clear: "Clear",
+      previous: "Previous",
+      next: "Next",
+      undo: "Undo",
+      redo: "Redo",
+      reset: "Reset OCR result",
+      fullscreen: "Fullscreen review",
+      exitFullscreen: "Exit fullscreen",
+      cancel: "Cancel",
+      confirm: "Confirm & import",
+      clueCount: "Givens {clue}",
+      solvedCount: "Solved {solved}",
+      candidateCount: "Candidate cells {candidate}",
+      empty: "Empty",
+      candidateHint: "In candidate mode, number keys toggle candidates.",
+      valueHint: "In Given or Solved mode, a number replaces the selected cell.",
+      closeConfirm: "Discard this OCR correction?",
+      noPreview: "No recognized image is available",
+    },
+  };
+  return dict[ocrCorrectionLanguage()]?.[key] || dict.zh[key] || key;
+}
+
+function ocrCorrectionIsActive() {
+  return Boolean(ocrCorrectionState && ocrCorrectionRoot?.isConnected);
+}
+
+function ocrCorrectionCloneCells(cells) {
+  return (cells || []).map((cell, index) => ({
+    index,
+    value: Number(cell?.value || 0),
+    role: cell?.role === "given" || cell?.role === "solved" ? cell.role : "candidate",
+    candidateMask: Number(cell?.candidateMask || 0) & 0x3fe,
+    originalConfidence: Number.isFinite(Number(cell?.originalConfidence)) ? Number(cell.originalConfidence) : null,
+  }));
+}
+
+function ocrCorrectionCellsFromResult(ocr) {
+  const resultCells = Array.isArray(ocr?.cells) ? ocr.cells : [];
+  if (resultCells.length === 81) {
+    return resultCells.map((cell, index) => {
+      const rawValue = String(cell?.value ?? ".");
+      const value = /^[1-9]$/.test(rawValue) ? Number(rawValue) : Number(cell?.value || 0);
+      return {
+        index,
+        value: value >= 1 && value <= 9 ? value : 0,
+        role: value >= 1 && value <= 9 ? (cell?.isGiven ? "given" : "solved") : "candidate",
+        candidateMask: value >= 1 && value <= 9 ? 0 : (Number(cell?.candidateMask || 0) & 0x3fe),
+        originalConfidence: Number.isFinite(Number(cell?.confidence)) ? Number(cell.confidence) : null,
+      };
+    });
+  }
+
+  const given = normalizeCoachDigitString(ocr?.coachJson?.givenDigits || "");
+  const solved = normalizeCoachDigitString(ocr?.coachJson?.userDigits || "");
+  const masks = parseCoachCandidateMasks(ocr?.coachJson?.userCellCandidates || "");
+  return Array.from({ length: 81 }, (_, index) => {
+    const g = given[index] || ".";
+    const u = solved[index] || ".";
+    const value = g >= "1" && g <= "9" ? Number(g) : (u >= "1" && u <= "9" ? Number(u) : 0);
+    return {
+      index,
+      value,
+      role: value ? (g >= "1" && g <= "9" ? "given" : "solved") : "candidate",
+      candidateMask: value ? 0 : (Number(masks[index] || 0) & 0x3fe),
+      originalConfidence: null,
+    };
+  });
+}
+
+function ocrCorrectionCoachJson() {
+  let givenDigits = "";
+  let userDigits = "";
+  const masks = [];
+  for (const cell of ocrCorrectionState?.cells || []) {
+    if (cell.value >= 1 && cell.value <= 9 && cell.role === "given") {
+      givenDigits += String(cell.value);
+      userDigits += ".";
+      masks.push("0");
+    } else if (cell.value >= 1 && cell.value <= 9 && cell.role === "solved") {
+      givenDigits += ".";
+      userDigits += String(cell.value);
+      masks.push("0");
+    } else {
+      givenDigits += ".";
+      userDigits += ".";
+      masks.push(String(Number(cell.candidateMask || 0) & 0x3fe));
+    }
+  }
+  return { givenDigits, userDigits, userCellCandidates: masks.join("-") };
+}
+
+function ocrCorrectionCounts() {
+  let clue = 0;
+  let solved = 0;
+  let candidate = 0;
+  for (const cell of ocrCorrectionState?.cells || []) {
+    if (cell.value && cell.role === "given") clue += 1;
+    else if (cell.value && cell.role === "solved") solved += 1;
+    else if (cell.candidateMask) candidate += 1;
+  }
+  return { clue, solved, candidate };
+}
+
+function ocrCorrectionPushHistory() {
+  if (!ocrCorrectionState) return;
+  const snapshot = ocrCorrectionCloneCells(ocrCorrectionState.cells);
+  ocrCorrectionHistory = ocrCorrectionHistory.slice(0, ocrCorrectionHistoryIndex + 1);
+  ocrCorrectionHistory.push(snapshot);
+  if (ocrCorrectionHistory.length > 100) ocrCorrectionHistory.shift();
+  ocrCorrectionHistoryIndex = ocrCorrectionHistory.length - 1;
+}
+
+function ocrCorrectionRestoreHistory(index) {
+  if (!ocrCorrectionState || index < 0 || index >= ocrCorrectionHistory.length) return;
+  ocrCorrectionHistoryIndex = index;
+  ocrCorrectionState.cells = ocrCorrectionCloneCells(ocrCorrectionHistory[index]);
+  renderOcrCorrection();
+}
+
+function ocrCorrectionCellLabel(cell, index) {
+  const row = Math.floor(index / 9) + 1;
+  const col = index % 9 + 1;
+  if (cell.value) {
+    const role = ocrCorrectionText(cell.role === "given" ? "given" : "solved");
+    return `r${row}c${col}: ${cell.value}, ${role}`;
+  }
+  const candidates = [];
+  for (let digit = 1; digit <= 9; digit += 1) {
+    if (cell.candidateMask & (1 << digit)) candidates.push(digit);
+  }
+  return `r${row}c${col}: ${candidates.length ? candidates.join(",") : ocrCorrectionText("empty")}`;
+}
+
+function ensureOcrCorrectionUi() {
+  if (ocrCorrectionRoot?.isConnected) return ocrCorrectionRoot;
+  const root = document.createElement("section");
+  root.id = "ocrCorrectionRoot";
+  root.className = "ocr-correction-root";
+  root.hidden = true;
+  root.innerHTML = `
+    <style>
+      body.ocr-correction-mode { overflow: hidden !important; }
+      .ocr-correction-root[hidden] { display: none !important; }
+      .ocr-correction-root { position: fixed; inset: 0; z-index: 2147483000; display: grid; grid-template-rows: auto minmax(0,1fr); background: #eef3f9; color: #172234; font-family: system-ui,-apple-system,"Segoe UI",sans-serif; }
+      .ocr-correction-root, .ocr-correction-root * { box-sizing: border-box; }
+      .ocr-correction-header { display:flex; align-items:center; gap:10px; min-height:52px; padding:8px 12px; border-bottom:1px solid #c9d4e2; background:#fff; box-shadow:0 2px 10px rgba(29,48,75,.08); }
+      .ocr-correction-title-wrap { min-width:0; flex:1; }
+      .ocr-correction-title { font-size:17px; font-weight:750; }
+      .ocr-correction-subtitle { margin-top:2px; color:#62718a; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .ocr-correction-header-actions { display:flex; gap:6px; }
+      .ocr-correction-root button { min-height:36px; margin:0 !important; border:1px solid #aebbd0; border-radius:9px; padding:6px 10px; background:#fff; color:#172234; font:inherit; cursor:pointer; touch-action:manipulation; box-sizing:border-box; }
+      .ocr-correction-root button:active { transform:translateY(1px); }
+      .ocr-correction-root button.primary { border-color:#245dc1; background:#2868d5; color:#fff; font-weight:700; }
+      .ocr-correction-root button.danger-lite { color:#8b2635; }
+      .ocr-correction-workspace { min-height:0; display:grid; grid-template-columns:minmax(260px,1fr) minmax(300px,1fr) minmax(210px,.7fr); gap:10px; padding:10px; overflow:hidden; }
+      .ocr-correction-card { min-width:0; min-height:0; display:flex; flex-direction:column; border:1px solid #c9d4e2; border-radius:13px; background:#fff; box-shadow:0 5px 18px rgba(29,48,75,.08); overflow:hidden; }
+      .ocr-correction-card-title { flex:0 0 auto; padding:8px 10px; border-bottom:1px solid #dde4ee; font-size:13px; font-weight:700; }
+      .ocr-correction-image-body, .ocr-correction-board-body { min-height:0; flex:1; display:grid; place-items:center; padding:8px; overflow:auto; }
+      .ocr-correction-image-stage { position:relative; width:min(100%, calc(100dvh - 154px)); aspect-ratio:1; background:#f4f6f9; border:2px solid #263c5e; }
+      .ocr-correction-image-stage img { display:block; width:100%; height:100%; object-fit:contain; }
+      .ocr-correction-image-grid { position:absolute; inset:0; display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); grid-template-rows:repeat(9,minmax(0,1fr)); overflow:hidden; }
+      .ocr-correction-image-cell { width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; max-width:none !important; max-height:none !important; margin:0 !important; padding:0 !important; border:0 !important; border-right:1px solid rgba(31,53,84,.25) !important; border-bottom:1px solid rgba(31,53,84,.25) !important; border-radius:0 !important; background:transparent !important; align-self:stretch !important; justify-self:stretch !important; appearance:none; -webkit-appearance:none; transform:none !important; }
+      .ocr-correction-image-cell:nth-child(9n+3), .ocr-correction-image-cell:nth-child(9n+6) { border-right-width:2px !important; border-right-color:rgba(12,31,59,.65) !important; }
+      .ocr-correction-image-cell:nth-child(n+19):nth-child(-n+27), .ocr-correction-image-cell:nth-child(n+46):nth-child(-n+54) { border-bottom-width:2px !important; border-bottom-color:rgba(12,31,59,.65) !important; }
+      .ocr-correction-image-cell.selected { outline:3px solid #ff9d00; outline-offset:-3px; background:rgba(255,190,43,.18) !important; }
+      .ocr-correction-board { width:min(100%, calc(100dvh - 154px)); aspect-ratio:1; display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); grid-template-rows:repeat(9,minmax(0,1fr)); grid-auto-flow:row; border:3px solid #1c2c45; background:#fff; overflow:hidden; contain:layout paint; }
+      .ocr-correction-cell { position:relative; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; max-width:none !important; max-height:none !important; margin:0 !important; padding:0 !important; border:0 !important; border-right:1px solid #8b99ac !important; border-bottom:1px solid #8b99ac !important; border-radius:0 !important; display:grid; place-items:center; align-self:stretch !important; justify-self:stretch !important; background:#fff !important; overflow:hidden; appearance:none; -webkit-appearance:none; transform:none !important; }
+      .ocr-correction-cell:nth-child(9n+3), .ocr-correction-cell:nth-child(9n+6) { border-right:3px solid #1c2c45 !important; }
+      .ocr-correction-cell:nth-child(n+19):nth-child(-n+27), .ocr-correction-cell:nth-child(n+46):nth-child(-n+54) { border-bottom:3px solid #1c2c45 !important; }
+      .ocr-correction-cell.selected { outline:3px solid #ff9d00; outline-offset:-3px; z-index:2; }
+      .ocr-correction-cell .ocr-value { font-size:clamp(16px,4.2vmin,34px); line-height:1; font-weight:700; }
+      .ocr-correction-cell.ocr-role-given .ocr-value { color:#111; }
+      .ocr-correction-cell.ocr-role-solved .ocr-value { color:#1f67c9; }
+      .ocr-correction-candidates { position:absolute; inset:2px; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); font-size:clamp(6px,1.35vmin,11px); color:#40516b; line-height:1; }
+      .ocr-correction-candidates span { display:grid; place-items:center; }
+      .ocr-correction-controls { min-height:0; overflow:auto; padding:10px; gap:9px; }
+      .ocr-correction-selected { padding:8px 9px; border-radius:9px; background:#eef4ff; color:#244979; font-weight:700; }
+      .ocr-correction-zoom { width:100%; aspect-ratio:2.5/1; min-height:76px; border:1px solid #b8c5d6; border-radius:9px; background-color:#f4f6f9; background-repeat:no-repeat; image-rendering:auto; }
+      .ocr-correction-mode-row { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
+      .ocr-correction-mode-row button.active { border-color:#245dc1; background:#dce9ff; color:#174b9e; font-weight:700; }
+      .ocr-correction-keypad { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+      .ocr-correction-keypad button { min-height:46px; font-size:20px; font-weight:700; }
+      .ocr-correction-nav, .ocr-correction-edit-actions { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; }
+      .ocr-correction-summary { display:flex; flex-wrap:wrap; gap:5px; color:#5b6a80; font-size:12px; }
+      .ocr-correction-summary span { padding:4px 7px; border-radius:99px; background:#eef2f7; }
+      .ocr-correction-hint { color:#65758c; font-size:12px; line-height:1.4; }
+      @media (orientation: landscape) and (max-height: 800px) {
+        .ocr-correction-header { min-height:44px; padding:5px 8px; }
+        .ocr-correction-subtitle { display:none; }
+        .ocr-correction-workspace { grid-template-columns:minmax(230px,34vw) minmax(250px,38vw) minmax(180px,1fr); gap:6px; padding:6px; }
+        .ocr-correction-card-title { padding:5px 8px; }
+        .ocr-correction-image-body, .ocr-correction-board-body { padding:4px; }
+        .ocr-correction-image-stage, .ocr-correction-board { width:min(100%, calc(100dvh - 98px)); }
+        .ocr-correction-controls { padding:6px; gap:5px; }
+        .ocr-correction-zoom { min-height:54px; }
+        .ocr-correction-keypad { grid-template-columns:repeat(5,1fr); gap:4px; }
+        .ocr-correction-keypad button { min-height:34px; padding:3px; font-size:16px; }
+        .ocr-correction-root button { min-height:32px; padding:4px 7px; font-size:12px; }
+      }
+      @media (orientation: portrait), (max-width: 700px) {
+        .ocr-correction-header { padding:6px; }
+        .ocr-correction-subtitle { display:none; }
+        .ocr-correction-header-actions .ocr-correction-fullscreen { display:none; }
+        .ocr-correction-workspace { display:block; overflow:auto; padding:6px; }
+        .ocr-correction-card { min-height:auto; margin-bottom:8px; }
+        .ocr-correction-image-body, .ocr-correction-board-body { flex:none; overflow:visible; height:min(94vw,430px); min-height:min(94vw,430px); }
+        .ocr-correction-image-stage, .ocr-correction-board { width:min(94vw,430px); }
+        .ocr-correction-controls { overflow:visible; }
+        .ocr-correction-zoom { max-height:130px; }
+        .ocr-correction-keypad { grid-template-columns:repeat(5,1fr); }
+        .ocr-correction-keypad button { min-height:42px; }
+      }
+    </style>
+    <header class="ocr-correction-header">
+      <div class="ocr-correction-title-wrap">
+        <div class="ocr-correction-title"></div>
+        <div class="ocr-correction-subtitle"></div>
+      </div>
+      <div class="ocr-correction-header-actions">
+        <button type="button" class="ocr-correction-fullscreen"></button>
+        <button type="button" class="ocr-correction-cancel danger-lite"></button>
+        <button type="button" class="ocr-correction-confirm primary"></button>
+      </div>
+    </header>
+    <div class="ocr-correction-workspace">
+      <section class="ocr-correction-card ocr-correction-image-card">
+        <div class="ocr-correction-card-title ocr-correction-source-title"></div>
+        <div class="ocr-correction-image-body">
+          <div class="ocr-correction-image-stage">
+            <img class="ocr-correction-source-image" alt="OCR recognized Sudoku" />
+            <div class="ocr-correction-image-grid"></div>
+          </div>
+        </div>
+      </section>
+      <section class="ocr-correction-card ocr-correction-board-card">
+        <div class="ocr-correction-card-title ocr-correction-board-title"></div>
+        <div class="ocr-correction-board-body"><div class="ocr-correction-board"></div></div>
+      </section>
+      <aside class="ocr-correction-card ocr-correction-controls">
+        <div class="ocr-correction-selected"></div>
+        <div class="ocr-correction-zoom"></div>
+        <div class="ocr-correction-summary"></div>
+        <div class="ocr-correction-mode-row">
+          <button type="button" data-mode="given"></button>
+          <button type="button" data-mode="solved"></button>
+          <button type="button" data-mode="candidate"></button>
+        </div>
+        <div class="ocr-correction-hint"></div>
+        <div class="ocr-correction-keypad"></div>
+        <div class="ocr-correction-nav">
+          <button type="button" class="ocr-correction-previous"></button>
+          <button type="button" class="ocr-correction-next"></button>
+        </div>
+        <div class="ocr-correction-edit-actions">
+          <button type="button" class="ocr-correction-clear"></button>
+          <button type="button" class="ocr-correction-reset"></button>
+          <button type="button" class="ocr-correction-undo"></button>
+          <button type="button" class="ocr-correction-redo"></button>
+        </div>
+      </aside>
+    </div>`;
+  root.dataset.version = OCR_CORRECTION_UI_VERSION;
+  document.body.appendChild(root);
+  ocrCorrectionRoot = root;
+
+  const imageGrid = root.querySelector(".ocr-correction-image-grid");
+  const boardGrid = root.querySelector(".ocr-correction-board");
+  for (let index = 0; index < 81; index += 1) {
+    const imageCell = document.createElement("button");
+    imageCell.type = "button";
+    imageCell.className = "ocr-correction-image-cell";
+    imageCell.dataset.index = String(index);
+    imageGrid.appendChild(imageCell);
+
+    const boardCell = document.createElement("button");
+    boardCell.type = "button";
+    boardCell.className = "ocr-correction-cell";
+    boardCell.dataset.index = String(index);
+    boardGrid.appendChild(boardCell);
+  }
+
+  const keypad = root.querySelector(".ocr-correction-keypad");
+  for (let digit = 1; digit <= 9; digit += 1) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.digit = String(digit);
+    button.textContent = String(digit);
+    keypad.appendChild(button);
+  }
+
+  root.addEventListener("click", async (event) => {
+    const target = event.target instanceof Element ? event.target.closest("button") : null;
+    if (!target) return;
+    if (target.matches(".ocr-correction-image-cell,.ocr-correction-cell")) {
+      selectOcrCorrectionCell(Number(target.dataset.index || 0));
+      return;
+    }
+    if (target.dataset.mode) {
+      ocrCorrectionMode = target.dataset.mode;
+      renderOcrCorrection();
+      return;
+    }
+    if (target.dataset.digit) {
+      editOcrCorrectionCell(Number(target.dataset.digit));
+      return;
+    }
+    if (target.matches(".ocr-correction-clear")) { clearOcrCorrectionCell(); return; }
+    if (target.matches(".ocr-correction-previous")) { selectOcrCorrectionCell(ocrCorrectionSelectedIndex - 1); return; }
+    if (target.matches(".ocr-correction-next")) { selectOcrCorrectionCell(ocrCorrectionSelectedIndex + 1); return; }
+    if (target.matches(".ocr-correction-undo")) { ocrCorrectionRestoreHistory(ocrCorrectionHistoryIndex - 1); return; }
+    if (target.matches(".ocr-correction-redo")) { ocrCorrectionRestoreHistory(ocrCorrectionHistoryIndex + 1); return; }
+    if (target.matches(".ocr-correction-reset")) {
+      ocrCorrectionState.cells = ocrCorrectionCloneCells(ocrCorrectionState.originalCells);
+      ocrCorrectionPushHistory();
+      renderOcrCorrection();
+      return;
+    }
+    if (target.matches(".ocr-correction-fullscreen")) { await toggleFullscreen(); return; }
+    if (target.matches(".ocr-correction-cancel")) { closeOcrCorrection(true); return; }
+    if (target.matches(".ocr-correction-confirm")) { await confirmOcrCorrection(); }
+  });
+
+  root.addEventListener("keydown", (event) => {
+    if (!ocrCorrectionIsActive()) return;
+    if (/^[1-9]$/.test(event.key)) {
+      event.preventDefault();
+      editOcrCorrectionCell(Number(event.key));
+    } else if (event.key === "Backspace" || event.key === "Delete" || event.key === "0") {
+      event.preventDefault();
+      clearOcrCorrectionCell();
+    } else if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      selectOcrCorrectionCell(ocrCorrectionSelectedIndex - 1);
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      selectOcrCorrectionCell(ocrCorrectionSelectedIndex + 1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      selectOcrCorrectionCell(ocrCorrectionSelectedIndex - 9);
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      selectOcrCorrectionCell(ocrCorrectionSelectedIndex + 9);
+    } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+      event.preventDefault();
+      ocrCorrectionRestoreHistory(ocrCorrectionHistoryIndex + (event.shiftKey ? 1 : -1));
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      closeOcrCorrection(true);
+    }
+  });
+  return root;
+}
+
+function selectOcrCorrectionCell(index) {
+  ocrCorrectionSelectedIndex = Math.max(0, Math.min(80, Number(index) || 0));
+  renderOcrCorrection();
+  const button = ocrCorrectionRoot?.querySelector(`.ocr-correction-cell[data-index="${ocrCorrectionSelectedIndex}"]`);
+  button?.focus?.({ preventScroll: true });
+}
+
+function editOcrCorrectionCell(digit) {
+  const cell = ocrCorrectionState?.cells?.[ocrCorrectionSelectedIndex];
+  if (!cell || digit < 1 || digit > 9) return;
+  if (ocrCorrectionMode === "candidate") {
+    cell.value = 0;
+    cell.role = "candidate";
+    cell.candidateMask ^= (1 << digit);
+  } else {
+    const same = cell.value === digit && cell.role === ocrCorrectionMode;
+    cell.value = same ? 0 : digit;
+    cell.role = same ? "candidate" : ocrCorrectionMode;
+    cell.candidateMask = 0;
+  }
+  ocrCorrectionPushHistory();
+  renderOcrCorrection();
+}
+
+function clearOcrCorrectionCell() {
+  const cell = ocrCorrectionState?.cells?.[ocrCorrectionSelectedIndex];
+  if (!cell) return;
+  cell.value = 0;
+  cell.role = "candidate";
+  cell.candidateMask = 0;
+  ocrCorrectionPushHistory();
+  renderOcrCorrection();
+}
+
+function renderOcrCorrection() {
+  const root = ensureOcrCorrectionUi();
+  if (!ocrCorrectionState || root.hidden) return;
+  root.querySelector(".ocr-correction-title").textContent = ocrCorrectionText("title");
+  root.querySelector(".ocr-correction-subtitle").textContent = ocrCorrectionText("subtitle");
+  root.querySelector(".ocr-correction-source-title").textContent = ocrCorrectionText("source");
+  root.querySelector(".ocr-correction-board-title").textContent = ocrCorrectionText("board");
+  root.querySelector(".ocr-correction-cancel").textContent = ocrCorrectionText("cancel");
+  root.querySelector(".ocr-correction-confirm").textContent = ocrCorrectionText("confirm");
+  root.querySelector(".ocr-correction-fullscreen").textContent = ocrCorrectionText(isFullscreen() ? "exitFullscreen" : "fullscreen");
+  root.querySelector(".ocr-correction-previous").textContent = ocrCorrectionText("previous");
+  root.querySelector(".ocr-correction-next").textContent = ocrCorrectionText("next");
+  root.querySelector(".ocr-correction-clear").textContent = ocrCorrectionText("clear");
+  root.querySelector(".ocr-correction-reset").textContent = ocrCorrectionText("reset");
+  root.querySelector(".ocr-correction-undo").textContent = ocrCorrectionText("undo");
+  root.querySelector(".ocr-correction-redo").textContent = ocrCorrectionText("redo");
+  root.querySelector(".ocr-correction-undo").disabled = ocrCorrectionHistoryIndex <= 0;
+  root.querySelector(".ocr-correction-redo").disabled = ocrCorrectionHistoryIndex >= ocrCorrectionHistory.length - 1;
+
+  for (const button of root.querySelectorAll(".ocr-correction-mode-row button")) {
+    const mode = button.dataset.mode;
+    button.textContent = ocrCorrectionText(mode);
+    button.classList.toggle("active", mode === ocrCorrectionMode);
+    button.setAttribute("aria-pressed", mode === ocrCorrectionMode ? "true" : "false");
+  }
+  root.querySelector(".ocr-correction-hint").textContent = ocrCorrectionText(ocrCorrectionMode === "candidate" ? "candidateHint" : "valueHint");
+
+  const source = root.querySelector(".ocr-correction-source-image");
+  if (ocrCorrectionState.previewUrl) {
+    source.src = ocrCorrectionState.previewUrl;
+    source.hidden = false;
+  } else {
+    source.removeAttribute("src");
+    source.hidden = true;
+  }
+
+  const selected = ocrCorrectionState.cells[ocrCorrectionSelectedIndex];
+  const row = Math.floor(ocrCorrectionSelectedIndex / 9);
+  const col = ocrCorrectionSelectedIndex % 9;
+  const selectedDescription = ocrCorrectionCellLabel(selected, ocrCorrectionSelectedIndex).replace(/^r\d+c\d+:\s*/, "");
+  root.querySelector(".ocr-correction-selected").textContent = `${ocrCorrectionText("selected")}: r${row + 1}c${col + 1} · ${selectedDescription}`;
+  const zoom = root.querySelector(".ocr-correction-zoom");
+  if (ocrCorrectionState.previewUrl) {
+    zoom.style.backgroundImage = `url("${ocrCorrectionState.previewUrl}")`;
+    zoom.style.backgroundSize = "900% 900%";
+    zoom.style.backgroundPosition = `${col * 12.5}% ${row * 12.5}%`;
+  } else {
+    zoom.style.backgroundImage = "none";
+  }
+
+  const counts = ocrCorrectionCounts();
+  const summary = root.querySelector(".ocr-correction-summary");
+  summary.innerHTML = "";
+  for (const [key, value] of [["clueCount", counts.clue], ["solvedCount", counts.solved], ["candidateCount", counts.candidate]]) {
+    const chip = document.createElement("span");
+    chip.textContent = ocrCorrectionText(key).replace(`{${key === "clueCount" ? "clue" : key === "solvedCount" ? "solved" : "candidate"}}`, String(value));
+    summary.appendChild(chip);
+  }
+
+  const boardButtons = root.querySelectorAll(".ocr-correction-cell");
+  const imageButtons = root.querySelectorAll(".ocr-correction-image-cell");
+  ocrCorrectionState.cells.forEach((cell, index) => {
+    const button = boardButtons[index];
+    const roleClass = cell.value ? `ocr-role-${cell.role}` : "ocr-role-candidate";
+    button.className = `ocr-correction-cell ${roleClass}${index === ocrCorrectionSelectedIndex ? " selected" : ""}`;
+    button.setAttribute("aria-label", ocrCorrectionCellLabel(cell, index));
+    button.innerHTML = "";
+    if (cell.value) {
+      const value = document.createElement("span");
+      value.className = "ocr-value";
+      value.textContent = String(cell.value);
+      button.appendChild(value);
+    } else if (cell.candidateMask) {
+      const grid = document.createElement("span");
+      grid.className = "ocr-correction-candidates";
+      for (let digit = 1; digit <= 9; digit += 1) {
+        const slot = document.createElement("span");
+        slot.textContent = cell.candidateMask & (1 << digit) ? String(digit) : "";
+        grid.appendChild(slot);
+      }
+      button.appendChild(grid);
+    }
+    imageButtons[index].classList.toggle("selected", index === ocrCorrectionSelectedIndex);
+    imageButtons[index].setAttribute("aria-label", ocrCorrectionCellLabel(cell, index));
+  });
+}
+
+async function openOcrCorrection(ocr) {
+  if (!ocr?.coachJson) throw new Error(ui("ocrNoCoachJson"));
+  if (mobileSolveActive) await exitMobileSolveMode({ exitFullscreen: false });
+  const root = ensureOcrCorrectionUi();
+  const preview = ocr.preview || {};
+  const cells = ocrCorrectionCellsFromResult(ocr);
+  ocrCorrectionState = {
+    ocr,
+    cells,
+    originalCells: ocrCorrectionCloneCells(cells),
+    previewUrl: preview.warpedDataUrl || preview.warped || preview.originalDataUrl || preview.original || "",
+  };
+  ocrCorrectionSelectedIndex = 0;
+  ocrCorrectionMode = "given";
+  ocrCorrectionHistory = [];
+  ocrCorrectionHistoryIndex = -1;
+  ocrCorrectionPushHistory();
+  root.hidden = false;
+  document.body.classList.add("ocr-correction-mode");
+  renderOcrCorrection();
+  root.querySelector(".ocr-correction-cell")?.focus?.({ preventScroll: true });
+  return { ok: true, correction: true };
+}
+
+function closeOcrCorrection(confirmDiscard = false) {
+  if (!ocrCorrectionIsActive()) return true;
+  if (confirmDiscard && ocrCorrectionHistoryIndex > 0 && !window.confirm(ocrCorrectionText("closeConfirm"))) return false;
+  ocrCorrectionRoot.hidden = true;
+  document.body.classList.remove("ocr-correction-mode");
+  ocrCorrectionState = null;
+  ocrCorrectionHistory = [];
+  ocrCorrectionHistoryIndex = -1;
+  return true;
+}
+
+async function confirmOcrCorrection() {
+  if (!ocrCorrectionState) return;
+  const coachJson = ocrCorrectionCoachJson();
+  const counts = ocrCorrectionCounts();
+  const originalOcr = ocrCorrectionState.ocr;
+  closeOcrCorrection(false);
+  return importCoachJsonFromLocalOcr(coachJson, {
+    ...originalOcr,
+    coachJson,
+    clueCount: counts.clue,
+    userDigitCount: counts.solved,
+    candidateCells: counts.candidate,
+  });
+}
+
 async function recognizeAndImportImageFile(file) {
   if (!file) return { ok: false, error: ui("ocrNoImageSelected") };
   if (!file.type?.startsWith?.("image/")) {
@@ -12869,7 +13445,7 @@ async function recognizeAndImportImageFile(file) {
     const { recognizeSudokuImageToCoachJson } = await loadLocalSudokuOcrModule();
     const ocr = await recognizeSudokuImageToCoachJson(file);
     if (!ocr?.coachJson) throw new Error(ui("ocrNoCoachJson"));
-    return await importCoachJsonFromLocalOcr(ocr.coachJson, ocr);
+    return await openOcrCorrection(ocr);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (isLocalSudokuOcrRuntimeLoadError(error)) {
@@ -13949,6 +14525,7 @@ function setMobileSolveDrawer(open, options = {}) {
 }
 
 function enterMobileSolveMode() {
+  if (ocrCorrectionIsActive()) return false;
   if (!mobileSolveShell || !boardStage || !numpad) return false;
   if (mobileSolveActive) {
     scheduleMobileSolveLayout();
@@ -14159,6 +14736,7 @@ function updateFullscreenButton() {
   const label = isFullscreen() ? ui("exitFullscreen") : ui("fullscreen");
   if (btnFullscreen) setActionButtonLabel(btnFullscreen, label);
   if (btnMobileSolveFullscreen) setButtonText(btnMobileSolveFullscreen, label);
+  if (ocrCorrectionIsActive()) renderOcrCorrection();
 }
 
 async function toggleFullscreen() {
@@ -14166,7 +14744,9 @@ async function toggleFullscreen() {
     if (isFullscreen()) {
       await exitFullscreenSafe();
     } else {
-      if (!mobileSolveActive && isMobileSolveRecommendedViewport()) enterMobileSolveMode();
+      // OCR correction has priority over the automatic mobile solve layout.
+      // In landscape fullscreen the comparison editor must remain visible.
+      if (!ocrCorrectionIsActive() && !mobileSolveActive && isMobileSolveRecommendedViewport()) enterMobileSolveMode();
       const ok = await enterFullscreen();
       if (!ok) {
         setStatus(ui("unsupportedFullscreen"));
