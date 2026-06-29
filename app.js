@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-770ecc2a27703ab1";
+import createModule from "./sudoku_wasm.js?v=wasm-3d4daced853b63ca";
 
-const APP_VERSION = "wasm-770ecc2a27703ab1";
+const APP_VERSION = "wasm-3d4daced853b63ca";
 const MANUAL_VERSION = "20260629-manual-v2";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
