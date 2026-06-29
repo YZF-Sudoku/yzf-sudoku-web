@@ -1,6 +1,7 @@
 import createModule from "./sudoku_wasm.js?v=wasm-2371e7c5b4a00756";
 
 const APP_VERSION = "wasm-2371e7c5b4a00756";
+const MANUAL_VERSION = "20260629-manual-v2";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const OCR_ASSET_VERSION = "20260629-pages-resume-v6";
@@ -2911,7 +2912,7 @@ function applyStaticLanguage() {
   document.documentElement.lang = lang.value === "en" ? "en" : "zh-CN";
   const linkLangSuffix = `?lang=${encodeURIComponent(lang.value || "zh")}`;
   const manualLinkEl = document.getElementById("manualLink");
-  if (manualLinkEl) manualLinkEl.href = `./user_manual.html${linkLangSuffix}&v=${encodeURIComponent(APP_VERSION)}`;
+  if (manualLinkEl) manualLinkEl.href = `./user_manual.html${linkLangSuffix}&v=${encodeURIComponent(MANUAL_VERSION)}`;
   const techniquesLinkEl = document.getElementById("techniquesLink");
   if (techniquesLinkEl) techniquesLinkEl.href = `./techniques.html${linkLangSuffix}`;
   setTextById("brandSubtitle", ui("brandSubtitle"));
@@ -12705,10 +12706,6 @@ async function importPuzzleFromCurrentInput(options = {}) {
 }
 
 
-async function importCoachJsonFromLocalOcr(coachJson, summary = {}) {
-  return importPuzzleFromOcrResult(coachJson, summary);
-}
-
 let ocrResourceProgressActive = false;
 
 function ocrResourceDisplayName(asset) {
@@ -13309,7 +13306,7 @@ async function confirmOcrCorrection() {
   const counts = ocrCorrectionCounts();
   const originalOcr = ocrCorrectionState.ocr;
   closeOcrCorrection(false);
-  return importCoachJsonFromLocalOcr(coachJson, {
+  return importPuzzleFromOcrResult(coachJson, {
     ...originalOcr,
     coachJson,
     clueCount: counts.clue,
