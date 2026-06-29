@@ -275,7 +275,7 @@
             <li>浏览器本地图片识别、原图对照校正、提示数/出数/候选数角色编辑。</li>
             <li>题目生成、指定技巧训练生成、ER/EP/ED 与 YZF 评分。</li>
             <li>提示一步、应用提示、自动解题路径、所有可选步骤、路径替换与动态解释。</li>
-            <li>技巧预设、逐项启停、Whip/gWhip 内存模式、复杂技巧专属子选项。</li>
+            <li>技巧预设、逐项启停、Whip/gWhip 内存模式、Whip/gWhip 最短长度比较、复杂技巧专属子选项。</li>
             <li>手工上色、画圈、删数、画链、区块标记、盘面截图与手机分享。</li>
             <li>批量出题、批量解题，以及 TLG Truth-Link 集合逻辑编辑器。</li>
             <li>专门的手机做题模式，支持竖屏、横屏和触摸标记。</li>
@@ -289,7 +289,7 @@
             <li>Local browser OCR with side-by-side review and editable given/solved/candidate roles.</li>
             <li>Puzzle generation, technique-targeted training generation, and ER/EP/ED/YZF rating.</li>
             <li>Single hints, hint application, auto-solve paths, available-step search, path replacement, and dynamic explanations.</li>
-            <li>Technique presets, individual toggles, Whip/gWhip memory modes, and advanced sub-options.</li>
+            <li>Technique presets, individual toggles, Whip/gWhip memory modes, shortest-length comparison, and advanced sub-options.</li>
             <li>Manual coloring, circles, eliminations, chains, block marks, board capture, and mobile sharing.</li>
             <li>Batch generation, batch solving, and the TLG Truth-Link set-logic editor.</li>
             <li>A dedicated portrait/landscape mobile solve mode with touch-friendly marking.</li>
@@ -611,7 +611,7 @@
             <li><strong>All In：</strong>启用全部已实现技巧。</li>
             <li><strong>High Speed：</strong>关闭一批耗时最大的高级技巧，兼顾覆盖率。</li>
             <li><strong>Extreme Speed：</strong>进一步关闭较慢技巧，优先速度。</li>
-            <li><strong>Whip Rating：</strong>基础技巧 + Whip/gWhip，并自动使用大内存评分配置。</li>
+            <li><strong>Whip Rating：</strong>基础技巧 + Whip/gWhip，并自动使用大内存评分配置；默认返回最短 Whip，可通过下方选项把 gWhip 纳入长度比较。</li>
             <li><strong>Braid Rating：</strong>基础技巧 + Braid/gBraid。</li>
           </ul>
           <h3>逐项配置</h3>
@@ -622,6 +622,7 @@
             <li><strong>普通：</strong>速度和内存优先。</li>
             <li><strong>大内存：</strong>提高搜索覆盖率，但更耗内存。</li>
           </ul>
+          <p><strong>gWhip 参与最短长度比较：</strong>仅在 Whip 与 gWhip 同时启用时生效。程序先取得最短 Whip，再只搜索可能更短的 gWhip；gWhip 严格更短时返回 gWhip，同长度仍优先 Whip。</p>
           <p>技巧配置会随主现场自动保存。预设会重置 Complex AIC/JE 的专属子选项，使用后请重新确认。</p>
           <h3>高亮阅读</h3>
           <p>一般高亮包括出数、删数、结构格、强/弱链、ON/OFF 节点、ALS/AF 区域、guardian 和分支。点击顶部“技巧说明”打开 <code>techniques.html</code>，查看每个技巧的玩家向解释。</p>
@@ -634,7 +635,7 @@
             <li><strong>All In:</strong> enables every implemented technique.</li>
             <li><strong>High Speed:</strong> disables a group of the most expensive techniques while retaining broad coverage.</li>
             <li><strong>Extreme Speed:</strong> disables more slow techniques and prioritizes speed.</li>
-            <li><strong>Whip Rating:</strong> basic techniques plus Whip/gWhip, automatically using the large-memory rating configuration.</li>
+            <li><strong>Whip Rating:</strong> basic techniques plus Whip/gWhip with the large-memory rating configuration. It returns the shortest Whip by default; the option below adds gWhip to the length comparison.</li>
             <li><strong>Braid Rating:</strong> basic techniques plus Braid/gBraid.</li>
           </ul>
           <h3>Individual Settings</h3>
@@ -645,6 +646,7 @@
             <li><strong>Normal:</strong> prioritizes speed and memory use.</li>
             <li><strong>Large:</strong> improves search coverage at higher memory cost.</li>
           </ul>
+          <p><strong>Compare shortest length with gWhip:</strong> applies only when both Whip and gWhip are enabled. The solver finds the shortest Whip first, then searches only for a strictly shorter gWhip. Whip wins ties.</p>
           <p>Technique settings are saved with the main session. Presets reset the Complex AIC/JE sub-options, so re-check them afterward.</p>
           <h3>Reading Highlights</h3>
           <p>Highlights may include placements, eliminations, structure cells, strong/weak links, ON/OFF nodes, ALS/AF regions, guardians, and branches. Open the top Technique Guide link for player-facing explanations in <code>techniques.html</code>.</p>

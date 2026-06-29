@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-3d4daced853b63ca";
+import createModule from "./sudoku_wasm.js?v=wasm-ad0a42abb77182aa";
 
-const APP_VERSION = "wasm-3d4daced853b63ca";
+const APP_VERSION = "wasm-ad0a42abb77182aa";
 const MANUAL_VERSION = "20260629-manual-v2";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
@@ -334,6 +334,7 @@ let ocrCorrectionHistoryIndex = -1;
 let ocrDraftValueRole = "given";
 let techniqueState = [];
 let whipMemoryMode = "auto";
+let whipCompareGWhip = false;
 let batchAbortRequested = false;
 let yzfDebugSampleData = null;
 let yzfDebugControlsInitialized = false;
@@ -1039,11 +1040,13 @@ const uiText = {
     branchTailFailed: "替换失败：后续路径重算失败：{error}",
     branchReplaced: "已用可选步骤替换第 {index} 步，并从此处重算后续路径。新路径 {steps} 步。",
     branchRowTitle: "单击预览；右键或长按：替换路径并从此处重算",
-    whipMemoryLabel: "Whip/gWhip 搜索内存模式：",
+    whipMemoryLabel: "Whip/gWhip 内存：",
     whipMemoryAuto: "自动（普通求解关闭，Whip 评分开启）",
     whipMemoryNormal: "普通（速度优先）",
     whipMemoryLarge: "大内存（覆盖率优先）",
     whipMemoryTitle: "影响 Whip/gWhip 队列上限：普通 Whip 19000、gWhip 50000；大内存 99000。",
+    whipCompareGWhipLabel: "gWhip 参与最短长度比较",
+    whipCompareGWhipTitle: "启用后，当 Whip 与 gWhip 同时开启时比较两者的全局最短长度；仅当 gWhip 更短时返回 gWhip，同长度仍优先 Whip。",
     techniqueHeader: "技巧",
     scoreHeader: "评分",
     difficultyLevel: "难度 {level}",
@@ -1548,11 +1551,13 @@ const uiText = {
     branchTailFailed: "Replacement failed: recomputing the tail path failed: {error}",
     branchReplaced: "Replaced path step {index} with the optional step and recomputed the tail. New path has {steps} step(s).",
     branchRowTitle: "Click to preview; right-click or long-press to replace the path from here",
-    whipMemoryLabel: "Whip/gWhip search memory mode:",
+    whipMemoryLabel: "Whip/gWhip memory:",
     whipMemoryAuto: "Auto (off for normal solving, on for Whip rating)",
     whipMemoryNormal: "Normal (speed first)",
     whipMemoryLarge: "Large memory (coverage first)",
     whipMemoryTitle: "Controls Whip/gWhip queue limits: normal Whip 19000, gWhip 50000; large memory 99000.",
+    whipCompareGWhipLabel: "Compare shortest length with gWhip",
+    whipCompareGWhipTitle: "When both Whip and gWhip are enabled, compare their globally shortest lengths. gWhip is returned only when strictly shorter; Whip wins ties.",
     techniqueHeader: "Technique",
     scoreHeader: "Score",
     difficultyLevel: "Difficulty {level}",
@@ -9602,6 +9607,9 @@ function loadTechniqueState() {
   if (!engine) return [];
   const result = parseJson(engine.techniques_json());
   whipMemoryMode = normalizeWhipMemoryMode(result?.whipMemoryMode || whipMemoryMode);
+  if (typeof result?.whipCompareGWhip === "boolean") {
+    whipCompareGWhip = result.whipCompareGWhip;
+  }
   techniqueState = mergeReferenceTechniques(result?.techniques || []);
   return techniqueState;
 }
@@ -9611,7 +9619,10 @@ function normalizeWhipMemoryMode(value) {
 }
 
 function getTechniqueConfigPayload(state = techniqueState) {
-  const payload = { whipMemoryMode: normalizeWhipMemoryMode(whipMemoryMode) };
+  const payload = {
+    whipMemoryMode: normalizeWhipMemoryMode(whipMemoryMode),
+    whipCompareGWhip: Boolean(whipCompareGWhip),
+  };
   for (const item of (state || []).filter((tech) => tech.implemented !== false)) {
     payload[item.kind] = Boolean(item.enabled);
     if (item.kind === "ComplexAIC") {
@@ -9624,11 +9635,19 @@ function getTechniqueConfigPayload(state = techniqueState) {
   return payload;
 }
 
-function applyTechniqueState(nextState, nextWhipMemoryMode = whipMemoryMode) {
+function applyTechniqueState(
+  nextState,
+  nextWhipMemoryMode = whipMemoryMode,
+  nextWhipCompareGWhip = whipCompareGWhip
+) {
   if (!engine) return;
   whipMemoryMode = normalizeWhipMemoryMode(nextWhipMemoryMode);
+  whipCompareGWhip = Boolean(nextWhipCompareGWhip);
   const payload = getTechniqueConfigPayload(nextState);
   const result = parseJson(engine.set_techniques_json(JSON.stringify(payload)));
+  if (typeof result?.whipCompareGWhip === "boolean") {
+    whipCompareGWhip = result.whipCompareGWhip;
+  }
   techniqueState = mergeReferenceTechniques(result?.techniques || nextState, nextState);
   currentHint = null;
   renderTechniques();
@@ -9801,9 +9820,25 @@ function renderTechniques() {
   }
   memorySelect.value = normalizeWhipMemoryMode(whipMemoryMode);
   memorySelect.title = ui("whipMemoryTitle");
-  memorySelect.addEventListener("change", () => applyTechniqueState(state, memorySelect.value));
+  memorySelect.className = "technique-memory-select";
+  memorySelect.addEventListener("change", () => applyTechniqueState(state, memorySelect.value, whipCompareGWhip));
   memoryLabel.appendChild(memorySelect);
+  memoryLabel.className = "technique-memory-control";
   memoryRow.appendChild(memoryLabel);
+
+  const compareLabel = document.createElement("label");
+  compareLabel.className = "technique-option-check";
+  compareLabel.title = ui("whipCompareGWhipTitle");
+  const compareCheckbox = document.createElement("input");
+  compareCheckbox.type = "checkbox";
+  compareCheckbox.checked = Boolean(whipCompareGWhip);
+  compareCheckbox.addEventListener("change", () => (
+    applyTechniqueState(state, memorySelect.value, compareCheckbox.checked)
+  ));
+  const compareText = document.createElement("span");
+  compareText.textContent = ui("whipCompareGWhipLabel");
+  compareLabel.append(compareCheckbox, compareText);
+  memoryRow.appendChild(compareLabel);
   techniqueList.appendChild(memoryRow);
 
   const table = document.createElement("table");
