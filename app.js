@@ -3,7 +3,7 @@ import createModule from "./sudoku_wasm.js?v=wasm-2371e7c5b4a00756";
 const APP_VERSION = "wasm-2371e7c5b4a00756";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
-const OCR_ASSET_VERSION = "20260629-pages-mobile-wasm-v4";
+const OCR_ASSET_VERSION = "20260629-pages-resume-v6";
 
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
 const COACH_BASE32_REVERSE = new Map([...COACH_BASE32_CHARS].map((ch, index) => [ch, index]));
@@ -893,6 +893,16 @@ const uiText = {
     ocrNoImageSelected: "未选择图片",
     ocrInvalidImageFile: "请选择 PNG/JPG/WebP 等图片文件。",
     ocrRecognizingLocal: "正在本地识别图片……首次加载模型可能稍慢。不会上传图片，也不会访问 sudoku-ocr.com。",
+    ocrResourceWasm: "运行库",
+    ocrResourceLocalizer: "定位模型",
+    ocrResourceClassifier: "识别模型",
+    ocrResourceModule: "模块",
+    ocrResourceProgress: "正在准备 OCR {asset}：{loaded}/{total} MB（{percent}%）",
+    ocrResourceResume: "正在续传 OCR {asset}：已保存 {loaded}/{total} MB（{percent}%）",
+    ocrResourceCache: "正在从本地缓存读取 OCR {asset}：{loaded}/{total} MB（{percent}%）",
+    ocrResourceRetry: "OCR {asset} 下载中断，正在第 {attempt} 次重试……",
+    ocrResourceProbe: "正在检测 OCR {asset} 是否支持断点续传……",
+    ocrResourceAssembling: "OCR {asset} 下载完成，正在组装并校验……",
     ocrNoCoachJson: "OCR 未返回 Coach JSON",
     ocrFailed: "本地图片识别失败：{message}",
     ocrAttribution: "数独图片识别使用 Alex Kubiesa / Sudoku OCR 训练的本地模型；未使用在线 fallback。",
@@ -1397,6 +1407,16 @@ const uiText = {
     ocrNoImageSelected: "No image selected",
     ocrInvalidImageFile: "Please choose a PNG/JPG/WebP image file.",
     ocrRecognizingLocal: "Recognizing the image locally... First model load may be slow. No image is uploaded and sudoku-ocr.com is not used.",
+    ocrResourceWasm: "runtime",
+    ocrResourceLocalizer: "localizer model",
+    ocrResourceClassifier: "classifier model",
+    ocrResourceModule: "module",
+    ocrResourceProgress: "Preparing OCR {asset}: {loaded}/{total} MB ({percent}%)",
+    ocrResourceResume: "Resuming OCR {asset}: {loaded}/{total} MB saved ({percent}%)",
+    ocrResourceCache: "Reading OCR {asset} from local cache: {loaded}/{total} MB ({percent}%)",
+    ocrResourceRetry: "OCR {asset} download was interrupted; retrying (attempt {attempt})...",
+    ocrResourceProbe: "Checking whether OCR {asset} supports resumable download...",
+    ocrResourceAssembling: "OCR {asset} download completed; assembling and validating...",
     ocrNoCoachJson: "OCR did not return Coach JSON",
     ocrFailed: "Local image recognition failed: {message}",
     ocrAttribution: "Sudoku image recognition uses a local model trained by Alex Kubiesa / Sudoku OCR; no online fallback is used.",
@@ -12795,6 +12815,46 @@ async function importCoachJsonFromLocalOcr(coachJson, summary = {}) {
   return importPuzzleFromOcrResult(coachJson, summary);
 }
 
+let ocrResourceProgressActive = false;
+
+function ocrResourceDisplayName(asset) {
+  if (asset === "wasm") return ui("ocrResourceWasm");
+  if (asset === "localizer") return ui("ocrResourceLocalizer");
+  if (asset === "classifier") return ui("ocrResourceClassifier");
+  if (asset === "module") return ui("ocrResourceModule");
+  return String(asset || "OCR");
+}
+
+function ocrMegabytes(value) {
+  return (Math.max(0, Number(value) || 0) / 1_000_000).toFixed(2);
+}
+
+window.addEventListener("yzf-ocr-resource-progress", (event) => {
+  if (!ocrResourceProgressActive) return;
+  const detail = event?.detail || {};
+  const asset = ocrResourceDisplayName(detail.asset);
+  const values = {
+    asset,
+    loaded: ocrMegabytes(detail.loaded),
+    total: ocrMegabytes(detail.total),
+    percent: Number(detail.percent || 0),
+    attempt: Number(detail.attempt || 0),
+  };
+  if (detail.phase === "retry") {
+    setStatus(uif("ocrResourceRetry", values));
+  } else if (detail.phase === "probing") {
+    setStatus(uif("ocrResourceProbe", values));
+  } else if (detail.phase === "resume") {
+    setStatus(uif("ocrResourceResume", values));
+  } else if (detail.phase === "cache") {
+    setStatus(uif("ocrResourceCache", values));
+  } else if (detail.phase === "assembling") {
+    setStatus(uif("ocrResourceAssembling", values));
+  } else if (detail.total > 0 && (detail.phase === "downloading" || detail.phase === "ready")) {
+    setStatus(uif("ocrResourceProgress", values));
+  }
+});
+
 async function recognizeAndImportImageFile(file) {
   if (!file) return { ok: false, error: ui("ocrNoImageSelected") };
   if (!file.type?.startsWith?.("image/")) {
@@ -12803,6 +12863,7 @@ async function recognizeAndImportImageFile(file) {
     return { ok: false, error };
   }
   try {
+    ocrResourceProgressActive = true;
     clearOcrPreview();
     setStatus(ui("ocrRecognizingLocal"));
     const { recognizeSudokuImageToCoachJson } = await loadLocalSudokuOcrModule();
@@ -12818,6 +12879,7 @@ async function recognizeAndImportImageFile(file) {
     log(uif("ocrFailed", { message }));
     return { ok: false, error: message };
   } finally {
+    ocrResourceProgressActive = false;
     if (imageOcrInput) imageOcrInput.value = "";
     if (imageOcrCameraInput) imageOcrCameraInput.value = "";
   }

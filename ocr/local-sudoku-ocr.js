@@ -9,7 +9,11 @@ const CLASSIFIER_MODEL = "puzzle_classifier.ort";
 const BOARD_SIZE = 576;
 const LOCALIZER_SIZE = 256;
 const CELL_SIZE = BOARD_SIZE / 9;
-const OCR_RESOURCE_VERSION = "20260629-pages-mobile-wasm-v4";
+const OCR_RESOURCE_VERSION = "20260629-pages-resume-v6";
+const OCR_ASSET_DB_NAME = "yzf-sudoku-ocr-assets-v2";
+const OCR_ASSET_DB_VERSION = 1;
+const OCR_ASSET_CHUNK_SIZE = 512 * 1024;
+const OCR_ASSET_EVENT = "yzf-ocr-resource-progress";
 
 function versionedAssetUrl(name, base) {
   const url = new URL(name, base);
@@ -45,15 +49,16 @@ function getStandaloneAssetText(name) {
 }
 
 let standaloneWasmBlobUrl = null;
-
 let localizerSessionPromise = null;
 let classifierSessionPromise = null;
 let ortRuntimeConfigPromise = null;
 let ortRuntimeModuleUrl = null;
 let ortRuntimeWasmUrl = null;
 let ortRuntimeWasmBinary = null;
-let ortRuntimeWasmBinaryPromise = null;
 let ortRuntimeLoadMode = "unconfigured";
+let ocrAssetDbPromise = null;
+const ocrAssetLoadPromises = new Map();
+const ocrAssetDiagnostics = new Map();
 
 function requireOrt() {
   const ort = globalThis.ort;
@@ -63,64 +68,412 @@ function requireOrt() {
   return ort;
 }
 
-function shouldInjectWasmBinary() {
-  const forced = globalThis.YZF_OCR_WASM_BINARY_MODE;
-  if (forced === "binary" || forced === true) return true;
-  if (forced === "url" || forced === false) return false;
+function shouldUsePersistentAssetCache() {
+  const forced = globalThis.YZF_OCR_RESUMABLE_MODE;
+  if (forced === "on" || forced === true) return true;
+  if (forced === "off" || forced === false) return false;
   const mobileHint = globalThis.navigator?.userAgentData?.mobile;
   if (mobileHint === true) return true;
   const ua = String(globalThis.navigator?.userAgent || "");
   return /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
 }
 
-function validateWasmBinary(bytes, wasmUrl) {
-  if (!(bytes instanceof Uint8Array) || bytes.byteLength < 8) {
-    throw new Error(`ONNX Runtime Web wasm is empty or truncated (${wasmUrl})`);
+function emitOcrAssetProgress(detail) {
+  const normalized = {
+    phase: detail.phase || "downloading",
+    asset: detail.asset || "asset",
+    loaded: Number(detail.loaded || 0),
+    total: Number(detail.total || 0),
+    attempt: Number(detail.attempt || 0),
+    chunkIndex: Number(detail.chunkIndex ?? -1),
+    chunkCount: Number(detail.chunkCount || 0),
+    resumable: Boolean(detail.resumable),
+    fromCache: Boolean(detail.fromCache),
+    message: String(detail.message || ""),
+  };
+  if (normalized.total > 0) {
+    normalized.percent = Math.max(0, Math.min(100, Math.round(normalized.loaded * 100 / normalized.total)));
+  } else {
+    normalized.percent = 0;
   }
-  if (bytes[0] !== 0x00 || bytes[1] !== 0x61 || bytes[2] !== 0x73 || bytes[3] !== 0x6d) {
-    throw new Error(`ONNX Runtime Web wasm has an invalid file header (${wasmUrl})`);
+  try {
+    globalThis.dispatchEvent(new CustomEvent(OCR_ASSET_EVENT, { detail: normalized }));
+  } catch (_) {}
+}
+
+function idbRequest(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("IndexedDB request failed"));
+  });
+}
+
+function idbTransactionDone(transaction) {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onabort = () => reject(transaction.error || new Error("IndexedDB transaction aborted"));
+    transaction.onerror = () => reject(transaction.error || new Error("IndexedDB transaction failed"));
+  });
+}
+
+function openOcrAssetDb() {
+  if (!globalThis.indexedDB) return Promise.resolve(null);
+  if (ocrAssetDbPromise) return ocrAssetDbPromise;
+
+  const openPromise = new Promise((resolve) => {
+    let request;
+    try {
+      request = indexedDB.open(OCR_ASSET_DB_NAME, OCR_ASSET_DB_VERSION);
+    } catch (_) {
+      resolve(null);
+      return;
+    }
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" });
+      if (!db.objectStoreNames.contains("chunks")) db.createObjectStore("chunks", { keyPath: "key" });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(null);
+    request.onblocked = () => resolve(null);
+  });
+
+  ocrAssetDbPromise = openPromise;
+  return openPromise;
+}
+
+function assetCacheKey(asset, url) {
+  return `${OCR_RESOURCE_VERSION}|${asset}|${url}`;
+}
+
+async function readAssetMeta(db, key) {
+  if (!db) return null;
+  const tx = db.transaction("meta", "readonly");
+  return idbRequest(tx.objectStore("meta").get(key));
+}
+
+async function writeAssetMeta(db, meta) {
+  if (!db) return;
+  const tx = db.transaction("meta", "readwrite");
+  tx.objectStore("meta").put(meta);
+  await idbTransactionDone(tx);
+}
+
+async function readAssetChunk(db, key, index) {
+  if (!db) return null;
+  const tx = db.transaction("chunks", "readonly");
+  const record = await idbRequest(tx.objectStore("chunks").get(`${key}:${index}`));
+  if (!record?.bytes) return null;
+  return record.bytes instanceof Uint8Array ? record.bytes : new Uint8Array(record.bytes);
+}
+
+async function writeAssetChunk(db, key, index, bytes) {
+  if (!db) return;
+  const stable = bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength
+    ? bytes.buffer
+    : bytes.slice().buffer;
+  const tx = db.transaction("chunks", "readwrite");
+  tx.objectStore("chunks").put({ key: `${key}:${index}`, assetKey: key, index, bytes: stable });
+  await idbTransactionDone(tx);
+}
+
+async function deleteAssetCache(db, key, chunkCount = 0) {
+  if (!db) return;
+  const tx = db.transaction(["meta", "chunks"], "readwrite");
+  tx.objectStore("meta").delete(key);
+  const chunks = tx.objectStore("chunks");
+  for (let index = 0; index < chunkCount; ++index) chunks.delete(`${key}:${index}`);
+  await idbTransactionDone(tx);
+}
+
+function retryDelaysMs() {
+  const custom = globalThis.YZF_OCR_RETRY_DELAYS_MS;
+  if (Array.isArray(custom) && custom.length) return custom.map((value) => Math.max(0, Number(value) || 0));
+  return [0, 1200, 3500];
+}
+
+function sleep(ms) {
+  return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
+}
+
+async function fetchWithRetries(url, init, label, progressBase = {}) {
+  const delays = retryDelaysMs();
+  let lastError = null;
+  for (let attempt = 0; attempt < delays.length; ++attempt) {
+    await sleep(delays[attempt]);
+    try {
+      const response = await fetch(url, init);
+      if (response.ok || response.status === 206) return response;
+      lastError = new Error(`${label} returned HTTP ${response.status}`);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+    }
+    if (attempt + 1 < delays.length) {
+      emitOcrAssetProgress({
+        ...progressBase,
+        phase: "retry",
+        attempt: attempt + 2,
+        message: lastError?.message || String(lastError),
+      });
+    }
+  }
+  throw new Error(`${label} failed: ${lastError?.message || lastError || "network error"} (${url})`);
+}
+
+function parseContentRange(header) {
+  const match = /^bytes\s+(\d+)-(\d+)\/(\d+|\*)$/i.exec(String(header || "").trim());
+  if (!match || match[3] === "*") return null;
+  return { start: Number(match[1]), end: Number(match[2]), total: Number(match[3]) };
+}
+
+function validateGenericBinary(bytes, url) {
+  if (!(bytes instanceof Uint8Array) || bytes.byteLength < 16) {
+    throw new Error(`OCR resource is empty or truncated (${url})`);
   }
   return bytes;
 }
 
-async function fetchRuntimeWasmBinaryOnce(wasmUrl) {
-  if (ortRuntimeWasmBinary) return ortRuntimeWasmBinary;
-  if (ortRuntimeWasmBinaryPromise) return ortRuntimeWasmBinaryPromise;
+function validateWasmBinary(bytes, url) {
+  validateGenericBinary(bytes, url);
+  if (bytes[0] !== 0x00 || bytes[1] !== 0x61 || bytes[2] !== 0x73 || bytes[3] !== 0x6d) {
+    throw new Error(`ONNX Runtime Web wasm has an invalid file header (${url})`);
+  }
+  return bytes;
+}
 
-  const fetchPromise = (async () => {
-    let response;
-    try {
-      response = await fetch(wasmUrl, { cache: "force-cache", credentials: "same-origin" });
-    } catch (error) {
-      throw new Error(`ONNX Runtime Web wasm fetch failed: ${error?.message || error} (${wasmUrl})`);
-    }
-    if (!response.ok) {
-      throw new Error(`ONNX Runtime Web wasm load failed: HTTP ${response.status} (${wasmUrl})`);
-    }
-    const bytes = validateWasmBinary(new Uint8Array(await response.arrayBuffer()), wasmUrl);
-    ortRuntimeWasmBinary = bytes;
-    return bytes;
-  })();
+async function assembleCachedAsset(db, meta, asset, url, validate) {
+  const chunkCount = Number(meta.chunkCount || Math.ceil(meta.total / meta.chunkSize));
+  const chunks = new Array(chunkCount);
+  let loaded = 0;
+  for (let index = 0; index < chunkCount; ++index) {
+    const bytes = await readAssetChunk(db, meta.key, index);
+    const expected = Math.min(meta.chunkSize, meta.total - index * meta.chunkSize);
+    if (!bytes || bytes.byteLength !== expected) return null;
+    chunks[index] = bytes;
+    loaded += bytes.byteLength;
+    emitOcrAssetProgress({ phase: "cache", asset, loaded, total: meta.total, fromCache: true, resumable: meta.resumable });
+  }
+  emitOcrAssetProgress({ phase: "assembling", asset, loaded, total: meta.total, fromCache: true, resumable: meta.resumable });
+  const combined = new Uint8Array(meta.total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  validate(combined, url);
+  emitOcrAssetProgress({ phase: "ready", asset, loaded: meta.total, total: meta.total, fromCache: true, resumable: meta.resumable });
+  return combined;
+}
 
-  ortRuntimeWasmBinaryPromise = fetchPromise;
+async function saveCompleteAsset(db, key, asset, url, bytes, resumable, validate) {
+  validate(bytes, url);
+  if (!db) return bytes;
+  const old = await readAssetMeta(db, key);
+  if (old) await deleteAssetCache(db, key, Number(old.chunkCount || 0));
+  await writeAssetChunk(db, key, 0, bytes);
+  const meta = {
+    key,
+    asset,
+    url,
+    version: OCR_RESOURCE_VERSION,
+    total: bytes.byteLength,
+    chunkSize: bytes.byteLength,
+    chunkCount: 1,
+    resumable: Boolean(resumable),
+    complete: true,
+    updatedAt: Date.now(),
+  };
+  await writeAssetMeta(db, meta);
+  try { globalThis.navigator?.storage?.persist?.(); } catch (_) {}
+  emitOcrAssetProgress({ phase: "ready", asset, loaded: bytes.byteLength, total: bytes.byteLength, resumable, fromCache: false });
+  return bytes;
+}
+
+async function downloadAssetResumable(url, asset, validate = validateGenericBinary) {
+  const key = assetCacheKey(asset, url);
+  const db = await openOcrAssetDb();
+  let meta = await readAssetMeta(db, key);
+
+  if (meta?.complete) {
+    const cached = await assembleCachedAsset(db, meta, asset, url, validate);
+    if (cached) {
+      ocrAssetDiagnostics.set(asset, { mode: "indexeddb-cache", total: cached.byteLength, resumable: meta.resumable });
+      return cached;
+    }
+    await deleteAssetCache(db, key, Number(meta.chunkCount || 0));
+    meta = null;
+  }
+
+  let total = Number(meta?.total || 0);
+  let chunkSize = Number(meta?.chunkSize || OCR_ASSET_CHUNK_SIZE);
+  let rangeSupported = Boolean(meta && meta.complete === false && meta.resumable && total > 0);
+
+  if (!rangeSupported) {
+    emitOcrAssetProgress({ phase: "probing", asset, loaded: 0, total: 0 });
+    const probe = await fetchWithRetries(
+      url,
+      { headers: { Range: "bytes=0-0" }, cache: "no-store", credentials: "same-origin" },
+      `${asset} range probe`,
+      { asset },
+    );
+
+    if (probe.status === 206) {
+      const range = parseContentRange(probe.headers.get("Content-Range"));
+      const probeBytes = new Uint8Array(await probe.arrayBuffer());
+      if (!range || range.start !== 0 || probeBytes.byteLength !== 1 || !Number.isFinite(range.total) || range.total < 16) {
+        throw new Error(`${asset} returned an invalid Range response (${url})`);
+      }
+      total = range.total;
+      chunkSize = OCR_ASSET_CHUNK_SIZE;
+      rangeSupported = true;
+      meta = {
+        key,
+        asset,
+        url,
+        version: OCR_RESOURCE_VERSION,
+        total,
+        chunkSize,
+        chunkCount: Math.ceil(total / chunkSize),
+        resumable: true,
+        complete: false,
+        updatedAt: Date.now(),
+      };
+      await writeAssetMeta(db, meta);
+    } else if (probe.status === 200) {
+      const bytes = new Uint8Array(await probe.arrayBuffer());
+      ocrAssetDiagnostics.set(asset, { mode: "full-download-no-range", total: bytes.byteLength, resumable: false });
+      return saveCompleteAsset(db, key, asset, url, bytes, false, validate);
+    } else {
+      throw new Error(`${asset} range probe returned HTTP ${probe.status} (${url})`);
+    }
+  }
+
+  const chunkCount = Math.ceil(total / chunkSize);
+  if (!meta || meta.total !== total || meta.chunkSize !== chunkSize || meta.chunkCount !== chunkCount) {
+    if (meta) await deleteAssetCache(db, key, Number(meta.chunkCount || 0));
+    meta = {
+      key,
+      asset,
+      url,
+      version: OCR_RESOURCE_VERSION,
+      total,
+      chunkSize,
+      chunkCount,
+      resumable: true,
+      complete: false,
+      updatedAt: Date.now(),
+    };
+    await writeAssetMeta(db, meta);
+  }
+
+  let loaded = 0;
+  const present = new Array(chunkCount).fill(false);
+  const memoryChunks = db ? null : new Array(chunkCount);
+  for (let index = 0; index < chunkCount; ++index) {
+    const expected = Math.min(chunkSize, total - index * chunkSize);
+    const cached = await readAssetChunk(db, key, index);
+    if (cached?.byteLength === expected) {
+      present[index] = true;
+      loaded += expected;
+    }
+  }
+  if (loaded > 0) {
+    emitOcrAssetProgress({ phase: "resume", asset, loaded, total, chunkCount, resumable: true, fromCache: true });
+  }
+
+  for (let index = 0; index < chunkCount; ++index) {
+    if (present[index]) continue;
+    const start = index * chunkSize;
+    const end = Math.min(total - 1, start + chunkSize - 1);
+    const response = await fetchWithRetries(
+      url,
+      {
+        headers: { Range: `bytes=${start}-${end}` },
+        cache: "no-store",
+        credentials: "same-origin",
+      },
+      `${asset} chunk ${index + 1}/${chunkCount}`,
+      { asset, loaded, total, chunkIndex: index, chunkCount, resumable: true },
+    );
+
+    if (response.status === 200) {
+      const full = new Uint8Array(await response.arrayBuffer());
+      if (full.byteLength !== total) {
+        throw new Error(`${asset} server stopped honoring Range requests and returned ${full.byteLength}/${total} bytes (${url})`);
+      }
+      ocrAssetDiagnostics.set(asset, { mode: "full-download-range-fallback", total, resumable: false });
+      return saveCompleteAsset(db, key, asset, url, full, false, validate);
+    }
+
+    if (response.status !== 206) {
+      throw new Error(`${asset} chunk ${index + 1}/${chunkCount} returned HTTP ${response.status} (${url})`);
+    }
+    const range = parseContentRange(response.headers.get("Content-Range"));
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    const expected = end - start + 1;
+    if (!range || range.start !== start || range.end !== end || range.total !== total || bytes.byteLength !== expected) {
+      throw new Error(`${asset} chunk ${index + 1}/${chunkCount} is incomplete (${bytes.byteLength}/${expected} bytes; ${url})`);
+    }
+    if (db) await writeAssetChunk(db, key, index, bytes);
+    else memoryChunks[index] = bytes;
+    loaded += bytes.byteLength;
+    emitOcrAssetProgress({
+      phase: "downloading",
+      asset,
+      loaded,
+      total,
+      chunkIndex: index,
+      chunkCount,
+      resumable: true,
+      fromCache: false,
+    });
+  }
+
+  if (!db) {
+    const combined = new Uint8Array(total);
+    let offset = 0;
+    for (let index = 0; index < chunkCount; ++index) {
+      const chunk = memoryChunks[index];
+      if (!chunk) throw new Error(`${asset} in-memory chunk ${index + 1}/${chunkCount} is missing (${url})`);
+      combined.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    validate(combined, url);
+    emitOcrAssetProgress({ phase: "ready", asset, loaded: total, total, resumable: true, fromCache: false });
+    ocrAssetDiagnostics.set(asset, { mode: "range-memory", total, resumable: true });
+    return combined;
+  }
+
+  meta.complete = true;
+  meta.updatedAt = Date.now();
+  await writeAssetMeta(db, meta);
+  const combined = await assembleCachedAsset(db, meta, asset, url, validate);
+  if (!combined) throw new Error(`${asset} cache assembly failed after download (${url})`);
+  ocrAssetDiagnostics.set(asset, { mode: "range-indexeddb", total, resumable: true });
+  try { globalThis.navigator?.storage?.persist?.(); } catch (_) {}
+  return combined;
+}
+
+async function loadPersistentAsset(url, asset, validate = validateGenericBinary) {
+  const key = assetCacheKey(asset, url);
+  if (ocrAssetLoadPromises.has(key)) return ocrAssetLoadPromises.get(key);
+  const promise = downloadAssetResumable(url, asset, validate);
+  ocrAssetLoadPromises.set(key, promise);
   try {
-    return await fetchPromise;
+    return await promise;
   } catch (error) {
-    if (ortRuntimeWasmBinaryPromise === fetchPromise) ortRuntimeWasmBinaryPromise = null;
+    if (ocrAssetLoadPromises.get(key) === promise) ocrAssetLoadPromises.delete(key);
     throw error;
   }
 }
 
 async function fetchRuntimeModuleText(mjsUrl) {
-  let response;
-  try {
-    response = await fetch(mjsUrl, { cache: "force-cache", credentials: "same-origin" });
-  } catch (error) {
-    throw new Error(`ONNX Runtime Web module fetch failed: ${error?.message || error} (${mjsUrl})`);
-  }
-  if (!response.ok) {
-    throw new Error(`ONNX Runtime Web module load failed: HTTP ${response.status} (${mjsUrl})`);
-  }
+  const response = await fetchWithRetries(
+    mjsUrl,
+    { cache: "force-cache", credentials: "same-origin" },
+    "ONNX Runtime Web module",
+    { asset: "module" },
+  );
   return response.text();
 }
 
@@ -129,13 +482,6 @@ async function configureOrtRuntime(ort) {
   if (ortRuntimeConfigPromise) return ortRuntimeConfigPromise;
 
   const configPromise = (async () => {
-    // GitHub Pages path:
-    // - The small ESM wrapper is fetched once and imported through a Blob URL.
-    // - Mobile browsers fetch the 13 MB WASM exactly once and inject it through
-    //   wasmBinary. This bypasses the Emscripten fetch path that fails on some
-    //   mobile Chrome/GitHub Pages combinations.
-    // - Desktop keeps the normal URL-backed WASM path to avoid an extra JS-heap copy.
-    // - Model files remain URL-backed on every platform.
     let moduleSource = getStandaloneAssetText("ort-wasm-simd-threaded.mjs");
     let wasmUrl;
     let wasmBinary = null;
@@ -160,24 +506,18 @@ async function configureOrtRuntime(ort) {
         moduleSource = await fetchRuntimeModuleText(mjsUrl);
         ortRuntimeModuleUrl = URL.createObjectURL(new Blob([moduleSource], { type: "text/javascript" }));
       }
-      if (shouldInjectWasmBinary()) {
-        wasmBinary = await fetchRuntimeWasmBinaryOnce(wasmUrl);
-        ortRuntimeLoadMode = "mobile-binary";
+      if (shouldUsePersistentAssetCache()) {
+        wasmBinary = await loadPersistentAsset(wasmUrl, "wasm", validateWasmBinary);
+        ortRuntimeWasmBinary = wasmBinary;
+        ortRuntimeLoadMode = "resumable-binary";
       } else {
         ortRuntimeLoadMode = "desktop-url";
       }
     }
 
     ortRuntimeWasmUrl = wasmUrl;
-    ort.env.wasm.wasmPaths = {
-      mjs: ortRuntimeModuleUrl,
-      wasm: wasmUrl,
-    };
-    if (wasmBinary) {
-      ort.env.wasm.wasmBinary = wasmBinary;
-    }
-    // The distributed filename contains "threaded"; numThreads=1 explicitly
-    // selects single-thread operation and does not require cross-origin isolation.
+    ort.env.wasm.wasmPaths = { mjs: ortRuntimeModuleUrl, wasm: wasmUrl };
+    if (wasmBinary) ort.env.wasm.wasmBinary = wasmBinary;
     ort.env.wasm.numThreads = 1;
     ort.env.wasm.proxy = false;
   })();
@@ -195,14 +535,18 @@ async function createSession(modelUrl, embeddedName = "") {
   const ort = requireOrt();
   await configureOrtRuntime(ort);
   const embeddedModel = embeddedName ? getStandaloneAssetBytes(embeddedName) : null;
-  const source = embeddedModel || modelUrl;
+  let source = embeddedModel || modelUrl;
+  if (!embeddedModel && shouldUsePersistentAssetCache()) {
+    const asset = embeddedName === LOCALIZER_MODEL ? "localizer" : embeddedName === CLASSIFIER_MODEL ? "classifier" : embeddedName || "model";
+    source = await loadPersistentAsset(modelUrl, asset, validateGenericBinary);
+  }
   try {
     return await ort.InferenceSession.create(source, {
       executionProviders: ["wasm"],
       graphOptimizationLevel: "all",
     });
   } catch (error) {
-    const label = embeddedModel ? `embedded model ${embeddedName}` : modelUrl;
+    const label = source instanceof Uint8Array ? `${embeddedName || "model"} binary` : modelUrl;
     const wasmLabel = ortRuntimeWasmUrl || "unresolved";
     throw new Error(`OCR session initialization failed: ${error?.message || error} (model=${label}; wasm=${wasmLabel})`);
   }
@@ -652,9 +996,9 @@ export function resetLocalSudokuOcrRuntime() {
   localizerSessionPromise = null;
   classifierSessionPromise = null;
   ortRuntimeConfigPromise = null;
-  ortRuntimeWasmBinaryPromise = null;
   ortRuntimeWasmBinary = null;
   ortRuntimeLoadMode = "unconfigured";
+  ocrAssetLoadPromises.clear();
   try {
     if (globalThis.ort?.env?.wasm) globalThis.ort.env.wasm.wasmBinary = undefined;
   } catch (_) {}
@@ -675,10 +1019,26 @@ export function localSudokuOcrRuntimeDiagnostics() {
     loadMode: ortRuntimeLoadMode,
     wasmUrl: ortRuntimeWasmUrl,
     wasmBinaryBytes: ortRuntimeWasmBinary?.byteLength || 0,
-    mobileDetected: shouldInjectWasmBinary(),
+    resumableAssetsEnabled: shouldUsePersistentAssetCache(),
+    assetDiagnostics: Object.fromEntries(ocrAssetDiagnostics),
     numThreads: globalThis.ort?.env?.wasm?.numThreads ?? null,
     proxy: globalThis.ort?.env?.wasm?.proxy ?? null,
   };
+}
+
+export async function clearLocalSudokuOcrAssetCache() {
+  ocrAssetLoadPromises.clear();
+  ocrAssetDiagnostics.clear();
+  const db = await openOcrAssetDb();
+  if (db) {
+    try { db.close(); } catch (_) {}
+  }
+  ocrAssetDbPromise = null;
+  await new Promise((resolve) => {
+    if (!globalThis.indexedDB) { resolve(); return; }
+    const request = indexedDB.deleteDatabase(OCR_ASSET_DB_NAME);
+    request.onsuccess = request.onerror = request.onblocked = () => resolve();
+  });
 }
 
 export async function localSudokuOcrRuntimeSelfTest(options = {}) {
