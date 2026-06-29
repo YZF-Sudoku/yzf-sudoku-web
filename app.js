@@ -4,7 +4,7 @@ const APP_VERSION = "wasm-2371e7c5b4a00756";
 const MANUAL_VERSION = "20260629-manual-v2";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
-const OCR_ASSET_VERSION = "20260629-pages-resume-v6";
+const OCR_ASSET_VERSION = "20260629-role-blue-evidence-v7";
 const OCR_CORRECTION_UI_VERSION = "20260629-ocr-correction-v7.1-gridfix";
 
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
@@ -12882,6 +12882,70 @@ function ocrCorrectionCoachJson() {
   return { givenDigits, userDigits, userCellCandidates: masks.join("-") };
 }
 
+function ocrCorrectionAllCandidateMasks(cells = ocrCorrectionState?.cells) {
+  if (!Array.isArray(cells) || cells.length !== 81) return null;
+  const masks = [];
+  for (const cell of cells) {
+    const mask = Number(cell?.candidateMask || 0) & 0x3fe;
+    if (Number(cell?.value || 0) !== 0 || cell?.role !== "candidate" || mask === 0) {
+      return null;
+    }
+    masks.push(mask);
+  }
+  return masks;
+}
+
+function ocrCorrectionSukakuString(masks) {
+  if (!Array.isArray(masks) || masks.length !== 81) return "";
+  let output = "";
+  for (const rawMask of masks) {
+    const mask = Number(rawMask || 0) & 0x3fe;
+    for (let digit = 1; digit <= 9; digit += 1) {
+      output += (mask & (1 << digit)) !== 0 ? String(digit) : "0";
+    }
+  }
+  return output;
+}
+
+function ocrCorrectionLibraryString(cells = ocrCorrectionState?.cells) {
+  if (!Array.isArray(cells) || cells.length !== 81) return "";
+
+  let boardText = "";
+  let boardPart = "";
+  for (const cell of cells) {
+    const value = Number(cell?.value || 0);
+    const digit = value >= 1 && value <= 9 ? String(value) : ".";
+    boardText += digit;
+    if (digit === ".") {
+      boardPart += ".";
+    } else if (cell?.role === "solved") {
+      boardPart += `+${digit}`;
+    } else {
+      boardPart += digit;
+    }
+  }
+
+  const eliminations = [];
+  for (let index = 0; index < 81; index += 1) {
+    if (boardText[index] !== ".") continue;
+    const candidateMask = Number(cells[index]?.candidateMask || 0) & 0x3fe;
+    // A zero mask in OCR correction means “no candidate information was
+    // entered for this ordinary empty cell”, not “delete every candidate”.
+    // Leave it untouched so the engine generates the legal candidates.
+    if (candidateMask === 0) continue;
+    const legalMask = legalCandidateMaskForBoard(boardText, index);
+    const removedMask = legalMask & ~candidateMask;
+    const row = Math.floor(index / 9) + 1;
+    const col = (index % 9) + 1;
+    for (let digit = 1; digit <= 9; digit += 1) {
+      if ((removedMask & (1 << digit)) !== 0) {
+        eliminations.push(`${digit}${row}${col}`);
+      }
+    }
+  }
+  return `:0000:x:${boardPart}:${eliminations.join(" ")}::`;
+}
+
 function ocrCorrectionCounts() {
   let clue = 0;
   let solved = 0;
@@ -13302,17 +13366,38 @@ function closeOcrCorrection(confirmDiscard = false) {
 
 async function confirmOcrCorrection() {
   if (!ocrCorrectionState) return;
-  const coachJson = ocrCorrectionCoachJson();
-  const counts = ocrCorrectionCounts();
-  const originalOcr = ocrCorrectionState.ocr;
-  closeOcrCorrection(false);
-  return importPuzzleFromOcrResult(coachJson, {
-    ...originalOcr,
-    coachJson,
-    clueCount: counts.clue,
-    userDigitCount: counts.solved,
-    candidateCells: counts.candidate,
+  const cells = ocrCorrectionCloneCells(ocrCorrectionState.cells);
+  const allCandidateMasks = ocrCorrectionAllCandidateMasks(cells);
+  const importFormat = allCandidateMasks ? "sukaku" : "library";
+  const importText = allCandidateMasks
+    ? ocrCorrectionSukakuString(allCandidateMasks)
+    : ocrCorrectionLibraryString(cells);
+  if (!importText) return { ok: false, error: ui("importUnknownFormat") };
+
+  const previousInput = givens.value;
+  givens.value = importText;
+  const result = await importPuzzleFromCurrentInput({
+    clipboardFallback: false,
+    preferClipboardFirst: false,
+    clipboardAlreadyTried: true,
   });
+  if (result?.ok) {
+    closeOcrCorrection(false);
+    // Keep the exact OCR import record visible.  Pure-given Library records are
+    // otherwise normalized by the generic loader to a plain 81-char puzzle,
+    // hiding which import path was used.
+    givens.value = importText;
+    result.source = "local-image-ocr";
+    result.ocrImportFormat = importFormat;
+    const attribution = await localSudokuOcrAttributionSafe();
+    if (attribution) log(uif("ocrDoneLog", { attribution }));
+    else log(ui("ocrDoneLogNoAttribution"));
+  } else {
+    // Keep the correction session alive after an invalid/non-unique import so
+    // the user can repair the OCR result instead of losing all edits.
+    givens.value = previousInput;
+  }
+  return result;
 }
 
 async function recognizeAndImportImageFile(file) {

@@ -779,10 +779,18 @@ function isBlackDigitCellReferenceStyle(warpedRgba, warpedGray, cellIndex) {
   const row = Math.floor(cellIndex / 9);
   const col = cellIndex % 9;
   const cellSize = CELL_SIZE; // 64 for 576×576.
-  const x1 = Math.round(col * cellSize);
-  const y1 = Math.round(row * cellSize);
-  const x2 = Math.min(BOARD_SIZE, Math.round(x1 + cellSize));
-  const y2 = Math.min(BOARD_SIZE, Math.round(y1 + cellSize));
+  const cellX1 = Math.round(col * cellSize);
+  const cellY1 = Math.round(row * cellSize);
+  const cellX2 = Math.min(BOARD_SIZE, Math.round(cellX1 + cellSize));
+  const cellY2 = Math.min(BOARD_SIZE, Math.round(cellY1 + cellSize));
+
+  // Role detection only needs the large digit. Keep the outer cell rim out of
+  // the sample so black/blue grid lines cannot influence the color decision.
+  const margin = Math.max(5, Math.round(cellSize * 0.11));
+  const x1 = Math.min(cellX2, cellX1 + margin);
+  const y1 = Math.min(cellY2, cellY1 + margin);
+  const x2 = Math.max(x1, cellX2 - margin);
+  const y2 = Math.max(y1, cellY2 - margin);
 
   const grayValues = [];
   for (let y = y1; y < y2; ++y) {
@@ -794,39 +802,74 @@ function isBlackDigitCellReferenceStyle(warpedRgba, warpedGray, cellIndex) {
   if (!Number.isFinite(threshold)) threshold = 60;
 
   let fgPx = 0;
+  let bluePx = 0;
   let rSum = 0;
   let gSum = 0;
   let bSum = 0;
+  let blueExcessSum = 0;
   for (let y = y1; y < y2; ++y) {
     for (let x = x1; x < x2; ++x) {
       const gi = y * BOARD_SIZE + x;
       const grayByte = Math.round(warpedGray[gi] * 255);
-      // Match the reference DLL: foreground is darker than the Otsu threshold.
-      if (grayByte < threshold) {
-        const pi = gi * 4;
-        rSum += warpedRgba[pi];
-        gSum += warpedRgba[pi + 1];
-        bSum += warpedRgba[pi + 2];
-        fgPx += 1;
+      if (grayByte >= threshold) continue;
+
+      const pi = gi * 4;
+      const r = warpedRgba[pi];
+      const g = warpedRgba[pi + 1];
+      const b = warpedRgba[pi + 2];
+      rSum += r;
+      gSum += g;
+      bSum += b;
+      fgPx += 1;
+
+      // A black digit may become dark gray after JPEG compression, scaling,
+      // anti-aliasing or perspective correction. Therefore brightness is not
+      // evidence of a solved digit. Only a clear blue hue is accepted as such.
+      const blueOverRed = b - r;
+      const blueOverGreen = b - g;
+      const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+      if (blueOverRed >= 24 && blueOverGreen >= 12 && chroma >= 28) {
+        bluePx += 1;
+        blueExcessSum += Math.min(255, blueOverRed + blueOverGreen);
       }
     }
   }
 
-  // The reference returns true for empty cells. Candidate cells are decided by
-  // modelOutputs[pp] < 0 before this value is used, so this is only relevant
-  // for the color split of cells that the model marks as large digits.
+  // Candidate/empty cells are separated by the classifier before this helper
+  // is used. With no foreground evidence, retain the safe default: a clue.
   if (fgPx === 0) {
-    return { isBlack: true, foregroundPixels: 0, threshold };
+    return {
+      isBlack: true,
+      isBlue: false,
+      foregroundPixels: 0,
+      bluePixels: 0,
+      blueRatio: 0,
+      threshold,
+    };
   }
 
   const rAvg = rSum / fgPx;
   const gAvg = gSum / fgPx;
   const bAvg = bSum / fgPx;
   const grayAvg = 0.299 * rAvg + 0.587 * gAvg + 0.114 * bAvg;
-  const colorNeutral = Math.abs(rAvg - gAvg) < 30 && Math.abs(gAvg - bAvg) < 30;
+  const colorNeutral = Math.max(rAvg, gAvg, bAvg) - Math.min(rAvg, gAvg, bAvg) < 30;
+  const blueRatio = bluePx / fgPx;
+  const meanBlueEvidence = bluePx ? blueExcessSum / bluePx : 0;
+
+  // Require both enough supporting pixels and a meaningful share of the digit.
+  // This resists isolated JPEG color noise while preserving genuinely blue text.
+  const minimumBluePixels = Math.max(10, Math.ceil(fgPx * 0.08));
+  const isBlue = bluePx >= minimumBluePixels
+    && blueRatio >= 0.08
+    && meanBlueEvidence >= 55;
+
   return {
-    isBlack: grayAvg < 70 && colorNeutral,
+    isBlack: !isBlue,
+    isBlue,
     foregroundPixels: fgPx,
+    bluePixels: bluePx,
+    blueRatio,
+    meanBlueEvidence,
     threshold,
     rAvg,
     gAvg,
