@@ -811,6 +811,7 @@
             <li><strong>Virtual Set：</strong>用户直接给出的虚拟约束集合。</li>
             <li><strong>定式 AUR：</strong>明确指定四格位置与本体数对 {a,b}，限制 <code>maxBodyFootprint ≤ 3</code>。</li>
             <li><strong>DAUR：</strong>用户标记潜在本体候选池，程序动态展开四格 AUR 和六格 2×3 / 3×2 DUR。</li>
+            <li><strong>GUR：</strong>用户直接标记一个通用候选云。程序不预设几何构型，而是枚举固定格集合的全部合法局部完成式，按行数、列数、宫数 exact-cover footprint 分组；可安全合并时编译为 <code>k-1</code>，否则保留逐完成式 no-good。</li>
             <li><strong>六格 DUR：</strong>六格位置与三数组的可交换完成对，限制 <code>maxBodyFootprint ≤ 5</code>。</li>
           </ul>
           <h3>初始候选与唯一性门控</h3>
@@ -828,6 +829,7 @@
             <li><strong>Virtual Set：</strong>点击候选切换成员。“应用 Truths 数”表示该 Virtual Set 的基数；当前后端按 1–4 处理，填 0 时按 1。</li>
             <li><strong>AUR：</strong>先在“AUR 分组”选择 AUR 1 或 AUR 2，再点击候选，可同时维护两组独立 AUR。</li>
             <li><strong>DAUR：</strong>点击候选建立动态 AUR/DUR 候选池。</li>
+            <li><strong>GUR：</strong>点击候选建立通用候选云；至少覆盖四个单元格。该模式只负责动态验真，不替代现有 AUR/DAUR 静态与模板搜索。</li>
             <li>点击“查找删数”。有效结果可再用“转换冗余 Truths”和“移除未使用 Links”精简。</li>
           </ol>
           <p>“当前 TLG 状态”列表中的条目可逐项删除。“清空 TLG 状态”会清除 Truths、Links、Virtual Set、AUR/DAUR、候选盘和计算结果，但不会清空主盘面的题目。</p>
@@ -839,7 +841,7 @@
             <li>House 颜色固定为 R 青绿、C 金黄、B 紫色。</li>
             <li>House Truth：候选外围分色圆环；House Link：候选数字后的分色底色。</li>
             <li>Cell Truth：单元格内缩蓝框；Cell Link：整格浅蓝底。</li>
-            <li>Virtual Set：紫色实线圈；AUR 1：橙色虚线；AUR 2：蓝色虚线；DAUR：青色点线。</li>
+            <li>Virtual Set：紫色实线圈；AUR 1：橙色虚线；AUR 2：蓝色虚线；DAUR：青色点线；GUR：棕色双线圈。</li>
             <li>最终删数：红色候选和红叉，始终绘制在最上层。</li>
           </ul>
           <h3>结果表示</h3>
@@ -855,6 +857,7 @@
             <li><strong>Virtual Set:</strong> a user-supplied virtual constraint.</li>
             <li><strong>Fixed AUR:</strong> an explicit four-cell position and body pair {a,b}, with <code>maxBodyFootprint ≤ 3</code>.</li>
             <li><strong>DAUR:</strong> a user-marked body-candidate pool dynamically expanded into four-cell AURs and six-cell 2×3 / 3×2 DURs.</li>
+            <li><strong>GUR:</strong> a template-free candidate cloud. The engine enumerates legal local completions over the fixed cell set and groups them by row-digit, column-digit, and box-digit exact-cover footprint. It emits a safe <code>k-1</code> guard when closure is proven; otherwise it keeps exact per-completion no-goods.</li>
             <li><strong>Six-cell DUR:</strong> a six-cell swappable completion for a three-digit set, with <code>maxBodyFootprint ≤ 5</code>.</li>
           </ul>
           <h3>Initial Candidates and Uniqueness Gate</h3>
@@ -872,6 +875,7 @@
             <li><strong>Virtual Set:</strong> click candidates to toggle membership. Truths to Apply is the Virtual Set cardinality; the current backend uses 1–4 and treats 0 as 1.</li>
             <li><strong>AUR:</strong> choose AUR 1 or AUR 2 in AUR Group before clicking candidates; two independent groups can be maintained.</li>
             <li><strong>DAUR:</strong> click candidates to build the dynamic AUR/DUR candidate pool.</li>
+            <li><strong>GUR:</strong> click candidates to build a generic cloud spanning at least four cells. GUR performs dynamic validation and does not replace the existing fixed AUR/DAUR paths.</li>
             <li>Press Find Eliminations. Use Convert Redundant Truths and Remove Unused Links after a valid result.</li>
           </ol>
           <p>Items in Current TLG State can be removed individually. Clear TLG State removes Truths, Links, the Virtual Set, AUR/DAUR groups, the candidate grid, and computed results without clearing the puzzle on the main board.</p>
@@ -883,7 +887,7 @@
             <li>House colors are fixed: R teal, C amber, B violet.</li>
             <li>House Truth: segmented outer ring; House Link: segmented background behind the digit.</li>
             <li>Cell Truth: inset blue border; Cell Link: light-blue cell fill.</li>
-            <li>Virtual Set: solid violet ring; AUR 1: orange dashed; AUR 2: blue dashed; DAUR: cyan dotted.</li>
+            <li>Virtual Set: solid violet ring; AUR 1: orange dashed; AUR 2: blue dashed; DAUR: cyan dotted; GUR: brown double ring.</li>
             <li>Final eliminations: red candidate and red cross on the top layer.</li>
           </ul>
           <h3>Result Notation</h3>

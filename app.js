@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-36213bf4f0023665";
+import createModule from "./sudoku_wasm.js?v=wasm-eb678fc5980f26ed";
 
-const APP_VERSION = "wasm-36213bf4f0023665";
+const APP_VERSION = "wasm-eb678fc5980f26ed";
 const MANUAL_VERSION = "20260629-manual-v2";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
@@ -690,6 +690,7 @@ const uiText = {
     tlgModeVirtualSet: "Virtual Set",
     tlgModeAur: "AUR",
     tlgModeDaur: "DAUR",
+    tlgModeGur: "GUR",
     tlgAurGroupLabel: "AUR 分组",
     tlgAurGroup1: "AUR 1",
     tlgAurGroup2: "AUR 2",
@@ -721,6 +722,9 @@ const uiText = {
     tlgDaurCandidates: "DAUR 候选池",
     tlgDaurCandidateAdded: "已加入 DAUR 候选池：{value}",
     tlgDaurCandidateRemoved: "已移除 DAUR 候选池：{value}",
+    tlgGurCandidates: "GUR 通用候选云",
+    tlgGurCandidateAdded: "已加入 GUR 通用候选云：{value}",
+    tlgGurCandidateRemoved: "已移除 GUR 通用候选云：{value}",
     tlgAurCornerAddedGroup: "已加入 {group} 角候选：{value}",
     tlgAurCornerRemovedGroup: "已移除 {group} 角候选：{value}",
     tlgRemove: "删除",
@@ -757,6 +761,8 @@ const uiText = {
     tlgSummaryAurs: "AUR={count}",
     tlgSummaryAurCorners: "AUR 角候选={count}",
     tlgSummaryDaurCandidates: "DAUR 候选={count}",
+    tlgSummaryGurCandidates: "GUR 候选={count}",
+    tlgSummaryGurAccepted: "GUR 约束={count}",
     tlgSummaryPremiseUnique: "门控=唯一解",
     tlgSummaryPremiseTraining: "门控=训练盘",
     tlgSummaryDaurExpanded: "DAUR→AUR/DUR={count}",
@@ -768,6 +774,8 @@ const uiText = {
     tlgSolutionAurs: "{count} 个定式 AUR = {body}",
     tlgSolutionDaurPool: "DAUR 候选池 = {{body}}",
     tlgSolutionDaurExpanded: "DAUR 展开 AUR/DUR 约束 = {count}",
+    tlgSolutionGurPool: "GUR 通用候选云 = {{body}}",
+    tlgSolutionGurAccepted: "GUR 枚举约束 = {count}",
     tlgSolutionEliminations: "{count} 个删数 --> {body}",
     tlgSolutionNoEliminations: "0 个删数",
     tlgSolutionAssignments: "{count} 个出数 --> {body}",
@@ -800,6 +808,7 @@ const uiText = {
     tlgClearVirtualBatch: "清空 Virtual Set",
     tlgToggleAurBatch: "切换 AUR 角候选",
     tlgToggleDaurBatch: "切换 DAUR 候选池",
+    tlgToggleGurBatch: "切换 GUR 通用候选云",
     tlgClearAurBatch: "清空 AUR 角候选",
     tlgClearAllLogic: "清空全部逻辑",
     tlgCandidatesSelected: "已选择 {count} 个候选数；右键打开 TLG 菜单。",
@@ -812,6 +821,7 @@ const uiText = {
     tlgVirtualCleared: "已清空 Virtual Set。",
     tlgAurCleared: "已清空全部 AUR 角候选。",
     tlgDaurCleared: "已清空 DAUR 候选池。",
+    tlgGurCleared: "已清空 GUR 通用候选云。",
     tlgLogicCleared: "已清空全部 TLG 逻辑；候选盘面保持不变。",
     batchGenerate: "批量任务",
     batchMode: "模式",
@@ -1201,6 +1211,7 @@ const uiText = {
     tlgModeVirtualSet: "Virtual Set",
     tlgModeAur: "AUR",
     tlgModeDaur: "DAUR",
+    tlgModeGur: "GUR",
     tlgAurGroupLabel: "AUR Group",
     tlgAurGroup1: "AUR 1",
     tlgAurGroup2: "AUR 2",
@@ -1232,6 +1243,9 @@ const uiText = {
     tlgDaurCandidates: "DAUR Candidate Pool",
     tlgDaurCandidateAdded: "Added to DAUR candidate pool: {value}",
     tlgDaurCandidateRemoved: "Removed from DAUR candidate pool: {value}",
+    tlgGurCandidates: "GUR Generic Candidate Cloud",
+    tlgGurCandidateAdded: "Added to GUR candidate cloud: {value}",
+    tlgGurCandidateRemoved: "Removed from GUR candidate cloud: {value}",
     tlgAurCornerAddedGroup: "Added {group} corner: {value}",
     tlgAurCornerRemovedGroup: "Removed {group} corner: {value}",
     tlgRemove: "Remove",
@@ -1268,6 +1282,8 @@ const uiText = {
     tlgSummaryAurs: "AURs={count}",
     tlgSummaryAurCorners: "AUR Corners={count}",
     tlgSummaryDaurCandidates: "DAUR Candidates={count}",
+    tlgSummaryGurCandidates: "GUR Candidates={count}",
+    tlgSummaryGurAccepted: "GUR Constraints={count}",
     tlgSummaryPremiseUnique: "Gate=Unique",
     tlgSummaryPremiseTraining: "Gate=Training",
     tlgSummaryDaurExpanded: "DAUR→AUR/DUR={count}",
@@ -1279,6 +1295,8 @@ const uiText = {
     tlgSolutionAurs: "{count} Fixed AURs = {body}",
     tlgSolutionDaurPool: "DAUR Pool = {{body}}",
     tlgSolutionDaurExpanded: "DAUR Expanded AUR/DUR Constraints = {count}",
+    tlgSolutionGurPool: "GUR Candidate Cloud = {{body}}",
+    tlgSolutionGurAccepted: "GUR Enumerated Constraints = {count}",
     tlgSolutionEliminations: "{count} Eliminations --> {body}",
     tlgSolutionNoEliminations: "0 Eliminations",
     tlgSolutionAssignments: "{count} Assignments --> {body}",
@@ -1311,6 +1329,7 @@ const uiText = {
     tlgClearVirtualBatch: "Clear the Virtual Set",
     tlgToggleAurBatch: "Toggle AUR Corner",
     tlgToggleDaurBatch: "Toggle DAUR Candidate Pool",
+    tlgToggleGurBatch: "Toggle GUR Candidate Cloud",
     tlgClearAurBatch: "Clear AUR Corners",
     tlgClearAllLogic: "Clear All Logic",
     tlgCandidatesSelected: "{count} candidates selected; right-click to open the TLG menu.",
@@ -1323,6 +1342,7 @@ const uiText = {
     tlgVirtualCleared: "Cleared the Virtual Set.",
     tlgAurCleared: "Cleared all AUR corners.",
     tlgDaurCleared: "Cleared the DAUR candidate pool.",
+    tlgGurCleared: "Cleared the GUR candidate cloud.",
     tlgLogicCleared: "Cleared all TLG logic; the candidate grid was preserved.",
     batchGenerate: "Batch tasks",
     batchMode: "Mode",
@@ -2977,7 +2997,7 @@ function applyStaticLanguage() {
   document.querySelector(".tlg-solver-controls")?.setAttribute("aria-label", ui("tlgActionsAria"));
   if (tlgSolverImportText) tlgSolverImportText.placeholder = ui("tlgDebugPlaceholder");
   if (tlgSolverMode) {
-    const modeLabels = { truths: "tlgModeTruths", links: "tlgModeLinks", virtualSet: "tlgModeVirtualSet", aur: "tlgModeAur", daur: "tlgModeDaur" };
+    const modeLabels = { truths: "tlgModeTruths", links: "tlgModeLinks", virtualSet: "tlgModeVirtualSet", aur: "tlgModeAur", daur: "tlgModeDaur", gur: "tlgModeGur" };
     [...tlgSolverMode.options].forEach((option) => { const key = modeLabels[option.value]; if (key) option.textContent = ui(key); });
   }
   if (tlgSolverAurGroup) {
@@ -11120,6 +11140,7 @@ const tlgSolverState = {
   virtualCandidates: new Set(),
   aurGroups: [new Set(), new Set()],
   dynamicAurCandidates: new Set(),
+  genericAurCandidates: new Set(),
   eliminations: [],
   assignments: [],
   lastResponse: null,
@@ -11421,6 +11442,13 @@ function buildTlgSolutionText(response) {
     })}`);
     lines.push(`     ${uif("tlgSolutionDaurExpanded", { count: expanded })}`);
   }
+  if (tlgSolverState.genericAurCandidates.size > 0) {
+    const accepted = Number(response?.counts?.gurAccepted || 0);
+    lines.push(`     ${uif("tlgSolutionGurPool", {
+      body: [...tlgSolverState.genericAurCandidates].map(tlgSolverCandidateKeyToNrc).join(" "),
+    })}`);
+    lines.push(`     ${uif("tlgSolutionGurAccepted", { count: accepted })}`);
+  }
   if (eliminations.length > 0) {
     lines.push(`     ${uif("tlgSolutionEliminations", { count: eliminations.length, body: eliminations.join(", ") })}`);
   } else {
@@ -11451,6 +11479,7 @@ function renderTlgSolverStateList() {
   parts.push(renderTlgSolverChipList(`${ui("tlgAurCorners")} 1`, [...tlgSolverState.aurGroups[0]], "aur0", tlgSolverCandidateKeyToNrc));
   parts.push(renderTlgSolverChipList(`${ui("tlgAurCorners")} 2`, [...tlgSolverState.aurGroups[1]], "aur1", tlgSolverCandidateKeyToNrc));
   parts.push(renderTlgSolverChipList(ui("tlgDaurCandidates"), [...tlgSolverState.dynamicAurCandidates], "daur", tlgSolverCandidateKeyToNrc));
+  parts.push(renderTlgSolverChipList(ui("tlgGurCandidates"), [...tlgSolverState.genericAurCandidates], "gur", tlgSolverCandidateKeyToNrc));
   const html = parts.filter(Boolean).join("");
   tlgSolverStateList.innerHTML = html || ui("tlgNoInput");
 }
@@ -11462,8 +11491,9 @@ function removeTlgSolverStateItem(category, value) {
   else if (category === "aur0") tlgSolverState.aurGroups[0].delete(value);
   else if (category === "aur1") tlgSolverState.aurGroups[1].delete(value);
   else if (category === "daur") tlgSolverState.dynamicAurCandidates.delete(value);
+  else if (category === "gur") tlgSolverState.genericAurCandidates.delete(value);
   tlgSolverState.selectedEndpoint = null;
-  const candidateCategory = category === "virtual" || category === "aur0" || category === "aur1" || category === "daur";
+  const candidateCategory = category === "virtual" || category === "aur0" || category === "aur1" || category === "daur" || category === "gur";
   const categoryLabels = {
     truths: ui("tlgTruths"),
     links: ui("tlgLinks"),
@@ -11471,6 +11501,7 @@ function removeTlgSolverStateItem(category, value) {
     aur0: ui("tlgAurGroup1"),
     aur1: ui("tlgAurGroup2"),
     daur: ui("tlgDaurCandidates"),
+    gur: ui("tlgGurCandidates"),
   };
   announceTlgSolver(uif("tlgRemoved", {
     category: categoryLabels[category] || category,
@@ -11505,12 +11536,17 @@ function summarizeTlgSolverState(prefix = "") {
   parts.push(uif("tlgSummaryAurs", { count: activeAurGroups.length }));
   parts.push(uif("tlgSummaryAurCorners", { count: aurCorners }));
   parts.push(uif("tlgSummaryDaurCandidates", { count: tlgSolverState.dynamicAurCandidates.size }));
+  parts.push(uif("tlgSummaryGurCandidates", { count: tlgSolverState.genericAurCandidates.size }));
   parts.push(ui((tlgSolverAurPremiseMode?.value || "unique-puzzle-derived") === "candidate-grid-asserted"
     ? "tlgSummaryPremiseTraining"
     : "tlgSummaryPremiseUnique"));
   const expandedDaurAurs = Number(tlgSolverState.lastResponse?.counts?.daurExpandedAurs || 0);
   if (tlgSolverState.dynamicAurCandidates.size > 0 && expandedDaurAurs > 0) {
     parts.push(uif("tlgSummaryDaurExpanded", { count: expandedDaurAurs }));
+  }
+  const acceptedGurs = Number(tlgSolverState.lastResponse?.counts?.gurAccepted || 0);
+  if (tlgSolverState.genericAurCandidates.size > 0 && acceptedGurs > 0) {
+    parts.push(uif("tlgSummaryGurAccepted", { count: acceptedGurs }));
   }
   if (tlgSolverState.candidateGrid) parts.push(uif("tlgSummaryGrid", { count: tlgSolverState.candidateGrid.count }));
   if (tlgSolverState.selectedCandidates.size) parts.push(uif("tlgSummarySelected", { count: tlgSolverState.selectedCandidates.size }));
@@ -11776,6 +11812,7 @@ function applyTlgSolverMarksToCellElement(cellNode, cellIndex) {
     if (tlgSolverState.aurGroups[0].has(key)) candidate.classList.add("tlg-aur-corner");
     if (tlgSolverState.aurGroups[1].has(key)) candidate.classList.add("tlg-aur-corner-secondary");
     if (tlgSolverState.dynamicAurCandidates.has(key)) candidate.classList.add("tlg-daur-candidate");
+    if (tlgSolverState.genericAurCandidates.has(key)) candidate.classList.add("tlg-gur-candidate");
 
     const isElimination = tlgSolverState.eliminations.some(
       (item) => item.cell === cellIndex && item.digit === digit,
@@ -11939,6 +11976,7 @@ function clearTlgSolverLogicOnly(messageKey = "tlgLogicCleared") {
   tlgSolverState.virtualCandidates.clear();
   tlgSolverState.aurGroups.forEach((group) => group.clear());
   tlgSolverState.dynamicAurCandidates.clear();
+  tlgSolverState.genericAurCandidates.clear();
   clearTlgSolverComputedResult();
   tlgSolverState.lastMessage = ui(messageKey);
   tlgSolverState.lastTone = "ok";
@@ -12057,6 +12095,9 @@ function openTlgSolverContextMenu(cellIndex, digit, event, candidate) {
   }));
   root.appendChild(tlgMenuButton(ui("tlgToggleDaurBatch"), () => {
     tlgBatchToggleCandidateSet(tlgSolverState.dynamicAurCandidates, ui("tlgDaurCandidates"));
+  }));
+  root.appendChild(tlgMenuButton(ui("tlgToggleGurBatch"), () => {
+    tlgBatchToggleCandidateSet(tlgSolverState.genericAurCandidates, ui("tlgGurCandidates"));
   }));
   const separator2 = document.createElement("div");
   separator2.className = "tlg-context-separator";
@@ -12185,6 +12226,18 @@ function handleTlgSolverCandidateClick(cellIndex, digit, event, candidate) {
     updateTlgSolverUi();
     return true;
   }
+  if (mode === "gur") {
+    const added = !tlgSolverState.genericAurCandidates.has(key);
+    if (added) tlgSolverState.genericAurCandidates.add(key);
+    else tlgSolverState.genericAurCandidates.delete(key);
+    tlgSolverState.selectedEndpoint = null;
+    announceTlgSolver(uif(added ? "tlgGurCandidateAdded" : "tlgGurCandidateRemoved", {
+      value: tlgSolverNrc(cellIndex, digit),
+    }));
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    updateTlgSolverUi();
+    return true;
+  }
   const point = { cellIndex, digit };
   if (!tlgSolverState.selectedEndpoint) {
     tlgSolverState.selectedEndpoint = point;
@@ -12298,6 +12351,12 @@ function buildTlgSolverRequestV440(action = "findAllEliminations") {
     const digit = Number(digitText);
     return { digit, cellIndex, row: Math.floor(cellIndex / 9) + 1, column: (cellIndex % 9) + 1, source: tlgSolverNrc(cellIndex, digit) };
   });
+  const genericAurCandidates = [...tlgSolverState.genericAurCandidates].map((key) => {
+    const [cellText, digitText] = key.split(":");
+    const cellIndex = Number(cellText);
+    const digit = Number(digitText);
+    return { digit, cellIndex, row: Math.floor(cellIndex / 9) + 1, column: (cellIndex % 9) + 1, source: tlgSolverNrc(cellIndex, digit) };
+  });
   const activeCandidates = tlgSolverActiveCandidatePayload();
   const aurPremiseMode = tlgSolverAurPremiseMode?.value || "unique-puzzle-derived";
   const initialCandidates = aurPremiseMode === "unique-puzzle-derived"
@@ -12320,6 +12379,7 @@ function buildTlgSolverRequestV440(action = "findAllEliminations") {
     virtualSet: { candidates: virtualCandidates },
     aurs: aurGroups,
     daurs: dynamicAurCandidates.length ? [{ candidates: dynamicAurCandidates }] : [],
+    gurs: genericAurCandidates.length ? [{ candidates: genericAurCandidates }] : [],
     ...(legacyAur ? { aur: legacyAur } : {}),
     assumptions: { truthsToApply: Number(tlgSolverTruthsToApply?.value || 0) || 0 },
     debugImportText: String(tlgSolverImportText?.value || ""),
@@ -12488,6 +12548,7 @@ function clearTlgSolverState() {
   tlgSolverState.virtualCandidates.clear();
   tlgSolverState.aurGroups.forEach((group) => group.clear());
   tlgSolverState.dynamicAurCandidates.clear();
+  tlgSolverState.genericAurCandidates.clear();
   tlgSolverState.eliminations = [];
   tlgSolverState.assignments = [];
   tlgSolverState.lastResponse = null;

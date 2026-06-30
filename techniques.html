@@ -62,9 +62,29 @@
       nav ol ol { columns:1; }
     }
     @media (max-width:760px) { .path-grid, .method-boxes { grid-template-columns:1fr; } }
+
+    .tech-language-toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+    .tech-language-toolbar button { border:1px solid rgba(255,255,255,.65); border-radius:999px; padding:6px 12px; color:#fff; background:rgba(255,255,255,.12); cursor:pointer; font:inherit; }
+    .tech-language-toolbar button[aria-pressed="true"] { color:#1d4ed8; background:#fff; }
+    body[data-tech-lang="zh"] .lang-en,
+    body[data-tech-lang="en"] .lang-zh { display:none !important; }
+    .tech-card-copy.lang-en { margin-top:16px; padding-top:16px; border-top:1px dashed var(--line); }
+    body[data-tech-lang="bilingual"] .tech-card-copy::before { grid-column:1 / -1; display:inline-block; width:max-content; margin:0 0 2px; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:700; }
+    body[data-tech-lang="bilingual"] .tech-card-copy.lang-zh::before { content:"中文"; color:#1d4ed8; background:#eaf1ff; }
+    body[data-tech-lang="bilingual"] .tech-card-copy.lang-en::before { content:"English"; color:#047857; background:#ecfdf5; }
+    body[data-tech-lang="zh"] .title-en,
+    body[data-tech-lang="en"] .title-zh,
+    body[data-tech-lang="zh"] .title-separator,
+    body[data-tech-lang="en"] .title-separator { display:none !important; }
+    .tech-card h3 .title-en { color:inherit; font-weight:700; margin-left:0; }
+    .tech-card h3 .title-zh { color:var(--muted); font-weight:500; margin-left:.35em; }
+    body[data-tech-lang="zh"] .tech-card h3 .title-zh { color:inherit; font-weight:700; margin-left:0; }
+    body[data-tech-lang="bilingual"] .lang-en:not(.tech-card-copy) { border-left:3px solid #bbf7d0; padding-left:10px; }
+    body[data-tech-lang="bilingual"] .lang-zh:not(.tech-card-copy) { border-left:3px solid #bfdbfe; padding-left:10px; }
+    @media (max-width:760px) { .tech-language-toolbar { gap:6px; } .tech-language-toolbar button { padding:5px 10px; } }
 </style>
 </head>
-<body>
+<body data-tech-lang="bilingual">
 <header><div class="wrap">
 <h1>YZF Sudoku 技巧说明 / Techniques</h1>
 <p>面向玩家阅读的逻辑说明，不涉及程序内部搜索算法。</p>
@@ -309,6 +329,7 @@
 <div class="tech-card placeholder"><h3>AHS-W-Wing <span>AHS-W 翅膀</span></h3><p class="kindline"><span class="badge">Kind: <code>AHSWWing</code></span><span class="badge">Category: AHS</span><span class="badge status-placeholder">占位 / placeholder</span></p><p>后续真正迁移后，可按 AHS-XZ 与 ALS-W-Wing 的说明风格补充。</p></div>
 <div class="tech-card placeholder"><h3>AHS Chain <span>AHS 链</span></h3><p class="kindline"><span class="badge">Kind: <code>AHSChain</code></span><span class="badge">Category: AHS</span><span class="badge status-placeholder">占位 / placeholder</span></p><p>后续真正迁移后，可按 AHS-XZ 与 ALS Chain 的说明风格补充。</p></div></section>
 </main>
+<script src="./techniques-i18n.js"></script>
 <script>
 (function(){
   const input = document.getElementById('techSearch');

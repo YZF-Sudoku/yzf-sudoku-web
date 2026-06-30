@@ -730,6 +730,13 @@
       background: color-mix(in srgb, #cffafe 72%, transparent);
       font-weight: 900;
     }
+    .candidate.tlg-gur-candidate {
+      outline: max(2px, 0.18em) double #7c2d12;
+      outline-offset: max(-3px, -0.22em);
+      border-radius: 999px;
+      background: color-mix(in srgb, #fed7aa 72%, transparent);
+      font-weight: 900;
+    }
     .candidate.tlg-elimination {
       color: #7a0012;
       font-weight: 900;
@@ -4867,6 +4874,7 @@
                       <option value="virtualSet">Virtual Set</option>
                       <option value="aur">AUR</option>
                       <option value="daur">DAUR</option>
+                      <option value="gur">GUR</option>
                     </select>
                   </label>
                   <label id="tlgSolverAurGroupWrap" hidden><span id="tlgSolverAurGroupLabel">AUR 分组</span>
@@ -5249,6 +5257,6 @@
       })();
     </script>
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=wasm-36213bf4f0023665-ocr-v8"></script>
+    <script type="module" src="./app.js?v=wasm-eb678fc5980f26ed"></script>
   </body>
 </html>
