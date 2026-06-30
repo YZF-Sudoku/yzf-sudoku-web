@@ -1209,7 +1209,7 @@
       width: 100%;
       height: 100%;
       padding: var(--yzf-candidate-grid-padding, 3px);
-      color: #64748b;
+      color: #516479;
       font-size: var(--yzf-candidate-font-size, clamp(8px, 30cqw, 14px));
       line-height: 1;
       text-align: center;
@@ -3850,11 +3850,14 @@
       height: 100dvh;
       min-width: 0;
       min-height: 0;
+      /* V459: reserve only real device safe areas. The board may use the
+         remaining full viewport width/height; controls keep a small visual
+         inset through orientation-specific margins below. */
       padding:
-        max(4px, env(safe-area-inset-top))
-        max(4px, env(safe-area-inset-right))
-        max(4px, env(safe-area-inset-bottom))
-        max(4px, env(safe-area-inset-left));
+        max(0px, env(safe-area-inset-top))
+        max(0px, env(safe-area-inset-right))
+        max(0px, env(safe-area-inset-bottom))
+        max(0px, env(safe-area-inset-left));
       gap: 5px;
       overflow: hidden;
       background:
@@ -3886,6 +3889,22 @@
         "mobile-board mobile-actions";
       column-gap: 8px;
       row-gap: 5px;
+    }
+
+
+    /* Keep the control cards off the glass edge without shrinking the board. */
+    .mobile-solve-shell.is-portrait .mobile-solve-topbar,
+    .mobile-solve-shell.is-portrait .mobile-solve-status,
+    .mobile-solve-shell.is-portrait .mobile-solve-numpad-host,
+    .mobile-solve-shell.is-portrait .mobile-solve-actions,
+    .mobile-solve-shell.is-portrait .mobile-solve-marks-host {
+      margin-inline: 4px;
+    }
+    .mobile-solve-shell.is-landscape .mobile-solve-topbar,
+    .mobile-solve-shell.is-landscape .mobile-solve-status,
+    .mobile-solve-shell.is-landscape .mobile-solve-numpad-host,
+    .mobile-solve-shell.is-landscape .mobile-solve-actions {
+      margin-right: 4px;
     }
 
     .mobile-solve-topbar {
@@ -3956,6 +3975,9 @@
       margin: 0 !important;
       flex: 0 0 var(--mobile-board-size);
       filter: drop-shadow(0 9px 20px rgba(22, 41, 70, 0.16));
+    }
+    .mobile-solve-shell .candidate-grid {
+      font-size: var(--yzf-candidate-font-size) !important;
     }
 
     /* V440: mobile solving refinements. Candidate visibility is a presentation
@@ -4244,6 +4266,38 @@
     .mobile-solve-shell .manual-marks-panel.mobile-manual-marks[data-mobile-mark-mode="block"] .manual-mark-buttons {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
+    /* V459: on short portrait phones, compact the controls before shrinking
+       the board. This keeps the puzzle nearly full-width while all controls
+       remain visible without scrolling. */
+    @media (orientation: portrait) and (max-height: 600px) {
+      .mobile-solve-shell { gap: 2px; }
+      .mobile-solve-topbar {
+        min-height: 34px;
+        padding-block: 2px;
+      }
+      .mobile-solve-topbar button {
+        min-height: 30px;
+        padding-block: 3px;
+      }
+      .mobile-solve-status {
+        min-height: 24px;
+        max-height: 28px;
+        padding: 3px 7px;
+        font-size: 10px;
+      }
+      .mobile-solve-shell .numpad { gap: 3px; }
+      .mobile-solve-shell.is-portrait .numpad button {
+        min-height: 34px;
+        padding-block: 2px;
+      }
+      .mobile-solve-actions { gap: 3px; }
+      .mobile-solve-actions button {
+        min-height: 32px;
+        padding-block: 3px;
+        font-size: 11px;
+      }
+    }
+
     @media (max-width: 360px) {
       .mobile-solve-actions { gap: 3px; }
       .mobile-solve-actions button { padding-inline: 2px; }
@@ -4492,6 +4546,136 @@
       .mobile-solve-topbar button { padding-inline: 6px; font-size: 11px; }
       .mobile-solve-actions button { font-size: 11px; }
       .mobile-solve-shell .numpad button { min-height: 38px; }
+    }
+
+
+
+    /* V456: FB-aligned board geometry.
+       The 9 cell areas are equal-sized content tracks. Normal lines, box lines,
+       and the outer frame occupy their own tracks instead of shrinking selected
+       cells by different border widths. The two line parameters deliberately
+       stay independent so a future settings UI can change them without touching
+       board/chain geometry code. */
+    .board-wrap {
+      --yzf-grid-line-width: 1px;
+      --yzf-box-line-factor: 2;
+      --yzf-box-line-width: 2px;
+      --yzf-grid-line-color: #8799af;
+      --yzf-box-line-color: #172033;
+      --yzf-cell-size: 72px;
+      --yzf-box-line-pos-1: 220px;
+      --yzf-box-line-pos-2: 440px;
+      --yzf-desktop-board-max: 700px;
+      --yzf-desktop-workspace-max: 1540px;
+    }
+    .sudoku-board {
+      grid-template-columns:
+        var(--yzf-cell-size, 72px) var(--yzf-grid-line-width, 1px)
+        var(--yzf-cell-size, 72px) var(--yzf-grid-line-width, 1px)
+        var(--yzf-cell-size, 72px) var(--yzf-box-line-width, 2px)
+        var(--yzf-cell-size, 72px) var(--yzf-grid-line-width, 1px)
+        var(--yzf-cell-size, 72px) var(--yzf-grid-line-width, 1px)
+        var(--yzf-cell-size, 72px) var(--yzf-box-line-width, 2px)
+        var(--yzf-cell-size, 72px) var(--yzf-grid-line-width, 1px)
+        var(--yzf-cell-size, 72px) var(--yzf-grid-line-width, 1px)
+        var(--yzf-cell-size, 72px) !important;
+      grid-template-rows:
+        var(--yzf-cell-size, 72px) var(--yzf-grid-line-width, 1px)
+        var(--yzf-cell-size, 72px) var(--yzf-grid-line-width, 1px)
+        var(--yzf-cell-size, 72px) var(--yzf-box-line-width, 2px)
+        var(--yzf-cell-size, 72px) var(--yzf-grid-line-width, 1px)
+        var(--yzf-cell-size, 72px) var(--yzf-grid-line-width, 1px)
+        var(--yzf-cell-size, 72px) var(--yzf-box-line-width, 2px)
+        var(--yzf-cell-size, 72px) var(--yzf-grid-line-width, 1px)
+        var(--yzf-cell-size, 72px) var(--yzf-grid-line-width, 1px)
+        var(--yzf-cell-size, 72px) !important;
+      border: 0 !important;
+      padding: var(--yzf-box-line-width, 2px) !important;
+      background: var(--yzf-grid-line-color, #8799af) !important;
+      gap: 0 !important;
+      isolation: isolate;
+      overflow: hidden;
+    }
+    .sudoku-board::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      /* One unified layer draws both the outer frame and the two inner box
+         separators. This avoids a browser-rounded CSS border disagreeing with
+         fractional future gridline/factorboxline settings. */
+      background:
+        linear-gradient(to right,
+          var(--yzf-box-line-color, #172033) 0,
+          var(--yzf-box-line-color, #172033) var(--yzf-box-line-width, 2px),
+          transparent var(--yzf-box-line-width, 2px),
+          transparent calc(100% - var(--yzf-box-line-width, 2px)),
+          var(--yzf-box-line-color, #172033) calc(100% - var(--yzf-box-line-width, 2px)),
+          var(--yzf-box-line-color, #172033) 100%),
+        linear-gradient(to bottom,
+          var(--yzf-box-line-color, #172033) 0,
+          var(--yzf-box-line-color, #172033) var(--yzf-box-line-width, 2px),
+          transparent var(--yzf-box-line-width, 2px),
+          transparent calc(100% - var(--yzf-box-line-width, 2px)),
+          var(--yzf-box-line-color, #172033) calc(100% - var(--yzf-box-line-width, 2px)),
+          var(--yzf-box-line-color, #172033) 100%),
+        linear-gradient(to right,
+          transparent 0,
+          transparent var(--yzf-box-line-pos-1, 220px),
+          var(--yzf-box-line-color, #172033) var(--yzf-box-line-pos-1, 220px),
+          var(--yzf-box-line-color, #172033) calc(var(--yzf-box-line-pos-1, 220px) + var(--yzf-box-line-width, 2px)),
+          transparent calc(var(--yzf-box-line-pos-1, 220px) + var(--yzf-box-line-width, 2px)),
+          transparent var(--yzf-box-line-pos-2, 440px),
+          var(--yzf-box-line-color, #172033) var(--yzf-box-line-pos-2, 440px),
+          var(--yzf-box-line-color, #172033) calc(var(--yzf-box-line-pos-2, 440px) + var(--yzf-box-line-width, 2px)),
+          transparent calc(var(--yzf-box-line-pos-2, 440px) + var(--yzf-box-line-width, 2px))),
+        linear-gradient(to bottom,
+          transparent 0,
+          transparent var(--yzf-box-line-pos-1, 220px),
+          var(--yzf-box-line-color, #172033) var(--yzf-box-line-pos-1, 220px),
+          var(--yzf-box-line-color, #172033) calc(var(--yzf-box-line-pos-1, 220px) + var(--yzf-box-line-width, 2px)),
+          transparent calc(var(--yzf-box-line-pos-1, 220px) + var(--yzf-box-line-width, 2px)),
+          transparent var(--yzf-box-line-pos-2, 440px),
+          var(--yzf-box-line-color, #172033) var(--yzf-box-line-pos-2, 440px),
+          var(--yzf-box-line-color, #172033) calc(var(--yzf-box-line-pos-2, 440px) + var(--yzf-box-line-width, 2px)),
+          transparent calc(var(--yzf-box-line-pos-2, 440px) + var(--yzf-box-line-width, 2px)));
+    }
+    .sudoku-cell,
+    .sudoku-cell.box-left,
+    .sudoku-cell.box-top,
+    .sudoku-cell.box-right,
+    .sudoku-cell.box-bottom {
+      border: 0 !important;
+      z-index: 1;
+    }
+    .candidate-grid {
+      padding: 0 !important;
+    }
+    @media (orientation: landscape) and (min-width: 700px) and (min-height: 641px) {
+      .app-shell {
+        max-width: var(--yzf-desktop-workspace-max, 1540px) !important;
+        margin-inline: auto !important;
+      }
+      .workspace {
+        max-width: var(--yzf-desktop-workspace-max, 1540px) !important;
+        margin-inline: auto !important;
+      }
+      .board-wrap,
+      :fullscreen .board-wrap,
+      :-webkit-full-screen .board-wrap {
+        grid-template-columns:
+          var(--yzf-board-size)
+          minmax(var(--yzf-right-panel-min), 1fr) !important;
+      }
+      :fullscreen .app-shell,
+      :-webkit-full-screen .app-shell,
+      :fullscreen .workspace,
+      :-webkit-full-screen .workspace {
+        width: 100% !important;
+        max-width: none !important;
+        margin-inline: 0 !important;
+      }
     }
 
 </style>
@@ -4896,18 +5080,58 @@
       (() => {
         const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-        const BOARD_SIZE_QUANTUM = 27; // 9 cells * 3 px; keeps each cell size divisible by 3.
+        const CELL_SIZE_QUANTUM = 3; // FB geometry: each real cell stays divisible by the 3x3 candidate grid.
 
         const getPx = (style, prop) => Number.parseFloat(style.getPropertyValue(prop)) || 0;
 
-        const ceilToQuantum = (value) => Math.ceil(value / BOARD_SIZE_QUANTUM) * BOARD_SIZE_QUANTUM;
-        const floorToQuantum = (value) => Math.floor(value / BOARD_SIZE_QUANTUM) * BOARD_SIZE_QUANTUM;
+        const readBoardLineMetrics = (wrapStyle) => {
+          const gridLine = Math.max(0.25, getPx(wrapStyle, '--yzf-grid-line-width') || 1);
+          const factorRaw = Number.parseFloat(wrapStyle.getPropertyValue('--yzf-box-line-factor'));
+          const boxFactor = Number.isFinite(factorRaw) && factorRaw > 0 ? factorRaw : 2;
+          const boxLine = gridLine * boxFactor;
+          return {
+            gridLine,
+            boxFactor,
+            boxLine,
+            totalLineWidth: 6 * gridLine + 4 * boxLine,
+          };
+        };
 
-        const quantizeBoardSize = (rawSize, minSize, maxSize) => {
-          const safeMax = Math.max(BOARD_SIZE_QUANTUM, floorToQuantum(maxSize));
-          const safeMin = Math.min(safeMax, Math.max(BOARD_SIZE_QUANTUM, ceilToQuantum(Math.min(minSize, maxSize))));
-          const floored = floorToQuantum(Math.max(0, rawSize));
-          return clamp(floored, safeMin, safeMax);
+        const quantizeBoardGeometry = (rawSize, minSize, maxSize, lineMetrics) => {
+          const { totalLineWidth } = lineMetrics;
+          const toCellFloor = (boardSize) => Math.max(0, Math.floor((boardSize - totalLineWidth) / (9 * CELL_SIZE_QUANTUM)) * CELL_SIZE_QUANTUM);
+          const toCellCeil = (boardSize) => Math.max(CELL_SIZE_QUANTUM, Math.ceil((boardSize - totalLineWidth) / (9 * CELL_SIZE_QUANTUM)) * CELL_SIZE_QUANTUM);
+          const maxCell = Math.max(CELL_SIZE_QUANTUM, toCellFloor(maxSize));
+          const minCell = Math.min(maxCell, toCellCeil(Math.min(minSize, maxSize)));
+          const rawCell = toCellFloor(Math.max(0, rawSize));
+          const cellSize = clamp(rawCell, minCell, maxCell);
+          return {
+            cellSize,
+            boardSize: 9 * cellSize + totalLineWidth,
+          };
+        };
+
+        const applyBoardGeometryVariables = (wrap, geometry, lineMetrics) => {
+          const { cellSize, boardSize } = geometry;
+          const { gridLine, boxFactor, boxLine } = lineMetrics;
+          // The unified line layer is measured from the board's outer edge.
+          // Outer frame padding therefore participates in the same offset model
+          // as FB's offsetLine/ofst coordinates.
+          const boxLinePos1 = boxLine + 3 * cellSize + 2 * gridLine;
+          const boxLinePos2 = 2 * boxLine + 6 * cellSize + 4 * gridLine;
+          const valueFontSize = Math.max(22, Math.min(72, Math.round(cellSize * 0.62)));
+          const candidateFontSize = Math.max(8, Math.min(24, Math.round(cellSize * 0.22)));
+
+          wrap.style.setProperty('--yzf-board-size', `${boardSize}px`);
+          wrap.style.setProperty('--yzf-cell-size', `${cellSize}px`);
+          wrap.style.setProperty('--yzf-grid-line-width', `${gridLine}px`);
+          wrap.style.setProperty('--yzf-box-line-factor', String(boxFactor));
+          wrap.style.setProperty('--yzf-box-line-width', `${boxLine}px`);
+          wrap.style.setProperty('--yzf-box-line-pos-1', `${boxLinePos1}px`);
+          wrap.style.setProperty('--yzf-box-line-pos-2', `${boxLinePos2}px`);
+          wrap.style.setProperty('--yzf-value-font-size', `${valueFontSize}px`);
+          wrap.style.setProperty('--yzf-candidate-font-size', `${candidateFontSize}px`);
+          wrap.style.setProperty('--yzf-candidate-grid-padding', '0px');
         };
 
         const setDynamicBoardSize = () => {
@@ -4921,6 +5145,7 @@
           const viewportW = visual?.width || window.innerWidth || document.documentElement.clientWidth;
           const viewportH = visual?.height || window.innerHeight || document.documentElement.clientHeight;
           const wrapStyle = window.getComputedStyle(wrap);
+          const lineMetrics = readBoardLineMetrics(wrapStyle);
           const wrapRect = wrap.getBoundingClientRect();
           const stageRect = stage.getBoundingClientRect();
           const paddingLeft = getPx(wrapStyle, 'padding-left');
@@ -4933,11 +5158,6 @@
           const viewportGuard = 6;
           const wrapTopInViewport = Math.max(0, wrapRect.top || 0);
           const stageTopInViewport = Math.max(wrapTopInViewport + paddingTop, stageRect.top || 0);
-          // In desktop landscape the stage is vertically centered inside the whole left grid area.
-          // Its current top therefore contains the *existing* blank space. Using that value as a
-          // height constraint creates a feedback loop: after maximizing, the old small board leaves
-          // a large top gap, which is then subtracted again and prevents the board from filling the
-          // newly available height. Use the stable panel boundary instead.
           const landscapeBoardTop = wrapTopInViewport + paddingTop;
           const isCompactLandscape = window.matchMedia('(orientation: landscape) and (max-height: 640px)').matches;
           const isLandscapeGrid = window.matchMedia('(orientation: landscape) and (min-width: 700px)').matches || isCompactLandscape;
@@ -4948,14 +5168,10 @@
             const configuredRightMin = getPx(wrapStyle, '--yzf-right-panel-min');
             const rightMin = configuredRightMin || (isCompactLandscape ? 220 : 280);
             const availableW = Math.max(0, (wrapRect.width || viewportW) - paddingX - rightMin - gap);
-            // Measure from the stable left-panel boundary, not from the currently centered stage.
-            // This preserves real app/card padding without treating the board's own centering gap as
-            // unavailable space.
             maxByHeight = Math.max(0, viewportH - landscapeBoardTop - paddingBottom - viewportGuard);
             size = Math.floor(Math.min(availableW, maxByHeight));
           } else {
             const topbarH = topbar ? topbar.getBoundingClientRect().height : 0;
-            // V421: reserve the fixed three-line hint panel height, not its content height.
             const hintStyle = hint ? window.getComputedStyle(hint) : null;
             const reservedHintH = hintStyle ? (Number.parseFloat(hintStyle.height) || 66) : 66;
             const availableW = Math.max(0, (wrapRect.width || viewportW) - paddingX);
@@ -4965,22 +5181,29 @@
           }
 
           const minSize = viewportW < 420 ? 216 : 270;
-          const maxSize = Math.max(
-            BOARD_SIZE_QUANTUM,
-            Math.min(viewportW - 8, Math.max(BOARD_SIZE_QUANTUM, maxByHeight || viewportH - 8))
+          let maxSize = Math.max(
+            lineMetrics.totalLineWidth + 9 * CELL_SIZE_QUANTUM,
+            Math.min(viewportW - 8, Math.max(lineMetrics.totalLineWidth + 9 * CELL_SIZE_QUANTUM, maxByHeight || viewportH - 8))
           );
-          const finalSize = quantizeBoardSize(size, minSize, maxSize);
+          // A browser cannot reliably know a monitor's physical centimetres.
+          // Use a configurable CSS-pixel cap for normal desktop landscape, while
+          // keeping compact/mobile modes governed by their available viewport.
+          if (isLandscapeGrid && !isCompactLandscape) {
+            const configuredDesktopCap = getPx(wrapStyle, '--yzf-desktop-board-max') || 700;
+            maxSize = Math.min(maxSize, configuredDesktopCap);
+          }
+
+          const geometry = quantizeBoardGeometry(size, minSize, maxSize, lineMetrics);
           const currentSize = Number.parseFloat(wrap.style.getPropertyValue('--yzf-board-size')) || 0;
-          if (currentSize && Math.abs(currentSize - finalSize) < 0.5) return;
-          const cellSize = finalSize / 9;
-          const valueFontSize = Math.max(22, Math.min(72, Math.round(cellSize * 0.62)));
-          const candidateFontSize = Math.max(8, Math.min(24, Math.round(cellSize * 0.22)));
-          const candidatePadding = Math.max(1, Math.min(5, Math.round(cellSize * 0.04)));
-          wrap.style.setProperty('--yzf-board-size', `${finalSize}px`);
-          wrap.style.setProperty('--yzf-cell-size', `${cellSize}px`);
-          wrap.style.setProperty('--yzf-value-font-size', `${valueFontSize}px`);
-          wrap.style.setProperty('--yzf-candidate-font-size', `${candidateFontSize}px`);
-          wrap.style.setProperty('--yzf-candidate-grid-padding', `${candidatePadding}px`);
+          const currentCell = Number.parseFloat(wrap.style.getPropertyValue('--yzf-cell-size')) || 0;
+          const currentBox = Number.parseFloat(wrap.style.getPropertyValue('--yzf-box-line-width')) || 0;
+          if (currentSize && Math.abs(currentSize - geometry.boardSize) < 0.05
+              && Math.abs(currentCell - geometry.cellSize) < 0.05
+              && Math.abs(currentBox - lineMetrics.boxLine) < 0.05) return;
+          applyBoardGeometryVariables(wrap, geometry, lineMetrics);
+          window.dispatchEvent(new CustomEvent('yzf-board-geometry-applied', {
+            detail: { ...geometry, ...lineMetrics },
+          }));
         };
 
         let raf = 0;
@@ -5021,10 +5244,11 @@
         document.addEventListener('fullscreenchange', scheduleDynamicBoardSizeForLayoutMode);
         document.addEventListener('webkitfullscreenchange', scheduleDynamicBoardSizeForLayoutMode);
         window.addEventListener('yzf-layout-modechange', scheduleDynamicBoardSizeForLayoutMode);
+        window.addEventListener('yzf-board-geometrychange', scheduleDynamicBoardSizeForLayoutMode);
         document.addEventListener('DOMContentLoaded', scheduleDynamicBoardSizeForLayoutMode);
       })();
     </script>
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=wasm-ad0a42abb77182aa"></script>
+    <script type="module" src="./app.js?v=wasm-b919276e380771db-v459-mobile-board-fill"></script>
   </body>
 </html>

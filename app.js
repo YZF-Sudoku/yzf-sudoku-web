@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-ad0a42abb77182aa";
+import createModule from "./sudoku_wasm.js?v=wasm-b919276e380771db";
 
-const APP_VERSION = "wasm-ad0a42abb77182aa";
+const APP_VERSION = "wasm-b919276e380771db";
 const MANUAL_VERSION = "20260629-manual-v2";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
@@ -1999,13 +1999,11 @@ function manualMarkCandidateCenter(cell, digit) {
       y: ((rect.top + rect.height / 2) - stageRect.top) * (900 / stageRect.height),
     };
   }
-  const cellIndex = Number(cell);
-  const digitIndex = Number(digit) - 1;
-  const col = cellIndex % 9;
-  const row = Math.floor(cellIndex / 9);
+  const rectLogical = getCellRectLogical(Number(cell));
+  const digitIndex = Math.max(0, Math.min(8, Number(digit) - 1));
   return {
-    x: col * 100 + (digitIndex % 3) * (100 / 3) + (100 / 6),
-    y: row * 100 + Math.floor(digitIndex / 3) * (100 / 3) + (100 / 6),
+    x: rectLogical.x + (digitIndex % 3) * (rectLogical.width / 3) + (rectLogical.width / 6),
+    y: rectLogical.y + Math.floor(digitIndex / 3) * (rectLogical.height / 3) + (rectLogical.height / 6),
   };
 }
 
@@ -5249,19 +5247,60 @@ function normalizeYzfOverlaySample(sampleJson) {
   };
 }
 
+function readBoardGeometryLogical() {
+  const stageRect = boardStage?.getBoundingClientRect?.();
+  const style = board ? window.getComputedStyle(board) : null;
+  const stageSize = Math.max(1, Number(stageRect?.width || 900));
+  const gridLinePx = Math.max(0.25, Number.parseFloat(style?.getPropertyValue("--yzf-grid-line-width") || "") || 1);
+  const factorRaw = Number.parseFloat(style?.getPropertyValue("--yzf-box-line-factor") || "");
+  const boxFactor = Number.isFinite(factorRaw) && factorRaw > 0 ? factorRaw : 2;
+  const boxLinePx = Math.max(0.25, Number.parseFloat(style?.getPropertyValue("--yzf-box-line-width") || "") || gridLinePx * boxFactor);
+  const configuredCellPx = Number.parseFloat(style?.getPropertyValue("--yzf-cell-size") || "");
+  const totalLinePx = 6 * gridLinePx + 4 * boxLinePx;
+  const cellSizePx = Number.isFinite(configuredCellPx) && configuredCellPx > 0
+    ? configuredCellPx
+    : Math.max(1, (stageSize - totalLinePx) / 9);
+  const boardSizePx = 9 * cellSizePx + totalLinePx;
+  const scale = 900 / Math.max(1, boardSizePx);
+
+  const contentStartPx = (index) => {
+    const boxLinesBefore = Math.floor(index / 3);
+    const normalLinesBefore = index - boxLinesBefore;
+    return boxLinePx
+      + index * cellSizePx
+      + boxLinesBefore * boxLinePx
+      + normalLinesBefore * gridLinePx;
+  };
+
+  return {
+    gridLinePx,
+    boxFactor,
+    boxLinePx,
+    totalLinePx,
+    cellSizePx,
+    boardSizePx,
+    scale,
+    contentStartPx,
+  };
+}
+
 function getCellRectLogical(cell) {
   const row = Math.floor(cell / 9);
   const col = cell % 9;
+  const geometry = readBoardGeometryLogical();
+  const x = geometry.contentStartPx(col) * geometry.scale;
+  const y = geometry.contentStartPx(row) * geometry.scale;
+  const size = geometry.cellSizePx * geometry.scale;
   return {
     cell,
     row,
     col,
-    x: col * 100,
-    y: row * 100,
-    width: 100,
-    height: 100,
-    cx: col * 100 + 50,
-    cy: row * 100 + 50,
+    x,
+    y,
+    width: size,
+    height: size,
+    cx: x + size / 2,
+    cy: y + size / 2,
   };
 }
 
@@ -5279,11 +5318,9 @@ function getCandidateCenter(cell, digitDisplay) {
   const digitIndex = Math.max(0, Math.min(8, Number(digitDisplay) - 1));
   const candidateRow = Math.floor(digitIndex / 3);
   const candidateCol = digitIndex % 3;
-  const innerInset = 3;
-  const innerSize = 100 - innerInset * 2;
   return {
-    x: rect.x + innerInset + candidateCol * (innerSize / 3) + (innerSize / 6),
-    y: rect.y + innerInset + candidateRow * (innerSize / 3) + (innerSize / 6),
+    x: rect.x + candidateCol * (rect.width / 3) + (rect.width / 6),
+    y: rect.y + candidateRow * (rect.height / 3) + (rect.height / 6),
   };
 }
 
@@ -5919,7 +5956,7 @@ function edgeCurveBaseOffset(edge, laneOffset = 0) {
 }
 
 function getOverlayCandidateStep() {
-  return 100 / 3;
+  return getCellRectLogical(0).width / 3;
 }
 
 function getCurveEndpointRotations(sourceAnchor, targetAnchor, orientation) {
@@ -9323,6 +9360,10 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     const node = document.createElement("div");
     node.className = makeCellClass(index, hint);
     node.dataset.cellIndex = String(index);
+    // FB-aligned 17-track grid: odd tracks are equal cell content areas;
+    // even tracks are independently sized normal/box lines.
+    node.style.gridColumn = String((index % 9) * 2 + 1);
+    node.style.gridRow = String(Math.floor(index / 9) * 2 + 1);
     node.title = `r${Math.floor(index / 9) + 1}c${(index % 9) + 1}`;
     node.addEventListener("click", (event) => {
       if (handleTlgSolverCellClick(index, event)) return;
@@ -14305,20 +14346,45 @@ function isMobileSolveRecommendedViewport() {
   return viewport.width <= 900 || window.matchMedia?.("(pointer: coarse)")?.matches === true;
 }
 
-function mobileSolveFloorToCell(value) {
-  return Math.max(108, Math.floor(Math.max(0, value) / 9) * 9);
+function mobileSolveBoardGeometry(rawSize) {
+  const style = board ? window.getComputedStyle(board) : null;
+  const gridLine = Math.max(0.25, Number.parseFloat(style?.getPropertyValue("--yzf-grid-line-width") || "") || 1);
+  const factorRaw = Number.parseFloat(style?.getPropertyValue("--yzf-box-line-factor") || "");
+  const boxFactor = Number.isFinite(factorRaw) && factorRaw > 0 ? factorRaw : 2;
+  const boxLine = gridLine * boxFactor;
+  const totalLineWidth = 6 * gridLine + 4 * boxLine;
+  // FB uses an integer real-cell size after subtracting all line tracks.
+  // Do not force a multiple of three here: candidate thirds may be fractional,
+  // and the 1px quantum lets the mobile board occupy much more of the viewport.
+  const cellSize = Math.max(12, Math.floor(Math.max(0, rawSize - totalLineWidth) / 9));
+  return {
+    gridLine,
+    boxFactor,
+    boxLine,
+    totalLineWidth,
+    cellSize,
+    boardSize: 9 * cellSize + totalLineWidth,
+    boxLinePos1: boxLine + 3 * cellSize + 2 * gridLine,
+    boxLinePos2: 2 * boxLine + 6 * cellSize + 4 * gridLine,
+  };
 }
 
 function setMobileSolveBoardSize(rawSize) {
   if (!mobileSolveShell) return 0;
-  const size = mobileSolveFloorToCell(rawSize);
-  mobileSolveShell.style.setProperty("--mobile-board-size", `${size}px`);
-  mobileSolveShell.style.setProperty("--yzf-board-size", `${size}px`);
-  mobileSolveShell.style.setProperty("--yzf-cell-size", `${size / 9}px`);
-  mobileSolveShell.style.setProperty("--yzf-value-font-size", `${Math.max(20, Math.min(62, Math.round((size / 9) * 0.62)))}px`);
-  mobileSolveShell.style.setProperty("--yzf-candidate-font-size", `${Math.max(7, Math.min(20, Math.round((size / 9) * 0.22)))}px`);
-  mobileSolveShell.style.setProperty("--yzf-candidate-grid-padding", `${Math.max(1, Math.min(4, Math.round((size / 9) * 0.04)))}px`);
-  return size;
+  const geometry = mobileSolveBoardGeometry(rawSize);
+  const { boardSize, cellSize, gridLine, boxFactor, boxLine, boxLinePos1, boxLinePos2 } = geometry;
+  mobileSolveShell.style.setProperty("--mobile-board-size", `${boardSize}px`);
+  mobileSolveShell.style.setProperty("--yzf-board-size", `${boardSize}px`);
+  mobileSolveShell.style.setProperty("--yzf-cell-size", `${cellSize}px`);
+  mobileSolveShell.style.setProperty("--yzf-grid-line-width", `${gridLine}px`);
+  mobileSolveShell.style.setProperty("--yzf-box-line-factor", String(boxFactor));
+  mobileSolveShell.style.setProperty("--yzf-box-line-width", `${boxLine}px`);
+  mobileSolveShell.style.setProperty("--yzf-box-line-pos-1", `${boxLinePos1}px`);
+  mobileSolveShell.style.setProperty("--yzf-box-line-pos-2", `${boxLinePos2}px`);
+  mobileSolveShell.style.setProperty("--yzf-value-font-size", `${Math.max(20, Math.min(62, Math.round(cellSize * 0.62)))}px`);
+  mobileSolveShell.style.setProperty("--yzf-candidate-font-size", `${Math.max(7, Math.min(20, cellSize * 0.29))}px`);
+  mobileSolveShell.style.setProperty("--yzf-candidate-grid-padding", "0px");
+  return boardSize;
 }
 
 function applyMobileSolveLayout() {
@@ -14341,8 +14407,10 @@ function applyMobileSolveLayout() {
   const availableHeight = Math.max(108, viewport.height - paddingY);
 
   if (landscape) {
-    const sideWidth = Math.max(150, Math.min(360, viewport.width * 0.38));
-    setMobileSolveBoardSize(Math.min(availableHeight, availableWidth - sideWidth - 8));
+    // Prioritize the full available height. The control column may shrink down
+    // to its tested 150px minimum instead of reserving an arbitrary 38%/360px.
+    const minimumControlWidth = 150;
+    setMobileSolveBoardSize(Math.min(availableHeight, availableWidth - minimumControlWidth - 8));
     return;
   }
 
