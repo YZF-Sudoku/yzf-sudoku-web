@@ -775,6 +775,172 @@ function getModelOutput(outputs, digit, cellIndex) {
   return outputs[digit * 81 + cellIndex];
 }
 
+function ocrQuantile(values, ratio) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const position = Math.max(0, Math.min(sorted.length - 1, (sorted.length - 1) * ratio));
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  if (lower === upper) return sorted[lower];
+  const weight = position - lower;
+  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+}
+
+function largeDigitGlyphCore(warpedGray, threshold, bounds) {
+  const { cellX1, cellY1, cellX2, cellY2, x1, y1, x2, y2 } = bounds;
+  const width = Math.max(1, cellX2 - cellX1);
+  const height = Math.max(1, cellY2 - cellY1);
+  const pixelCount = width * height;
+  const foreground = new Uint8Array(pixelCount);
+
+  for (let y = y1; y < y2; ++y) {
+    for (let x = x1; x < x2; ++x) {
+      const grayByte = Math.round(warpedGray[y * BOARD_SIZE + x] * 255);
+      if (grayByte <= threshold) foreground[(y - cellY1) * width + (x - cellX1)] = 1;
+    }
+  }
+
+  const labels = new Int16Array(pixelCount);
+  const components = [];
+  const queue = new Int32Array(pixelCount);
+  let nextLabel = 0;
+  const offsets = [-1, 0, 1];
+
+  for (let localY = 0; localY < height; ++localY) {
+    for (let localX = 0; localX < width; ++localX) {
+      const seed = localY * width + localX;
+      if (!foreground[seed] || labels[seed]) continue;
+      nextLabel += 1;
+      let head = 0;
+      let tail = 0;
+      queue[tail++] = seed;
+      labels[seed] = nextLabel;
+      const pixels = [];
+      let minX = localX;
+      let maxX = localX;
+      let minY = localY;
+      let maxY = localY;
+      let sumX = 0;
+      let sumY = 0;
+
+      while (head < tail) {
+        const index = queue[head++];
+        pixels.push(index);
+        const cy = Math.floor(index / width);
+        const cx = index - cy * width;
+        minX = Math.min(minX, cx);
+        maxX = Math.max(maxX, cx);
+        minY = Math.min(minY, cy);
+        maxY = Math.max(maxY, cy);
+        sumX += cx;
+        sumY += cy;
+
+        for (const dy of offsets) {
+          const ny = cy + dy;
+          if (ny < 0 || ny >= height) continue;
+          for (const dx of offsets) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = cx + dx;
+            if (nx < 0 || nx >= width) continue;
+            const neighbor = ny * width + nx;
+            if (!foreground[neighbor] || labels[neighbor]) continue;
+            labels[neighbor] = nextLabel;
+            queue[tail++] = neighbor;
+          }
+        }
+      }
+
+      components.push({
+        label: nextLabel,
+        pixels,
+        area: pixels.length,
+        minX,
+        maxX,
+        minY,
+        maxY,
+        centerX: sumX / pixels.length,
+        centerY: sumY / pixels.length,
+      });
+    }
+  }
+
+  if (!components.length) return null;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const scale = Math.min(width, height);
+  let selected = null;
+  let selectedScore = -1;
+
+  for (const component of components) {
+    if (component.area < 8) continue;
+    const boxWidth = component.maxX - component.minX + 1;
+    const boxHeight = component.maxY - component.minY + 1;
+    const distance = Math.hypot(component.centerX - centerX, component.centerY - centerY);
+    const heightScore = Math.min(1, boxHeight / (scale * 0.42));
+    const widthScore = Math.min(1, boxWidth / (scale * 0.22));
+    const centrality = Math.max(0.15, 1 - distance / (scale * 0.62));
+    const intersectsCenter = !(
+      component.maxX < scale * 0.24
+      || component.minX > scale * 0.76
+      || component.maxY < scale * 0.20
+      || component.minY > scale * 0.80
+    );
+    let score = component.area
+      * (0.55 + 0.45 * heightScore)
+      * (0.65 + 0.35 * widthScore)
+      * (0.55 + 0.45 * centrality);
+    if (intersectsCenter) score *= 1.2;
+    if (score > selectedScore) {
+      selected = component;
+      selectedScore = score;
+    }
+  }
+
+  if (!selected) return null;
+  const selectedMask = new Uint8Array(pixelCount);
+  for (const index of selected.pixels) selectedMask[index] = 1;
+
+  const core = [];
+  const thick = [];
+  for (const index of selected.pixels) {
+    const cy = Math.floor(index / width);
+    const cx = index - cy * width;
+    if (cx <= 0 || cy <= 0 || cx >= width - 1 || cy >= height - 1) continue;
+    let neighbors = 0;
+    for (let dy = -1; dy <= 1; ++dy) {
+      for (let dx = -1; dx <= 1; ++dx) {
+        if (selectedMask[(cy + dy) * width + (cx + dx)]) neighbors += 1;
+      }
+    }
+    if (neighbors === 9) core.push(index);
+    if (neighbors >= 7) thick.push(index);
+  }
+
+  const minimumCore = Math.max(8, Math.floor(selected.area * 0.06));
+  const sample = core.length >= minimumCore
+    ? core
+    : thick.length >= minimumCore
+      ? thick
+      : selected.pixels;
+
+  return {
+    sample: sample.map((index) => {
+      const localY = Math.floor(index / width);
+      const localX = index - localY * width;
+      return (cellY1 + localY) * BOARD_SIZE + cellX1 + localX;
+    }),
+    componentPixels: selected.area,
+    corePixels: core.length,
+    thickPixels: thick.length,
+    bounds: {
+      x: selected.minX,
+      y: selected.minY,
+      width: selected.maxX - selected.minX + 1,
+      height: selected.maxY - selected.minY + 1,
+    },
+  };
+}
+
 function isBlackDigitCellReferenceStyle(warpedRgba, warpedGray, cellIndex) {
   const row = Math.floor(cellIndex / 9);
   const col = cellIndex % 9;
@@ -784,8 +950,8 @@ function isBlackDigitCellReferenceStyle(warpedRgba, warpedGray, cellIndex) {
   const cellX2 = Math.min(BOARD_SIZE, Math.round(cellX1 + cellSize));
   const cellY2 = Math.min(BOARD_SIZE, Math.round(cellY1 + cellSize));
 
-  // Role detection only needs the large digit. Keep the outer cell rim out of
-  // the sample so black/blue grid lines cannot influence the color decision.
+  // Ignore the cell rim. Grid lines and candidate markers live primarily near
+  // the edge, while a large digit occupies a centered, thick glyph component.
   const margin = Math.max(5, Math.round(cellSize * 0.11));
   const x1 = Math.min(cellX2, cellX1 + margin);
   const y1 = Math.min(cellY2, cellY1 + margin);
@@ -800,44 +966,22 @@ function isBlackDigitCellReferenceStyle(warpedRgba, warpedGray, cellIndex) {
   }
   let threshold = otsuThreshold(grayValues);
   if (!Number.isFinite(threshold)) threshold = 60;
+  threshold = Math.max(24, Math.min(230, threshold));
 
-  let fgPx = 0;
-  let bluePx = 0;
-  let rSum = 0;
-  let gSum = 0;
-  let bSum = 0;
-  let blueExcessSum = 0;
-  for (let y = y1; y < y2; ++y) {
-    for (let x = x1; x < x2; ++x) {
-      const gi = y * BOARD_SIZE + x;
-      const grayByte = Math.round(warpedGray[gi] * 255);
-      if (grayByte >= threshold) continue;
-
-      const pi = gi * 4;
-      const r = warpedRgba[pi];
-      const g = warpedRgba[pi + 1];
-      const b = warpedRgba[pi + 2];
-      rSum += r;
-      gSum += g;
-      bSum += b;
-      fgPx += 1;
-
-      // A black digit may become dark gray after JPEG compression, scaling,
-      // anti-aliasing or perspective correction. Therefore brightness is not
-      // evidence of a solved digit. Only a clear blue hue is accepted as such.
-      const blueOverRed = b - r;
-      const blueOverGreen = b - g;
-      const chroma = Math.max(r, g, b) - Math.min(r, g, b);
-      if (blueOverRed >= 24 && blueOverGreen >= 12 && chroma >= 28) {
-        bluePx += 1;
-        blueExcessSum += Math.min(255, blueOverRed + blueOverGreen);
-      }
-    }
-  }
+  const glyph = largeDigitGlyphCore(warpedGray, threshold, {
+    cellX1,
+    cellY1,
+    cellX2,
+    cellY2,
+    x1,
+    y1,
+    x2,
+    y2,
+  });
 
   // Candidate/empty cells are separated by the classifier before this helper
-  // is used. With no foreground evidence, retain the safe default: a clue.
-  if (fgPx === 0) {
+  // is used. If the glyph cannot be isolated, retain the safe default: a clue.
+  if (!glyph?.sample?.length) {
     return {
       isBlack: true,
       isBlue: false,
@@ -845,37 +989,79 @@ function isBlackDigitCellReferenceStyle(warpedRgba, warpedGray, cellIndex) {
       bluePixels: 0,
       blueRatio: 0,
       threshold,
+      roleMethod: "glyph-core-v8",
     };
   }
 
-  const rAvg = rSum / fgPx;
-  const gAvg = gSum / fgPx;
-  const bAvg = bSum / fgPx;
-  const grayAvg = 0.299 * rAvg + 0.587 * gAvg + 0.114 * bAvg;
-  const colorNeutral = Math.max(rAvg, gAvg, bAvg) - Math.min(rAvg, gAvg, bAvg) < 30;
-  const blueRatio = bluePx / fgPx;
-  const meanBlueEvidence = bluePx ? blueExcessSum / bluePx : 0;
+  let rSum = 0;
+  let gSum = 0;
+  let bSum = 0;
+  let bluePx = 0;
+  const blueOverRedValues = [];
+  const blueOverGreenValues = [];
 
-  // Require both enough supporting pixels and a meaningful share of the digit.
-  // This resists isolated JPEG color noise while preserving genuinely blue text.
-  const minimumBluePixels = Math.max(10, Math.ceil(fgPx * 0.08));
-  const isBlue = bluePx >= minimumBluePixels
-    && blueRatio >= 0.08
-    && meanBlueEvidence >= 55;
+  for (const grayIndex of glyph.sample) {
+    const pi = grayIndex * 4;
+    const r = warpedRgba[pi];
+    const g = warpedRgba[pi + 1];
+    const b = warpedRgba[pi + 2];
+    rSum += r;
+    gSum += g;
+    bSum += b;
+
+    const blueOverRed = b - r;
+    const blueOverGreen = b - g;
+    const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+    blueOverRedValues.push(blueOverRed);
+    blueOverGreenValues.push(blueOverGreen);
+    if (blueOverRed >= 20 && blueOverGreen >= 10 && chroma >= 25) bluePx += 1;
+  }
+
+  const samplePixels = glyph.sample.length;
+  const rAvg = rSum / samplePixels;
+  const gAvg = gSum / samplePixels;
+  const bAvg = bSum / samplePixels;
+  const grayAvg = 0.299 * rAvg + 0.587 * gAvg + 0.114 * bAvg;
+  const colorNeutral = Math.max(rAvg, gAvg, bAvg) - Math.min(rAvg, gAvg, bAvg) < 24;
+  const blueRatio = bluePx / samplePixels;
+  const meanBlueOverRed = bAvg - rAvg;
+  const meanBlueOverGreen = bAvg - gAvg;
+  const q60BlueOverRed = ocrQuantile(blueOverRedValues, 0.60);
+  const q60BlueOverGreen = ocrQuantile(blueOverGreenValues, 0.60);
+
+  // Judge only the thick interior of the selected glyph. Anti-aliased black
+  // text can have a blue fringe, and chain lines/circles can cross the cell,
+  // but neither normally occupies a quarter of the digit's stroke core. A
+  // genuine solved digit remains blue throughout that core, even after JPEG
+  // compression, perspective correction, or a colored line crossing it.
+  const isBlue = samplePixels >= 8
+    && blueRatio >= 0.25
+    && q60BlueOverRed >= 18
+    && q60BlueOverGreen >= 9
+    && meanBlueOverRed >= 12
+    && meanBlueOverGreen >= 6;
 
   return {
     isBlack: !isBlue,
     isBlue,
-    foregroundPixels: fgPx,
+    foregroundPixels: glyph.componentPixels,
+    samplePixels,
+    corePixels: glyph.corePixels,
+    thickPixels: glyph.thickPixels,
     bluePixels: bluePx,
     blueRatio,
-    meanBlueEvidence,
     threshold,
     rAvg,
     gAvg,
     bAvg,
     grayAvg,
     colorNeutral,
+    meanBlueOverRed,
+    meanBlueOverGreen,
+    q60BlueOverRed,
+    q60BlueOverGreen,
+    glyphBounds: glyph.bounds,
+    roleMethod: "glyph-core-v8",
   };
 }
 

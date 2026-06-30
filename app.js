@@ -1,10 +1,10 @@
-import createModule from "./sudoku_wasm.js?v=wasm-b919276e380771db";
+import createModule from "./sudoku_wasm.js?v=wasm-36213bf4f0023665";
 
-const APP_VERSION = "wasm-b919276e380771db";
+const APP_VERSION = "wasm-36213bf4f0023665";
 const MANUAL_VERSION = "20260629-manual-v2";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
-const OCR_ASSET_VERSION = "20260629-role-blue-evidence-v7";
+const OCR_ASSET_VERSION = "20260630-role-glyph-core-v8";
 const OCR_CORRECTION_UI_VERSION = "20260629-ocr-correction-v7.1-gridfix";
 
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
