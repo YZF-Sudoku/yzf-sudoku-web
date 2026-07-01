@@ -3,11 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="only light" />
+  <meta name="theme-color" content="#eef2f7" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <link rel="icon" href="data:," />
   <title>YZF_Sudoku</title>
   <style>
     :root {
-      color-scheme: light;
+      color-scheme: only light;
       --border: #d9dde3;
       --muted: #687386;
       --panel: #f7f8fa;
@@ -22,13 +25,20 @@
       width: 100%;
       overflow-x: hidden;
     }
+    html {
+      min-height: 100%;
+      background-color: #eef2f7;
+      color-scheme: only light;
+    }
     body {
+      min-height: 100vh;
+      min-height: 100dvh;
       margin: 0;
       padding: 0;
       color: var(--ink);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       line-height: 1.5;
-      background: #eef2f7;
+      background-color: #eef2f7;
     }
     .app-shell {
       width: 100%;
@@ -5257,6 +5267,6 @@
       })();
     </script>
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=wasm-f3a1b03ceda1cb15"></script>
+    <script type="module" src="./app.js?v=wasm-bc6a0cc50d73c7d3"></script>
   </body>
 </html>

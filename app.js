@@ -1077,7 +1077,9 @@ const uiText = {
     markChain: "手动画链",
     markBlock: "区块标记",
     markPrimary: "添加",
-    markSecondary: "清除",
+    markSecondary: "删除",
+    markPrimaryTitle: "添加当前模式标记；手机轻触目标，电脑左键目标。",
+    markSecondaryTitle: "删除当前模式标记；手机长按目标，电脑右键目标。",
     markStrong: "强链（实线）",
     markWeak: "弱链（虚线）",
     markConstructionStrong: "构造强链",
@@ -1111,6 +1113,8 @@ const uiText = {
     markRemoved: "已清除 {target} 的标记。",
     markChainStart: "链起点：{target}。请选择终点。",
     markChainAdded: "已添加链线：{from} -> {to}。",
+    markChainUpdated: "已将链线 {from} -> {to} 改为{type}。",
+    markChainRemoved: "已删除链线：{from} -> {to}。",
     markBlockAdded: "已加入区块：{target}。",
     markBlockRemoved: "已移除区块标记：{target}。",
     markBlockFinished: "已完成区块标记。",
@@ -1121,7 +1125,7 @@ const uiText = {
     markAllCleared: "已清空手工标记。",
     markAppliedElims: "已应用 {count} 个手工删数。",
     markNoElims: "没有可应用的手工删数。",
-    markModeHint: "手机端：点格子后用数字键盘选候选；PC 可直接点候选。",
+    markModeHint: "手机：轻触添加、长按约 0.5 秒删除；候选类先点格子，再轻触/长按大数字键。也可切换“添加/删除”。电脑左键添加、右键删除。",
     workerUnsupported: "当前浏览器不支持后台 Worker",
     trainingWorkerFailed: "训练题生成失败",
     trainingWorkerRuntimeFailed: "训练题 Worker 运行失败",
@@ -1597,8 +1601,10 @@ const uiText = {
     markElim: "Eliminations",
     markChain: "Draw chain",
     markBlock: "Block mark",
-    markPrimary: "Add / left click",
-    markSecondary: "Erase / right click",
+    markPrimary: "Add",
+    markSecondary: "Erase",
+    markPrimaryTitle: "Add the current mark: tap on touch devices or left-click on desktop.",
+    markSecondaryTitle: "Erase the current mark: long-press on touch devices or right-click on desktop.",
     markStrong: "Strong / solid",
     markWeak: "Weak / dashed",
     markConstructionStrong: "Construction strong",
@@ -1632,6 +1638,8 @@ const uiText = {
     markRemoved: "Cleared marks on {target}.",
     markChainStart: "Chain start: {target}. Choose the endpoint.",
     markChainAdded: "Added chain line: {from} -> {to}.",
+    markChainUpdated: "Changed chain line {from} -> {to} to {type}.",
+    markChainRemoved: "Removed chain line: {from} -> {to}.",
     markBlockAdded: "Added to block: {target}.",
     markBlockRemoved: "Removed block mark on {target}.",
     markBlockFinished: "Finished block mark.",
@@ -1642,7 +1650,7 @@ const uiText = {
     markAllCleared: "Cleared all manual marks.",
     markAppliedElims: "Applied {count} manual eliminations.",
     markNoElims: "No manual eliminations to apply.",
-    markModeHint: "Touch: tap a cell, then choose a digit on the keypad. PC can click candidates directly.",
+    markModeHint: "Touch: tap to add and long-press for about 0.5 s to erase. For candidate marks, select a cell, then tap/hold the large digit key. Add/Erase buttons remain available. Desktop uses left/right click.",
     workerUnsupported: "This browser does not support background Workers",
     trainingWorkerFailed: "Training puzzle generation failed",
     trainingWorkerRuntimeFailed: "Training worker failed",
@@ -1742,6 +1750,185 @@ function manualMarksActive() {
 
 function manualMarkNeedsDigit(mode = manualMarkModeValue()) {
   return ["candidateColor", "circle", "preElim", "elim", "chain", "block"].includes(mode);
+}
+
+const MANUAL_MARK_LONG_PRESS_MS = 580;
+const MANUAL_MARK_PROTECTED_HOLD_MS = 460;
+const MANUAL_MARK_LONG_PRESS_MOVE_PX = 12;
+let manualMarkSuppressTouchClickUntil = 0;
+let manualMarkSuppressTouchClickKey = "";
+
+function manualMarkTouchEraseCandidateMode(mode = manualMarkModeValue()) {
+  return ["candidateColor", "circle", "preElim", "elim", "block"].includes(mode);
+}
+
+function installManualMarkLongPress(target, enabled, onLongPress, suppressionKey = "") {
+  if (!target || typeof enabled !== "function" || typeof onLongPress !== "function") return;
+  let timer = 0;
+  let pointerId = null;
+  let startX = 0;
+  let startY = 0;
+
+  const clearTimer = () => {
+    if (timer) {
+      window.clearTimeout(timer);
+      timer = 0;
+    }
+    pointerId = null;
+  };
+  const resolvedSuppressionKey = () => String(
+    typeof suppressionKey === "function" ? suppressionKey() : suppressionKey || ""
+  );
+  const suppressFollowup = (event) => {
+    if (Date.now() > manualMarkSuppressTouchClickUntil) return;
+    if (manualMarkSuppressTouchClickKey !== resolvedSuppressionKey()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.type === "click") {
+      manualMarkSuppressTouchClickUntil = 0;
+      manualMarkSuppressTouchClickKey = "";
+    }
+  };
+
+  target.style.touchAction = "manipulation";
+  target.addEventListener("click", suppressFollowup, true);
+  target.addEventListener("contextmenu", suppressFollowup, true);
+  target.addEventListener("pointerdown", (event) => {
+    if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
+    if (!enabled()) return;
+    clearTimer();
+    pointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    timer = window.setTimeout(() => {
+      timer = 0;
+      if (!enabled()) {
+        pointerId = null;
+        return;
+      }
+      // renderBoardSnapshot() replaces the touched cell/candidate node. Keep the
+      // suppression window global so the synthetic click is also intercepted by
+      // the freshly rendered replacement element instead of re-adding the mark.
+      manualMarkSuppressTouchClickUntil = Date.now() + 1000;
+      manualMarkSuppressTouchClickKey = resolvedSuppressionKey();
+      pointerId = null;
+      try { navigator.vibrate?.(12); } catch (_) {}
+      onLongPress();
+    }, MANUAL_MARK_LONG_PRESS_MS);
+  }, { passive: true });
+  target.addEventListener("pointermove", (event) => {
+    if (!timer || event.pointerId !== pointerId) return;
+    if (Math.hypot(event.clientX - startX, event.clientY - startY) > MANUAL_MARK_LONG_PRESS_MOVE_PX) {
+      clearTimer();
+    }
+  }, { passive: true });
+  target.addEventListener("pointerup", clearTimer, { passive: true });
+  target.addEventListener("pointercancel", clearTimer, { passive: true });
+  target.addEventListener("pointerleave", clearTimer, { passive: true });
+}
+
+
+function installManualMarkProtectedTouch(target, enabled, onShortTouch, onLongPress, suppressionKey = "") {
+  if (!target || typeof enabled !== "function" || typeof onLongPress !== "function") return;
+  let timer = 0;
+  let touchId = null;
+  let startX = 0;
+  let startY = 0;
+  let longPressFired = false;
+
+  const resolvedSuppressionKey = () => String(
+    typeof suppressionKey === "function" ? suppressionKey() : suppressionKey || ""
+  );
+  const armFollowupSuppression = () => {
+    manualMarkSuppressTouchClickUntil = Date.now() + 1000;
+    manualMarkSuppressTouchClickKey = resolvedSuppressionKey();
+  };
+  const clearTimer = () => {
+    if (timer) {
+      window.clearTimeout(timer);
+      timer = 0;
+    }
+  };
+  const reset = () => {
+    clearTimer();
+    touchId = null;
+    longPressFired = false;
+  };
+  const findTouch = (list) => {
+    if (touchId == null) return null;
+    for (const touch of Array.from(list || [])) {
+      if (touch.identifier === touchId) return touch;
+    }
+    return null;
+  };
+  const suppressFollowup = (event) => {
+    if (Date.now() > manualMarkSuppressTouchClickUntil) return;
+    if (manualMarkSuppressTouchClickKey !== resolvedSuppressionKey()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.type === "click") {
+      manualMarkSuppressTouchClickUntil = 0;
+      manualMarkSuppressTouchClickKey = "";
+    }
+  };
+
+  // Candidate glyphs and numpad buttons may be claimed by the browser's native
+  // text-selection/callout gesture before a pointer-based long press fires.
+  // Own the touch sequence only while candidate-mark erasing is available.
+  target.style.touchAction = "manipulation";
+  target.style.userSelect = "none";
+  target.style.webkitUserSelect = "none";
+  target.style.webkitTouchCallout = "none";
+  target.addEventListener("click", suppressFollowup, true);
+  target.addEventListener("contextmenu", (event) => {
+    if (!enabled() && Date.now() > manualMarkSuppressTouchClickUntil) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+  target.addEventListener("touchstart", (event) => {
+    if (!enabled()) return;
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
+    event.preventDefault();
+    event.stopPropagation();
+    reset();
+    touchId = touch.identifier;
+    startX = touch.clientX;
+    startY = touch.clientY;
+    timer = window.setTimeout(() => {
+      timer = 0;
+      if (!enabled() || touchId == null) return;
+      longPressFired = true;
+      armFollowupSuppression();
+      try { navigator.vibrate?.(12); } catch (_) {}
+      onLongPress();
+    }, MANUAL_MARK_PROTECTED_HOLD_MS);
+  }, { passive: false });
+  target.addEventListener("touchmove", (event) => {
+    const touch = findTouch(event.changedTouches) || findTouch(event.touches);
+    if (!touch) return;
+    event.preventDefault();
+    if (Math.hypot(touch.clientX - startX, touch.clientY - startY) > MANUAL_MARK_LONG_PRESS_MOVE_PX) {
+      reset();
+    }
+  }, { passive: false });
+  target.addEventListener("touchend", (event) => {
+    const touch = findTouch(event.changedTouches);
+    if (!touch) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const shouldTap = Boolean(timer) && !longPressFired;
+    clearTimer();
+    armFollowupSuppression();
+    touchId = null;
+    if (shouldTap && typeof onShortTouch === "function") onShortTouch();
+    longPressFired = false;
+  }, { passive: false });
+  target.addEventListener("touchcancel", (event) => {
+    if (touchId == null) return;
+    event.preventDefault();
+    reset();
+  }, { passive: false });
 }
 
 function manualMarkKey(cell, digit) {
@@ -1995,13 +2182,29 @@ function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
       if (!manualMarksActive()) return;
       if (!digit || !candidate.textContent.trim()) return;
       // Only desktop/fine-pointer right click maps to the secondary action.
-      // Touch devices use the explicit Add/Erase button instead.
+      // Touch devices use long-press or the explicit Add/Erase button.
       if (!manualMarkDirectCandidateClickAllowed(candidate, event)) return;
       event.preventDefault();
       event.stopPropagation();
       selectedIndex = cellIndex;
       applyManualMarkTarget(cellIndex, digit, "secondary");
     });
+    installManualMarkProtectedTouch(
+      candidate,
+      () => manualMarksActive() && manualMarkTouchEraseCandidateMode() && Boolean(candidate.textContent.trim()),
+      () => {
+        selectedIndex = cellIndex;
+        renderBoardSnapshot(currentSnapshot, currentHint);
+        setManualMarkStatus(uif("markCellSelected", { cell: manualMarkCellText(cellIndex) }));
+      },
+      () => {
+        const digit = Number(candidate.dataset.digit || 0);
+        if (!digit || !boardCandidateExists(cellIndex, digit)) return;
+        selectedIndex = cellIndex;
+        applyManualMarkTarget(cellIndex, digit, "secondary");
+      },
+      () => `candidate:${cellIndex}:${Number(candidate.dataset.digit || 0)}`
+    );
   });
 }
 
@@ -2027,11 +2230,63 @@ function manualMarkCandidateCenter(cell, digit) {
   };
 }
 
+function normalizeManualChainType(type) {
+  const value = String(type || "strong");
+  if (value === "weak" || value === "constructionStrong" || value === "constructionWeak") return value;
+  return "strong";
+}
+
 function manualMarkLineTypeForButton(button = "primary") {
-  const selected = manualMarkLineType?.value || "strong";
+  const selected = normalizeManualChainType(manualMarkLineType?.value || "strong");
   if (button !== "secondary") return selected;
   if (selected === "constructionStrong" || selected === "constructionWeak") return "constructionWeak";
   return "weak";
+}
+
+function manualChainEndpointEquals(a, b) {
+  return Number(a?.cell) === Number(b?.cell) && Number(a?.digit) === Number(b?.digit);
+}
+
+function manualChainEdgeMatches(edge, from, to) {
+  return (
+    manualChainEndpointEquals(edge?.from, from) && manualChainEndpointEquals(edge?.to, to)
+  ) || (
+    manualChainEndpointEquals(edge?.from, to) && manualChainEndpointEquals(edge?.to, from)
+  );
+}
+
+function manualChainTypeText(type) {
+  const keyByType = {
+    strong: "markStrong",
+    weak: "markWeak",
+    constructionStrong: "markConstructionStrong",
+    constructionWeak: "markConstructionWeak",
+  };
+  return ui(keyByType[normalizeManualChainType(type)] || "markStrong");
+}
+
+function editManualChainEdge(from, to, type) {
+  const normalizedType = normalizeManualChainType(type);
+  const existingIndex = manualMarks.chains.findIndex((edge) => manualChainEdgeMatches(edge, from, to));
+  if (existingIndex < 0) {
+    manualMarks.chains.push({ from: { ...from }, to: { ...to }, type: normalizedType });
+    return "added";
+  }
+
+  const existing = manualMarks.chains[existingIndex];
+  if (normalizeManualChainType(existing?.type) === normalizedType) {
+    manualMarks.chains.splice(existingIndex, 1);
+    return "removed";
+  }
+
+  // A link is identified by its two endpoints, regardless of drawing direction.
+  // Keep the latest drawing direction so manual arrow rendering follows the user's gesture.
+  manualMarks.chains[existingIndex] = {
+    from: { ...from },
+    to: { ...to },
+    type: normalizedType,
+  };
+  return "updated";
 }
 
 function manualMarkShortenedLine(start, end, offset = 9) {
@@ -2078,7 +2333,7 @@ function manualChainEdgeReason(edge) {
 }
 
 function manualChainStrength(edge) {
-  const type = String(edge?.type || "strong");
+  const type = normalizeManualChainType(edge?.type);
   return (type === "weak" || type === "constructionWeak") ? "weak" : "strong";
 }
 
@@ -2356,18 +2611,26 @@ function applyManualMarkTarget(cell, digit = 0, forcedButton = null) {
       setManualMarkStatus(uif("markChainStart", { target: manualMarkTargetText(cellIndex, digitValue) }));
       return true;
     }
+    let chainAction = "none";
+    const requestedType = manualMarkLineTypeForButton(button);
     if (manualChainStart.cell !== endpoint.cell || manualChainStart.digit !== endpoint.digit) {
-      manualMarks.chains.push({
-        from: { ...manualChainStart },
-        to: { ...endpoint },
-        type: manualMarkLineTypeForButton(button),
-      });
+      chainAction = editManualChainEdge(manualChainStart, endpoint, requestedType);
     }
     const fromText = manualMarkTargetText(manualChainStart.cell, manualChainStart.digit);
     const toText = manualMarkTargetText(endpoint.cell, endpoint.digit);
     manualChainStart = null;
     renderBoardSnapshot(currentSnapshot, currentHint);
-    setManualMarkStatus(uif("markChainAdded", { from: fromText, to: toText }));
+    if (chainAction === "removed") {
+      setManualMarkStatus(uif("markChainRemoved", { from: fromText, to: toText }));
+    } else if (chainAction === "updated") {
+      setManualMarkStatus(uif("markChainUpdated", {
+        from: fromText,
+        to: toText,
+        type: manualChainTypeText(requestedType),
+      }));
+    } else {
+      setManualMarkStatus(uif("markChainAdded", { from: fromText, to: toText }));
+    }
     return true;
   }
   renderBoardSnapshot(currentSnapshot, currentHint);
@@ -3109,6 +3372,8 @@ function applyStaticLanguage() {
   }
   setTextById("manualMarkPrimary", ui("markPrimary"));
   setTextById("manualMarkSecondary", ui("markSecondary"));
+  setTitleAndAria(manualMarkPrimary, ui("markPrimaryTitle"));
+  setTitleAndAria(manualMarkSecondary, ui("markSecondaryTitle"));
   setTextById("manualMarkApplyElims", ui("markApplyElims"));
   setTextById("manualMarkScreenshot", ui("markScreenshotButton"));
   setTitleAndAria(manualMarkScreenshot, ui("markScreenshotTitle"));
@@ -9385,6 +9650,15 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     node.style.gridColumn = String((index % 9) * 2 + 1);
     node.style.gridRow = String(Math.floor(index / 9) * 2 + 1);
     node.title = `r${Math.floor(index / 9) + 1}c${(index % 9) + 1}`;
+    installManualMarkLongPress(
+      node,
+      () => manualMarksActive() && manualMarkModeValue() === "cellColor",
+      () => {
+        selectedIndex = index;
+        applyManualMarkTarget(index, 0, "secondary");
+      },
+      `cell:${index}`
+    );
     node.addEventListener("click", (event) => {
       if (handleTlgSolverCellClick(index, event)) return;
       selectedIndex = index;
@@ -9604,13 +9878,25 @@ function buildNumpad() {
     button.type = "button";
     button.textContent = digit;
     button.dataset.digit = String(digit);
-    button.addEventListener("click", () => {
+    const applyNumpadDigit = () => {
       selectedDigit = digit;
       if (manualMarksActive() && manualMarkNeedsDigit() && selectedIndex >= 0) {
         applyManualMarkTarget(selectedIndex, digit, manualMarkButton);
       }
       updateInputControls();
-    });
+    };
+    button.addEventListener("click", applyNumpadDigit);
+    installManualMarkProtectedTouch(
+      button,
+      () => manualMarksActive() && manualMarkTouchEraseCandidateMode() && selectedIndex >= 0,
+      applyNumpadDigit,
+      () => {
+        selectedDigit = digit;
+        applyManualMarkTarget(selectedIndex, digit, "secondary");
+        updateInputControls();
+      },
+      `numpad:${digit}`
+    );
     numpad.appendChild(button);
   }
   const mode = document.createElement("button");

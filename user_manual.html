@@ -339,7 +339,7 @@
             <thead><tr><th>功能</th><th>电脑</th><th>手机/触屏</th></tr></thead>
             <tbody>
               <tr><td>图片输入</td><td>文件、剪贴板按钮、<span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>选择图片或拍照识别</td></tr>
-              <tr><td>手工候选标记</td><td>可直接左键候选；右键执行次要动作</td><td>先点格子，再点大数字盘；使用“添加/清除”按钮</td></tr>
+              <tr><td>手工候选标记</td><td>可直接左键候选；右键删除当前模式标记</td><td>先点格子，再轻触数字键添加、长按约 0.5 秒删除；也可切换“添加/删除”</td></tr>
               <tr><td>替换解题路径</td><td>右键可替换步骤</td><td>长按约 0.65 秒</td></tr>
               <tr><td>标记截图</td><td>优先复制 PNG 到剪贴板，失败时下载</td><td>优先打开系统分享，失败时下载</td></tr>
               <tr><td>做题布局</td><td>通常使用分析主界面</td><td>可进入专用做题模式，盘面和数字盘始终可见</td></tr>
@@ -360,7 +360,7 @@
             <thead><tr><th>Feature</th><th>Desktop</th><th>Mobile / touch</th></tr></thead>
             <tbody>
               <tr><td>Image input</td><td>File, clipboard button, or <span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>Select Image or Take Photo</td></tr>
-              <tr><td>Manual candidate marks</td><td>Direct left click; right click performs the secondary action</td><td>Tap a cell, then the large number pad; use Add/Erase explicitly</td></tr>
+              <tr><td>Manual candidate marks</td><td>Left-click adds; right-click erases the current mark mode</td><td>Select a cell, then tap a large digit to add or hold it for about 0.6 s to erase; Add/Erase buttons remain available</td></tr>
               <tr><td>Replace solve path</td><td>Right-click a replaceable step</td><td>Long-press for about 0.65 seconds</td></tr>
               <tr><td>Mark capture</td><td>Copies PNG to the clipboard when possible, otherwise downloads</td><td>Opens system share when possible, otherwise downloads</td></tr>
               <tr><td>Solving layout</td><td>Normally uses the analysis interface</td><td>Dedicated solve mode keeps the board and keypad visible</td></tr>
@@ -677,20 +677,23 @@
           </table>
           <h3>添加、清除与颜色</h3>
           <ul>
-            <li>选择颜色后，“添加”写入标记，“清除”删除当前模式对应的标记。</li>
+            <li>选择颜色后，“添加”写入标记，“删除”移除当前模式对应的标记。</li>
             <li>颜色选择器可添加自定义色；自定义色保存在本机浏览器。</li>
-            <li>画链模式中，“添加”使用下拉框选择的线型；“清除/次要动作”会画弱链，构造线型下则画构造弱链。</li>
+            <li>画链模式中不使用普通“长按删除”规则：同一对起终点再次画同类型边会删边，改画另一类型则原位改型；“删除/次要动作”仍用于选择弱链或构造弱链。</li>
           </ul>
           <h3>电脑操作</h3>
           <ul>
             <li>整格上色：直接左键格子。</li>
-            <li>候选类模式：左键候选执行添加；右键候选执行次要动作。除画链外，次要动作通常是删除该模式标记。</li>
+            <li>候选类模式：左键候选添加；右键候选删除当前模式标记。区块标记会只移除该候选节点，区块没有节点时自动删除。</li>
             <li>也可以先选格子，再点大数字盘，适合候选较小或缩放后的界面。</li>
           </ul>
           <h3>手机/触屏操作</h3>
           <ul>
-            <li>不要依赖直接点小候选：先点格子，再点大数字盘中的数字。</li>
-            <li>使用“添加/清除”明确选择动作。候选类标记会自动确保候选数可见。</li>
+            <li>整格上色：轻触格子添加颜色，长按格子约 0.6 秒删除颜色。</li>
+            <li>候选上色、候选画圈、预备删数、正式删数、区块标记：先点格子，再轻触大数字键添加；长按同一数字键约 0.5 秒删除。也可以直接长按盘面中的小候选删除。</li>
+            <li>候选小数字和大数字键会在标记模式下接管触摸长按，避免 Android Chrome/WebView 弹出系统菜单或文本选择而吞掉删除操作；整格上色仍沿用原来的格子长按。</li>
+            <li>“添加/删除”按钮仍可显式切换动作；不方便长按时，先点“删除”，再点格子或数字键。</li>
+            <li>候选类标记会自动确保候选数可见。长按删除只删除手工标记，不会直接删除盘面候选；只有“应用全部删数”才会执行正式删数。</li>
             <li>做题模式中点击“标记”。竖屏空间足够时面板内嵌在盘面下方；横屏或高度不足时放入右侧/底部抽屉。</li>
           </ul>
           <h3>链与区块工具</h3>
@@ -726,18 +729,21 @@
           <ul>
             <li>Select a color; Add writes a mark and Erase removes the current mode's mark.</li>
             <li>The color picker can add custom colors, which are stored locally in the browser.</li>
-            <li>In chain mode, Add uses the selected line type. The secondary/Erase action creates a weak line, or construction-weak when a construction type is selected.</li>
+            <li>Chain mode does not use the ordinary long-press-to-erase rule: drawing the same type again between the same endpoints removes the edge, while drawing another type updates it in place. The secondary/Erase action still selects weak or construction-weak drawing.</li>
           </ul>
           <h3>Desktop</h3>
           <ul>
             <li>Color Cells: left-click a cell.</li>
-            <li>Candidate modes: left-click adds; right-click performs the secondary action. Except in chain mode, the secondary action normally removes that mode's mark.</li>
+            <li>Candidate modes: left-click adds and right-click erases the current mode's mark. In Block Mark mode, only that candidate node is removed; an empty block is discarded.</li>
             <li>You may also select a cell and use the large number pad when candidates are small.</li>
           </ul>
           <h3>Mobile / Touch</h3>
           <ul>
-            <li>Do not rely on tapping tiny candidate text. Tap the cell, then the digit on the large number pad.</li>
-            <li>Use Add/Erase explicitly. Candidate-oriented mark modes automatically make candidates visible.</li>
+            <li>Color Cells: tap a cell to add its color; hold the cell for about 0.6 seconds to erase it.</li>
+            <li>Color Candidates, Circle Candidates, Provisional Eliminations, Eliminations, and Block Mark: select a cell, tap a large digit to add, or hold that digit for about 0.5 seconds to erase. You may also long-press the tiny board candidate directly.</li>
+            <li>While these candidate-mark modes are active, candidate glyphs and large digit keys take ownership of the touch hold so Android Chrome/WebView callouts or text selection cannot swallow the erase action. Cell coloring keeps its existing cell-hold behavior.</li>
+            <li>Add/Erase buttons remain an explicit alternative: choose Erase first, then tap the cell or digit when long-press is inconvenient.</li>
+            <li>Candidate-oriented modes automatically show candidates. Long-press erases only the manual mark; it does not remove a board candidate. Formal Eliminations are committed only by Apply All Eliminations.</li>
             <li>In solve mode, press Marks. With enough portrait space the panel appears inline; in landscape or short viewports it moves into the drawer.</li>
           </ul>
           <h3>Chain and Block Tools</h3>
