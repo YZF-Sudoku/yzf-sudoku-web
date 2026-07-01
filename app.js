@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-eb678fc5980f26ed";
+import createModule from "./sudoku_wasm.js?v=wasm-bc6a0cc50d73c7d3";
 
-const APP_VERSION = "wasm-eb678fc5980f26ed";
+const APP_VERSION = "wasm-bc6a0cc50d73c7d3";
 const MANUAL_VERSION = "20260629-manual-v2";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
@@ -14330,10 +14330,20 @@ function mobileSolveInlineMarksSpace() {
   return availableHeight - availableWidth - fixedHeight;
 }
 
+function mobileSolveInlineMarksRequiredSpace(viewportWidth) {
+  // The mobile variant hides the panel summary/title and uses a compact grid.
+  // Keep a small allowance for English labels and sub-pixel rounding instead
+  // of reserving the old 228px drawer-oriented height on every phone.
+  if (viewportWidth <= 360) return 202;
+  if (viewportWidth <= 390) return 176;
+  return 170;
+}
+
 function shouldInlineMobileSolveMarks() {
   const viewport = mobileSolveViewport();
   if (viewport.width > viewport.height) return false;
-  return viewport.width >= 360 && mobileSolveInlineMarksSpace() >= 228;
+  return viewport.width >= 360 &&
+    mobileSolveInlineMarksSpace() >= mobileSolveInlineMarksRequiredSpace(viewport.width);
 }
 
 function openMobileSolveMarks() {
