@@ -267,11 +267,15 @@ const btnMobileSolveNewPuzzle = document.getElementById("btnMobileSolveNewPuzzle
 const btnMobileSolveFullscreen = document.getElementById("btnMobileSolveFullscreen");
 const mobileSolveNewPuzzleBackdrop = document.getElementById("mobileSolveNewPuzzleBackdrop");
 const mobileSolveNewPuzzlePanel = document.getElementById("mobileSolveNewPuzzlePanel");
+const mobileSolveNewPuzzleSetup = document.getElementById("mobileSolveNewPuzzleSetup");
 const mobileSolveNewPuzzleOptions = document.getElementById("mobileSolveNewPuzzleOptions");
 const mobileSolveNewPuzzleWarning = document.getElementById("mobileSolveNewPuzzleWarning");
+const mobileSolveNewPuzzleConfirmView = document.getElementById("mobileSolveNewPuzzleConfirmView");
 const btnMobileSolveNewPuzzleClose = document.getElementById("btnMobileSolveNewPuzzleClose");
 const btnMobileSolveNewPuzzleCancel = document.getElementById("btnMobileSolveNewPuzzleCancel");
 const btnMobileSolveNewPuzzleGenerate = document.getElementById("btnMobileSolveNewPuzzleGenerate");
+const btnMobileSolveNewPuzzleConfirmBack = document.getElementById("btnMobileSolveNewPuzzleConfirmBack");
+const btnMobileSolveNewPuzzleConfirmContinue = document.getElementById("btnMobileSolveNewPuzzleConfirmContinue");
 const btnMobileSolveClear = document.getElementById("btnMobileSolveClear");
 const btnMobileSolveUndo = document.getElementById("btnMobileSolveUndo");
 const btnMobileSolveRedo = document.getElementById("btnMobileSolveRedo");
@@ -324,6 +328,8 @@ let mobileSolveMarksPlacement = "";
 let mobileSolveCandidatesVisible = true;
 let mobileSolveSameDigitHighlight = true;
 let mobileSolveNewPuzzleOpen = false;
+let mobileSolveNewPuzzleConfirmOpen = false;
+let mobileSolveNewPuzzlePendingDifficulty = 0;
 let mobileSolvePuzzleBaselineSignature = "";
 let ocrCorrectionState = null;
 let ocrCorrectionRoot = null;
@@ -651,6 +657,10 @@ const uiText = {
     mobileSolveNewPuzzleHint: "选择难度后生成，生成完成后继续留在做题模式。",
     mobileSolveNewPuzzleWarning: "当前作答进度或标记将在生成新题后清除。",
     mobileSolveNewPuzzleConfirm: "当前作答进度或标记将被清除，确定生成新题吗？",
+    mobileSolveNewPuzzleConfirmTitle: "清除当前进度？",
+    mobileSolveNewPuzzleConfirmDetail: "新题生成成功后将替换当前题目，现有作答、候选和手工标记无法通过撤销恢复。",
+    mobileSolveNewPuzzleConfirmBack: "返回选择",
+    mobileSolveNewPuzzleConfirmContinue: "继续生成",
     mobileSolveNewPuzzleGenerate: "生成",
     mobileSolveNewPuzzleGenerating: "生成中…",
     mobileSolveNewPuzzleCancel: "取消",
@@ -1176,6 +1186,10 @@ const uiText = {
     mobileSolveNewPuzzleHint: "Choose a difficulty and generate without leaving solve mode.",
     mobileSolveNewPuzzleWarning: "Your current progress or manual marks will be cleared when a new puzzle is generated.",
     mobileSolveNewPuzzleConfirm: "Your current progress or manual marks will be cleared. Generate a new puzzle?",
+    mobileSolveNewPuzzleConfirmTitle: "Clear current progress?",
+    mobileSolveNewPuzzleConfirmDetail: "After the new puzzle is generated, the current puzzle, entries, candidates, and manual marks cannot be restored with Undo.",
+    mobileSolveNewPuzzleConfirmBack: "Go back",
+    mobileSolveNewPuzzleConfirmContinue: "Generate anyway",
     mobileSolveNewPuzzleGenerate: "Generate",
     mobileSolveNewPuzzleGenerating: "Generating…",
     mobileSolveNewPuzzleCancel: "Cancel",
@@ -14820,9 +14834,14 @@ function updateMobileSolveLanguage() {
   setTextById("mobileSolveNewPuzzleTitle", ui("mobileSolveNewPuzzleTitle"));
   setTextById("mobileSolveNewPuzzleHint", ui("mobileSolveNewPuzzleHint"));
   setTextById("mobileSolveNewPuzzleWarning", ui("mobileSolveNewPuzzleWarning"));
+  setTextById("mobileSolveNewPuzzleConfirmTitle", ui("mobileSolveNewPuzzleConfirmTitle"));
+  setTextById("mobileSolveNewPuzzleConfirmMessage", ui("mobileSolveNewPuzzleConfirm"));
+  setTextById("mobileSolveNewPuzzleConfirmDetail", ui("mobileSolveNewPuzzleConfirmDetail"));
   setTextById("mobileSolveNewPuzzleDifficultyLegend", ui("mobileSolveNewPuzzleDifficulty"));
   setTextById("btnMobileSolveNewPuzzleClose", ui("close"));
   setTextById("btnMobileSolveNewPuzzleCancel", ui("mobileSolveNewPuzzleCancel"));
+  setTextById("btnMobileSolveNewPuzzleConfirmBack", ui("mobileSolveNewPuzzleConfirmBack"));
+  setTextById("btnMobileSolveNewPuzzleConfirmContinue", ui("mobileSolveNewPuzzleConfirmContinue"));
   if (!btnMobileSolveNewPuzzleGenerate?.disabled) setTextById("btnMobileSolveNewPuzzleGenerate", ui("mobileSolveNewPuzzleGenerate"));
   const mobileDifficultyKeys = [
     "mobileDifficultyRandom", "mobileDifficultyEasy", "mobileDifficultyMedium", "mobileDifficultyHard",
@@ -14882,13 +14901,33 @@ function syncMobileNewPuzzleDifficultyChoice(difficulty = difficultySelect?.valu
   return normalized;
 }
 
+function setMobileSolveNewPuzzleConfirm(open, options = {}) {
+  const { difficulty = mobileSolveNewPuzzlePendingDifficulty, focus = true } = options;
+  mobileSolveNewPuzzleConfirmOpen = Boolean(open && mobileSolveNewPuzzleOpen);
+  if (mobileSolveNewPuzzleConfirmOpen) {
+    mobileSolveNewPuzzlePendingDifficulty = normalizeMobileNewPuzzleDifficulty(difficulty);
+  }
+  if (mobileSolveNewPuzzleSetup) mobileSolveNewPuzzleSetup.hidden = mobileSolveNewPuzzleConfirmOpen;
+  if (mobileSolveNewPuzzleConfirmView) mobileSolveNewPuzzleConfirmView.hidden = !mobileSolveNewPuzzleConfirmOpen;
+  mobileSolveNewPuzzlePanel?.classList.toggle("is-confirming", mobileSolveNewPuzzleConfirmOpen);
+  if (!focus || !mobileSolveNewPuzzleOpen) return;
+  window.requestAnimationFrame(() => {
+    if (mobileSolveNewPuzzleConfirmOpen) {
+      btnMobileSolveNewPuzzleConfirmContinue?.focus?.({ preventScroll: true });
+    } else {
+      btnMobileSolveNewPuzzleGenerate?.focus?.({ preventScroll: true });
+    }
+  });
+}
+
 function setMobileSolveNewPuzzlePanel(open) {
   mobileSolveNewPuzzleOpen = Boolean(open && mobileSolveActive);
+  setMobileSolveNewPuzzleConfirm(false, { focus: false });
   if (mobileSolveNewPuzzlePanel) mobileSolveNewPuzzlePanel.hidden = !mobileSolveNewPuzzleOpen;
   if (mobileSolveNewPuzzleBackdrop) mobileSolveNewPuzzleBackdrop.hidden = !mobileSolveNewPuzzleOpen;
   btnMobileSolveNewPuzzle?.setAttribute("aria-expanded", mobileSolveNewPuzzleOpen ? "true" : "false");
   if (mobileSolveNewPuzzleOpen) {
-    syncMobileNewPuzzleDifficultyChoice(difficultySelect?.value || loadMobileNewPuzzleDifficulty());
+    mobileSolveNewPuzzlePendingDifficulty = syncMobileNewPuzzleDifficultyChoice(difficultySelect?.value || loadMobileNewPuzzleDifficulty());
     if (mobileSolveNewPuzzleWarning) mobileSolveNewPuzzleWarning.hidden = !mobileSolveCurrentPuzzleHasProgress();
     window.requestAnimationFrame(() => {
       const selected = mobileSolveNewPuzzleOptions?.querySelector('input[name="mobileSolveNewPuzzleDifficulty"]:checked');
@@ -14906,13 +14945,21 @@ function openMobileSolveNewPuzzlePanel() {
   setMobileSolveNewPuzzlePanel(true);
 }
 
-async function generateMobileSolveNewPuzzle() {
+async function generateMobileSolveNewPuzzle(options = {}) {
+  const { confirmed = false, difficulty: requestedDifficulty = null } = options;
   if (!engine || btnMobileSolveNewPuzzleGenerate?.disabled) return;
   const checked = mobileSolveNewPuzzleOptions?.querySelector('input[name="mobileSolveNewPuzzleDifficulty"]:checked');
-  const difficulty = saveMobileNewPuzzleDifficulty(checked?.value ?? difficultySelect?.value ?? 0);
-  if (mobileSolveCurrentPuzzleHasProgress() && !window.confirm(ui("mobileSolveNewPuzzleConfirm"))) return;
+  const difficulty = saveMobileNewPuzzleDifficulty(requestedDifficulty ?? checked?.value ?? difficultySelect?.value ?? 0);
+  syncMobileNewPuzzleDifficultyChoice(difficulty);
+  if (mobileSolveCurrentPuzzleHasProgress() && !confirmed) {
+    setMobileSolveNewPuzzleConfirm(true, { difficulty });
+    return;
+  }
 
   btnMobileSolveNewPuzzleGenerate.disabled = true;
+  if (btnMobileSolveNewPuzzleConfirmContinue) btnMobileSolveNewPuzzleConfirmContinue.disabled = true;
+  mobileSolveNewPuzzlePanel?.setAttribute("aria-busy", "true");
+  setMobileSolveNewPuzzleConfirm(false, { focus: false });
   setTextById("btnMobileSolveNewPuzzleGenerate", ui("mobileSolveNewPuzzleGenerating"));
   try {
     setStatus(uif("generatingPuzzle", { difficulty: selectedDifficultyLabel() }));
@@ -14928,6 +14975,8 @@ async function generateMobileSolveNewPuzzle() {
     scheduleMobileSolveLayout();
   } finally {
     btnMobileSolveNewPuzzleGenerate.disabled = false;
+    if (btnMobileSolveNewPuzzleConfirmContinue) btnMobileSolveNewPuzzleConfirmContinue.disabled = false;
+    mobileSolveNewPuzzlePanel?.removeAttribute("aria-busy");
     setTextById("btnMobileSolveNewPuzzleGenerate", ui("mobileSolveNewPuzzleGenerate"));
   }
 }
@@ -15051,6 +15100,13 @@ function installMobileSolveMode() {
   btnMobileSolveNewPuzzleClose?.addEventListener("click", () => setMobileSolveNewPuzzlePanel(false));
   btnMobileSolveNewPuzzleCancel?.addEventListener("click", () => setMobileSolveNewPuzzlePanel(false));
   btnMobileSolveNewPuzzleGenerate?.addEventListener("click", generateMobileSolveNewPuzzle);
+  btnMobileSolveNewPuzzleConfirmBack?.addEventListener("click", () => {
+    if (mobileSolveNewPuzzleWarning) mobileSolveNewPuzzleWarning.hidden = !mobileSolveCurrentPuzzleHasProgress();
+    setMobileSolveNewPuzzleConfirm(false);
+  });
+  btnMobileSolveNewPuzzleConfirmContinue?.addEventListener("click", () => {
+    generateMobileSolveNewPuzzle({ confirmed: true, difficulty: mobileSolveNewPuzzlePendingDifficulty });
+  });
   mobileSolveNewPuzzleBackdrop?.addEventListener("click", () => setMobileSolveNewPuzzlePanel(false));
   mobileSolveNewPuzzleOptions?.addEventListener("change", (event) => {
     const target = event.target;
