@@ -1,10 +1,11 @@
 <!doctype html>
+
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>YZF Sudoku 使用手册 / User Manual</title>
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>YZF Sudoku 使用手册 / User Manual</title>
+<style>
     :root {
       --bg: #f6f7fb;
       --paper: #ffffff;
@@ -60,6 +61,7 @@
     }
     h2 { font-size: 26px; margin: 0 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
     h3 { font-size: 19px; margin: 22px 0 8px; }
+    h4 { font-size: 16px; margin: 18px 0 7px; }
     .pair {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -221,874 +223,1497 @@
       section, nav { box-shadow: none; break-inside: avoid; }
       a { color: #000; text-decoration: none; }
     }
-  </style>
+  
+    /* Manual v2.2: source-matched visual legends. */
+    body[data-manual-lang="zh"] .visual-en { display: none; }
+    body[data-manual-lang="en"] .visual-zh { display: none; }
+    body[data-manual-lang="bilingual"] .visual-zh + .visual-en::before { content: " / "; }
+    .visual-demo-section {
+      margin: 24px 0 4px;
+      padding-top: 18px;
+      border-top: 1px dashed #cbd5e1;
+    }
+    .visual-demo-section > h3 { margin-top: 0; }
+    .visual-demo-intro { margin: 0 0 14px; color: var(--muted); }
+    .visual-legend-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(225px, 1fr));
+      gap: 12px;
+      margin: 14px 0;
+    }
+    .visual-demo-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-height: 112px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #f8fafc;
+      break-inside: avoid;
+    }
+    .visual-demo-card.wide { grid-column: span 2; }
+    .visual-demo-stage {
+      position: relative;
+      width: 88px;
+      min-width: 88px;
+      height: 88px;
+      display: grid;
+      place-items: center;
+    }
+    .visual-demo-copy { min-width: 0; font-size: 13px; line-height: 1.5; }
+    .visual-demo-copy strong { display: block; margin-bottom: 3px; font-size: 14px; color: #0f172a; }
+    .visual-demo-copy code { font-size: 12px; }
+
+    .demo-sudoku-cell {
+      position: relative;
+      width: 78px;
+      height: 78px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #94a3b8;
+      background: #fff;
+      overflow: visible;
+    }
+    .demo-sudoku-cell.active {
+      background: #dbeafe;
+      box-shadow: inset 0 0 0 3px #2563eb;
+    }
+    .demo-sudoku-cell.cell-link {
+      background-image: linear-gradient(rgba(14,165,233,.24), rgba(14,165,233,.24));
+    }
+    .demo-sudoku-cell.cell-truth::after {
+      content: "";
+      position: absolute;
+      inset: 4px;
+      border: 3px solid rgba(20,102,204,.62);
+      border-radius: 3px;
+      pointer-events: none;
+    }
+    .demo-large-digit { font-size: 38px; line-height: 1; font-weight: 600; }
+    .demo-large-digit.given { color: #0f172a; }
+    .demo-large-digit.solved { color: #1d4ed8; }
+    .demo-candidate-grid {
+      width: 100%;
+      height: 100%;
+      padding: 4px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      place-items: center;
+      color: #516479;
+      font-size: 13px;
+      line-height: 1;
+    }
+    .demo-candidate-grid span { display: grid; width: 100%; height: 100%; place-items: center; }
+
+    .demo-candidate {
+      position: relative;
+      width: 58px;
+      height: 58px;
+      display: grid;
+      place-items: center;
+      font-size: 25px;
+      line-height: 1;
+      font-weight: 900;
+      color: #0f172a;
+      border-radius: 999px;
+      isolation: isolate;
+    }
+    .demo-candidate.small { width: 36px; height: 36px; font-size: 17px; }
+    .demo-candidate > b { position: relative; z-index: 5; }
+    .demo-candidate.candidate-fill { background: color-mix(in srgb, #c5e88e 70%, transparent); }
+    .demo-candidate.candidate-circle { outline: 3px solid #2563eb; outline-offset: -5px; }
+    .demo-candidate.vset { outline: 3px solid #7c3aed; outline-offset: -5px; background: rgba(237,233,254,.70); }
+    .demo-candidate.aur1 { outline: 3px dashed #ea580c; outline-offset: -4px; background: rgba(255,237,213,.70); }
+    .demo-candidate.aur2 { outline: 3px dashed #2563eb; outline-offset: -4px; background: rgba(219,234,254,.70); }
+    .demo-candidate.daur { outline: 3px dotted #0891b2; outline-offset: -4px; background: rgba(207,250,254,.72); }
+    .demo-candidate.gur { outline: 5px double #7c2d12; outline-offset: -5px; background: rgba(254,215,170,.72); }
+    .demo-candidate.endpoint { box-shadow: inset 0 0 0 3px #0ea5e9; }
+    .demo-candidate.multi { background: rgba(254,226,226,.78); }
+    .demo-candidate.pre-elim,
+    .demo-candidate.formal-elim,
+    .demo-candidate.both-elim,
+    .demo-candidate.tlg-elim { color: #7a0012; }
+    .demo-candidate.pre-elim::before,
+    .demo-candidate.pre-elim::after,
+    .demo-candidate.formal-elim::before,
+    .demo-candidate.formal-elim::after,
+    .demo-candidate.both-elim::before,
+    .demo-candidate.both-elim::after,
+    .demo-candidate.tlg-elim::before,
+    .demo-candidate.tlg-elim::after {
+      content: "";
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 52px; height: 5px;
+      border-radius: 999px;
+      z-index: 12;
+      filter: drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff);
+    }
+    .demo-candidate.pre-elim::before,
+    .demo-candidate.formal-elim::before,
+    .demo-candidate.both-elim::before,
+    .demo-candidate.tlg-elim::before { transform: translate(-50%,-50%) rotate(45deg); }
+    .demo-candidate.pre-elim::after,
+    .demo-candidate.formal-elim::after,
+    .demo-candidate.both-elim::after,
+    .demo-candidate.tlg-elim::after { transform: translate(-50%,-50%) rotate(-45deg); }
+    .demo-candidate.pre-elim::before,
+    .demo-candidate.pre-elim::after { background: #0f7a3b; }
+    .demo-candidate.formal-elim::before,
+    .demo-candidate.formal-elim::after,
+    .demo-candidate.tlg-elim::before,
+    .demo-candidate.tlg-elim::after { background: #b42318; }
+    .demo-candidate.both-elim::before { background: #0f7a3b; }
+    .demo-candidate.both-elim::after { background: #b42318; }
+
+    .demo-house-layer {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+    .demo-house-layer.link {
+      inset: 11px;
+      background: conic-gradient(from 0deg, rgba(15,157,139,.42) 0 33.333%, rgba(212,160,23,.42) 33.333% 66.666%, rgba(139,92,246,.42) 66.666% 100%);
+      z-index: 0;
+    }
+    .demo-house-layer.truth {
+      inset: 2px;
+      background: conic-gradient(from 0deg, #0f9d8b 0 33.333%, #d4a017 33.333% 66.666%, #8b5cf6 66.666% 100%);
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 0);
+      mask: radial-gradient(farthest-side, transparent calc(100% - 6px), #000 0);
+      z-index: 2;
+    }
+    .demo-house-layer.link.r-only { background: rgba(15,157,139,.42); }
+    .demo-house-layer.truth.r-only { background: #0f9d8b; }
+
+    .demo-cell-fill {
+      width: 76px; height: 76px;
+      border: 1px solid #94a3b8;
+      background: color-mix(in srgb, #fff8a6 46%, #fff);
+    }
+    .demo-block {
+      width: 78px; height: 58px;
+      border: 3px solid rgba(249,115,22,.82);
+      background: rgba(249,115,22,.14);
+      border-radius: 29px;
+    }
+    .demo-chain-svg { width: 100px; height: 72px; overflow: visible; }
+    .demo-chain-svg .edge { fill: none; stroke: #ef4444; stroke-width: 4; stroke-linecap: round; }
+    .demo-chain-svg .edge.weak { stroke-dasharray: 8 6; }
+    .demo-chain-svg .edge.construct { stroke: #f97316; }
+    .demo-chain-svg .node { fill: #fff; stroke: #ef4444; stroke-width: 3; }
+    .demo-chain-svg .node.construct { stroke: #f97316; }
+
+    .pattern-demo-wrap { margin-top: 14px; }
+    .pattern-demo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .pattern-demo-card {
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #f8fafc;
+      break-inside: avoid;
+    }
+    .pattern-demo-card > strong { display: block; margin-bottom: 8px; }
+    .pattern-board {
+      position: relative;
+      display: grid;
+      gap: 3px;
+      width: max-content;
+      margin: 8px auto 10px;
+    }
+    .pattern-board.two-by-two { grid-template-columns: repeat(2, 58px); }
+    .pattern-board.two-by-three { grid-template-columns: repeat(3, 52px); }
+    .pattern-board.three-by-three { grid-template-columns: repeat(3, 48px); }
+    .pattern-cell {
+      position: relative;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      border: 1px solid #94a3b8;
+      background: #fff;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .pattern-cell.empty { border-color: transparent; background: transparent; }
+    .pattern-cell .demo-candidate.small { flex: 0 0 auto; }
+    .cardinality-badge {
+      position: absolute;
+      right: -4px;
+      bottom: -4px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      color: #fff;
+      background: #7c3aed;
+      font-size: 11px;
+      font-weight: 800;
+      z-index: 20;
+    }
+    .visual-swatch-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 0; font-size: 12px; }
+    .visual-swatch { display: inline-flex; align-items: center; gap: 5px; }
+    .visual-swatch::before { content: ""; width: 12px; height: 12px; border-radius: 999px; background: var(--swatch); }
+    @media (max-width: 820px) {
+      .pair > .zh, .pair > .en { min-width: 0; }
+      table { display: block; max-width: 100%; overflow-x: auto; }
+    }
+    @media (max-width: 620px) {
+      .visual-demo-card.wide { grid-column: auto; }
+      .visual-demo-stage { width: 78px; min-width: 78px; }
+      .pattern-demo-grid { grid-template-columns: 1fr; }
+    }
+</style>
 </head>
 <body>
-  <header>
-    <div class="wrap">
-      <h1>YZF Sudoku 使用手册 / User Manual</h1>
-      <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
-      <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-      <div class="meta">Version: Manual v2.0 · Updated: 2026-06-29</div>
-    </div>
-    <div class="manual-language-toolbar" role="group" aria-label="Manual language view / 手册语言视图">
-      <button type="button" data-manual-lang-button="bilingual" aria-pressed="true">双语 / Bilingual</button>
-      <button type="button" data-manual-lang-button="zh" aria-pressed="false">中文</button>
-      <button type="button" data-manual-lang-button="en" aria-pressed="false">English</button>
-    </div>
-  </header>
+<header>
+<div class="wrap">
+<h1>YZF Sudoku 使用手册 / User Manual</h1>
+<p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
+<p>For YZF Sudoku Web, WASM, and Standalone builds</p>
+<div class="meta">Version: Manual v2.2 · Updated: 2026-07-03</div>
+</div>
+<div aria-label="Manual language view / 手册语言视图" class="manual-language-toolbar" role="group">
+<button aria-pressed="true" data-manual-lang-button="bilingual" type="button">双语 / Bilingual</button>
+<button aria-pressed="false" data-manual-lang-button="zh" type="button">中文</button>
+<button aria-pressed="false" data-manual-lang-button="en" type="button">English</button>
+</div>
+</header>
+<main>
+<nav aria-label="Table of contents">
+<h2>目录 / Contents</h2>
+<ol class="toc">
+<li><a href="#overview">项目简介 / Overview</a></li>
+<li><a href="#start">启动方式 / How to Start</a></li>
+<li><a href="#layout">界面与操作差异 / Interface &amp; Platform Differences</a></li>
+<li><a href="#input">题面输入与现场恢复 / Puzzle Input &amp; Session Restore</a></li>
+<li><a href="#image-ocr">图片识别与对照校正 / OCR &amp; Review</a></li>
+<li><a href="#edit-board">手动做题与盘面编辑 / Manual Solving &amp; Board Editing</a></li>
+<li><a href="#generate-rate">生成、训练与评分 / Generate, Train &amp; Rate</a></li>
+<li><a href="#solve">提示、应用与自动解题 / Hint, Apply &amp; Auto Solve</a></li>
+<li><a href="#path-all-steps">解题路径与可选步骤 / Path &amp; Available Steps</a></li>
+<li><a href="#techniques">技巧配置与高亮 / Technique Settings &amp; Highlights</a></li>
+<li><a href="#manual-marks">手工标记 / Manual Marks</a></li>
+<li><a href="#batch">批量任务 / Batch Tasks</a></li>
+<li><a href="#tlg-solver">TLG Solver / Truth-Link Logic</a></li>
+<li><a href="#superhard">内置超难题库 / Built-in Superhard Bank</a></li>
+<li><a href="#export">导出、截图与分享 / Export, Capture &amp; Share</a></li>
+<li><a href="#mobile">手机做题、标记与 TLG / Mobile Solving, Marks &amp; TLG</a></li>
+<li><a href="#standalone">Standalone 版本 / Standalone Version</a></li>
+<li><a href="#troubleshooting">常见问题 / Troubleshooting</a></li>
+<li><a href="#credits">模型与来源声明 / Credits</a></li>
+</ol>
+</nav>
+<section id="overview">
+<h2>1. 项目简介 / Overview</h2>
+<div class="pair">
+<div class="zh">
+<p>YZF Sudoku 是一个面向逻辑解题、技巧研究和训练的 Web/WASM 数独工具。它不仅给出答案，还会保留当前盘面、候选状态、步骤结论、链路、高亮和完整解题路径。</p>
+<p>主要功能包括：</p>
+<ul>
+<li>普通题串、Library、Sukaku、候选盘、Sudoku Coach JSON 与 SCv7_32 导入。</li>
+<li>浏览器本地图片识别、原图对照校正、提示数/出数/候选数角色编辑。</li>
+<li>题目生成、指定技巧训练生成、ER/EP/ED 与 YZF 评分。</li>
+<li>提示一步、应用提示、自动解题路径、所有可选步骤、路径替换与动态解释。</li>
+<li>技巧预设、逐项启停、Whip/gWhip 内存模式、Whip/gWhip 最短长度比较、复杂技巧专属子选项。</li>
+<li>手工上色、画圈、删数、画链、区块标记、盘面截图与手机分享。</li>
+<li>批量出题、批量解题，以及 TLG Truth-Link 集合逻辑编辑器。</li>
+<li>专门的手机做题模式，支持竖屏、横屏和触摸标记。</li>
+</ul>
+</div>
+<div class="en">
+<p>YZF Sudoku is a Web/WASM tool for logical solving, technique research, and training. It preserves the board, candidate state, conclusions, chains, highlights, and full solve path instead of merely returning a solution.</p>
+<p>Major features include:</p>
+<ul>
+<li>Import of plain puzzles, Library strings, Sukaku, candidate grids, Sudoku Coach JSON, and SCv7_32 strings.</li>
+<li>Local browser OCR with side-by-side review and editable given/solved/candidate roles.</li>
+<li>Puzzle generation, technique-targeted training generation, and ER/EP/ED/YZF rating.</li>
+<li>Single hints, hint application, auto-solve paths, available-step search, path replacement, and dynamic explanations.</li>
+<li>Technique presets, individual toggles, Whip/gWhip memory modes, shortest-length comparison, and advanced sub-options.</li>
+<li>Manual coloring, circles, eliminations, chains, block marks, board capture, and mobile sharing.</li>
+<li>Batch generation, batch solving, and the TLG Truth-Link set-logic editor.</li>
+<li>A dedicated portrait/landscape mobile solve mode with touch-friendly marking.</li>
+</ul>
+</div>
+</div>
+</section>
+<section id="start">
+<h2>2. 启动方式 / How to Start</h2>
+<div class="pair">
+<div class="zh">
+<h3>普通 Web 版</h3>
+<p>普通版应通过 HTTP/HTTPS 打开。例如在 <code>web-app</code> 目录运行：</p>
+<pre>python -m http.server 8000</pre>
+<p>然后访问 <code>http://127.0.0.1:8000/<wbr/>index.html</code>。直接双击普通版 <code>index.html</code> 可能导致 WASM、Worker 或 OCR 资源被浏览器拦截。</p>
+<h3>Standalone 版</h3>
+<p>Standalone 单文件版可直接双击运行，WASM、OCR runtime 和模型应已经内联。</p>
+<div class="note">剪贴板读写、图片复制、系统分享、相机和文件保存能力取决于浏览器权限与安全上下文。通过 HTTPS 或 localhost 打开时兼容性最好。</div>
+</div>
+<div class="en">
+<h3>Regular Web Build</h3>
+<p>Serve the regular build over HTTP/HTTPS. From the <code>web-app</code> directory, for example:</p>
+<pre>python -m http.server 8000</pre>
+<p>Then open <code>http://127.0.0.1:8000/<wbr/>index.html</code>. Double-clicking the regular <code>index.html</code> may cause the browser to block WASM, workers, or OCR assets.</p>
+<h3>Standalone Build</h3>
+<p>The single-file Standalone build can be opened directly. WASM, the OCR runtime, and models should already be embedded.</p>
+<div class="note">Clipboard access, image copy, system sharing, camera access, and file saving depend on browser permissions and a secure context. HTTPS or localhost gives the best compatibility.</div>
+</div>
+</div>
+</section>
+<section id="layout">
+<h2>3. 界面与操作差异 / Interface &amp; Platform Differences</h2>
+<div class="pair">
+<div class="zh">
+<h3>主界面区域</h3>
+<ul>
+<li><strong>盘面区：</strong>9×9 盘面、提示数、出数、候选数、链路和各种高亮。</li>
+<li><strong>顶部入口：</strong>语言、使用手册、解释、技巧说明；小屏或触屏设备还会显示“做题”。</li>
+<li><strong>主要操作：</strong>生成、训练生成、加载、撤销、重做、自动解题、提示一步、应用提示、所有步骤、全屏。</li>
+<li><strong>四个页签：</strong>操作、技巧、解题路径、可选步骤。</li>
+<li><strong>数字盘：</strong>选择 1–9，并切换“出数/候选”；OCR 草稿还会多一个“提示数/出数”角色按钮。</li>
+</ul>
+<h3>电脑与手机的关键差异</h3>
+<table>
+<thead><tr><th>功能</th><th>电脑</th><th>手机/触屏</th></tr></thead>
+<tbody>
+<tr><td>图片输入</td><td>文件、剪贴板按钮、<span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>选择图片或拍照识别</td></tr>
+<tr><td>手工候选标记</td><td>可直接左键候选；右键删除当前模式标记</td><td>先点格子，再轻触数字键添加、长按约 0.5 秒删除；也可切换“添加/删除”</td></tr>
+<tr><td>替换解题路径</td><td>右键可替换步骤</td><td>长按约 0.65 秒</td></tr>
+<tr><td>标记截图</td><td>优先复制 PNG 到剪贴板，失败时下载</td><td>优先打开系统分享，失败时下载</td></tr>
+<tr><td>做题布局</td><td>通常使用分析主界面</td><td>可进入专用做题模式，盘面和数字盘始终可见</td></tr>
+</tbody>
+</table>
+</div>
+<div class="en">
+<h3>Main Interface</h3>
+<ul>
+<li><strong>Board:</strong> the 9×9 grid, givens, solved digits, candidates, chains, and highlights.</li>
+<li><strong>Top entries:</strong> language, User Manual, Explain, and Technique Guide. Small-screen or coarse-pointer devices also show Solve.</li>
+<li><strong>Main actions:</strong> Generate, Training Generate, Load, Undo, Redo, Auto Solve, Hint, Apply Hint, All Steps, and Fullscreen.</li>
+<li><strong>Four tabs:</strong> Controls, Techniques, Solve Path, and Available Steps.</li>
+<li><strong>Number pad:</strong> select 1–9 and switch between Value and Candidate. OCR drafts also show a Given/Solved role button.</li>
+</ul>
+<h3>Desktop vs Mobile</h3>
+<table>
+<thead><tr><th>Feature</th><th>Desktop</th><th>Mobile / touch</th></tr></thead>
+<tbody>
+<tr><td>Image input</td><td>File, clipboard button, or <span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>Select Image or Take Photo</td></tr>
+<tr><td>Manual candidate marks</td><td>Left-click adds; right-click erases the current mark mode</td><td>Select a cell, then tap a large digit to add or hold it for about 0.6 s to erase; Add/Erase buttons remain available</td></tr>
+<tr><td>Replace solve path</td><td>Right-click a replaceable step</td><td>Long-press for about 0.65 seconds</td></tr>
+<tr><td>Mark capture</td><td>Copies PNG to the clipboard when possible, otherwise downloads</td><td>Opens system share when possible, otherwise downloads</td></tr>
+<tr><td>Solving layout</td><td>Normally uses the analysis interface</td><td>Dedicated solve mode keeps the board and keypad visible</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="input">
+<h2>4. 题面输入与现场恢复 / Puzzle Input &amp; Session Restore</h2>
+<div class="pair">
+<div class="zh">
+<h3>支持的输入</h3>
+<ul>
+<li><strong>81 字符题串：</strong>1–9 为提示数，<code>0</code> 或 <code>.</code> 为空格。</li>
+<li><strong>Library 冒号格式：</strong>可保存当前候选删除状态和用户出数。</li>
+<li><strong>Sukaku / 候选盘：</strong>729 字符 Sukaku，或 81 个候选单元格文本。</li>
+<li><strong>Sudoku Coach：</strong>JSON 或 <code>SCv7_32_</code> 压缩串，支持提示数、出数和候选 mask。</li>
+</ul>
+<h3>加载流程</h3>
+<ol>
+<li>展开“更多：题面输入与导出评分”。</li>
+<li>把内容放入文本框，然后点击“加载”。</li>
+<li>勾选“剪贴板优先”时，加载按钮会先尝试读取剪贴板文本；读取或导入失败后才使用文本框。</li>
+</ol>
+<p>电脑浏览器拒绝剪贴板权限时，可取消“剪贴板优先”后直接加载文本框。手机做题模式中的“题面输入”会返回分析界面并自动展开输入面板。</p>
+<h3>自动保存现场</h3>
+<p>程序会在本机浏览器保存当前盘面、候选状态、语言和技巧配置，下次打开时自动恢复。“清除本地保存”会删除下次恢复所用的盘面、语言和技巧配置，但不会清空当前盘面。</p>
+<div class="warn">手工标记、当前提示预览、解题路径预览和 TLG 临时逻辑不会作为主现场保存。重要结构请截图或导出。</div>
+<h3>Coach 候选数 mask</h3>
+<p><code>userCellCandidates</code> 由 81 个十进制 mask 组成，用 <code>-</code> 分隔。数字 <code>d</code> 对应 <code>1 &lt;&lt; d</code>；例如候选 2、3、6 的 mask 为 <code>4 + 8 + 64 = 76</code>。</p>
+</div>
+<div class="en">
+<h3>Supported Inputs</h3>
+<ul>
+<li><strong>81-character puzzle:</strong> 1–9 are givens; <code>0</code> or <code>.</code> is empty.</li>
+<li><strong>Library colon format:</strong> preserves current candidate eliminations and user digits.</li>
+<li><strong>Sukaku / candidate grid:</strong> a 729-character Sukaku string or 81 candidate-cell tokens.</li>
+<li><strong>Sudoku Coach:</strong> JSON or an <code>SCv7_32_</code> compressed string with givens, user digits, and candidate masks.</li>
+</ul>
+<h3>Loading</h3>
+<ol>
+<li>Open “More: Puzzle Input / Export / Rating”.</li>
+<li>Put the input in the text area and press Load.</li>
+<li>When Prefer Clipboard is checked, Load first tries clipboard text and falls back to the text area if reading or import fails.</li>
+</ol>
+<p>If desktop clipboard permission is denied, disable Prefer Clipboard and load the text area directly. Puzzle Input inside mobile solve mode returns to the analysis view and opens the input panel.</p>
+<h3>Automatic Session Restore</h3>
+<p>The browser locally saves the current board, candidate state, language, and technique configuration, then restores them on the next visit. Clear Saved Session removes the board, language, and technique data used for the next restore, but does not clear the current board.</p>
+<div class="warn">Manual marks, the current hint preview, solve-path previews, and temporary TLG logic are not part of the main saved session. Capture or export important structures.</div>
+<h3>Coach Candidate Masks</h3>
+<p><code>userCellCandidates</code> contains 81 decimal masks separated by <code>-</code>. Digit <code>d</code> corresponds to <code>1 &lt;&lt; d</code>; candidates 2, 3, and 6 therefore use <code>4 + 8 + 64 = 76</code>.</p>
+</div>
+</div>
+</section>
+<section id="image-ocr">
+<h2>5. 图片识别与对照校正 / OCR &amp; Review</h2>
+<div class="pair">
+<div class="zh">
+<p>图片识别完全在浏览器本地运行，不上传图片，也不使用在线 fallback。模型按需加载；首次使用可能下载较大的运行库与模型，后续会使用本地缓存。下载中断时，支持的服务器和浏览器会尝试断点续传。</p>
+<h3>识别入口</h3>
+<ul>
+<li><strong>选择图片识别：</strong>电脑选择文件，手机可从相册选择。</li>
+<li><strong>拍照识别：</strong>手机请求后置相机；部分浏览器会弹出“相机/相册”选择器。</li>
+<li><strong>从剪贴板识别：</strong>电脑读取剪贴板中的图片。</li>
+<li><strong>Ctrl+V：</strong>焦点不在输入框时，可直接粘贴截图。</li>
+</ul>
+<h3>OCR 对照校正窗口</h3>
+<ul>
+<li>左侧显示识别后的盘面图片，中间显示固定 9×9 校正盘面；点击任一侧会同步选中同一格。</li>
+<li>右侧可切换<strong>提示数</strong>、<strong>出数</strong>、<strong>候选数</strong>。提示数显示为黑色大数字，出数显示为蓝色大数字。</li>
+<li>提示数/出数模式中，数字会替换当前格；再次输入相同数字会清空。候选模式中，数字用于切换候选。</li>
+<li>“上一格/下一格”移动选格；“清空”清除当前格；“撤销/重做”处理本次校正历史；“恢复识别结果”回到模型最初输出。</li>
+<li>“确认并导入”把校正结果作为可编辑 OCR 草稿导入；“取消”放弃本次识别。</li>
+</ul>
+<h3>电脑与手机</h3>
+<p>电脑和横屏空间充足时使用三栏对照，并提供“全屏校正”。窄屏手机会纵向排列图片、盘面和控制区；窄屏下全屏按钮可能隐藏。进入 OCR 校正时会退出手机做题模式，避免横屏全屏误进入做题布局。</p>
+<p>电脑键盘可使用 1–9、0/Delete/Backspace、方向键、<span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">Z</span>、<span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">Shift</span>+<span class="kbd">Z</span> 和 <span class="kbd">Esc</span>。</p>
+<h3>导入后的继续校正</h3>
+<p>确认导入后，若仍有错误，可在主盘面继续编辑。OCR 草稿的数字盘会显示“提示数/出数”角色按钮；选择角色后输入大数字，可继续修正黑色提示数和蓝色出数身份。</p>
+<div class="note">OCR 只使用黑色提示数检查唯一解。检查失败不会拒绝导入，而是保留草稿供人工修正；唯一性尚未确认时，不应依赖 UR、AUR 等唯一性技巧。</div>
+</div>
+<div class="en">
+<p>OCR runs entirely in the browser: images are not uploaded and no online fallback is used. Models load on demand; the first run may download sizable runtime/model assets, while later runs use local cache. Interrupted downloads attempt to resume when supported.</p>
+<h3>OCR Entries</h3>
+<ul>
+<li><strong>Select Image:</strong> choose a file on desktop or a photo from the mobile library.</li>
+<li><strong>Take Photo:</strong> requests the rear camera; some browsers show a camera/gallery chooser.</li>
+<li><strong>Read Clipboard:</strong> reads an image from the desktop clipboard.</li>
+<li><strong>Ctrl+V:</strong> paste a screenshot when focus is not inside an editable field.</li>
+</ul>
+<h3>OCR Review Window</h3>
+<ul>
+<li>The recognized image is shown on the left and a fixed 9×9 correction grid in the middle. Clicking either side selects the same cell.</li>
+<li>Switch among <strong>Given</strong>, <strong>Solved Digit</strong>, and <strong>Candidates</strong>. Givens are black large digits; solved digits are blue.</li>
+<li>In Given/Solved mode, a number replaces the cell; pressing the same number clears it. Candidate mode toggles pencil marks.</li>
+<li>Previous/Next moves selection; Clear removes the cell; Undo/Redo edits correction history; Reset OCR Result restores the original model output.</li>
+<li>Confirm &amp; Import imports an editable OCR draft; Cancel discards the recognition.</li>
+</ul>
+<h3>Desktop and Mobile</h3>
+<p>Desktop and roomy landscape layouts use three columns and provide Fullscreen Review. Narrow phones stack the image, board, and controls vertically; the fullscreen button may be hidden. Opening OCR review exits mobile solve mode so landscape fullscreen remains in the correction editor.</p>
+<p>Desktop keyboard controls include 1–9, 0/Delete/Backspace, arrow keys, <span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">Z</span>, <span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">Shift</span>+<span class="kbd">Z</span>, and <span class="kbd">Esc</span>.</p>
+<h3>Further Correction After Import</h3>
+<p>After confirmation, continue editing on the main board if necessary. An OCR draft adds a Given/Solved role button to the number pad so black givens and blue solved digits can still be corrected.</p>
+<div class="note">Only black givens are used for the uniqueness check. Failure does not reject the draft. Do not rely on uniqueness techniques such as UR/AUR until uniqueness has been confirmed.</div>
+</div>
+</div>
 
-  <main>
-    <nav aria-label="Table of contents">
-      <h2>目录 / Contents</h2>
-      <ol class="toc">
-        <li><a href="#overview">项目简介 / Overview</a></li>
-        <li><a href="#start">启动方式 / How to Start</a></li>
-        <li><a href="#layout">界面与操作差异 / Interface &amp; Platform Differences</a></li>
-        <li><a href="#input">题面输入与现场恢复 / Puzzle Input &amp; Session Restore</a></li>
-        <li><a href="#image-ocr">图片识别与对照校正 / OCR &amp; Review</a></li>
-        <li><a href="#edit-board">盘面编辑 / Board Editing</a></li>
-        <li><a href="#generate-rate">生成、训练与评分 / Generate, Train &amp; Rate</a></li>
-        <li><a href="#solve">提示、应用与自动解题 / Hint, Apply &amp; Auto Solve</a></li>
-        <li><a href="#path-all-steps">解题路径与可选步骤 / Path &amp; Available Steps</a></li>
-        <li><a href="#techniques">技巧配置与高亮 / Technique Settings &amp; Highlights</a></li>
-        <li><a href="#manual-marks">手工标记 / Manual Marks</a></li>
-        <li><a href="#batch">批量任务 / Batch Tasks</a></li>
-        <li><a href="#tlg-solver">TLG Solver / Truth-Link Logic</a></li>
-        <li><a href="#superhard">内置超难题库 / Built-in Superhard Bank</a></li>
-        <li><a href="#export">导出、截图与分享 / Export, Capture &amp; Share</a></li>
-        <li><a href="#mobile">手机做题模式 / Mobile Solve Mode</a></li>
-        <li><a href="#standalone">Standalone 版本 / Standalone Version</a></li>
-        <li><a href="#troubleshooting">常见问题 / Troubleshooting</a></li>
-        <li><a href="#credits">模型与来源声明 / Credits</a></li>
-      </ol>
-    </nav>
+<div class="visual-demo-section" id="ocr-role-visuals">
+<h3>识别角色与活动格效果图 / OCR Roles &amp; Active Cell</h3>
+<p class="visual-demo-intro"><span class="visual-zh">下图按当前盘面源码配色绘制；用于校正 OCR 时，先分清数字角色，再修改内容。</span><span class="visual-en">These examples follow the current board colors. During OCR review, identify the digit role before correcting its value.</span></p>
+<div class="visual-legend-grid">
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-sudoku-cell"><span class="demo-large-digit given">5</span></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">黑色提示数</span><span class="visual-en">Black given</span></strong><span class="visual-zh">属于原始题面，导入为 <code>givenDigits</code>。</span><span class="visual-en">Part of the original puzzle; imported as <code>givenDigits</code>.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-sudoku-cell"><span class="demo-large-digit solved">7</span></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">蓝色出数</span><span class="visual-en">Blue solved digit</span></strong><span class="visual-zh">属于做题进度，导入为 <code>userDigits</code>。</span><span class="visual-en">Part of solving progress; imported as <code>userDigits</code>.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-sudoku-cell"><div class="demo-candidate-grid"><span>1</span><span></span><span>3</span><span></span><span>5</span><span></span><span>7</span><span></span><span>9</span></div></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">小候选数</span><span class="visual-en">Pencil marks</span></strong><span class="visual-zh">导入候选 mask；遗漏或多识别都可在草稿盘修改。</span><span class="visual-en">Imported as candidate masks; missing or extra marks can be corrected in the draft.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-sudoku-cell active"><div class="demo-candidate-grid"><span>1</span><span>2</span><span></span><span></span><span>5</span><span></span><span></span><span>8</span><span></span></div></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">普通活动单元格</span><span class="visual-en">Ordinary active cell</span></strong><span class="visual-zh">蓝底和蓝框只表示当前输入焦点；执行 TLG“查找删数”时会自动取消，避免与 TLG 高亮混淆。</span><span class="visual-en">The blue fill/border is only the current input focus. TLG Find clears it to avoid mixing it with proof highlights.</span></div></div>
+</div>
+</div>
+</section>
+<section id="edit-board">
+<h2>6. 手动做题与盘面编辑 / Manual Solving &amp; Board Editing</h2>
+<div class="pair">
+<div class="zh">
+<h3>推荐的完整做题流程</h3>
+<ol>
+<li><strong>载入题目：</strong>粘贴题串、使用图片识别、恢复现场，或生成一题。先确认黑色提示数无误；OCR 题尤其要先校正提示数/出数身份。</li>
+<li><strong>选择输入类型：</strong>在数字盘附近选择“出数”或“候选”。出数用于填写确定答案，候选用于增删铅笔数。</li>
+<li><strong>选择数字再点格：</strong>先在数字盘选择 1–9，再点击/轻触目标格。出数模式写入大数字；候选模式切换该候选。</li>
+<li><strong>人工分析：</strong>需要圈候选、画链、上色或暂存删数时，打开“手工标记”。手工标记与真实候选盘分离，不会因为画了红叉就自动删候选。</li>
+<li><strong>核对逻辑：</strong>“提示一步”只预览程序找到的下一步；确认后点“应用提示”才真正写入盘面。也可在“可选步骤”中比较多个合法步骤。</li>
+<li><strong>继续与回退：</strong>每次正式出数、候选编辑、应用提示都进入撤销历史。误操作立即使用“撤销”，确认无误后再继续。</li>
+<li><strong>保存现场：</strong>要保存真实候选状态，优先导出 Library、Coach 或 Sukaku；要保存颜色、圈、链和区块，使用“截图”。</li>
+</ol>
+<h3>出数模式</h3>
+<ul>
+<li>选择数字后点击空格，写入用户出数。</li>
+<li>再次输入该格当前的大数字，可清除用户出数；原始提示数受保护，不能用普通做题操作覆盖。</li>
+<li>出数后，盘面候选会按当前局面更新。若填入与规则冲突的数字，状态区会提示局面无效。</li>
+</ul>
+<h3>候选模式</h3>
+<ul>
+<li>选择数字后点击空格，在该格添加或移除这个候选。</li>
+<li>候选模式改的是<strong>真实当前候选盘</strong>，会直接影响后续提示、自动解题、评分和 TLG。</li>
+<li>“隐藏候选数”只改变显示，不会删除候选；再次显示后原候选仍在。</li>
+<li>手工标记中的“预备删数/正式删数”不是候选模式。前者纯视觉，后者只有点击“应用全部删数”才会写入真实候选盘。</li>
+</ul>
+<h3>提示、应用与可选步骤</h3>
+<ul>
+<li><strong>提示一步：</strong>显示技巧名、结论、结构和高亮，不改盘。</li>
+<li><strong>应用提示：</strong>把当前提示中的出数或删数写入当前盘面，并记录到撤销历史。</li>
+<li><strong>可选步骤：</strong>用于比较同一局面的多个合法步骤。普通点击/轻触只预览；路径替换是另一种操作，不等于直接改当前编辑盘面。</li>
+</ul>
+<h3>OCR 草稿的特殊规则</h3>
+<p>图片识别结果可先作为草稿进入盘面，即使提示数暂时不是唯一解也能继续校正。校正完成后再使用需要唯一性前提的技巧，特别是 UR、AUR、DAUR 和 GUR。</p>
+<h3>电脑与手机的基本操作差异</h3>
+<ul>
+<li><strong>电脑：</strong>可直接点击格子或候选，也可使用键盘、右键和 <span class="kbd">Ctrl</span>/<span class="kbd">Command</span> 批选。</li>
+<li><strong>手机：</strong>普通做题优先使用“先选数字，再点格”的大按钮流程。精细候选标记则先选格子，再点大数字键，避免点不中小候选。</li>
+<li>开启 TLG 编辑后，盘面点击由 TLG 接管；要恢复普通出数/候选编辑，先关闭“启用 TLG 编辑”。</li>
+</ul>
+<div class="warn">不要把“画了一个删数标记”误认为候选已经删除。真正改变盘面的入口只有候选模式、应用提示、应用全部删数，以及其它明确写入盘面的操作。</div>
+</div>
+<div class="en">
+<h3>Recommended End-to-End Workflow</h3>
+<ol>
+<li><strong>Load a puzzle:</strong> paste a string, use OCR, restore a session, or generate one. Verify all black givens first; OCR puzzles may need given/user-digit role correction.</li>
+<li><strong>Choose input type:</strong> select Value or Candidate. Value enters a confirmed digit; Candidate edits pencil marks.</li>
+<li><strong>Select a digit, then a cell:</strong> choose 1–9 on the number pad and click/tap the target. Value writes a large digit; Candidate toggles that pencil mark.</li>
+<li><strong>Analyze manually:</strong> open Manual Marks for circles, colors, chains, blocks, or staged eliminations. Visual marks are separate from the real candidate grid.</li>
+<li><strong>Check logic:</strong> Hint only previews the next program step. Press Apply Hint to commit it. Available Steps can compare multiple legal options.</li>
+<li><strong>Continue or recover:</strong> formal values, candidate edits, and applied hints enter Undo history. Undo mistakes before continuing.</li>
+<li><strong>Save the state:</strong> use Library, Coach, or Sukaku for the real candidate state; use Capture for colors, circles, chains, and blocks.</li>
+</ol>
+<h3>Value Mode</h3>
+<ul>
+<li>Select a digit and click an empty cell to enter a user value.</li>
+<li>Entering the cell's current user value again clears it. Original givens are protected from ordinary solving edits.</li>
+<li>Candidates update after a value is entered. A rule conflict is reported as an invalid position.</li>
+</ul>
+<h3>Candidate Mode</h3>
+<ul>
+<li>Select a digit and click an empty cell to add or remove that candidate.</li>
+<li>Candidate mode changes the <strong>real current candidate grid</strong>, affecting hints, auto solving, rating, and TLG.</li>
+<li>Hide Candidates changes display only; it does not delete candidates.</li>
+<li>Provisional/Formal Eliminations in Manual Marks are different. Provisional is visual only; Formal is committed only by Apply All Eliminations.</li>
+</ul>
+<h3>Hint, Apply, and Available Steps</h3>
+<ul>
+<li><strong>Hint:</strong> displays the technique, conclusion, structure, and highlights without changing the board.</li>
+<li><strong>Apply Hint:</strong> commits the current placement/elimination and records it in Undo history.</li>
+<li><strong>Available Steps:</strong> compares legal options for the same position. A normal click/tap previews only; path replacement is separate from editing the live board.</li>
+</ul>
+<h3>OCR Draft Rule</h3>
+<p>An OCR result may enter as an editable draft even before the givens form a unique puzzle. Correct it before using techniques that require uniqueness, especially UR, AUR, DAUR, and GUR.</p>
+<h3>Desktop vs Mobile</h3>
+<ul>
+<li><strong>Desktop:</strong> direct clicks, keyboard input, right-click, and <span class="kbd">Ctrl</span>/<span class="kbd">Command</span> batch selection are available.</li>
+<li><strong>Mobile:</strong> ordinary solving should use the large “choose digit, then cell” flow. For precise candidate marks, select a cell and use the large digit buttons.</li>
+<li>When TLG editing is enabled, TLG owns board input. Disable it to resume ordinary Value/Candidate editing.</li>
+</ul>
+<div class="warn">A drawn elimination mark does not mean the candidate has been removed. Only Candidate mode, Apply Hint, Apply All Eliminations, and other explicit commit actions change the live board.</div>
+</div>
+</div>
+</section>
+<section id="generate-rate">
+<h2>7. 生成、训练与评分 / Generate, Train &amp; Rate</h2>
+<div class="pair">
+<div class="zh">
+<h3>普通生成</h3>
+<p>先选择 ER 难度分档，再点击“生成”。可选 Random、Easy、Medium、Hard、Unfair、Extreme 和 Insane。状态栏会显示提示数数量和评分。</p>
+<h3>训练生成</h3>
+<p>在“训练”下拉框选择一个技巧，再点击“训练生成”。程序会反复生成并完整解题，直到找到解题路径中包含该技巧的题目。复杂技巧可能需要较长搜索；运行期间按钮会锁定并显示已用时间。</p>
+<h3>评分当前题目</h3>
+<p>“评分当前题目”会优先识别文本框或当前盘面的格式。普通题使用 puzzle 评分；含候选状态的 Library/Sukaku/Coach 输入使用候选盘评分。结果通常包含 <code>ER</code>、<code>EP</code>、<code>ED</code>，并可能显示 <code>YZFRate</code>。</p>
+<div class="note">训练生成使用当前启用的技巧配置。为了得到可复现结果，先在“技巧”页签选好预设和子选项。</div>
+</div>
+<div class="en">
+<h3>Normal Generation</h3>
+<p>Select an ER difficulty band, then press Generate. Available bands are Random, Easy, Medium, Hard, Unfair, Extreme, and Insane. The status reports clue count and rating.</p>
+<h3>Training Generation</h3>
+<p>Select a technique in the Training list, then press Training Generate. The program repeatedly generates and solves puzzles until the solve path contains that technique. Advanced targets may take substantially longer; elapsed time is shown while the action is locked.</p>
+<h3>Rate Current Puzzle</h3>
+<p>Rate Current Puzzle detects the text-area or current-board format. Plain puzzles use puzzle rating, while Library/Sukaku/Coach inputs with candidate state use candidate-grid rating. Results normally include <code>ER</code>, <code>EP</code>, <code>ED</code>, and may include <code>YZFRate</code>.</p>
+<div class="note">Training generation uses the currently enabled technique configuration. Choose the desired preset and sub-options first for reproducible results.</div>
+</div>
+</div>
+</section>
+<section id="solve">
+<h2>8. 提示、应用与自动解题 / Hint, Apply &amp; Auto Solve</h2>
+<div class="pair">
+<div class="zh">
+<ul>
+<li><strong>提示一步：</strong>按当前技巧开关和顺序寻找下一步，显示结论、高亮与链路，但不修改盘面。</li>
+<li><strong>应用提示：</strong>把当前提示的出数/删数写入盘面，并进入撤销历史。</li>
+<li><strong>解释：</strong>当前提示或选中的路径步骤可解释时，顶部“解释”按钮会启用，打开“为什么这一步成立”的动态教程。</li>
+<li><strong>自动解题：</strong>计算从当前盘面开始的完整逻辑路径，并打开“解题路径”页签。它主要用于查看和比较路径，不会把所有步骤一次性永久写入当前编辑盘面。</li>
+</ul>
+<p>耗时搜索在普通 Web 版优先放入 Worker，保持界面可操作；Standalone 或不支持 Worker 的浏览器会回退到主线程。</p>
+<p>状态可能显示 <code>solved</code>、<code>NoResult</code>、<code>Invalid</code> 或步数上限等。找不到高级技巧时，先确认技巧已启用，并检查当前题目/候选状态是否合法。</p>
+</div>
+<div class="en">
+<ul>
+<li><strong>Hint:</strong> finds the next step under the current technique order, showing conclusions, highlights, and chains without changing the board.</li>
+<li><strong>Apply Hint:</strong> commits the current placement/elimination and adds it to undo history.</li>
+<li><strong>Explain:</strong> when the current hint or selected path step is explainable, the top Explain button opens a dynamic “why this works” tutorial.</li>
+<li><strong>Auto Solve:</strong> computes a full logical path from the current board and opens the Solve Path tab. It is primarily a path viewer and does not permanently apply every step to the editable board at once.</li>
+</ul>
+<p>Long tasks use a Worker in the regular Web build when available. Standalone or unsupported browsers fall back to the main thread.</p>
+<p>Status may report <code>solved</code>, <code>NoResult</code>, <code>Invalid</code>, or a step limit. If an advanced technique is missing, verify that it is enabled and that the puzzle/candidate state is valid.</p>
+</div>
+</div>
+</section>
+<section id="path-all-steps">
+<h2>9. 解题路径与可选步骤 / Path &amp; Available Steps</h2>
+<div class="pair">
+<div class="zh">
+<h3>解题路径</h3>
+<ul>
+<li>点击某一步，会把盘面预览到该步执行前，并显示该步高亮；展开节点可查看描述、nodes、edges、rank 和 hash。</li>
+<li>Force Chain 等多分支提示会显示分支切换控件。电脑还可使用 <span class="kbd">←</span>/<span class="kbd">→</span> 或 <span class="kbd">[</span>/<span class="kbd">]</span> 切换分支。</li>
+<li>路径替换后，顶部会显示旧/新步数、评分变化和“撤销分支”入口。</li>
+</ul>
+<h3>所有步骤 / 可选步骤</h3>
+<p>“所有步骤”在当前盘面收集多个合法步骤。可使用：</p>
+<ul>
+<li>关键词过滤技巧名、删数、格坐标或描述。</li>
+<li>按技巧过滤。</li>
+<li>默认排序，或按“出数/删数优先”排序。</li>
+<li>“可替换”只显示可绑定到当前解题路径某一步的候选。</li>
+<li>点击“清除”会同时重置关键词、技巧、排序和“可替换”筛选。</li>
+</ul>
+<h3>预览与替换</h3>
+<p>单击/轻触步骤只预览。若步骤标有“可替换”，电脑右键、手机长按约 0.65 秒，会用该步骤替换原路径对应步骤，并从替换点继续重算。与原步骤相同的候选不会替换。</p>
+<div class="warn">路径和可选步骤中的盘面是预览状态。导出或保存现场前，应返回实际编辑盘面，或明确使用替换后的路径结果。</div>
+</div>
+<div class="en">
+<h3>Solve Path</h3>
+<ul>
+<li>Click a step to preview the board immediately before it and display its highlights. Expand nodes to inspect the description, nodes, edges, rank, and hashes.</li>
+<li>Multi-branch hints such as Force Chains expose branch controls. Desktop also supports <span class="kbd">←</span>/<span class="kbd">→</span> or <span class="kbd">[</span>/<span class="kbd">]</span>.</li>
+<li>After path replacement, a panel shows old/new step counts, rating deltas, and an Undo Branch action.</li>
+</ul>
+<h3>All / Available Steps</h3>
+<p>All Steps collects multiple legal options for the current board. You can:</p>
+<ul>
+<li>filter by technique name, conclusion, coordinate, or description;</li>
+<li>filter by technique;</li>
+<li>use default order or sort placements/eliminations first;</li>
+<li>show only Replaceable options that can bind to the current solve path;</li>
+<li>press Clear to reset the text, technique, sort, and Replaceable filters together.</li>
+</ul>
+<h3>Preview and Replace</h3>
+<p>A normal click/tap only previews. For a Replaceable item, right-click on desktop or long-press for about 0.65 seconds on touch to replace the corresponding original step and recompute the remainder. An option identical to the current step is not replaced.</p>
+<div class="warn">Boards shown in Path and Available Steps are previews. Before exporting or relying on session restore, return to the live editable board or intentionally use the replaced path result.</div>
+</div>
+</div>
+</section>
+<section id="techniques">
+<h2>10. 技巧配置与高亮 / Technique Settings &amp; Highlights</h2>
+<div class="pair">
+<div class="zh">
+<h3>预设按钮</h3>
+<ul>
+<li><strong>All In：</strong>启用全部已实现技巧。</li>
+<li><strong>High Speed：</strong>关闭一批耗时最大的高级技巧，兼顾覆盖率。</li>
+<li><strong>Extreme Speed：</strong>进一步关闭较慢技巧，优先速度。</li>
+<li><strong>Whip Rating：</strong>基础技巧 + Whip/gWhip，并自动使用大内存评分配置；默认返回最短 Whip，可通过下方选项把 gWhip 纳入长度比较。</li>
+<li><strong>Braid Rating：</strong>基础技巧 + Braid/gBraid。</li>
+</ul>
+<h3>逐项配置</h3>
+<p>技巧表可逐项启用/关闭，并显示分数与难度颜色。Complex AIC 可单独勾选 <code>with AMSLS</code>，JE 可勾选 <code>with JEPOM</code>。</p>
+<p>Whip/gWhip 搜索内存模式：</p>
+<ul>
+<li><strong>自动：</strong>普通求解使用常规队列，Whip Rating 使用大内存。</li>
+<li><strong>普通：</strong>速度和内存优先。</li>
+<li><strong>大内存：</strong>提高搜索覆盖率，但更耗内存。</li>
+</ul>
+<p><strong>gWhip 参与最短长度比较：</strong>仅在 Whip 与 gWhip 同时启用时生效。程序先取得最短 Whip，再只搜索可能更短的 gWhip；gWhip 严格更短时返回 gWhip，同长度仍优先 Whip。</p>
+<p>技巧配置会随主现场自动保存。预设会重置 Complex AIC/JE 的专属子选项，使用后请重新确认。</p>
+<h3>高亮阅读</h3>
+<p>一般高亮包括出数、删数、结构格、强/弱链、ON/OFF 节点、ALS/AF 区域、guardian 和分支。点击顶部“技巧说明”打开 <code>techniques.html</code>，查看每个技巧的玩家向解释。</p>
+<h3>Guardian Force Chain</h3>
+<p>Dead pattern 的 guardian 不可能全部为假，因此至少一个为真。如果每个 guardian 为真都推出同一个结论，该结论成立。UR Guardian FC 与 Triplet Oddagon/Tridagon Guardian FC 使用相同的强制链原则，只是 deadly pattern 不同。</p>
+</div>
+<div class="en">
+<h3>Preset Buttons</h3>
+<ul>
+<li><strong>All In:</strong> enables every implemented technique.</li>
+<li><strong>High Speed:</strong> disables a group of the most expensive techniques while retaining broad coverage.</li>
+<li><strong>Extreme Speed:</strong> disables more slow techniques and prioritizes speed.</li>
+<li><strong>Whip Rating:</strong> basic techniques plus Whip/gWhip with the large-memory rating configuration. It returns the shortest Whip by default; the option below adds gWhip to the length comparison.</li>
+<li><strong>Braid Rating:</strong> basic techniques plus Braid/gBraid.</li>
+</ul>
+<h3>Individual Settings</h3>
+<p>The technique table allows individual toggles and shows score/difficulty coloring. Complex AIC has a <code>with AMSLS</code> sub-option; JE has <code>with JEPOM</code>.</p>
+<p>Whip/gWhip search memory modes:</p>
+<ul>
+<li><strong>Auto:</strong> normal queues for solving, large memory for Whip Rating.</li>
+<li><strong>Normal:</strong> prioritizes speed and memory use.</li>
+<li><strong>Large:</strong> improves search coverage at higher memory cost.</li>
+</ul>
+<p><strong>Compare shortest length with gWhip:</strong> applies only when both Whip and gWhip are enabled. The solver finds the shortest Whip first, then searches only for a strictly shorter gWhip. Whip wins ties.</p>
+<p>Technique settings are saved with the main session. Presets reset the Complex AIC/JE sub-options, so re-check them afterward.</p>
+<h3>Reading Highlights</h3>
+<p>Highlights may include placements, eliminations, structure cells, strong/weak links, ON/OFF nodes, ALS/AF regions, guardians, and branches. Open the top Technique Guide link for player-facing explanations in <code>techniques.html</code>.</p>
+<h3>Guardian Force Chain</h3>
+<p>Guardians of a dead pattern cannot all be false, so at least one is true. If every possible true guardian produces the same conclusion, that conclusion is valid. UR and Triplet Oddagon/Tridagon Guardian FC use the same forcing principle with different deadly patterns.</p>
+</div>
+</div>
+</section>
+<section id="manual-marks">
+<h2>11. 手工标记 / Manual Marks</h2>
+<div class="pair">
+<div class="zh">
+<p>在“操作”页签展开“手工标记”。它是人工分析层，适合记录假设、制作讲解图和规划删数；除“应用全部删数”外，标记本身不改变真实盘面。</p>
+<h3>一套完整的使用流程</h3>
+<ol>
+<li>先完成题面和候选盘的校正，选中准备分析的格子。</li>
+<li>打开“手工标记”，选择模式、颜色和“添加/删除”动作。</li>
+<li>整格模式直接点格；候选模式可直接点小候选，手机也可先点格再点大数字键。</li>
+<li>画链时依次点起点和终点；区块模式逐个选择节点后点“完成区块”。</li>
+<li>预备删数只用于推演；确认成立后改为正式删数，再点“应用全部删数”。</li>
+<li>需要保留讲解现场时立即截图。主现场恢复不会自动保存手工标记。</li>
+</ol>
+<h3>标记模式</h3>
+<table>
+<thead><tr><th>模式</th><th>作用与使用场景</th></tr></thead>
+<tbody>
+<tr><td>关闭标记</td><td>把盘面点击权交回普通出数/候选编辑。</td></tr>
+<tr><td>整格上色</td><td>标出 ALS、AHS、UR 四角、强制链分支区域或人工关注区域。</td></tr>
+<tr><td>候选上色</td><td>区分 ON/OFF、不同分支、不同集合成员。</td></tr>
+<tr><td>候选画圈</td><td>突出关键候选、guardian、链端点或共同结论。</td></tr>
+<tr><td>预备删数</td><td>只画待验证的删除符号，不改变候选，适合试推。</td></tr>
+<tr><td>正式删数</td><td>加入待应用集合；点击“应用全部删数”后才真正删除。</td></tr>
+<tr><td>手动画链</td><td>依次选择两个候选，绘制强链、弱链、构造强链或构造弱链。</td></tr>
+<tr><td>区块标记</td><td>连续选择多个候选，形成圆形、胶囊或凸包区域。</td></tr>
+</tbody>
+</table>
+<h3>添加、删除与颜色</h3>
+<ul>
+<li>选择颜色后，“添加”写入当前模式标记，“删除”移除当前模式对应标记，不会误删其它类型。</li>
+<li>颜色选择器可添加自定义色；自定义色保存在当前浏览器。</li>
+<li>同一候选可叠加不同类型的标记；看不清时应减少层数，而不是误以为后一次一定覆盖前一次。</li>
+<li>画链模式中，同一对端点再次画同类型边会删边；改画另一类型会原位改型。“删除/次要动作”用于弱链或构造弱链。</li>
+</ul>
+<h3>电脑操作</h3>
+<ul>
+<li><strong>整格上色：</strong>左键格子添加；切换到“删除”后再点格子移除。</li>
+<li><strong>候选类模式：</strong>左键候选添加，右键候选删除当前模式标记。</li>
+<li><strong>替代输入：</strong>先点格子，再点大数字盘，也能定位候选，适合缩放后候选较小的情况。</li>
+<li><strong>区块：</strong>右键某个节点只移除该节点；区块没有节点时自动删除。</li>
+</ul>
+<h3>手机/触屏操作</h3>
+<ul>
+<li><strong>整格上色：</strong>轻触格子添加，长按格子约 0.6 秒删除。</li>
+<li><strong>候选上色、画圈、预备删数、正式删数、区块：</strong>先点格子，再轻触大数字键添加；长按同一数字键约 0.5–0.6 秒删除。也可直接长按盘面小候选删除。</li>
+<li><strong>不方便长按：</strong>先点“删除”，再轻触格子或大数字键，效果相同。</li>
+<li>候选类标记会自动显示候选。长按删除只删手工标记，不会直接删真实候选。</li>
+<li>做题模式中点“标记”打开面板；竖屏空间足够时内嵌在盘面下方，横屏或高度不足时进入抽屉。</li>
+</ul>
+<h3>链与区块工具</h3>
+<ul>
+<li><strong>撤销线：</strong>删除最后一条手动画链。</li>
+<li><strong>取消起点：</strong>取消尚未完成的链起点，避免下一次点击接到错误端点。</li>
+<li><strong>完成区块：</strong>把当前候选节点集合固定成区块。</li>
+<li><strong>撤销区块：</strong>有草稿时先撤销最后一个节点；没有草稿时撤销最后一个已完成区块。</li>
+<li><strong>清空标记：</strong>清除全部颜色、圈、删数、线和区块，不改变题目本身。</li>
+</ul>
+<h3>应用删数与截图</h3>
+<p>“应用全部删数”只处理“正式删数”，不处理“预备删数”。勾选“清除简单步骤”后，还会连续应用 Full House、Hidden/Naked Single、Locked Candidates、Pair、Triple 和 Quad，直到遇到更高级步骤。</p>
+<p>“截图”按屏幕当前显示生成 PNG，包含全部手工标记。电脑优先复制到图片剪贴板；手机优先系统分享；能力不可用时回退下载。</p>
+<h3>与 TLG 的关系</h3>
+<p>TLG 编辑和手工标记都需要接管候选触摸，因此不能同时操作。开启 TLG 时，普通技巧高亮、链路和手工标记只暂时隐藏；关闭 TLG 后恢复。要继续画普通标记，先关闭“启用 TLG 编辑”。</p>
+<div class="warn">手工标记不随主现场自动保存。重要结构应截图；真实候选状态则另行导出 Library、Coach 或 Sukaku。</div>
+</div>
+<div class="en">
+<p>Open Manual Marks in the Controls tab. It is a human-analysis layer for hypotheses, teaching diagrams, and planned eliminations. Marks do not change the live board except through Apply All Eliminations.</p>
+<h3>Complete Workflow</h3>
+<ol>
+<li>Correct the puzzle and candidate grid, then select the area to analyze.</li>
+<li>Open Manual Marks and choose a mode, color, and Add/Erase action.</li>
+<li>Cell modes target the cell; candidate modes can target tiny candidates, or on mobile use a selected cell plus the large digit pad.</li>
+<li>For a chain, select start and end. For a block, collect nodes and press Finish Block.</li>
+<li>Use Provisional Eliminations while testing. Convert confirmed conclusions to Formal Eliminations, then press Apply All Eliminations.</li>
+<li>Capture important diagrams immediately; manual marks are not part of automatic session restore.</li>
+</ol>
+<h3>Mark Modes</h3>
+<table>
+<thead><tr><th>Mode</th><th>Purpose and Typical Use</th></tr></thead>
+<tbody>
+<tr><td>Off</td><td>Returns board input to ordinary Value/Candidate editing.</td></tr>
+<tr><td>Color Cells</td><td>Marks ALS/AHS regions, UR corners, branches, or an area of interest.</td></tr>
+<tr><td>Color Candidates</td><td>Distinguishes ON/OFF states, branches, or set membership.</td></tr>
+<tr><td>Circle Candidates</td><td>Emphasizes key candidates, guardians, endpoints, or common conclusions.</td></tr>
+<tr><td>Provisional Eliminations</td><td>Visual test deletions only; candidates remain live.</td></tr>
+<tr><td>Eliminations</td><td>Adds to the pending set; Apply All Eliminations performs the actual deletion.</td></tr>
+<tr><td>Draw Chain</td><td>Selects two candidates for strong, weak, construction-strong, or construction-weak edges.</td></tr>
+<tr><td>Block Mark</td><td>Collects candidates into a circle, capsule, or convex-hull region.</td></tr>
+</tbody>
+</table>
+<h3>Add, Erase, and Colors</h3>
+<ul>
+<li>Add writes the current mark; Erase removes only the current mark type.</li>
+<li>Custom colors are stored in the current browser.</li>
+<li>Different mark types can coexist on one candidate. Reduce layers when the display becomes ambiguous.</li>
+<li>In chain mode, drawing the same edge type again removes it; another edge type updates it in place. The secondary/Erase action selects weak or construction-weak drawing.</li>
+</ul>
+<h3>Desktop</h3>
+<ul>
+<li><strong>Color Cells:</strong> left-click to add; choose Erase and click to remove.</li>
+<li><strong>Candidate modes:</strong> left-click adds; right-click erases the current mark type.</li>
+<li><strong>Alternative:</strong> select a cell, then use the large digit pad when tiny candidates are hard to hit.</li>
+<li><strong>Blocks:</strong> right-click removes one node; an empty block is discarded.</li>
+</ul>
+<h3>Mobile / Touch</h3>
+<ul>
+<li><strong>Color Cells:</strong> tap to add; hold the cell for about 0.6 seconds to erase.</li>
+<li><strong>Candidate colors, circles, provisional/formal eliminations, and blocks:</strong> select a cell, tap a large digit to add, or hold it for about 0.5–0.6 seconds to erase. Direct long-press on a tiny candidate also works.</li>
+<li><strong>Without long-press:</strong> choose Erase first, then tap the cell or large digit.</li>
+<li>Candidate modes automatically reveal candidates. Long-press erases only the manual mark, not the live candidate.</li>
+<li>In Solve Mode, press Marks. It appears inline when portrait space allows, otherwise in the drawer.</li>
+</ul>
+<h3>Chain and Block Tools</h3>
+<ul>
+<li><strong>Undo Line:</strong> removes the latest manual edge.</li>
+<li><strong>Cancel Start:</strong> cancels an unfinished chain start.</li>
+<li><strong>Finish Block:</strong> commits the current candidate collection.</li>
+<li><strong>Undo Block:</strong> removes the latest draft node first, or the latest completed block when no draft exists.</li>
+<li><strong>Clear Marks:</strong> clears all manual colors, circles, eliminations, lines, and blocks without changing the puzzle.</li>
+</ul>
+<h3>Apply and Capture</h3>
+<p>Apply All Eliminations commits Formal Eliminations only. With Clear Easy Steps enabled, it continues through Full House, Hidden/Naked Single, Locked Candidates, Pair, Triple, and Quad until a higher technique is reached.</p>
+<p>Capture creates a PNG exactly as displayed. Desktop first tries the image clipboard; mobile first tries system share; unsupported cases fall back to download.</p>
+<h3>Relationship with TLG</h3>
+<p>TLG editing and manual marks both need candidate touch ownership, so they cannot be edited simultaneously. TLG temporarily hides ordinary highlights, chains, and marks; disabling TLG restores them.</p>
+<div class="warn">Manual marks are not automatically restored with the main session. Capture important diagrams; export Library, Coach, or Sukaku separately for the real candidate state.</div>
+</div>
+</div>
 
-    <section id="overview">
-      <h2>1. 项目简介 / Overview</h2>
-      <div class="pair">
-        <div class="zh">
-          <p>YZF Sudoku 是一个面向逻辑解题、技巧研究和训练的 Web/WASM 数独工具。它不仅给出答案，还会保留当前盘面、候选状态、步骤结论、链路、高亮和完整解题路径。</p>
-          <p>主要功能包括：</p>
-          <ul>
-            <li>普通题串、Library、Sukaku、候选盘、Sudoku Coach JSON 与 SCv7_32 导入。</li>
-            <li>浏览器本地图片识别、原图对照校正、提示数/出数/候选数角色编辑。</li>
-            <li>题目生成、指定技巧训练生成、ER/EP/ED 与 YZF 评分。</li>
-            <li>提示一步、应用提示、自动解题路径、所有可选步骤、路径替换与动态解释。</li>
-            <li>技巧预设、逐项启停、Whip/gWhip 内存模式、Whip/gWhip 最短长度比较、复杂技巧专属子选项。</li>
-            <li>手工上色、画圈、删数、画链、区块标记、盘面截图与手机分享。</li>
-            <li>批量出题、批量解题，以及 TLG Truth-Link 集合逻辑编辑器。</li>
-            <li>专门的手机做题模式，支持竖屏、横屏和触摸标记。</li>
-          </ul>
-        </div>
-        <div class="en">
-          <p>YZF Sudoku is a Web/WASM tool for logical solving, technique research, and training. It preserves the board, candidate state, conclusions, chains, highlights, and full solve path instead of merely returning a solution.</p>
-          <p>Major features include:</p>
-          <ul>
-            <li>Import of plain puzzles, Library strings, Sukaku, candidate grids, Sudoku Coach JSON, and SCv7_32 strings.</li>
-            <li>Local browser OCR with side-by-side review and editable given/solved/candidate roles.</li>
-            <li>Puzzle generation, technique-targeted training generation, and ER/EP/ED/YZF rating.</li>
-            <li>Single hints, hint application, auto-solve paths, available-step search, path replacement, and dynamic explanations.</li>
-            <li>Technique presets, individual toggles, Whip/gWhip memory modes, shortest-length comparison, and advanced sub-options.</li>
-            <li>Manual coloring, circles, eliminations, chains, block marks, board capture, and mobile sharing.</li>
-            <li>Batch generation, batch solving, and the TLG Truth-Link set-logic editor.</li>
-            <li>A dedicated portrait/landscape mobile solve mode with touch-friendly marking.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
+<div class="visual-demo-section" id="manual-mark-visuals">
+<h3>手工标记效果图 / Manual-Mark Visual Legend</h3>
+<p class="visual-demo-intro"><span class="visual-zh">这些图按当前前端的实际颜色和线型绘制。预备删数是绿色，正式删数是红色；两者同时存在时，两条斜线分别保留各自颜色。</span><span class="visual-en">These samples match the current frontend colors and line styles. Provisional eliminations are green, formal eliminations are red, and a combined mark keeps one diagonal of each color.</span></p>
+<div class="visual-legend-grid">
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-cell-fill"></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">整格上色</span><span class="visual-en">Cell fill</span></strong><span class="visual-zh">用于结构格、分支区域或关注区域。</span><span class="visual-en">For structure cells, branches, or areas of interest.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate candidate-fill"><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">候选上色</span><span class="visual-en">Candidate fill</span></strong><span class="visual-zh">区分 ON/OFF、集合成员或不同分支。</span><span class="visual-en">Distinguishes ON/OFF nodes, set members, or branches.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate candidate-circle"><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">候选画圈</span><span class="visual-en">Candidate circle</span></strong><span class="visual-zh">突出 guardian、端点或共同结论。</span><span class="visual-en">Emphasizes a guardian, endpoint, or common conclusion.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate pre-elim"><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">预备删数：绿色 X</span><span class="visual-en">Provisional: green X</span></strong><span class="visual-zh">只用于试推，不会被“应用全部删数”执行。</span><span class="visual-en">For tentative reasoning only; Apply All does not execute it.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate formal-elim"><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">正式删数：红色 X</span><span class="visual-en">Formal: red X</span></strong><span class="visual-zh">加入待应用集合，可由“应用全部删数”真正删除。</span><span class="visual-en">Added to the actionable set and removed by Apply All Eliminations.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate both-elim"><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">预备 + 正式叠加</span><span class="visual-en">Provisional + formal</span></strong><span class="visual-zh">一条绿斜线和一条红斜线，表示同一候选同时有两种标记。</span><span class="visual-en">One green and one red diagonal show that both marks exist.</span></div></div>
+<div class="visual-demo-card wide"><div class="visual-demo-stage"><svg aria-hidden="true" class="demo-chain-svg" viewbox="0 0 100 72"><line class="edge" x1="10" x2="90" y1="14" y2="14"></line><circle class="node" cx="10" cy="14" r="6"></circle><circle class="node" cx="90" cy="14" r="6"></circle><line class="edge weak" x1="10" x2="90" y1="36" y2="36"></line><circle class="node" cx="10" cy="36" r="6"></circle><circle class="node" cx="90" cy="36" r="6"></circle><line class="edge construct weak" x1="10" x2="90" y1="58" y2="58"></line><circle class="node construct" cx="10" cy="58" r="6"></circle><circle class="node construct" cx="90" cy="58" r="6"></circle></svg></div><div class="visual-demo-copy"><strong><span class="visual-zh">手动画链</span><span class="visual-en">Manual chains</span></strong><span class="visual-zh">红实线＝强链；红虚线＝弱链；橙色＝构造链，虚线仍表示构造弱链。</span><span class="visual-en">Red solid = strong; red dashed = weak; orange = construction, with dashed orange for construction weak.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-block"></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">完成区块</span><span class="visual-en">Finished block</span></strong><span class="visual-zh">区块使用半透明填充和外框；草稿区块会额外使用虚线。</span><span class="visual-en">A completed block uses translucent fill and outline; a draft additionally uses dashes.</span></div></div>
+</div>
+</div>
+</section>
+<section id="batch">
+<h2>12. 批量任务 / Batch Tasks</h2>
+<div class="pair">
+<div class="zh">
+<h3>批量出题</h3>
+<ol>
+<li>选择“批量出题”、输出文件名和主界面的难度。</li>
+<li>若“训练”下拉框选择了技巧，批量任务会只输出包含该技巧的训练题；未选择则普通批量生成。</li>
+<li>点击“开始”持续生成，点击“停止”结束并关闭/下载文件。</li>
+</ol>
+<p>每行是制表符分隔记录，包含序号、技巧、题串、答案、难度、尝试次数、提示数和评分字段。</p>
+<h3>批量解题</h3>
+<ol>
+<li>选择“批量解题”。</li>
+<li>选择纯文本输入文件，一行一题；空行和以 <code>#</code> 开头的行会忽略。</li>
+<li>点击“开始”，输出每题的状态、步数、YZF 评分、最难技巧和错误信息。</li>
+</ol>
+<h3>文件与平台差异</h3>
+<p>支持 File System Access API 的桌面浏览器会先让你选择保存位置，并在运行中持续追加；其它浏览器（常见于手机和部分 Firefox/Safari）会在任务结束或停止时生成下载文件。</p>
+<div class="warn">批量出题默认持续运行，必须点击“停止”。关闭页面前先停止，否则尚未下载的内存结果可能丢失。</div>
+</div>
+<div class="en">
+<h3>Batch Generation</h3>
+<ol>
+<li>Select Batch Generate, an output filename, and the main difficulty.</li>
+<li>If a Training technique is selected, only training puzzles containing that technique are emitted; otherwise generation is unrestricted.</li>
+<li>Press Start to generate continuously and Stop to finish and close/download the file.</li>
+</ol>
+<p>Each tab-separated line contains index, technique, puzzle, solution, difficulty, attempts, clue count, and rating fields.</p>
+<h3>Batch Solving</h3>
+<ol>
+<li>Select Batch Solve.</li>
+<li>Choose a plain-text input file with one puzzle per line. Blank lines and lines beginning with <code>#</code> are ignored.</li>
+<li>Press Start. Output includes status, steps, YZF rating, hardest technique, and errors.</li>
+</ol>
+<h3>Files and Platform Differences</h3>
+<p>Desktop browsers with the File System Access API ask for a destination and append while running. Other browsers, commonly mobile and some Firefox/Safari versions, create a download when the task finishes or is stopped.</p>
+<div class="warn">Batch generation runs continuously by default and must be stopped. Stop before closing the page or in-memory output that has not yet downloaded may be lost.</div>
+</div>
+</div>
+</section>
+<section id="tlg-solver">
+<h2>13. TLG Solver / Truth-Link Logic</h2>
+<div class="pair">
+<div class="zh">
+<p>TLG Solver 用 Truth、Link 和额外唯一性约束描述一个集合证明，再枚举满足全部约束的投影，从共同结果中得到删数或出数。它不是普通提示器：用户必须明确告诉程序哪些集合和 deadly-pattern 约束属于当前证明。</p>
+<p>勾选“启用 TLG 编辑”后，TLG 接管候选点击和专属高亮。普通技巧高亮、链路和手工标记只暂时隐藏；关闭 TLG 后恢复。关闭 TLG 会释放临时导入的 TLG 候选盘和计算结果，但保留已输入的 Truth、用户 Link、Virtual Set、AUR、DAUR、GUR 标记。</p>
+<h3>13.1 先理解四类状态</h3>
+<table>
+<thead><tr><th>状态</th><th>含义</th><th>什么时候变化</th></tr></thead>
+<tbody>
+<tr><td>Truths</td><td>用户输入的“必须恰好覆盖一次”集合。</td><td>点击、批量菜单或成功转换冗余 Truth 时变化。</td></tr>
+<tr><td>用户 Links</td><td>用户明确指定的“最多覆盖一次”集合，是下一次“查找删数”的输入。</td><td>用户添加/删除，或成功执行转换/移除操作时变化。</td></tr>
+<tr><td>结果 Links</td><td>最近一次成功计算实际使用/保留下来的 Links，用于结果高亮和后续结构整理。</td><td>每次成功计算后更新；任何新的 TLG 输入编辑都会使其失效。</td></tr>
+<tr><td>删数/出数结果</td><td>最近一次成功证明的共同结论。</td><td>成功查找后产生；输入变化后清空。</td></tr>
+</tbody>
+</table>
+<div class="note"><strong>本次修复后的关键规则：</strong>“查找删数”不会再把自动生成的 Links 写进用户 Links。你加一个 Truth 后再次查找，只要用户 Links 仍为空，程序就会重新自动生成 Links；同时，上一轮自动 Links 仍能作为结果 Links 正常高亮。</div>
+<h3>13.2 用户 Links、自动 Links 与“Link 类型=自动”不是一回事</h3>
+<ul>
+<li><strong>用户 Links 为空：</strong>点击“查找删数”时，后端从当前 Truth、候选盘和额外约束重新生成自动 Links。</li>
+<li><strong>用户 Links 非空：</strong>这次查找进入显式结构模式，只使用用户 Links，不再混入自动生成 Links。</li>
+<li><strong>结果 Links：</strong>无论来自自动生成还是显式用户输入，成功查找后的实际结构都保存在只读结果层，用于高亮。</li>
+<li><strong>“Link 类型=自动”下拉框：</strong>只决定你用两个候选点击输入 Link 时，前端如何解释这两个端点；它不控制后端是否自动生成整套 Links。</li>
+<li>成功执行“转换冗余 Truths”或“移除未使用 Links”属于明确的结构修改，返回的 Links 会提交为新的用户 Links。此后若想恢复全自动生成，应从“当前 TLG 状态”删除全部用户 Links，或清空逻辑后重建。</li>
+</ul>
+<h3>13.3 候选盘与唯一性门控</h3>
+<p>TLG 分开保存<strong>初始候选盘</strong>与<strong>当前候选盘</strong>。初始盘用于核验 AUR/DAUR/GUR 的唯一性前提；当前盘用于实际证明。Sukaku 只是候选输入格式，不自动等于训练盘。</p>
+<ul>
+<li><strong>唯一解：核验初始可交换局面（默认）：</strong>普通数独和唯一解 Sukaku 应使用此项。AUR/DUR/GUR 必须在初始盘存在足够的可交换/等价完成，当前盘仍保留至少一个相关完成。</li>
+<li><strong>训练盘：允许初始缺数：</strong>只用于人工构造的多解、Rank 或结构训练盘。它跳过原始唯一性前提，只检查当前候选云。</li>
+</ul>
+<div class="warn">门控选错可能产生伪结论。不是“候选盘格式”就该选训练盘；只要它来自唯一解题目，仍应使用默认严格门控。</div>
+<h3>13.4 从零开始的完整流程</h3>
+<ol>
+<li>把题目解到需要研究的候选状态，并确认当前候选准确。需要独立候选盘时，把 729 字符 Sukaku 或 81 个候选单元格粘贴到题面输入框。</li>
+<li>展开 TLG Solver，选择正确的唯一性门控，勾选“启用 TLG 编辑”。如使用独立候选盘，点击“导入 TLG 候选盘面”；导入时的候选固定为初始盘，之后编辑只影响当前盘。</li>
+<li>先输入 Truths。简单集合可用两个端点点击，复杂/批量集合用右键或手机长按菜单精确添加。</li>
+<li>决定 Link 策略：希望程序自动补 Links 时，不要输入任何用户 Link；需要复现指定结构时，再输入显式用户 Links。</li>
+<li>按证明需要添加 Virtual Set、AUR、DAUR 或 GUR。它们是逻辑前提，不是装饰标记。</li>
+<li>检查“当前 TLG 状态”中的用户输入，确认没有多余集合、错误候选或残留用户 Links。</li>
+<li>点击“查找删数”。阅读结果 Links、删数/出数、Rank、AUR/DAUR/GUR 展开信息和预算状态。</li>
+<li>需要整理结构时，依次尝试“转换冗余 Truths”和“移除未使用 Links”。失败不会覆盖上一轮有效结构；成功则提交新的用户 Truth/Link 状态。</li>
+</ol>
+<h3>13.5 Truth 怎么输入、什么时候用</h3>
+<p>Truth 表示投影中必须恰好选择一个成员的集合，支持行数字、列数字、宫数字和单元格集合。</p>
+<ul>
+<li><strong>行/列/宫 Truth：</strong>在 Truths 模式依次点击两个<strong>同数字</strong>候选；它们必须共享目标行、列或宫。程序据此加入完整描述符，例如 <code>5R3</code>。</li>
+<li><strong>Cell Truth：</strong>在 Truths 模式点击空单元格背景，或通过批量菜单选择“单元格”。它表示该格必须选一个候选。</li>
+<li><strong>批量精确输入：</strong>电脑 <span class="kbd">Ctrl</span>/<span class="kbd">Command</span> 选候选后右键；手机长按选候选后打开菜单。选择行、列、单元格或宫，程序按每个选中候选生成对应描述符。</li>
+<li>只添加你能证明属于结构的 Truth。Truth 过多会改变 Rank 和投影，不是“多标一点更保险”。</li>
+</ul>
+<h3>13.6 Link 怎么输入、什么时候用</h3>
+<p>Link 表示投影中最多覆盖一次的集合，也用于判断集合外候选能否被全部投影排除。</p>
+<ul>
+<li><strong>推荐默认：</strong>先保持用户 Links 为空，让程序自动生成；这是增加 Truth 后反复查找时最稳妥的工作流。</li>
+<li><strong>显式 Link：</strong>只有在复现指定 TLG、限制搜索结构或人工整理 Rank 时才输入。House Link 通常应由同数字候选定义；Cell Link 由同一格内不同候选定义。</li>
+<li><strong>两端点输入：</strong>切换到 Links 模式，选择 Link 类型，再点两个候选。自动模式优先把同格端点解释为 Cell Link；否则按共享行、列、宫解释。</li>
+<li><strong>批量输入更可靠：</strong>批选后从菜单明确选择行/列/单元格/宫，避免端点几何存在多种解释。</li>
+<li>只要存在一个用户 Link，本轮查找就不会自动混入其它 Links。需要自动模式时必须把用户 Links 删到 0。</li>
+</ul>
+<h3>13.7 Virtual Set：怎么用</h3>
+<p>Virtual Set 用于表达一个不能方便写成普通 R/C/B/N Truth 的<strong>精确基数</strong>约束：在所选候选中，恰好有 <code>k</code> 个会被选中。</p>
+<ol>
+<li>把输入模式切换为 Virtual Set。</li>
+<li>逐个点击该虚拟集合的全部成员候选，或批选后选择“切换到 Virtual Set”。</li>
+<li>在“应用 Truths 数”填写精确基数 <code>k</code>。后端当前只接受 1–4；填写 0 会按 1 处理。</li>
+<li>确认成员都是真实活动候选，并且你有外部逻辑证明“恰好 k 个为真”，再查找删数。</li>
+</ol>
+<p><strong>适用场景：</strong>已经由别的结构推得一个候选云具有精确 1、2、3 或 4 个真值，但它不对应单一行、列、宫或单元格 Truth。</p>
+<p><strong>不要这样用：</strong>不要把“至少一个”“至多两个”或只是怀疑相关的候选随意塞进 Virtual Set。它会被当作严格等式前提，错误基数会直接污染证明。</p>
+<h3>13.8 定式 AUR：怎么选、怎么用</h3>
+<p>定式 AUR 用一个已知的可交换唯一矩形/唯一性结构，强制其本体不能全部按 deadly completion 占满。标准四格 AUR 编译为 <code>maxBodyFootprint ≤ 3</code>。</p>
+<h4>标准四格 AUR（推荐日常用法）</h4>
+<ol>
+<li>切换到 AUR 模式，并选择 AUR 1 或 AUR 2。两组用于同时输入两个独立结构。</li>
+<li>每组只标记<strong>两个对角候选点</strong>：它们数字不同、行不同、列不同，且位于矩形的两个对角。两点共同定义两行、两列和本体数对。</li>
+<li>例如标记 <code>2r1c1</code> 与 <code>7r4c5</code>，程序据此检查由 r1/r4、c1/c5、数字 {2,7} 构成的四格 AUR。</li>
+<li>严格门控要求初始候选盘同时支持两种交替完成；当前候选盘至少保留其中一种。</li>
+</ol>
+<div class="warn">标准 AUR 不要把四格中的 8 个本体候选全部都点进同一组。后端会对标记点两两配对，过量标记可能生成重复 AUR 或意外结构。可预期的标准用法是每组精确选择两个对角、异数字候选点。</div>
+<p><strong>该标什么：</strong>标的是定义 AUR 本体的候选点，不是 guardian、目标删数或矩形外候选。</p>
+<p><strong>高级广义 AUR：</strong>同一 AUR 组达到 10–64 个候选点时，后端会转入广义/旋转候选云验证，枚举 exact-cover 形式并受预算限制。只有明确知道整组本体候选云含义时才使用；普通 UR/AUR 不需要它。</p>
+<h3>13.9 DAUR：怎么选、怎么用</h3>
+<p>DAUR 是动态 AUR/DUR 候选池。你不直接指定某一个矩形，而是给出一小片可能的<strong>本体候选</strong>，程序从中展开所有成立的标准四格 AUR，以及六格 2×3 / 3×2 DUR。</p>
+<ol>
+<li>切换到 DAUR 模式。</li>
+<li>只标记可能属于目标 AUR/DUR 本体的活动候选；不要把 guardian、目标删数和无关候选放入池中。</li>
+<li>从最小、最明确的候选池开始查找。结果区会显示 DAUR 展开的 AUR/DUR 约束数量。</li>
+<li>若“没有展开出有效形式”，检查候选池是否缺少某个本体候选、当前盘是否还保留 deadly completion，以及严格门控的初始盘是否存在交换前提。</li>
+</ol>
+<p><strong>什么时候用：</strong>结构中可能存在多个重叠 AUR/DUR，手工逐个指定很麻烦，或你希望程序在已知局部候选池内自动识别。</p>
+<div class="warn">DAUR 会把候选池内找到的<strong>全部</strong>有效约束同时加入证明，并不是自动挑一个“最像的”。池过大会增加运行时间，也可能引入你原本没打算使用的结构。</div>
+<h3>13.10 GUR：怎么选、怎么用</h3>
+<p>GUR 是无固定模板的通用唯一性候选云。它在选定格集合中枚举“一格一个数”的合法局部完成，并寻找在行数字、列数字、宫数字 exact-cover footprint 上等价的完成类。</p>
+<ol>
+<li>切换到 GUR 模式。</li>
+<li>选择目标局部区域中允许参与完成的<strong>全部活动候选</strong>。当前界面维护一组 GUR 云。</li>
+<li>候选云必须覆盖至少 4 个格；安全上限为 16 个格、64 个候选点。每个所选格都要有可用候选。</li>
+<li>严格门控下，初始盘必须存在至少一对 exact-cover 等价局部完成；当前盘必须仍有属于已证明 deadly 等价类的完成。</li>
+<li>查找后阅读 GUR 验证/预算信息。若局部完成数量过大，应缩小格集合或候选字母表。</li>
+</ol>
+<p><strong>什么时候用：</strong>目标 deadly pattern 形状不规则，无法用标准 AUR，且 DAUR 的四格/六格模板也覆盖不了，但你能明确给出局部格集合和允许候选。</p>
+<p><strong>该标什么：</strong>标完整的局部候选云；不要把区域外 guardian、预期删数或仅用于连接的候选混进来。漏掉一个必要候选会改变允许完成，加入无关候选则会扩大完成空间。</p>
+<div class="note">GUR 不是“把一片可疑候选圈起来让程序猜”。它把所选云当作精确定义的局部模型，因此候选边界必须由用户负责。</div>
+<h3>13.11 电脑批选、右键菜单</h3>
+<ol>
+<li>按住 <span class="kbd">Ctrl</span>；macOS 按 <span class="kbd">Command</span>，逐个点击候选。再次点击可取消该候选。</li>
+<li>在任一已选候选上右键，打开 TLG 菜单。</li>
+<li>“Truth/Link”子菜单选择行、列、单元格或宫。若所选描述符全部已存在，该动作会移除；否则补充缺少的描述符。</li>
+<li>也可批量切换 Virtual Set、当前 AUR 分组、DAUR、GUR。</li>
+<li>使用“清除候选选择”只清除批选，不清逻辑；“清空全部逻辑”清除 Truth/Link/VSet/AUR/DAUR/GUR 和结果，但保留临时 TLG 候选盘。</li>
+</ol>
+<h3>13.12 手机/触屏 TLG 操作</h3>
+<ul>
+<li><strong>短按候选：</strong>直接执行当前输入模式。Truth/Link 模式先选第一个端点，再短按第二个端点；VSet/AUR/DAUR/GUR 模式短按即切换成员。</li>
+<li><strong>长按候选约 0.6 秒：</strong>把该候选加入批选并打开 TLG 菜单。菜单子项用轻触展开，不依赖桌面 hover。</li>
+<li><strong>选择多个候选：</strong>长按第一个候选，轻触菜单外关闭；再长按下一个候选。长按是累加选择，重复直到选完，再在菜单执行批量动作。</li>
+<li><strong>重新开始批选：</strong>从菜单点“清除候选选择”。不要用普通短按候选来继续批选，因为普通短按会按当前模式执行并清掉原批选。</li>
+<li><strong>Cell Truth：</strong>Truths 模式轻触空单元格背景，不要点候选数字。</li>
+<li>TLG 开启时，普通手工标记的候选长按处理会暂停，避免两个模式争抢同一次触摸。</li>
+</ul>
+<h3>13.13 查找、转换与移除的正确顺序</h3>
+<ul>
+<li><strong>查找删数：</strong>观察性操作。它计算结果 Links 和结论，但不修改用户 Links。</li>
+<li><strong>转换冗余 Truths：</strong>在已有有效结论的结构上，把可转移的冗余 Truth 转成 Link。成功后 Truth 和用户 Link 状态都会按返回结构更新。</li>
+<li><strong>移除未使用 Links：</strong>在结果结构上删除不参与证明的 Links。成功后精简结果提交为用户 Links。</li>
+<li>按钮只有在上一轮存在有效删数或出数时才开放。失败响应不会覆盖上一轮有效输入和结论。</li>
+<li>任何 Truth、用户 Link、VSet、AUR、DAUR、GUR 或候选输入变化，都会清空旧的结果 Links 和结论，防止用旧高亮解释新结构。</li>
+</ul>
+<h3>13.14 高亮怎么读</h3>
+<ul>
+<li>House 颜色固定为 R 青绿、C 金黄、B 紫色。</li>
+<li><strong>House Truth：</strong>候选外围分色圆环。</li>
+<li><strong>House Link：</strong>候选数字后的分色底色。查找前显示用户 Links；成功查找后显示结果 Links。为减少噪声，只有该候选同时被 Truth 覆盖或属于最终删数时才显示 House Link 底色。</li>
+<li><strong>Cell Truth：</strong>单元格内缩蓝框；<strong>Cell Link：</strong>整格浅蓝底，不受上述候选相关性门槛限制。</li>
+<li><strong>Virtual Set：</strong>紫色实线圈；<strong>AUR 1：</strong>橙色虚线；<strong>AUR 2：</strong>蓝色虚线；<strong>DAUR：</strong>青色点线；<strong>GUR：</strong>棕色双线圈。</li>
+<li><strong>最终删数：</strong>红色候选和红叉，始终在最上层。</li>
+</ul>
+<h3>13.15 结果表示与预算</h3>
+<p>大写 <code>R/C/B/N</code> 表示 Truth，小写 <code>r/c/b/n</code> 表示 Link，<code>N/n</code> 表示单元格集合。状态区会区分用户 Links 和结果 Links，并显示唯一性门控、活动候选数、AUR/DAUR/GUR 验证信息、删数和出数。</p>
+<div class="warn">出现“投影解数量超过预算”“搜索节点超过预算”或 GUR 局部完成枚举超预算，表示搜索未完成。此时“0 个删数”不能解释为已证明无删数；应缩小候选云、减少 Truth/Link，或在 native 环境提高预算测试。</div>
+<h3>13.16 清理命令的区别</h3>
+<ul>
+<li><strong>当前状态列表逐项删除：</strong>只删除对应用户输入。</li>
+<li><strong>右键/长按菜单“清空全部逻辑”：</strong>清除全部 TLG 逻辑和结果，但保留已导入的临时候选盘。</li>
+<li><strong>面板“清空 TLG 状态”：</strong>连同临时候选盘一起清除，主数独题目本身不受影响。</li>
+</ul>
+</div>
+<div class="en">
+<p>TLG Solver describes a set proof with Truths, Links, and optional uniqueness constraints, enumerates projections satisfying all premises, and derives common eliminations or assignments. It is not an ordinary hint button: the user defines the proof structure.</p>
+<p>Enable TLG Editing gives TLG ownership of candidate input and its visual layer. Ordinary technique highlights, chains, and manual marks are hidden rather than deleted. Disabling TLG releases the temporary TLG candidate grid and computed result, while keeping the entered Truths, User Links, Virtual Set, AUR, DAUR, and GUR marks.</p>
+<h3>13.1 Four Different States</h3>
+<table>
+<thead><tr><th>State</th><th>Meaning</th><th>When It Changes</th></tr></thead>
+<tbody>
+<tr><td>Truths</td><td>User input sets that must be covered exactly once.</td><td>Clicks, batch actions, or a successful Truth conversion.</td></tr>
+<tr><td>User Links</td><td>Explicit at-most-once sets sent to the next Find request.</td><td>User edits or successful Convert/Remove actions.</td></tr>
+<tr><td>Result Links</td><td>The structure actually used/retained by the latest successful result, used for highlighting and follow-up cleanup.</td><td>Updated by a successful calculation; invalidated by any new TLG input edit.</td></tr>
+<tr><td>Conclusions</td><td>Eliminations/assignments proved by the latest successful search.</td><td>Created by Find and cleared by input changes.</td></tr>
+</tbody>
+</table>
+<div class="note"><strong>Fixed behavior:</strong> Find no longer copies auto-derived Links into User Links. After adding another Truth, a new Find derives fresh automatic Links whenever User Links are still empty, while the previous automatic structure remains fully visible as Result Links until the input changes.</div>
+<h3>13.2 User Links, Automatic Links, and “Link Type = Auto”</h3>
+<ul>
+<li><strong>No User Links:</strong> Find derives automatic Links again from the current Truths, candidates, and extra constraints.</li>
+<li><strong>Any User Link:</strong> Find uses explicit-link mode and does not mix in automatic Links.</li>
+<li><strong>Result Links:</strong> the successful structure is stored separately for highlighting, regardless of whether it was automatic or explicit.</li>
+<li><strong>Link Type = Auto:</strong> only controls how a pair of clicked endpoints is interpreted by the frontend. It does not enable backend-wide automatic Link generation.</li>
+<li>Successful Convert Redundant Truths or Remove Unused Links is an explicit structure mutation, so its returned Links become User Links. Remove all User Links to return to fresh automatic generation.</li>
+</ul>
+<h3>13.3 Candidate Grids and the Uniqueness Gate</h3>
+<p>TLG stores an <strong>initial candidate grid</strong> separately from the <strong>current candidate grid</strong>. The initial grid verifies AUR/DAUR/GUR premises; the current grid drives the proof. Sukaku is a format, not an automatic training-mode signal.</p>
+<ul>
+<li><strong>Unique puzzle: verify initial swap pair (default):</strong> use for ordinary puzzles and unique Sukaku. AUR/DUR/GUR needs sufficient swappable/equivalent completions initially and a related live completion currently.</li>
+<li><strong>Training grid: allow missing initial candidates:</strong> only for deliberately constructed multi-solution, Rank, or structure-training grids. It checks the current cloud without proving the original uniqueness premise.</li>
+</ul>
+<div class="warn">Choosing the wrong gate can create false conclusions. A candidate-grid format does not by itself justify Training mode.</div>
+<h3>13.4 Complete Workflow</h3>
+<ol>
+<li>Reach the candidate state to analyze and verify it. For a standalone candidate grid, paste 729-character Sukaku or 81 candidate-cell tokens.</li>
+<li>Open TLG, choose the correct gate, and enable editing. Press Import TLG Candidate Grid when needed; imported candidates become the initial grid and later edits affect the current grid.</li>
+<li>Enter Truths first. Use endpoint clicks for simple sets and the context menu for precise batch descriptors.</li>
+<li>Choose the Link strategy: leave User Links empty for auto derivation, or enter explicit Links to reproduce a fixed structure.</li>
+<li>Add Virtual Set, AUR, DAUR, or GUR only when the proof requires them.</li>
+<li>Review Current TLG State for stale User Links, unrelated sets, or wrong candidates.</li>
+<li>Press Find Eliminations and inspect Result Links, conclusions, Rank, expansion/validation data, and budgets.</li>
+<li>Optionally run Convert Redundant Truths and Remove Unused Links. Failure preserves the previous valid state; success commits the returned structure.</li>
+</ol>
+<h3>13.5 Truth Input and Use</h3>
+<p>A Truth is a set from which exactly one member must be selected. Row-digit, column-digit, box-digit, and cell sets are supported.</p>
+<ul>
+<li><strong>House Truth:</strong> in Truths mode click two <strong>same-digit</strong> candidates sharing the intended row, column, or box.</li>
+<li><strong>Cell Truth:</strong> click the empty cell background in Truths mode, or choose Cell in the batch menu.</li>
+<li><strong>Precise batch input:</strong> select candidates with <span class="kbd">Ctrl</span>/<span class="kbd">Command</span> or touch long-press, then choose Row, Column, Cell, or Box.</li>
+<li>Add only proven structural Truths. Extra Truths change Rank and the projection; more is not automatically safer.</li>
+</ul>
+<h3>13.6 Link Input and Use</h3>
+<p>A Link is covered at most once and also supports external-candidate elimination tests.</p>
+<ul>
+<li><strong>Recommended default:</strong> leave User Links empty and let the engine derive them.</li>
+<li><strong>Explicit Links:</strong> use for reproducing a specified TLG, constraining the structure, or manual Rank cleanup. House Links normally use same-digit candidates; a Cell Link uses candidates in one cell.</li>
+<li><strong>Endpoint input:</strong> switch to Links, select Link Type, and click two candidates. Auto prioritizes a Cell Link for one-cell endpoints and otherwise interprets shared geometry.</li>
+<li><strong>Batch input is safer:</strong> explicitly choose Row/Column/Cell/Box when geometry could be ambiguous.</li>
+<li>One User Link is enough to disable automatic Link mixing for that Find. Delete all User Links to restore automatic mode.</li>
+</ul>
+<h3>13.7 Virtual Set</h3>
+<p>A Virtual Set expresses an <strong>exact cardinality</strong> that cannot conveniently be represented by one ordinary R/C/B/N Truth: exactly <code>k</code> selected candidates are true.</p>
+<ol>
+<li>Select Virtual Set mode.</li>
+<li>Toggle every member candidate, or batch-toggle them through the menu.</li>
+<li>Set Truths to Apply to the exact cardinality <code>k</code>. The backend currently clamps it to 1–4; zero becomes one.</li>
+<li>Verify that all members are active and that external logic proves exactly <code>k</code>, then run Find.</li>
+</ol>
+<p><strong>Use it when:</strong> another argument proves an exact 1–4 truths inside a candidate cloud that is not a single house/cell set.</p>
+<p><strong>Do not use it for:</strong> “at least one,” “at most two,” or a speculative group. TLG treats the cardinality as a strict premise.</p>
+<h3>13.8 Fixed AUR</h3>
+<p>A fixed AUR supplies a proven swappable uniqueness structure. A standard four-cell AUR is compiled as <code>maxBodyFootprint ≤ 3</code>.</p>
+<h4>Standard Four-Cell AUR</h4>
+<ol>
+<li>Select AUR mode and AUR 1 or AUR 2. The two groups represent two independent structures.</li>
+<li>For each group, mark exactly <strong>two diagonal candidate points</strong> with different digits, different rows, and different columns. They define the two rows, two columns, and body pair.</li>
+<li>For example, <code>2r1c1</code> plus <code>7r4c5</code> defines rows r1/r4, columns c1/c5, and digits {2,7}.</li>
+<li>Strict mode requires both alternating completions in the initial grid and at least one still live in the current grid.</li>
+</ol>
+<div class="warn">Do not select all eight body candidates for an ordinary rectangle. The backend pairs marked points; excessive points can produce duplicate or unintended AUR records. The predictable standard input is exactly two diagonal, different-digit points per group.</div>
+<p>Mark body-defining candidates, not guardians, target eliminations, or outside candidates.</p>
+<p><strong>Advanced generalized AUR:</strong> a group of 10–64 points enters generalized/rotating candidate-cloud validation. Use it only when the complete body cloud is known; ordinary UR/AUR work does not need it.</p>
+<h3>13.9 DAUR</h3>
+<p>DAUR is a dynamic AUR/DUR pool. The user supplies a small body-candidate pool; the engine expands every valid standard four-cell AUR and six-cell 2×3 / 3×2 DUR found inside it.</p>
+<ol>
+<li>Select DAUR mode.</li>
+<li>Mark active candidates that may belong to the intended AUR/DUR bodies. Exclude guardians, target eliminations, and unrelated candidates.</li>
+<li>Start with the smallest clear pool. The result reports the number of expanded AUR/DUR constraints.</li>
+<li>If no valid form expands, check missing body candidates, current live completions, and the initial swap premise under strict mode.</li>
+</ol>
+<p><strong>Use it when:</strong> several overlapping AUR/DUR forms may exist and manually specifying each one is inconvenient.</p>
+<div class="warn">Every valid form found in the pool is added simultaneously. DAUR does not choose one “best-looking” pattern. A broad pool can be slower and can introduce structures you did not intend.</div>
+<h3>13.10 GUR</h3>
+<p>GUR is a template-free generic uniqueness cloud. It enumerates legal one-digit-per-cell local completions and finds completion classes with the same row-digit, column-digit, and box-digit exact-cover footprint.</p>
+<ol>
+<li>Select GUR mode.</li>
+<li>Select <strong>all active candidates allowed</strong> in the intended local region. The current UI maintains one GUR cloud.</li>
+<li>The cloud must span at least 4 cells and is limited to 16 cells and 64 candidate points. Every selected cell needs an available candidate.</li>
+<li>Strict mode requires a pair of exact-cover-equivalent local completions in the initial grid and a currently live completion from a proven deadly class.</li>
+<li>Inspect GUR validation and budget output. Reduce the cells or digit alphabet if local enumeration is too large.</li>
+</ol>
+<p><strong>Use it when:</strong> an irregular deadly pattern cannot be represented by fixed AUR or DAUR's four/six-cell templates, but the exact local cell set and allowed candidates are known.</p>
+<p>Do not include outside guardians, expected eliminations, or link-only candidates. Missing or extra members change the local completion model.</p>
+<div class="note">GUR does not guess a pattern from a loose circle. The selected cloud is the exact local model, so the user is responsible for its boundary.</div>
+<h3>13.11 Desktop Batch Menu</h3>
+<ol>
+<li>Hold <span class="kbd">Ctrl</span> (<span class="kbd">Command</span> on macOS) and click candidates. Click again to deselect.</li>
+<li>Right-click an selected candidate.</li>
+<li>Choose Row, Column, Cell, or Box under Truth/Link. If all generated descriptors already exist, the action removes them; otherwise it adds missing ones.</li>
+<li>Virtual Set, current AUR group, DAUR, and GUR can also be toggled in batch.</li>
+<li>Clear Candidate Selection clears selection only. Clear All Logic clears TLG logic/result but preserves the temporary TLG candidate grid.</li>
+</ol>
+<h3>13.12 Mobile / Touch TLG</h3>
+<ul>
+<li><strong>Short tap:</strong> executes the current mode. Truth/Link selects the first and second endpoints; VSet/AUR/DAUR/GUR toggles membership.</li>
+<li><strong>Hold about 0.6 seconds:</strong> adds the candidate to batch selection and opens the TLG menu. Submenus open by tap rather than desktop hover.</li>
+<li><strong>Select several:</strong> long-press one candidate, tap outside to close, then long-press another. Long-press is additive; repeat and execute the batch action from the menu.</li>
+<li><strong>Restart selection:</strong> choose Clear Candidate Selection. A normal short tap is not a batch-selection continuation; it runs the current mode and clears the previous batch.</li>
+<li><strong>Cell Truth:</strong> in Truths mode tap the empty cell background rather than a candidate glyph.</li>
+<li>Manual-mark candidate holds are suspended while TLG is active, avoiding touch-handler conflicts.</li>
+</ul>
+<h3>13.13 Find, Convert, and Remove</h3>
+<ul>
+<li><strong>Find Eliminations:</strong> observational. It computes Result Links and conclusions without mutating User Links.</li>
+<li><strong>Convert Redundant Truths:</strong> moves eligible Truths to Links on a valid result structure. Success updates Truths and User Links.</li>
+<li><strong>Remove Unused Links:</strong> removes Links not needed by the proof. Success commits the simplified structure as User Links.</li>
+<li>Follow-up buttons require a valid elimination/assignment. A failed response preserves the previous valid structure.</li>
+<li>Any input edit invalidates old Result Links and conclusions, preventing stale highlights from explaining a new structure.</li>
+</ul>
+<h3>13.14 Highlight Legend</h3>
+<ul>
+<li>House colors: R teal, C amber, B violet.</li>
+<li><strong>House Truth:</strong> segmented outer ring.</li>
+<li><strong>House Link:</strong> segmented digit background. Before Find it reflects User Links; after success it reflects Result Links. To reduce noise, it appears only on a Truth-covered candidate or final elimination.</li>
+<li><strong>Cell Truth:</strong> inset blue border; <strong>Cell Link:</strong> light-blue whole-cell fill, not subject to the candidate relevance gate.</li>
+<li><strong>Virtual Set:</strong> solid violet; <strong>AUR 1:</strong> orange dashed; <strong>AUR 2:</strong> blue dashed; <strong>DAUR:</strong> cyan dotted; <strong>GUR:</strong> brown double ring.</li>
+<li><strong>Final elimination:</strong> red candidate and cross on the top layer.</li>
+</ul>
+<h3>13.15 Result Notation and Budgets</h3>
+<p>Uppercase <code>R/C/B/N</code> denotes Truths; lowercase <code>r/c/b/n</code> denotes Links; <code>N/n</code> is a cell set. Status distinguishes User Links from Result Links and reports the gate, active candidates, AUR/DAUR/GUR validation, eliminations, and assignments.</p>
+<div class="warn">Solution-budget, search-node, or GUR local-enumeration budget exceeded means the search is incomplete. Zero eliminations is not proof of none. Reduce the cloud/structure or test a higher budget in native.</div>
+<h3>13.16 Clearing Commands</h3>
+<ul>
+<li><strong>Delete an item in Current TLG State:</strong> removes that user input only.</li>
+<li><strong>Clear All Logic in the context menu:</strong> clears all TLG logic and result while preserving the temporary candidate grid.</li>
+<li><strong>Clear TLG State in the panel:</strong> also removes the temporary candidate grid; the main Sudoku puzzle remains.</li>
+</ul>
+</div>
+</div>
 
-    <section id="start">
-      <h2>2. 启动方式 / How to Start</h2>
-      <div class="pair">
-        <div class="zh">
-          <h3>普通 Web 版</h3>
-          <p>普通版应通过 HTTP/HTTPS 打开。例如在 <code>web-app</code> 目录运行：</p>
-          <pre>python -m http.server 8000</pre>
-          <p>然后访问 <code>http://127.0.0.1:8000/<wbr>index.html</code>。直接双击普通版 <code>index.html</code> 可能导致 WASM、Worker 或 OCR 资源被浏览器拦截。</p>
-          <h3>Standalone 版</h3>
-          <p>Standalone 单文件版可直接双击运行，WASM、OCR runtime 和模型应已经内联。</p>
-          <div class="note">剪贴板读写、图片复制、系统分享、相机和文件保存能力取决于浏览器权限与安全上下文。通过 HTTPS 或 localhost 打开时兼容性最好。</div>
-        </div>
-        <div class="en">
-          <h3>Regular Web Build</h3>
-          <p>Serve the regular build over HTTP/HTTPS. From the <code>web-app</code> directory, for example:</p>
-          <pre>python -m http.server 8000</pre>
-          <p>Then open <code>http://127.0.0.1:8000/<wbr>index.html</code>. Double-clicking the regular <code>index.html</code> may cause the browser to block WASM, workers, or OCR assets.</p>
-          <h3>Standalone Build</h3>
-          <p>The single-file Standalone build can be opened directly. WASM, the OCR runtime, and models should already be embedded.</p>
-          <div class="note">Clipboard access, image copy, system sharing, camera access, and file saving depend on browser permissions and a secure context. HTTPS or localhost gives the best compatibility.</div>
-        </div>
-      </div>
-    </section>
-
-    <section id="layout">
-      <h2>3. 界面与操作差异 / Interface &amp; Platform Differences</h2>
-      <div class="pair">
-        <div class="zh">
-          <h3>主界面区域</h3>
-          <ul>
-            <li><strong>盘面区：</strong>9×9 盘面、提示数、出数、候选数、链路和各种高亮。</li>
-            <li><strong>顶部入口：</strong>语言、使用手册、解释、技巧说明；小屏或触屏设备还会显示“做题”。</li>
-            <li><strong>主要操作：</strong>生成、训练生成、加载、撤销、重做、自动解题、提示一步、应用提示、所有步骤、全屏。</li>
-            <li><strong>四个页签：</strong>操作、技巧、解题路径、可选步骤。</li>
-            <li><strong>数字盘：</strong>选择 1–9，并切换“出数/候选”；OCR 草稿还会多一个“提示数/出数”角色按钮。</li>
-          </ul>
-          <h3>电脑与手机的关键差异</h3>
-          <table>
-            <thead><tr><th>功能</th><th>电脑</th><th>手机/触屏</th></tr></thead>
-            <tbody>
-              <tr><td>图片输入</td><td>文件、剪贴板按钮、<span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>选择图片或拍照识别</td></tr>
-              <tr><td>手工候选标记</td><td>可直接左键候选；右键删除当前模式标记</td><td>先点格子，再轻触数字键添加、长按约 0.5 秒删除；也可切换“添加/删除”</td></tr>
-              <tr><td>替换解题路径</td><td>右键可替换步骤</td><td>长按约 0.65 秒</td></tr>
-              <tr><td>标记截图</td><td>优先复制 PNG 到剪贴板，失败时下载</td><td>优先打开系统分享，失败时下载</td></tr>
-              <tr><td>做题布局</td><td>通常使用分析主界面</td><td>可进入专用做题模式，盘面和数字盘始终可见</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="en">
-          <h3>Main Interface</h3>
-          <ul>
-            <li><strong>Board:</strong> the 9×9 grid, givens, solved digits, candidates, chains, and highlights.</li>
-            <li><strong>Top entries:</strong> language, User Manual, Explain, and Technique Guide. Small-screen or coarse-pointer devices also show Solve.</li>
-            <li><strong>Main actions:</strong> Generate, Training Generate, Load, Undo, Redo, Auto Solve, Hint, Apply Hint, All Steps, and Fullscreen.</li>
-            <li><strong>Four tabs:</strong> Controls, Techniques, Solve Path, and Available Steps.</li>
-            <li><strong>Number pad:</strong> select 1–9 and switch between Value and Candidate. OCR drafts also show a Given/Solved role button.</li>
-          </ul>
-          <h3>Desktop vs Mobile</h3>
-          <table>
-            <thead><tr><th>Feature</th><th>Desktop</th><th>Mobile / touch</th></tr></thead>
-            <tbody>
-              <tr><td>Image input</td><td>File, clipboard button, or <span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>Select Image or Take Photo</td></tr>
-              <tr><td>Manual candidate marks</td><td>Left-click adds; right-click erases the current mark mode</td><td>Select a cell, then tap a large digit to add or hold it for about 0.6 s to erase; Add/Erase buttons remain available</td></tr>
-              <tr><td>Replace solve path</td><td>Right-click a replaceable step</td><td>Long-press for about 0.65 seconds</td></tr>
-              <tr><td>Mark capture</td><td>Copies PNG to the clipboard when possible, otherwise downloads</td><td>Opens system share when possible, otherwise downloads</td></tr>
-              <tr><td>Solving layout</td><td>Normally uses the analysis interface</td><td>Dedicated solve mode keeps the board and keypad visible</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <section id="input">
-      <h2>4. 题面输入与现场恢复 / Puzzle Input &amp; Session Restore</h2>
-      <div class="pair">
-        <div class="zh">
-          <h3>支持的输入</h3>
-          <ul>
-            <li><strong>81 字符题串：</strong>1–9 为提示数，<code>0</code> 或 <code>.</code> 为空格。</li>
-            <li><strong>Library 冒号格式：</strong>可保存当前候选删除状态和用户出数。</li>
-            <li><strong>Sukaku / 候选盘：</strong>729 字符 Sukaku，或 81 个候选单元格文本。</li>
-            <li><strong>Sudoku Coach：</strong>JSON 或 <code>SCv7_32_</code> 压缩串，支持提示数、出数和候选 mask。</li>
-          </ul>
-          <h3>加载流程</h3>
-          <ol>
-            <li>展开“更多：题面输入与导出评分”。</li>
-            <li>把内容放入文本框，然后点击“加载”。</li>
-            <li>勾选“剪贴板优先”时，加载按钮会先尝试读取剪贴板文本；读取或导入失败后才使用文本框。</li>
-          </ol>
-          <p>电脑浏览器拒绝剪贴板权限时，可取消“剪贴板优先”后直接加载文本框。手机做题模式中的“题面输入”会返回分析界面并自动展开输入面板。</p>
-          <h3>自动保存现场</h3>
-          <p>程序会在本机浏览器保存当前盘面、候选状态、语言和技巧配置，下次打开时自动恢复。“清除本地保存”会删除下次恢复所用的盘面、语言和技巧配置，但不会清空当前盘面。</p>
-          <div class="warn">手工标记、当前提示预览、解题路径预览和 TLG 临时逻辑不会作为主现场保存。重要结构请截图或导出。</div>
-          <h3>Coach 候选数 mask</h3>
-          <p><code>userCellCandidates</code> 由 81 个十进制 mask 组成，用 <code>-</code> 分隔。数字 <code>d</code> 对应 <code>1 &lt;&lt; d</code>；例如候选 2、3、6 的 mask 为 <code>4 + 8 + 64 = 76</code>。</p>
-        </div>
-        <div class="en">
-          <h3>Supported Inputs</h3>
-          <ul>
-            <li><strong>81-character puzzle:</strong> 1–9 are givens; <code>0</code> or <code>.</code> is empty.</li>
-            <li><strong>Library colon format:</strong> preserves current candidate eliminations and user digits.</li>
-            <li><strong>Sukaku / candidate grid:</strong> a 729-character Sukaku string or 81 candidate-cell tokens.</li>
-            <li><strong>Sudoku Coach:</strong> JSON or an <code>SCv7_32_</code> compressed string with givens, user digits, and candidate masks.</li>
-          </ul>
-          <h3>Loading</h3>
-          <ol>
-            <li>Open “More: Puzzle Input / Export / Rating”.</li>
-            <li>Put the input in the text area and press Load.</li>
-            <li>When Prefer Clipboard is checked, Load first tries clipboard text and falls back to the text area if reading or import fails.</li>
-          </ol>
-          <p>If desktop clipboard permission is denied, disable Prefer Clipboard and load the text area directly. Puzzle Input inside mobile solve mode returns to the analysis view and opens the input panel.</p>
-          <h3>Automatic Session Restore</h3>
-          <p>The browser locally saves the current board, candidate state, language, and technique configuration, then restores them on the next visit. Clear Saved Session removes the board, language, and technique data used for the next restore, but does not clear the current board.</p>
-          <div class="warn">Manual marks, the current hint preview, solve-path previews, and temporary TLG logic are not part of the main saved session. Capture or export important structures.</div>
-          <h3>Coach Candidate Masks</h3>
-          <p><code>userCellCandidates</code> contains 81 decimal masks separated by <code>-</code>. Digit <code>d</code> corresponds to <code>1 &lt;&lt; d</code>; candidates 2, 3, and 6 therefore use <code>4 + 8 + 64 = 76</code>.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="image-ocr">
-      <h2>5. 图片识别与对照校正 / OCR &amp; Review</h2>
-      <div class="pair">
-        <div class="zh">
-          <p>图片识别完全在浏览器本地运行，不上传图片，也不使用在线 fallback。模型按需加载；首次使用可能下载较大的运行库与模型，后续会使用本地缓存。下载中断时，支持的服务器和浏览器会尝试断点续传。</p>
-          <h3>识别入口</h3>
-          <ul>
-            <li><strong>选择图片识别：</strong>电脑选择文件，手机可从相册选择。</li>
-            <li><strong>拍照识别：</strong>手机请求后置相机；部分浏览器会弹出“相机/相册”选择器。</li>
-            <li><strong>从剪贴板识别：</strong>电脑读取剪贴板中的图片。</li>
-            <li><strong>Ctrl+V：</strong>焦点不在输入框时，可直接粘贴截图。</li>
-          </ul>
-          <h3>OCR 对照校正窗口</h3>
-          <ul>
-            <li>左侧显示识别后的盘面图片，中间显示固定 9×9 校正盘面；点击任一侧会同步选中同一格。</li>
-            <li>右侧可切换<strong>提示数</strong>、<strong>出数</strong>、<strong>候选数</strong>。提示数显示为黑色大数字，出数显示为蓝色大数字。</li>
-            <li>提示数/出数模式中，数字会替换当前格；再次输入相同数字会清空。候选模式中，数字用于切换候选。</li>
-            <li>“上一格/下一格”移动选格；“清空”清除当前格；“撤销/重做”处理本次校正历史；“恢复识别结果”回到模型最初输出。</li>
-            <li>“确认并导入”把校正结果作为可编辑 OCR 草稿导入；“取消”放弃本次识别。</li>
-          </ul>
-          <h3>电脑与手机</h3>
-          <p>电脑和横屏空间充足时使用三栏对照，并提供“全屏校正”。窄屏手机会纵向排列图片、盘面和控制区；窄屏下全屏按钮可能隐藏。进入 OCR 校正时会退出手机做题模式，避免横屏全屏误进入做题布局。</p>
-          <p>电脑键盘可使用 1–9、0/Delete/Backspace、方向键、<span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">Z</span>、<span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">Shift</span>+<span class="kbd">Z</span> 和 <span class="kbd">Esc</span>。</p>
-          <h3>导入后的继续校正</h3>
-          <p>确认导入后，若仍有错误，可在主盘面继续编辑。OCR 草稿的数字盘会显示“提示数/出数”角色按钮；选择角色后输入大数字，可继续修正黑色提示数和蓝色出数身份。</p>
-          <div class="note">OCR 只使用黑色提示数检查唯一解。检查失败不会拒绝导入，而是保留草稿供人工修正；唯一性尚未确认时，不应依赖 UR、AUR 等唯一性技巧。</div>
-        </div>
-        <div class="en">
-          <p>OCR runs entirely in the browser: images are not uploaded and no online fallback is used. Models load on demand; the first run may download sizable runtime/model assets, while later runs use local cache. Interrupted downloads attempt to resume when supported.</p>
-          <h3>OCR Entries</h3>
-          <ul>
-            <li><strong>Select Image:</strong> choose a file on desktop or a photo from the mobile library.</li>
-            <li><strong>Take Photo:</strong> requests the rear camera; some browsers show a camera/gallery chooser.</li>
-            <li><strong>Read Clipboard:</strong> reads an image from the desktop clipboard.</li>
-            <li><strong>Ctrl+V:</strong> paste a screenshot when focus is not inside an editable field.</li>
-          </ul>
-          <h3>OCR Review Window</h3>
-          <ul>
-            <li>The recognized image is shown on the left and a fixed 9×9 correction grid in the middle. Clicking either side selects the same cell.</li>
-            <li>Switch among <strong>Given</strong>, <strong>Solved Digit</strong>, and <strong>Candidates</strong>. Givens are black large digits; solved digits are blue.</li>
-            <li>In Given/Solved mode, a number replaces the cell; pressing the same number clears it. Candidate mode toggles pencil marks.</li>
-            <li>Previous/Next moves selection; Clear removes the cell; Undo/Redo edits correction history; Reset OCR Result restores the original model output.</li>
-            <li>Confirm &amp; Import imports an editable OCR draft; Cancel discards the recognition.</li>
-          </ul>
-          <h3>Desktop and Mobile</h3>
-          <p>Desktop and roomy landscape layouts use three columns and provide Fullscreen Review. Narrow phones stack the image, board, and controls vertically; the fullscreen button may be hidden. Opening OCR review exits mobile solve mode so landscape fullscreen remains in the correction editor.</p>
-          <p>Desktop keyboard controls include 1–9, 0/Delete/Backspace, arrow keys, <span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">Z</span>, <span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+<span class="kbd">Shift</span>+<span class="kbd">Z</span>, and <span class="kbd">Esc</span>.</p>
-          <h3>Further Correction After Import</h3>
-          <p>After confirmation, continue editing on the main board if necessary. An OCR draft adds a Given/Solved role button to the number pad so black givens and blue solved digits can still be corrected.</p>
-          <div class="note">Only black givens are used for the uniqueness check. Failure does not reject the draft. Do not rely on uniqueness techniques such as UR/AUR until uniqueness has been confirmed.</div>
-        </div>
-      </div>
-    </section>
-
-    <section id="edit-board">
-      <h2>6. 盘面编辑 / Board Editing</h2>
-      <div class="pair">
-        <div class="zh">
-          <ol>
-            <li>在数字盘选择 1–9。</li>
-            <li>选择“出数”或“候选”模式。</li>
-            <li>点击/触摸目标格：出数模式设置大数字；候选模式切换当前候选。</li>
-          </ol>
-          <ul>
-            <li>再次输入当前大数字可清除该出数；原始提示数不可直接覆盖。</li>
-            <li>“撤销/重做”作用于盘面编辑和应用提示产生的历史。</li>
-            <li>点击“提示一步”只预览逻辑，不修改盘面；必须点击“应用提示”才写入盘面。</li>
-            <li>OCR 草稿允许在唯一解尚未成立时继续修改，避免 engine 的严格导入阻断校正。</li>
-          </ul>
-          <p><strong>触屏提示：</strong>普通编辑与手工标记都采用“先选数字或格子，再点目标”的大按钮流程，避免依赖候选小字的精确点击。</p>
-        </div>
-        <div class="en">
-          <ol>
-            <li>Select 1–9 on the number pad.</li>
-            <li>Choose Value or Candidate mode.</li>
-            <li>Click/tap the target cell: Value sets a large digit; Candidate toggles the selected pencil mark.</li>
-          </ol>
-          <ul>
-            <li>Entering the same large digit again clears it; original givens cannot be overwritten directly.</li>
-            <li>Undo/Redo covers board edits and applied hints.</li>
-            <li>Hint previews logic without changing the board; Apply Hint commits it.</li>
-            <li>OCR drafts remain editable even before the givens form a unique puzzle.</li>
-          </ul>
-          <p><strong>Touch note:</strong> normal editing and manual marks use large-button “select digit/cell, then target” flows instead of requiring precise taps on tiny candidate text.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="generate-rate">
-      <h2>7. 生成、训练与评分 / Generate, Train &amp; Rate</h2>
-      <div class="pair">
-        <div class="zh">
-          <h3>普通生成</h3>
-          <p>先选择 ER 难度分档，再点击“生成”。可选 Random、Easy、Medium、Hard、Unfair、Extreme 和 Insane。状态栏会显示提示数数量和评分。</p>
-          <h3>训练生成</h3>
-          <p>在“训练”下拉框选择一个技巧，再点击“训练生成”。程序会反复生成并完整解题，直到找到解题路径中包含该技巧的题目。复杂技巧可能需要较长搜索；运行期间按钮会锁定并显示已用时间。</p>
-          <h3>评分当前题目</h3>
-          <p>“评分当前题目”会优先识别文本框或当前盘面的格式。普通题使用 puzzle 评分；含候选状态的 Library/Sukaku/Coach 输入使用候选盘评分。结果通常包含 <code>ER</code>、<code>EP</code>、<code>ED</code>，并可能显示 <code>YZFRate</code>。</p>
-          <div class="note">训练生成使用当前启用的技巧配置。为了得到可复现结果，先在“技巧”页签选好预设和子选项。</div>
-        </div>
-        <div class="en">
-          <h3>Normal Generation</h3>
-          <p>Select an ER difficulty band, then press Generate. Available bands are Random, Easy, Medium, Hard, Unfair, Extreme, and Insane. The status reports clue count and rating.</p>
-          <h3>Training Generation</h3>
-          <p>Select a technique in the Training list, then press Training Generate. The program repeatedly generates and solves puzzles until the solve path contains that technique. Advanced targets may take substantially longer; elapsed time is shown while the action is locked.</p>
-          <h3>Rate Current Puzzle</h3>
-          <p>Rate Current Puzzle detects the text-area or current-board format. Plain puzzles use puzzle rating, while Library/Sukaku/Coach inputs with candidate state use candidate-grid rating. Results normally include <code>ER</code>, <code>EP</code>, <code>ED</code>, and may include <code>YZFRate</code>.</p>
-          <div class="note">Training generation uses the currently enabled technique configuration. Choose the desired preset and sub-options first for reproducible results.</div>
-        </div>
-      </div>
-    </section>
-
-    <section id="solve">
-      <h2>8. 提示、应用与自动解题 / Hint, Apply &amp; Auto Solve</h2>
-      <div class="pair">
-        <div class="zh">
-          <ul>
-            <li><strong>提示一步：</strong>按当前技巧开关和顺序寻找下一步，显示结论、高亮与链路，但不修改盘面。</li>
-            <li><strong>应用提示：</strong>把当前提示的出数/删数写入盘面，并进入撤销历史。</li>
-            <li><strong>解释：</strong>当前提示或选中的路径步骤可解释时，顶部“解释”按钮会启用，打开“为什么这一步成立”的动态教程。</li>
-            <li><strong>自动解题：</strong>计算从当前盘面开始的完整逻辑路径，并打开“解题路径”页签。它主要用于查看和比较路径，不会把所有步骤一次性永久写入当前编辑盘面。</li>
-          </ul>
-          <p>耗时搜索在普通 Web 版优先放入 Worker，保持界面可操作；Standalone 或不支持 Worker 的浏览器会回退到主线程。</p>
-          <p>状态可能显示 <code>solved</code>、<code>NoResult</code>、<code>Invalid</code> 或步数上限等。找不到高级技巧时，先确认技巧已启用，并检查当前题目/候选状态是否合法。</p>
-        </div>
-        <div class="en">
-          <ul>
-            <li><strong>Hint:</strong> finds the next step under the current technique order, showing conclusions, highlights, and chains without changing the board.</li>
-            <li><strong>Apply Hint:</strong> commits the current placement/elimination and adds it to undo history.</li>
-            <li><strong>Explain:</strong> when the current hint or selected path step is explainable, the top Explain button opens a dynamic “why this works” tutorial.</li>
-            <li><strong>Auto Solve:</strong> computes a full logical path from the current board and opens the Solve Path tab. It is primarily a path viewer and does not permanently apply every step to the editable board at once.</li>
-          </ul>
-          <p>Long tasks use a Worker in the regular Web build when available. Standalone or unsupported browsers fall back to the main thread.</p>
-          <p>Status may report <code>solved</code>, <code>NoResult</code>, <code>Invalid</code>, or a step limit. If an advanced technique is missing, verify that it is enabled and that the puzzle/candidate state is valid.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="path-all-steps">
-      <h2>9. 解题路径与可选步骤 / Path &amp; Available Steps</h2>
-      <div class="pair">
-        <div class="zh">
-          <h3>解题路径</h3>
-          <ul>
-            <li>点击某一步，会把盘面预览到该步执行前，并显示该步高亮；展开节点可查看描述、nodes、edges、rank 和 hash。</li>
-            <li>Force Chain 等多分支提示会显示分支切换控件。电脑还可使用 <span class="kbd">←</span>/<span class="kbd">→</span> 或 <span class="kbd">[</span>/<span class="kbd">]</span> 切换分支。</li>
-            <li>路径替换后，顶部会显示旧/新步数、评分变化和“撤销分支”入口。</li>
-          </ul>
-          <h3>所有步骤 / 可选步骤</h3>
-          <p>“所有步骤”在当前盘面收集多个合法步骤。可使用：</p>
-          <ul>
-            <li>关键词过滤技巧名、删数、格坐标或描述。</li>
-            <li>按技巧过滤。</li>
-            <li>默认排序，或按“出数/删数优先”排序。</li>
-            <li>“可替换”只显示可绑定到当前解题路径某一步的候选。</li>
-            <li>点击“清除”会同时重置关键词、技巧、排序和“可替换”筛选。</li>
-          </ul>
-          <h3>预览与替换</h3>
-          <p>单击/轻触步骤只预览。若步骤标有“可替换”，电脑右键、手机长按约 0.65 秒，会用该步骤替换原路径对应步骤，并从替换点继续重算。与原步骤相同的候选不会替换。</p>
-          <div class="warn">路径和可选步骤中的盘面是预览状态。导出或保存现场前，应返回实际编辑盘面，或明确使用替换后的路径结果。</div>
-        </div>
-        <div class="en">
-          <h3>Solve Path</h3>
-          <ul>
-            <li>Click a step to preview the board immediately before it and display its highlights. Expand nodes to inspect the description, nodes, edges, rank, and hashes.</li>
-            <li>Multi-branch hints such as Force Chains expose branch controls. Desktop also supports <span class="kbd">←</span>/<span class="kbd">→</span> or <span class="kbd">[</span>/<span class="kbd">]</span>.</li>
-            <li>After path replacement, a panel shows old/new step counts, rating deltas, and an Undo Branch action.</li>
-          </ul>
-          <h3>All / Available Steps</h3>
-          <p>All Steps collects multiple legal options for the current board. You can:</p>
-          <ul>
-            <li>filter by technique name, conclusion, coordinate, or description;</li>
-            <li>filter by technique;</li>
-            <li>use default order or sort placements/eliminations first;</li>
-            <li>show only Replaceable options that can bind to the current solve path;</li>
-            <li>press Clear to reset the text, technique, sort, and Replaceable filters together.</li>
-          </ul>
-          <h3>Preview and Replace</h3>
-          <p>A normal click/tap only previews. For a Replaceable item, right-click on desktop or long-press for about 0.65 seconds on touch to replace the corresponding original step and recompute the remainder. An option identical to the current step is not replaced.</p>
-          <div class="warn">Boards shown in Path and Available Steps are previews. Before exporting or relying on session restore, return to the live editable board or intentionally use the replaced path result.</div>
-        </div>
-      </div>
-    </section>
-
-    <section id="techniques">
-      <h2>10. 技巧配置与高亮 / Technique Settings &amp; Highlights</h2>
-      <div class="pair">
-        <div class="zh">
-          <h3>预设按钮</h3>
-          <ul>
-            <li><strong>All In：</strong>启用全部已实现技巧。</li>
-            <li><strong>High Speed：</strong>关闭一批耗时最大的高级技巧，兼顾覆盖率。</li>
-            <li><strong>Extreme Speed：</strong>进一步关闭较慢技巧，优先速度。</li>
-            <li><strong>Whip Rating：</strong>基础技巧 + Whip/gWhip，并自动使用大内存评分配置；默认返回最短 Whip，可通过下方选项把 gWhip 纳入长度比较。</li>
-            <li><strong>Braid Rating：</strong>基础技巧 + Braid/gBraid。</li>
-          </ul>
-          <h3>逐项配置</h3>
-          <p>技巧表可逐项启用/关闭，并显示分数与难度颜色。Complex AIC 可单独勾选 <code>with AMSLS</code>，JE 可勾选 <code>with JEPOM</code>。</p>
-          <p>Whip/gWhip 搜索内存模式：</p>
-          <ul>
-            <li><strong>自动：</strong>普通求解使用常规队列，Whip Rating 使用大内存。</li>
-            <li><strong>普通：</strong>速度和内存优先。</li>
-            <li><strong>大内存：</strong>提高搜索覆盖率，但更耗内存。</li>
-          </ul>
-          <p><strong>gWhip 参与最短长度比较：</strong>仅在 Whip 与 gWhip 同时启用时生效。程序先取得最短 Whip，再只搜索可能更短的 gWhip；gWhip 严格更短时返回 gWhip，同长度仍优先 Whip。</p>
-          <p>技巧配置会随主现场自动保存。预设会重置 Complex AIC/JE 的专属子选项，使用后请重新确认。</p>
-          <h3>高亮阅读</h3>
-          <p>一般高亮包括出数、删数、结构格、强/弱链、ON/OFF 节点、ALS/AF 区域、guardian 和分支。点击顶部“技巧说明”打开 <code>techniques.html</code>，查看每个技巧的玩家向解释。</p>
-          <h3>Guardian Force Chain</h3>
-          <p>Dead pattern 的 guardian 不可能全部为假，因此至少一个为真。如果每个 guardian 为真都推出同一个结论，该结论成立。UR Guardian FC 与 Triplet Oddagon/Tridagon Guardian FC 使用相同的强制链原则，只是 deadly pattern 不同。</p>
-        </div>
-        <div class="en">
-          <h3>Preset Buttons</h3>
-          <ul>
-            <li><strong>All In:</strong> enables every implemented technique.</li>
-            <li><strong>High Speed:</strong> disables a group of the most expensive techniques while retaining broad coverage.</li>
-            <li><strong>Extreme Speed:</strong> disables more slow techniques and prioritizes speed.</li>
-            <li><strong>Whip Rating:</strong> basic techniques plus Whip/gWhip with the large-memory rating configuration. It returns the shortest Whip by default; the option below adds gWhip to the length comparison.</li>
-            <li><strong>Braid Rating:</strong> basic techniques plus Braid/gBraid.</li>
-          </ul>
-          <h3>Individual Settings</h3>
-          <p>The technique table allows individual toggles and shows score/difficulty coloring. Complex AIC has a <code>with AMSLS</code> sub-option; JE has <code>with JEPOM</code>.</p>
-          <p>Whip/gWhip search memory modes:</p>
-          <ul>
-            <li><strong>Auto:</strong> normal queues for solving, large memory for Whip Rating.</li>
-            <li><strong>Normal:</strong> prioritizes speed and memory use.</li>
-            <li><strong>Large:</strong> improves search coverage at higher memory cost.</li>
-          </ul>
-          <p><strong>Compare shortest length with gWhip:</strong> applies only when both Whip and gWhip are enabled. The solver finds the shortest Whip first, then searches only for a strictly shorter gWhip. Whip wins ties.</p>
-          <p>Technique settings are saved with the main session. Presets reset the Complex AIC/JE sub-options, so re-check them afterward.</p>
-          <h3>Reading Highlights</h3>
-          <p>Highlights may include placements, eliminations, structure cells, strong/weak links, ON/OFF nodes, ALS/AF regions, guardians, and branches. Open the top Technique Guide link for player-facing explanations in <code>techniques.html</code>.</p>
-          <h3>Guardian Force Chain</h3>
-          <p>Guardians of a dead pattern cannot all be false, so at least one is true. If every possible true guardian produces the same conclusion, that conclusion is valid. UR and Triplet Oddagon/Tridagon Guardian FC use the same forcing principle with different deadly patterns.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="manual-marks">
-      <h2>11. 手工标记 / Manual Marks</h2>
-      <div class="pair">
-        <div class="zh">
-          <p>在“操作”页签展开“手工标记”。标记独立于求解器结论，适合人工分析、制作讲解图和记录假设。</p>
-          <h3>标记模式</h3>
-          <table>
-            <thead><tr><th>模式</th><th>作用</th></tr></thead>
-            <tbody>
-              <tr><td>关闭标记</td><td>恢复普通盘面编辑。</td></tr>
-              <tr><td>整格上色</td><td>给整个单元格添加半透明底色。</td></tr>
-              <tr><td>候选上色</td><td>给一个候选添加彩色底色。</td></tr>
-              <tr><td>候选画圈</td><td>给一个候选添加彩色圆圈。</td></tr>
-              <tr><td>预备删数</td><td>只画预备删除符号，不改变候选。</td></tr>
-              <tr><td>正式删数</td><td>把候选加入“应用全部删数”的待处理集合。</td></tr>
-              <tr><td>手动画链</td><td>依次选择两个候选，绘制强链、弱链、构造强链或构造弱链。</td></tr>
-              <tr><td>区块标记</td><td>连续选择多个候选，形成圆形、胶囊或凸包区域。</td></tr>
-            </tbody>
-          </table>
-          <h3>添加、清除与颜色</h3>
-          <ul>
-            <li>选择颜色后，“添加”写入标记，“删除”移除当前模式对应的标记。</li>
-            <li>颜色选择器可添加自定义色；自定义色保存在本机浏览器。</li>
-            <li>画链模式中不使用普通“长按删除”规则：同一对起终点再次画同类型边会删边，改画另一类型则原位改型；“删除/次要动作”仍用于选择弱链或构造弱链。</li>
-          </ul>
-          <h3>电脑操作</h3>
-          <ul>
-            <li>整格上色：直接左键格子。</li>
-            <li>候选类模式：左键候选添加；右键候选删除当前模式标记。区块标记会只移除该候选节点，区块没有节点时自动删除。</li>
-            <li>也可以先选格子，再点大数字盘，适合候选较小或缩放后的界面。</li>
-          </ul>
-          <h3>手机/触屏操作</h3>
-          <ul>
-            <li>整格上色：轻触格子添加颜色，长按格子约 0.6 秒删除颜色。</li>
-            <li>候选上色、候选画圈、预备删数、正式删数、区块标记：先点格子，再轻触大数字键添加；长按同一数字键约 0.5 秒删除。也可以直接长按盘面中的小候选删除。</li>
-            <li>候选小数字和大数字键会在标记模式下接管触摸长按，避免 Android Chrome/WebView 弹出系统菜单或文本选择而吞掉删除操作；整格上色仍沿用原来的格子长按。</li>
-            <li>“添加/删除”按钮仍可显式切换动作；不方便长按时，先点“删除”，再点格子或数字键。</li>
-            <li>候选类标记会自动确保候选数可见。长按删除只删除手工标记，不会直接删除盘面候选；只有“应用全部删数”才会执行正式删数。</li>
-            <li>做题模式中点击“标记”。竖屏空间足够时面板内嵌在盘面下方；横屏或高度不足时放入右侧/底部抽屉。</li>
-          </ul>
-          <h3>链与区块工具</h3>
-          <ul>
-            <li><strong>撤销线：</strong>删除最后一条手动画链。</li>
-            <li><strong>取消起点：</strong>取消尚未完成的链起点。</li>
-            <li><strong>完成区块：</strong>把当前选中的候选集合固定成一个区块。</li>
-            <li><strong>撤销区块：</strong>先撤销草稿最后一个节点；没有草稿时撤销最后一个已完成区块。</li>
-            <li><strong>清空标记：</strong>清除全部手工颜色、圈、删数、线和区块。</li>
-          </ul>
-          <h3>应用删数与截图</h3>
-          <p>“应用全部删数”只应用“正式删数”，不会应用“预备删数”。勾选“清除简单步骤”后，还会连续应用 Full House、Hidden/Naked Single、Locked Candidates、Pair、Triple 和 Quad，直到遇到更高级步骤。</p>
-          <p>“截图”按屏幕当前显示生成盘面 PNG，包含全部手工标记。电脑优先复制到图片剪贴板；手机优先打开系统分享；能力不可用时自动下载。</p>
-          <div class="note">启用 TLG 编辑时，普通技巧高亮、链路和手工标记只会暂时隐藏；关闭 TLG 后恢复。手工标记不会随主现场自动保存。</div>
-        </div>
-        <div class="en">
-          <p>Open Manual Marks in the Controls tab. These marks are independent of solver conclusions and are intended for human analysis, teaching images, and hypotheses.</p>
-          <h3>Mark Modes</h3>
-          <table>
-            <thead><tr><th>Mode</th><th>Effect</th></tr></thead>
-            <tbody>
-              <tr><td>Off</td><td>Returns to normal board editing.</td></tr>
-              <tr><td>Color Cells</td><td>Adds a translucent fill to a whole cell.</td></tr>
-              <tr><td>Color Candidates</td><td>Adds a colored background to a candidate.</td></tr>
-              <tr><td>Circle Candidates</td><td>Draws a colored circle around a candidate.</td></tr>
-              <tr><td>Provisional Eliminations</td><td>Draws a provisional deletion mark without changing candidates.</td></tr>
-              <tr><td>Eliminations</td><td>Adds the candidate to the Apply All Eliminations set.</td></tr>
-              <tr><td>Draw Chain</td><td>Selects two candidates and draws strong, weak, construction-strong, or construction-weak links.</td></tr>
-              <tr><td>Block Mark</td><td>Collects candidates into a circle, capsule, or convex-hull region.</td></tr>
-            </tbody>
-          </table>
-          <h3>Add, Erase, and Colors</h3>
-          <ul>
-            <li>Select a color; Add writes a mark and Erase removes the current mode's mark.</li>
-            <li>The color picker can add custom colors, which are stored locally in the browser.</li>
-            <li>Chain mode does not use the ordinary long-press-to-erase rule: drawing the same type again between the same endpoints removes the edge, while drawing another type updates it in place. The secondary/Erase action still selects weak or construction-weak drawing.</li>
-          </ul>
-          <h3>Desktop</h3>
-          <ul>
-            <li>Color Cells: left-click a cell.</li>
-            <li>Candidate modes: left-click adds and right-click erases the current mode's mark. In Block Mark mode, only that candidate node is removed; an empty block is discarded.</li>
-            <li>You may also select a cell and use the large number pad when candidates are small.</li>
-          </ul>
-          <h3>Mobile / Touch</h3>
-          <ul>
-            <li>Color Cells: tap a cell to add its color; hold the cell for about 0.6 seconds to erase it.</li>
-            <li>Color Candidates, Circle Candidates, Provisional Eliminations, Eliminations, and Block Mark: select a cell, tap a large digit to add, or hold that digit for about 0.5 seconds to erase. You may also long-press the tiny board candidate directly.</li>
-            <li>While these candidate-mark modes are active, candidate glyphs and large digit keys take ownership of the touch hold so Android Chrome/WebView callouts or text selection cannot swallow the erase action. Cell coloring keeps its existing cell-hold behavior.</li>
-            <li>Add/Erase buttons remain an explicit alternative: choose Erase first, then tap the cell or digit when long-press is inconvenient.</li>
-            <li>Candidate-oriented modes automatically show candidates. Long-press erases only the manual mark; it does not remove a board candidate. Formal Eliminations are committed only by Apply All Eliminations.</li>
-            <li>In solve mode, press Marks. With enough portrait space the panel appears inline; in landscape or short viewports it moves into the drawer.</li>
-          </ul>
-          <h3>Chain and Block Tools</h3>
-          <ul>
-            <li><strong>Undo Line:</strong> removes the latest manual chain.</li>
-            <li><strong>Cancel Start:</strong> cancels an unfinished chain start.</li>
-            <li><strong>Finish Block:</strong> commits the current candidate collection as a block.</li>
-            <li><strong>Undo Block:</strong> removes the latest draft node first, or the latest completed block when no draft exists.</li>
-            <li><strong>Clear Marks:</strong> clears all manual colors, circles, eliminations, lines, and blocks.</li>
-          </ul>
-          <h3>Apply Eliminations and Capture</h3>
-          <p>Apply All Eliminations commits only formal Eliminations, not Provisional Eliminations. When Clear Easy Steps is checked, it continues through Full House, Hidden/Naked Single, Locked Candidates, Pair, Triple, and Quad until a more advanced step is reached.</p>
-          <p>Capture creates a PNG exactly as displayed, including all manual marks. Desktop first tries the image clipboard; mobile first tries system share; unsupported cases download the file.</p>
-          <div class="note">While TLG editing is enabled, ordinary highlights, chains, and manual marks are hidden rather than deleted. Manual marks are not included in the main automatic session restore.</div>
-        </div>
-      </div>
-    </section>
-
-    <section id="batch">
-      <h2>12. 批量任务 / Batch Tasks</h2>
-      <div class="pair">
-        <div class="zh">
-          <h3>批量出题</h3>
-          <ol>
-            <li>选择“批量出题”、输出文件名和主界面的难度。</li>
-            <li>若“训练”下拉框选择了技巧，批量任务会只输出包含该技巧的训练题；未选择则普通批量生成。</li>
-            <li>点击“开始”持续生成，点击“停止”结束并关闭/下载文件。</li>
-          </ol>
-          <p>每行是制表符分隔记录，包含序号、技巧、题串、答案、难度、尝试次数、提示数和评分字段。</p>
-          <h3>批量解题</h3>
-          <ol>
-            <li>选择“批量解题”。</li>
-            <li>选择纯文本输入文件，一行一题；空行和以 <code>#</code> 开头的行会忽略。</li>
-            <li>点击“开始”，输出每题的状态、步数、YZF 评分、最难技巧和错误信息。</li>
-          </ol>
-          <h3>文件与平台差异</h3>
-          <p>支持 File System Access API 的桌面浏览器会先让你选择保存位置，并在运行中持续追加；其它浏览器（常见于手机和部分 Firefox/Safari）会在任务结束或停止时生成下载文件。</p>
-          <div class="warn">批量出题默认持续运行，必须点击“停止”。关闭页面前先停止，否则尚未下载的内存结果可能丢失。</div>
-        </div>
-        <div class="en">
-          <h3>Batch Generation</h3>
-          <ol>
-            <li>Select Batch Generate, an output filename, and the main difficulty.</li>
-            <li>If a Training technique is selected, only training puzzles containing that technique are emitted; otherwise generation is unrestricted.</li>
-            <li>Press Start to generate continuously and Stop to finish and close/download the file.</li>
-          </ol>
-          <p>Each tab-separated line contains index, technique, puzzle, solution, difficulty, attempts, clue count, and rating fields.</p>
-          <h3>Batch Solving</h3>
-          <ol>
-            <li>Select Batch Solve.</li>
-            <li>Choose a plain-text input file with one puzzle per line. Blank lines and lines beginning with <code>#</code> are ignored.</li>
-            <li>Press Start. Output includes status, steps, YZF rating, hardest technique, and errors.</li>
-          </ol>
-          <h3>Files and Platform Differences</h3>
-          <p>Desktop browsers with the File System Access API ask for a destination and append while running. Other browsers, commonly mobile and some Firefox/Safari versions, create a download when the task finishes or is stopped.</p>
-          <div class="warn">Batch generation runs continuously by default and must be stopped. Stop before closing the page or in-memory output that has not yet downloaded may be lost.</div>
-        </div>
-      </div>
-    </section>
-
-    <section id="tlg-solver">
-      <h2>13. TLG Solver / Truth-Link Logic</h2>
-      <div class="pair">
-        <div class="zh">
-          <p>TLG Solver 用 Truths、Links、Virtual Set、定式 AUR 和 DAUR/DUR 描述集合逻辑，并搜索这些约束共同推出的删数或出数。只有勾选“启用 TLG 编辑”后，TLG 才会接管盘面点击和专属高亮。</p>
-          <p>TLG 编辑期间，普通技巧高亮、链路和手工标记只会暂时隐藏；关闭 TLG 编辑后恢复，原数据不会删除。</p>
-          <h3>核心对象</h3>
-          <ul>
-            <li><strong>Truth：</strong>投影中必须恰好覆盖一次的集合，可使用行、列、宫或单元格描述符。</li>
-            <li><strong>Link：</strong>投影中最多覆盖一次的集合，也用于判断集合外候选是否可删。</li>
-            <li><strong>Virtual Set：</strong>用户直接给出的虚拟约束集合。</li>
-            <li><strong>定式 AUR：</strong>明确指定四格位置与本体数对 {a,b}，限制 <code>maxBodyFootprint ≤ 3</code>。</li>
-            <li><strong>DAUR：</strong>用户标记潜在本体候选池，程序动态展开四格 AUR 和六格 2×3 / 3×2 DUR。</li>
-            <li><strong>GUR：</strong>用户直接标记一个通用候选云。程序不预设几何构型，而是枚举固定格集合的全部合法局部完成式，按行数、列数、宫数 exact-cover footprint 分组；可安全合并时编译为 <code>k-1</code>，否则保留逐完成式 no-good。</li>
-            <li><strong>六格 DUR：</strong>六格位置与三数组的可交换完成对，限制 <code>maxBodyFootprint ≤ 5</code>。</li>
-          </ul>
-          <h3>初始候选与唯一性门控</h3>
-          <p>TLG 分开保存<strong>初始候选盘</strong>与<strong>当前候选盘</strong>。Sukaku 只是输入格式，并不自动代表训练盘。</p>
-          <ul>
-            <li><strong>唯一解：核验初始可交换局面（默认）：</strong>定式 AUR/DUR 必须在初始候选盘满足交换前提，当前盘至少保留一个 deadly completion。</li>
-            <li><strong>训练盘：允许初始缺数：</strong>用于人为构造的多解/Rank 训练候选盘，只核验当前 deadly completion。</li>
-          </ul>
-          <h3>输入流程与参数</h3>
-          <ol>
-            <li>展开 TLG Solver，勾选“启用 TLG 编辑”。</li>
-            <li>需要候选盘时，把 Sukaku 或 81 个候选单元格粘贴到题面输入框，选门控后点击“导入 TLG 候选盘面”。</li>
-            <li><strong>Truths：</strong>点击两个共享同一行、列或宫且数字相同的候选；点击空单元格背景可切换 Cell Truth。</li>
-            <li><strong>Links：</strong>选择自动、行/列、宫或单元格，再依次点击两个候选。自动模式下，同一格两个候选优先解释为 Cell Link。</li>
-            <li><strong>Virtual Set：</strong>点击候选切换成员。“应用 Truths 数”表示该 Virtual Set 的基数；当前后端按 1–4 处理，填 0 时按 1。</li>
-            <li><strong>AUR：</strong>先在“AUR 分组”选择 AUR 1 或 AUR 2，再点击候选，可同时维护两组独立 AUR。</li>
-            <li><strong>DAUR：</strong>点击候选建立动态 AUR/DUR 候选池。</li>
-            <li><strong>GUR：</strong>点击候选建立通用候选云；至少覆盖四个单元格。该模式只负责动态验真，不替代现有 AUR/DAUR 静态与模板搜索。</li>
-            <li>点击“查找删数”。有效结果可再用“转换冗余 Truths”和“移除未使用 Links”精简。</li>
-          </ol>
-          <p>“当前 TLG 状态”列表中的条目可逐项删除。“清空 TLG 状态”会清除 Truths、Links、Virtual Set、AUR/DAUR、候选盘和计算结果，但不会清空主盘面的题目。</p>
-          <h3>批量选择与右键菜单</h3>
-          <p>电脑按住 <span class="kbd">Ctrl</span>（macOS 为 <span class="kbd">Command</span>）点击多个候选，再右键打开菜单，可批量添加/移除行、列、宫、单元格 Truth/Link，或切换 Virtual Set、AUR、DAUR。普通点击会清空先前批选。</p>
-          <p>手机可逐个使用当前输入模式；长按右键菜单是否出现取决于浏览器。复杂批量编辑建议使用电脑。</p>
-          <h3>高亮图例</h3>
-          <ul>
-            <li>House 颜色固定为 R 青绿、C 金黄、B 紫色。</li>
-            <li>House Truth：候选外围分色圆环；House Link：候选数字后的分色底色。</li>
-            <li>Cell Truth：单元格内缩蓝框；Cell Link：整格浅蓝底。</li>
-            <li>Virtual Set：紫色实线圈；AUR 1：橙色虚线；AUR 2：蓝色虚线；DAUR：青色点线；GUR：棕色双线圈。</li>
-            <li>最终删数：红色候选和红叉，始终绘制在最上层。</li>
-          </ul>
-          <h3>结果表示</h3>
-          <p>大写 <code>R/C/B/N</code> 表示 Truth，小写 <code>r/c/b/n</code> 表示 Link，<code>N/n</code> 表示单元格集合。状态栏还会显示唯一性门控、候选数规模和 DAUR 展开数量。</p>
-        </div>
-        <div class="en">
-          <p>TLG Solver describes set logic using Truths, Links, a Virtual Set, fixed AURs, and DAUR/DUR constraints, then searches for implied eliminations or assignments. It takes over board input only while Enable TLG Editing is checked.</p>
-          <p>Ordinary highlights, chain overlays, and manual marks are hidden rather than deleted during TLG editing.</p>
-          <h3>Core Objects</h3>
-          <ul>
-            <li><strong>Truth:</strong> a set covered exactly once, described by row, column, box, or cell.</li>
-            <li><strong>Link:</strong> a set covered at most once and used for external-candidate elimination.</li>
-            <li><strong>Virtual Set:</strong> a user-supplied virtual constraint.</li>
-            <li><strong>Fixed AUR:</strong> an explicit four-cell position and body pair {a,b}, with <code>maxBodyFootprint ≤ 3</code>.</li>
-            <li><strong>DAUR:</strong> a user-marked body-candidate pool dynamically expanded into four-cell AURs and six-cell 2×3 / 3×2 DURs.</li>
-            <li><strong>GUR:</strong> a template-free candidate cloud. The engine enumerates legal local completions over the fixed cell set and groups them by row-digit, column-digit, and box-digit exact-cover footprint. It emits a safe <code>k-1</code> guard when closure is proven; otherwise it keeps exact per-completion no-goods.</li>
-            <li><strong>Six-cell DUR:</strong> a six-cell swappable completion for a three-digit set, with <code>maxBodyFootprint ≤ 5</code>.</li>
-          </ul>
-          <h3>Initial Candidates and Uniqueness Gate</h3>
-          <p>TLG stores the <strong>initial candidate grid</strong> separately from the <strong>current candidate grid</strong>. Sukaku is only an input format and does not automatically mean training mode.</p>
-          <ul>
-            <li><strong>Unique puzzle: verify initial swap pair (default):</strong> fixed AUR/DUR constraints must satisfy the swap premise in the initial grid, and the current grid must retain a deadly completion.</li>
-            <li><strong>Training grid: allow missing initial candidates:</strong> for deliberately constructed multi-solution/Rank grids; only the current deadly completion is checked.</li>
-          </ul>
-          <h3>Input Workflow and Parameters</h3>
-          <ol>
-            <li>Open TLG Solver and enable TLG editing.</li>
-            <li>For a candidate grid, paste Sukaku or 81 candidate-cell tokens into the puzzle input, choose the gate, then press Import TLG Candidate Grid.</li>
-            <li><strong>Truths:</strong> click two same-digit candidates sharing a row, column, or box. Click empty cell background to toggle a Cell Truth.</li>
-            <li><strong>Links:</strong> choose Auto, Row/Column, Box, or Cell, then click two candidates. Auto prioritizes a Cell Link for two candidates in one cell.</li>
-            <li><strong>Virtual Set:</strong> click candidates to toggle membership. Truths to Apply is the Virtual Set cardinality; the current backend uses 1–4 and treats 0 as 1.</li>
-            <li><strong>AUR:</strong> choose AUR 1 or AUR 2 in AUR Group before clicking candidates; two independent groups can be maintained.</li>
-            <li><strong>DAUR:</strong> click candidates to build the dynamic AUR/DUR candidate pool.</li>
-            <li><strong>GUR:</strong> click candidates to build a generic cloud spanning at least four cells. GUR performs dynamic validation and does not replace the existing fixed AUR/DAUR paths.</li>
-            <li>Press Find Eliminations. Use Convert Redundant Truths and Remove Unused Links after a valid result.</li>
-          </ol>
-          <p>Items in Current TLG State can be removed individually. Clear TLG State removes Truths, Links, the Virtual Set, AUR/DAUR groups, the candidate grid, and computed results without clearing the puzzle on the main board.</p>
-          <h3>Batch Selection and Context Menu</h3>
-          <p>On desktop, hold <span class="kbd">Ctrl</span> (<span class="kbd">Command</span> on macOS), click candidates, then right-click to batch add/remove row, column, box, or cell Truth/Link descriptors, or toggle Virtual Set, AUR, and DAUR membership. A normal click clears the previous multi-selection.</p>
-          <p>Mobile can edit one candidate at a time through the selected mode. Long-press context-menu behavior depends on the browser; desktop is recommended for complex batch editing.</p>
-          <h3>Highlight Legend</h3>
-          <ul>
-            <li>House colors are fixed: R teal, C amber, B violet.</li>
-            <li>House Truth: segmented outer ring; House Link: segmented background behind the digit.</li>
-            <li>Cell Truth: inset blue border; Cell Link: light-blue cell fill.</li>
-            <li>Virtual Set: solid violet ring; AUR 1: orange dashed; AUR 2: blue dashed; DAUR: cyan dotted; GUR: brown double ring.</li>
-            <li>Final eliminations: red candidate and red cross on the top layer.</li>
-          </ul>
-          <h3>Result Notation</h3>
-          <p>Uppercase <code>R/C/B/N</code> denotes Truths; lowercase <code>r/c/b/n</code> denotes Links; <code>N/n</code> is a cell set. Status also reports the uniqueness gate, candidate count, and DAUR expansion count.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="superhard">
-      <h2>14. 内置超难题库 / Built-in Superhard Bank</h2>
-      <div class="pair">
-        <div class="zh">
-          <p>Insane/超难生成可使用压缩内置题库随机抽取题目，解压后导入当前盘面。轻量压缩 bank 比直接保存 81 字符题串明显更小，并适合 WASM/Standalone 打包。</p>
-          <ul>
-            <li>普通题串：约 81 字节/题。</li>
-            <li>Puzzle19 raw：约 19 字节/题。</li>
-            <li>压缩 bank：实际大小取决于题库分布，通常更小。</li>
-          </ul>
-        </div>
-        <div class="en">
-          <p>Insane/superhard generation can draw randomly from the compressed built-in bank and import the decoded puzzle. The packed bank is much smaller than storing raw 81-character strings and is suitable for WASM/Standalone builds.</p>
-          <ul>
-            <li>Raw puzzle string: about 81 bytes per puzzle.</li>
-            <li>Puzzle19 raw: about 19 bytes per puzzle.</li>
-            <li>Compressed bank: actual size depends on the puzzle distribution and is normally smaller.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <section id="export">
-      <h2>15. 导出、截图与分享 / Export, Capture &amp; Share</h2>
-      <div class="pair">
-        <div class="zh">
-          <h3>题串导出格式</h3>
-          <ul>
-            <li><strong>原始题串：</strong>只导出最初提示数。</li>
-            <li><strong>已知数字串：</strong>导出当前所有大数字。</li>
-            <li><strong>候选数字串：</strong>按单元格输出当前候选文本。</li>
-            <li><strong>Sukaku 字串：</strong>729 字符候选盘。</li>
-            <li><strong>Library 题串：</strong>保存题面、出数和候选删除状态，最适合复现当前局面。</li>
-            <li><strong>To Coach：</strong>导出 SCv7_32 Coach 压缩串。</li>
-          </ul>
-          <p>点击“导出题串”后，结果写回输入框，并在浏览器允许时复制到文本剪贴板。所选导出格式会保存在本机。</p>
-          <h3>截图与分享</h3>
-          <p>需要保留链路、圈、颜色和区块时，请使用“手工标记”里的“截图”，而不是题串导出。电脑优先复制 PNG；手机优先系统分享。</p>
-          <div class="note">Library/Coach/Sukaku 适合保存候选状态；普通 81 字符串无法保存手工删候选、链路和标记。</div>
-        </div>
-        <div class="en">
-          <h3>Puzzle Export Formats</h3>
-          <ul>
-            <li><strong>Original Puzzle:</strong> original givens only.</li>
-            <li><strong>Known Digits:</strong> all current large digits.</li>
-            <li><strong>Candidate Text:</strong> current candidate text by cell.</li>
-            <li><strong>Sukaku:</strong> the 729-character candidate grid.</li>
-            <li><strong>Library:</strong> board, solved digits, and candidate eliminations; best for reproducing the current state.</li>
-            <li><strong>To Coach:</strong> an SCv7_32 Coach compressed string.</li>
-          </ul>
-          <p>Export Puzzle writes the result back to the input area and copies it to the text clipboard when allowed. The selected export format is stored locally.</p>
-          <h3>Capture and Share</h3>
-          <p>To preserve chains, circles, colors, and blocks, use Capture in Manual Marks rather than puzzle export. Desktop prioritizes PNG clipboard copy; mobile prioritizes system share.</p>
-          <div class="note">Library/Coach/Sukaku preserve candidate state. A plain 81-character string cannot preserve manual candidate deletions, chains, or marks.</div>
-        </div>
-      </div>
-    </section>
-
-    <section id="mobile">
-      <h2>16. 手机做题模式 / Mobile Solve Mode</h2>
-      <div class="pair">
-        <div class="zh">
-          <p>宽度不超过约 900px 或使用粗指针/触屏时，顶部会出现“做题”。进入后，真实盘面和数字盘会移动到固定视口布局，不是复制一个新盘面，因此编辑、撤销和提示与分析界面保持同步。</p>
-          <h3>顶部与底部按钮</h3>
-          <ul>
-            <li><strong>返回：</strong>退出做题模式并回到原滚动位置。</li>
-            <li><strong>新题：</strong>选择 ER 难度后生成；已有作答或标记时会警告，确认后清除进度和手工标记。</li>
-            <li><strong>清除：</strong>清除当前选中格的大数字；候选模式下可清除当前选中的候选。</li>
-            <li><strong>撤销/重做：</strong>与主界面共用历史。</li>
-            <li><strong>标记：</strong>打开完整手工标记面板。</li>
-            <li><strong>更多：</strong>打开提示、应用、可选步骤、题面输入、候选显示、同数字高亮、全屏、分析模式和语言。</li>
-          </ul>
-          <h3>更多功能</h3>
-          <ul>
-            <li><strong>提示一步 / 应用提示：</strong>与主界面相同。</li>
-            <li><strong>可选步骤：</strong>退出做题布局后打开“可选步骤”页签。</li>
-            <li><strong>题面输入：</strong>退出做题布局后展开输入面板并聚焦文本框。</li>
-            <li><strong>隐藏/显示候选数：</strong>只改变做题界面的显示，不删除候选；候选标记模式会自动重新显示候选。</li>
-            <li><strong>关闭/开启同数字高亮：</strong>根据数字盘当前数字，高亮盘面上相同的大数字。</li>
-            <li><strong>全屏：</strong>调用浏览器 Fullscreen API。</li>
-            <li><strong>分析模式：</strong>退出专用做题界面，返回完整分析 UI。</li>
-          </ul>
-          <p>候选显示和同数字高亮偏好会保存在本机。横屏时盘面在左、控制区在右；竖屏时纵向排列并根据可用高度自动缩放。进入普通全屏时，小屏/触屏设备可能自动切入做题模式；OCR 校正全屏除外。</p>
-          <h3>手机图片与缓存</h3>
-          <p>手机没有等同于电脑 <span class="kbd">Ctrl</span>+<span class="kbd">V</span> 的稳定入口，请使用“选择图片识别”或“拍照识别”。Chrome Android 没有完全等同于 <span class="kbd">Ctrl</span>+<span class="kbd">F5</span> 的快捷键；开发测试可使用带版本号的 URL，或清除该站点缓存。</p>
-        </div>
-        <div class="en">
-          <p>At widths up to about 900px or with a coarse/touch pointer, the top bar shows Solve. Entering it moves the real board and number pad into a fixed viewport shell rather than cloning them, so edits, undo, and hints stay synchronized with analysis mode.</p>
-          <h3>Top and Bottom Actions</h3>
-          <ul>
-            <li><strong>Back:</strong> exits solve mode and restores the previous scroll position.</li>
-            <li><strong>New Puzzle:</strong> choose an ER band and generate. Existing progress or marks trigger a warning; confirmation clears progress and manual marks.</li>
-            <li><strong>Clear:</strong> clears the selected large digit, or the selected candidate in Candidate mode.</li>
-            <li><strong>Undo/Redo:</strong> shares history with the main interface.</li>
-            <li><strong>Marks:</strong> opens the full Manual Marks panel.</li>
-            <li><strong>More:</strong> opens Hint, Apply, Available Steps, Puzzle Input, candidate visibility, same-digit highlighting, Fullscreen, Analysis Mode, and language.</li>
-          </ul>
-          <h3>More Functions</h3>
-          <ul>
-            <li><strong>Hint / Apply Hint:</strong> same behavior as the main interface.</li>
-            <li><strong>Available Steps:</strong> leaves the solve layout and opens the Available Steps tab.</li>
-            <li><strong>Puzzle Input:</strong> leaves solve mode, opens the input panel, and focuses the text area.</li>
-            <li><strong>Hide/Show Candidates:</strong> display-only; candidates are not deleted. Candidate mark modes automatically show them again.</li>
-            <li><strong>Disable/Enable Same-Digit Highlight:</strong> highlights large digits matching the current number-pad digit.</li>
-            <li><strong>Fullscreen:</strong> calls the browser Fullscreen API.</li>
-            <li><strong>Analysis Mode:</strong> exits the dedicated solve interface.</li>
-          </ul>
-          <p>Candidate visibility and same-digit preferences are stored locally. Landscape places the board on the left and controls on the right; portrait stacks them and scales to available height. On small/touch devices, normal fullscreen may automatically enter solve mode; OCR correction fullscreen is exempt.</p>
-          <h3>Mobile Images and Cache</h3>
-          <p>Mobile has no reliable equivalent of desktop <span class="kbd">Ctrl</span>+<span class="kbd">V</span>; use Select Image or Take Photo. Chrome Android has no exact <span class="kbd">Ctrl</span>+<span class="kbd">F5</span>; for development use versioned URLs or clear the site's cache.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="standalone">
-      <h2>17. Standalone 版本 / Standalone Version</h2>
-      <div class="pair">
-        <div class="zh">
-          <p>Standalone 版用于离线运行，不需要本地服务器。构建脚本需要把应用 JS、WASM、OCR JS、ONNX Runtime Web、runtime WASM 和两个模型文件内联或打包进单文件 HTML。</p>
-          <ul>
-            <li>普通 Web 版可使用 Solver/Training/Batch Worker；Standalone 会在 Worker 不可用时回退主线程。</li>
-            <li>浏览器仍可能限制剪贴板、相机、系统分享和文件选择，这与是否离线无关。</li>
-            <li>单文件体积较大，首次打开和 OCR 首次初始化可能更慢。</li>
-          </ul>
-          <p>若普通版 OCR 正常而 Standalone 失败，检查 <code>ort.min.js</code>、runtime WASM、<code>puzzle_localizer.ort</code>、<code>puzzle_classifier.ort</code> 是否完整内联，并确认 OCR 模块没有残留动态 <code>import()</code> 或本地 <code>fetch()</code>。</p>
-        </div>
-        <div class="en">
-          <p>The Standalone build runs offline without a local server. Its build script must embed or package the app JS, WASM, OCR JS, ONNX Runtime Web, runtime WASM, and both model files into one HTML file.</p>
-          <ul>
-            <li>The regular Web build can use Solver/Training/Batch Workers; Standalone falls back to the main thread when workers are unavailable.</li>
-            <li>The browser may still restrict clipboard, camera, system share, and file pickers independently of offline operation.</li>
-            <li>The single file is large, so first open and first OCR initialization may be slower.</li>
-          </ul>
-          <p>If OCR works in the regular build but fails in Standalone, verify that <code>ort.min.js</code>, runtime WASM, <code>puzzle_localizer.ort</code>, and <code>puzzle_classifier.ort</code> are fully embedded, and that the OCR module has no remaining dynamic <code>import()</code> or local <code>fetch()</code>.</p>
-        </div>
-      </div>
-    </section>
-
-    <section id="troubleshooting">
-      <h2>18. 常见问题 / Troubleshooting</h2>
-      <table>
-        <thead>
-          <tr><th>问题 / Issue</th><th>原因 / Cause</th><th>处理 / Fix</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>加载总是用了剪贴板里的旧题</td><td>“剪贴板优先”已勾选。</td><td>取消勾选，或先更新剪贴板内容。</td></tr>
-          <tr><td>图片识别提示 <code>no available backend found</code></td><td>ORT runtime/WASM 路径错误或 Standalone 内联不完整。</td><td>普通版检查 OCR runtime 资源；Standalone 重新打包。</td></tr>
-          <tr><td>OCR 下载反复从头开始</td><td>服务器不支持 Range、缓存被禁用，或隐私模式清理了本地数据。</td><td>使用支持 Range 的静态托管，允许站点存储；网络恢复后重试。</td></tr>
-          <tr><td>OCR 盘面数字身份错误</td><td>模型把彩色出数识别成提示数，或反之。</td><td>在对照校正窗口切换“提示数/出数”，或导入后用 OCR 角色按钮继续修改。</td></tr>
-          <tr><td>OCR 非唯一，无法使用 UR/AUR</td><td>黑色提示数尚未校正到唯一题面。</td><td>先在对照盘面修正提示数；唯一性未确认前不要使用唯一性技巧。</td></tr>
-          <tr><td>手工候选标记在手机上点不中</td><td>触屏不会直接消费小候选点击。</td><td>先点格子，再点大数字盘；使用“添加/清除”。</td></tr>
-          <tr><td>“应用全部删数”没有处理预备删数</td><td>预备删数设计为纯视觉标记。</td><td>把需要执行的候选改为“正式删数”。</td></tr>
-          <tr><td>截图没有复制到剪贴板</td><td>浏览器不支持图片剪贴板或权限被拒绝。</td><td>程序会回退下载；手机优先尝试系统分享。</td></tr>
-          <tr><td>批量任务停止后才出现文件</td><td>浏览器不支持 File System Access API。</td><td>这是正常回退行为；停止后保存下载文件。</td></tr>
-          <tr><td>自动解题后盘面没有直接变成终盘</td><td>自动解题生成的是可预览的完整路径。</td><td>在“解题路径”逐步查看；需要改盘面时使用“提示一步 + 应用提示”。</td></tr>
-          <tr><td>技巧找不到，但 native 测试能找到</td><td>技巧未启用、候选状态不同，或前端 WASM/缓存不是最新版。</td><td>检查技巧页、重新加载同一候选盘，并刷新版本缓存。</td></tr>
-          <tr><td>手机全屏后进入了做题模式</td><td>小屏/触屏全屏会自动选择专用做题布局。</td><td>使用“分析模式”返回；OCR 校正全屏不会触发该切换。</td></tr>
-          <tr><td>TLG 开启后普通标记消失</td><td>TLG 独占视觉层，普通高亮被临时隐藏。</td><td>关闭“启用 TLG 编辑”，原标记会恢复。</td></tr>
-          <tr><td>恢复现场后没有手工标记</td><td>主现场只保存盘面、语言和技巧配置。</td><td>重要手工结构请用截图保存。</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <section id="credits">
-      <h2>19. 模型与来源声明 / Credits</h2>
-      <div class="pair">
-        <div class="zh">
-          <p>数独图片识别使用 Alex Kubiesa / Sudoku OCR 训练的本地模型。识别只在浏览器本地执行，不上传图片，也不使用在线 fallback。</p>
-          <p>建议保留声明：</p>
-          <pre>数独图片识别功能使用
+<div class="visual-demo-section" id="tlg-highlight-visuals">
+<h3>TLG 高亮效果图 / TLG Highlight Visual Legend</h3>
+<p class="visual-demo-intro"><span class="visual-zh">图例按当前 V475 源码的颜色、线型和叠加层级绘制。House 固定按 R→C→B 排列：行青绿、列金黄、宫紫色。</span><span class="visual-en">The legend follows the current V475 colors, line styles, and stacking order. House membership is always ordered R→C→B: row teal, column amber, box violet.</span></p>
+<div class="visual-swatch-row"><span class="visual-swatch" style="--swatch:#0f9d8b">R / Row</span><span class="visual-swatch" style="--swatch:#d4a017">C / Column</span><span class="visual-swatch" style="--swatch:#8b5cf6">B / Box</span></div>
+<div class="visual-legend-grid">
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate"><span class="demo-house-layer truth"></span><b>4</b></div></div><div class="visual-demo-copy"><strong>House Truth</strong><span class="visual-zh">候选外围分色圆环；同时属于多个 house 时按 R→C→B 分段。</span><span class="visual-en">A segmented outer ring, ordered R→C→B when several memberships overlap.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate"><span class="demo-house-layer link"></span><b>4</b></div></div><div class="visual-demo-copy"><strong>House Link</strong><span class="visual-zh">数字后的分色底色。用户 Links 与结果 Links 使用相同视觉；只在 Truth 覆盖候选或最终删数上显示。</span><span class="visual-en">Segmented fill behind the digit. User and Result Links look the same and appear only on Truth-covered candidates or final eliminations.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate"><span class="demo-house-layer link"></span><span class="demo-house-layer truth"></span><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">Truth + Link 叠加</span><span class="visual-en">Truth + Link overlay</span></strong><span class="visual-zh">外圈是 Truth，内部底色是 Link；两层使用同一分段起点，不会跳位。</span><span class="visual-en">Outer ring = Truth, inner fill = Link. Both layers share the same segment origin.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-sudoku-cell cell-link cell-truth"><div class="demo-candidate-grid"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div></div></div><div class="visual-demo-copy"><strong>Cell Truth + Cell Link</strong><span class="visual-zh">内缩蓝框＝Cell Truth；整格浅蓝底＝Cell Link。Cell Link 不受候选相关性门槛限制。</span><span class="visual-en">Inset blue border = Cell Truth; whole-cell blue fill = Cell Link. Cell Links are not relevance-gated.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate vset"><b>4</b></div></div><div class="visual-demo-copy"><strong>Virtual Set</strong><span class="visual-zh">紫色实线圈和淡紫底。</span><span class="visual-en">Solid violet ring with a pale violet fill.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate aur1"><b>4</b></div></div><div class="visual-demo-copy"><strong>AUR 1</strong><span class="visual-zh">橙色虚线圈和淡橙底。</span><span class="visual-en">Orange dashed ring with a pale orange fill.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate aur2"><b>4</b></div></div><div class="visual-demo-copy"><strong>AUR 2</strong><span class="visual-zh">蓝色虚线圈和淡蓝底。</span><span class="visual-en">Blue dashed ring with a pale blue fill.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate daur"><b>4</b></div></div><div class="visual-demo-copy"><strong>DAUR</strong><span class="visual-zh">青色点线圈，表示动态 AUR/DUR 本体候选池。</span><span class="visual-en">Cyan dotted ring for the dynamic AUR/DUR body pool.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate gur"><b>4</b></div></div><div class="visual-demo-copy"><strong>GUR</strong><span class="visual-zh">棕色双线圈和淡橙底，表示通用局部完成候选云。</span><span class="visual-en">Brown double ring with a pale orange fill for the generic local-completion cloud.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div style="display:flex;gap:5px"><div class="demo-candidate small endpoint"><b>2</b></div><div class="demo-candidate small multi"><b>7</b></div></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">输入端点与批选</span><span class="visual-en">Endpoint and batch selection</span></strong><span class="visual-zh">青色内框＝等待第二端点；淡红底＝Ctrl/长按批选。它们是交互状态，不是逻辑集合。</span><span class="visual-en">Cyan inset = waiting for endpoint two; pale red = Ctrl/long-press batch selection. These are interaction states, not proof sets.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate tlg-elim"><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">最终删数</span><span class="visual-en">Final elimination</span></strong><span class="visual-zh">深红候选和红色 X，始终绘制在最上层。</span><span class="visual-en">Dark-red candidate with a red X, always drawn on top.</span></div></div>
+<div class="visual-demo-card wide"><div class="visual-demo-stage"><div class="demo-candidate gur tlg-elim"><span class="demo-house-layer link"></span><span class="demo-house-layer truth"></span><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">多层叠加优先级</span><span class="visual-en">Stacking priority</span></strong><span class="visual-zh">候选可同时属于 GUR、Truth 和 Link；删数红叉仍在最上层。看不清时应减少输入集合，而不是依赖颜色覆盖来判断成员。</span><span class="visual-en">A candidate may simultaneously belong to GUR, Truth, and Link; the elimination X remains on top. Reduce noisy inputs rather than inferring membership from whichever color seems dominant.</span></div></div>
+</div>
+<div class="pattern-demo-wrap">
+<h3>TLG 对象怎么选：示意图 / How to Select TLG Objects</h3>
+<div class="pattern-demo-grid">
+<div class="pattern-demo-card"><strong>Virtual Set：精确基数 / Exact cardinality</strong><div class="pattern-board two-by-three"><div class="pattern-cell"><div class="demo-candidate small vset"><b>2</b></div></div><div class="pattern-cell"><div class="demo-candidate small vset"><b>5</b></div></div><div class="pattern-cell"><div class="demo-candidate small vset"><b>8</b></div></div><span class="cardinality-badge">k = 2</span></div><span class="visual-zh">把全部成员标成紫圈，并填写“恰好 k 个为真”。不是“至少 k 个”或“至多 k 个”。</span><span class="visual-en">Mark every member in violet and set “exactly k are true,” not at least or at most k.</span></div>
+<div class="pattern-demo-card"><strong>定式 AUR / Fixed AUR</strong><div class="pattern-board two-by-two"><div class="pattern-cell"><div class="demo-candidate small aur1"><b>2</b></div><span>7</span></div><div class="pattern-cell"><span>2 7</span></div><div class="pattern-cell"><span>2 7</span></div><div class="pattern-cell"><span>2</span><div class="demo-candidate small aur1"><b>7</b></div></div></div><span class="visual-zh">标准四格只选两个对角、异数字候选点；两行、两列和本体数对由这两个点推定。</span><span class="visual-en">For a standard rectangle, select exactly two diagonal points with different digits; those points define rows, columns, and body pair.</span></div>
+<div class="pattern-demo-card"><strong>DAUR：小而准确的池 / Small precise pool</strong><div class="pattern-board two-by-three"><div class="pattern-cell"><div class="demo-candidate small daur"><b>1</b></div><div class="demo-candidate small daur"><b>6</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>1</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>6</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>1</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>6</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>1</b></div><div class="demo-candidate small daur"><b>6</b></div></div></div><span class="visual-zh">只放可能属于本体的活动候选；程序会把池内找到的全部有效 AUR/DUR 同时展开。</span><span class="visual-en">Include only active candidates that may be body members; every valid AUR/DUR found in the pool is expanded together.</span></div>
+<div class="pattern-demo-card"><strong>GUR：完整局部模型 / Complete local model</strong><div class="pattern-board three-by-three"><div class="pattern-cell"><div class="demo-candidate small gur"><b>1</b></div><div class="demo-candidate small gur"><b>4</b></div></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>4</b></div></div><div class="pattern-cell empty"></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>1</b></div></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>7</b></div></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>4</b></div><div class="demo-candidate small gur"><b>7</b></div></div><div class="pattern-cell empty"></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>1</b></div><div class="demo-candidate small gur"><b>7</b></div></div><div class="pattern-cell empty"></div></div><span class="visual-zh">不规则形状也可以，但必须选齐局部每个格允许参与完成的全部候选；GUR 不会替你猜边界。</span><span class="visual-en">Irregular shapes are allowed, but include every allowed candidate in every local cell; GUR does not infer the boundary.</span></div>
+</div>
+</div>
+</div>
+</section>
+<section id="superhard">
+<h2>14. 内置超难题库 / Built-in Superhard Bank</h2>
+<div class="pair">
+<div class="zh">
+<p>Insane/超难生成可使用压缩内置题库随机抽取题目，解压后导入当前盘面。轻量压缩 bank 比直接保存 81 字符题串明显更小，并适合 WASM/Standalone 打包。</p>
+<ul>
+<li>普通题串：约 81 字节/题。</li>
+<li>Puzzle19 raw：约 19 字节/题。</li>
+<li>压缩 bank：实际大小取决于题库分布，通常更小。</li>
+</ul>
+</div>
+<div class="en">
+<p>Insane/superhard generation can draw randomly from the compressed built-in bank and import the decoded puzzle. The packed bank is much smaller than storing raw 81-character strings and is suitable for WASM/Standalone builds.</p>
+<ul>
+<li>Raw puzzle string: about 81 bytes per puzzle.</li>
+<li>Puzzle19 raw: about 19 bytes per puzzle.</li>
+<li>Compressed bank: actual size depends on the puzzle distribution and is normally smaller.</li>
+</ul>
+</div>
+</div>
+</section>
+<section id="export">
+<h2>15. 导出、截图与分享 / Export, Capture &amp; Share</h2>
+<div class="pair">
+<div class="zh">
+<h3>题串导出格式</h3>
+<ul>
+<li><strong>原始题串：</strong>只导出最初提示数。</li>
+<li><strong>已知数字串：</strong>导出当前所有大数字。</li>
+<li><strong>候选数字串：</strong>按单元格输出当前候选文本。</li>
+<li><strong>Sukaku 字串：</strong>729 字符候选盘。</li>
+<li><strong>Library 题串：</strong>保存题面、出数和候选删除状态，最适合复现当前局面。</li>
+<li><strong>To Coach：</strong>导出 SCv7_32 Coach 压缩串。</li>
+</ul>
+<p>点击“导出题串”后，结果写回输入框，并在浏览器允许时复制到文本剪贴板。所选导出格式会保存在本机。</p>
+<h3>截图与分享</h3>
+<p>需要保留链路、圈、颜色和区块时，请使用“手工标记”里的“截图”，而不是题串导出。电脑优先复制 PNG；手机优先系统分享。</p>
+<div class="note">Library/Coach/Sukaku 适合保存候选状态；普通 81 字符串无法保存手工删候选、链路和标记。</div>
+</div>
+<div class="en">
+<h3>Puzzle Export Formats</h3>
+<ul>
+<li><strong>Original Puzzle:</strong> original givens only.</li>
+<li><strong>Known Digits:</strong> all current large digits.</li>
+<li><strong>Candidate Text:</strong> current candidate text by cell.</li>
+<li><strong>Sukaku:</strong> the 729-character candidate grid.</li>
+<li><strong>Library:</strong> board, solved digits, and candidate eliminations; best for reproducing the current state.</li>
+<li><strong>To Coach:</strong> an SCv7_32 Coach compressed string.</li>
+</ul>
+<p>Export Puzzle writes the result back to the input area and copies it to the text clipboard when allowed. The selected export format is stored locally.</p>
+<h3>Capture and Share</h3>
+<p>To preserve chains, circles, colors, and blocks, use Capture in Manual Marks rather than puzzle export. Desktop prioritizes PNG clipboard copy; mobile prioritizes system share.</p>
+<div class="note">Library/Coach/Sukaku preserve candidate state. A plain 81-character string cannot preserve manual candidate deletions, chains, or marks.</div>
+</div>
+</div>
+</section>
+<section id="mobile">
+<h2>16. 手机做题、标记与 TLG / Mobile Solving, Marks &amp; TLG</h2>
+<div class="pair">
+<div class="zh">
+<p>宽度不超过约 900px 或使用粗指针/触屏时，顶部会出现“做题”。进入后，真实盘面和数字盘会移动到固定视口布局，不会复制第二份盘面，因此编辑、撤销、提示和分析界面始终同步。</p>
+<h3>手机手动做题的推荐顺序</h3>
+<ol>
+<li>载入或生成题目，检查提示数。</li>
+<li>选择“出数”或“候选”，再点大数字 1–9。</li>
+<li>轻触目标格写入出数或切换候选。候选小字难点时，不必直接点小字。</li>
+<li>需要人工分析时点“标记”，按“先选格，再点大数字键”的方式圈候选、上色或暂存删数。</li>
+<li>不确定时点“提示一步”只看结论，确认后再“应用提示”。</li>
+<li>误操作立即撤销；完成阶段性分析后导出候选状态或截图。</li>
+</ol>
+<h3>顶部与底部按钮</h3>
+<ul>
+<li><strong>返回：</strong>退出做题模式并回到原滚动位置。</li>
+<li><strong>新题：</strong>选择 ER 难度后生成；已有作答或标记时会警告，确认后清除进度和手工标记。</li>
+<li><strong>清除：</strong>清除当前选中格的大数字；候选模式下可清除当前选中的候选。</li>
+<li><strong>撤销/重做：</strong>与主界面共用历史。</li>
+<li><strong>标记：</strong>打开完整手工标记面板。</li>
+<li><strong>更多：</strong>打开提示、应用、可选步骤、题面输入、候选显示、同数字高亮、全屏、分析模式和语言。</li>
+</ul>
+<h3>候选与手工标记</h3>
+<ul>
+<li>普通候选编辑：先选“候选”和数字，再轻触格子。</li>
+<li>候选标记：先选格子，再轻触大数字键添加；长按数字键约 0.5–0.6 秒删除标记。</li>
+<li>整格上色：轻触添加，长按格子约 0.6 秒删除。</li>
+<li>“隐藏候选数”只隐藏显示；进入候选类标记模式会自动重新显示。</li>
+<li>长按删除标记不会删除真实候选；正式删数仍需“应用全部删数”。</li>
+</ul>
+<h3>手机上的 TLG</h3>
+<p>TLG 属于分析功能，通常先从“分析模式”展开 TLG 面板并启用。开启后，候选触摸由 TLG 接管：</p>
+<ul>
+<li><strong>短按候选：</strong>执行当前 TLG 输入模式。Truth/Link 用两次短按选择端点；VSet/AUR/DAUR/GUR 短按切换成员。</li>
+<li><strong>长按候选约 0.6 秒：</strong>加入批选并打开 TLG 菜单。子菜单可直接轻触展开。</li>
+<li><strong>多选：</strong>长按第一个候选后点菜单外关闭，再长按第二个；选择会累加。选完后从菜单批量加入 Truth/Link/VSet/AUR/DAUR/GUR。</li>
+<li><strong>清空批选：</strong>使用菜单“清除候选选择”。普通短按会执行当前模式，不适合作为继续批选。</li>
+<li><strong>Cell Truth：</strong>Truths 模式轻触空格背景。</li>
+</ul>
+<div class="note">TLG 与普通手工标记不能同时接管候选长按。开启 TLG 时手工标记暂时隐藏且不响应；关闭 TLG 后恢复。</div>
+<h3>“更多”里的功能</h3>
+<ul>
+<li><strong>提示一步 / 应用提示：</strong>提示只预览，应用才改盘。</li>
+<li><strong>可选步骤：</strong>退出做题布局后打开“可选步骤”页签。</li>
+<li><strong>题面输入：</strong>退出做题布局后展开输入面板并聚焦文本框。</li>
+<li><strong>隐藏/显示候选数：</strong>只改变显示，不删除候选。</li>
+<li><strong>关闭/开启同数字高亮：</strong>根据当前数字盘数字，高亮相同大数字。</li>
+<li><strong>全屏：</strong>调用浏览器 Fullscreen API。</li>
+<li><strong>分析模式：</strong>退出专用做题界面，返回完整分析 UI。</li>
+</ul>
+<h3>屏幕方向、图片与缓存</h3>
+<p>横屏时盘面在左、控制区在右；竖屏时纵向排列并按可用高度缩放。普通全屏在小屏/触屏设备上可能自动进入做题模式，OCR 校正全屏除外。</p>
+<p>手机没有稳定的 <span class="kbd">Ctrl</span>+<span class="kbd">V</span>，请使用“选择图片识别”或“拍照识别”。Chrome Android 没有完全等同于 <span class="kbd">Ctrl</span>+<span class="kbd">F5</span> 的快捷键；升级覆盖包后若仍显示旧界面，可关闭页面重新打开，或清除该站点缓存。</p>
+</div>
+<div class="en">
+<p>At widths up to about 900px or with a coarse/touch pointer, the top bar shows Solve. It moves the real board and number pad into a fixed viewport rather than cloning them, so edits, Undo, hints, and analysis remain synchronized.</p>
+<h3>Recommended Mobile Solving Order</h3>
+<ol>
+<li>Load or generate a puzzle and verify the givens.</li>
+<li>Select Value or Candidate, then choose 1–9 on the large pad.</li>
+<li>Tap the target cell to enter a value or toggle a candidate. Tiny candidate glyphs do not need to be targeted for ordinary solving.</li>
+<li>For human analysis, open Marks and use “select cell, then large digit” for circles, colors, or staged eliminations.</li>
+<li>Use Hint for preview and Apply Hint only after confirming the conclusion.</li>
+<li>Undo mistakes immediately; export candidate state or capture the diagram at useful milestones.</li>
+</ol>
+<h3>Top and Bottom Actions</h3>
+<ul>
+<li><strong>Back:</strong> exits Solve Mode and restores the previous scroll position.</li>
+<li><strong>New Puzzle:</strong> chooses an ER band and generates. Existing progress/marks trigger a warning.</li>
+<li><strong>Clear:</strong> clears the selected user value, or the selected candidate in Candidate mode.</li>
+<li><strong>Undo/Redo:</strong> shares history with the main interface.</li>
+<li><strong>Marks:</strong> opens the full Manual Marks panel.</li>
+<li><strong>More:</strong> opens Hint, Apply, Available Steps, Puzzle Input, candidate visibility, same-digit highlighting, Fullscreen, Analysis Mode, and language.</li>
+</ul>
+<h3>Candidates and Manual Marks</h3>
+<ul>
+<li>Ordinary candidate editing: choose Candidate and a digit, then tap a cell.</li>
+<li>Candidate marks: select a cell, tap a large digit to add, or hold it about 0.5–0.6 seconds to erase the mark.</li>
+<li>Cell coloring: tap to add and hold the cell for about 0.6 seconds to erase.</li>
+<li>Hide Candidates is display-only; candidate mark modes reveal them automatically.</li>
+<li>Long-press erase does not delete a live candidate. Formal eliminations still require Apply All Eliminations.</li>
+</ul>
+<h3>TLG on Mobile</h3>
+<p>TLG is an analysis feature. Open it from Analysis Mode and enable editing; candidate touch is then owned by TLG:</p>
+<ul>
+<li><strong>Short tap:</strong> runs the current TLG mode. Truth/Link uses two endpoint taps; VSet/AUR/DAUR/GUR toggles membership.</li>
+<li><strong>Hold about 0.6 seconds:</strong> adds the candidate to batch selection and opens the TLG menu. Submenus open by tap.</li>
+<li><strong>Multi-select:</strong> long-press one candidate, tap outside to close, then long-press another. Selection accumulates until the batch action is executed.</li>
+<li><strong>Clear batch selection:</strong> use Clear Candidate Selection. A normal short tap executes the current mode rather than continuing batch selection.</li>
+<li><strong>Cell Truth:</strong> tap the empty cell background in Truths mode.</li>
+</ul>
+<div class="note">TLG and Manual Marks cannot own candidate long-press simultaneously. Manual marks are hidden and inactive while TLG is enabled, then return afterward.</div>
+<h3>More Functions</h3>
+<ul>
+<li><strong>Hint / Apply Hint:</strong> Hint previews; Apply commits.</li>
+<li><strong>Available Steps:</strong> leaves Solve layout and opens the Available Steps tab.</li>
+<li><strong>Puzzle Input:</strong> leaves Solve Mode, opens the input panel, and focuses the text area.</li>
+<li><strong>Hide/Show Candidates:</strong> changes display only.</li>
+<li><strong>Disable/Enable Same-Digit Highlight:</strong> highlights large digits matching the current pad digit.</li>
+<li><strong>Fullscreen:</strong> calls the browser Fullscreen API.</li>
+<li><strong>Analysis Mode:</strong> exits the dedicated solve interface.</li>
+</ul>
+<h3>Orientation, Images, and Cache</h3>
+<p>Landscape places board and controls side by side; portrait stacks and scales them. Normal fullscreen may enter Solve Mode automatically on small/touch devices; OCR correction fullscreen is exempt.</p>
+<p>Mobile has no reliable <span class="kbd">Ctrl</span>+<span class="kbd">V</span>; use Select Image or Take Photo. Chrome Android has no exact <span class="kbd">Ctrl</span>+<span class="kbd">F5</span>. After installing an overlay package, close/reopen the page or clear the site cache if the old UI remains.</p>
+</div>
+</div>
+</section>
+<section id="standalone">
+<h2>17. Standalone 版本 / Standalone Version</h2>
+<div class="pair">
+<div class="zh">
+<p>Standalone 版用于离线运行，不需要本地服务器。构建脚本需要把应用 JS、WASM、OCR JS、ONNX Runtime Web、runtime WASM 和两个模型文件内联或打包进单文件 HTML。</p>
+<ul>
+<li>普通 Web 版可使用 Solver/Training/Batch Worker；Standalone 会在 Worker 不可用时回退主线程。</li>
+<li>浏览器仍可能限制剪贴板、相机、系统分享和文件选择，这与是否离线无关。</li>
+<li>单文件体积较大，首次打开和 OCR 首次初始化可能更慢。</li>
+</ul>
+<p>若普通版 OCR 正常而 Standalone 失败，检查 <code>ort.min.js</code>、runtime WASM、<code>puzzle_localizer.ort</code>、<code>puzzle_classifier.ort</code> 是否完整内联，并确认 OCR 模块没有残留动态 <code>import()</code> 或本地 <code>fetch()</code>。</p>
+</div>
+<div class="en">
+<p>The Standalone build runs offline without a local server. Its build script must embed or package the app JS, WASM, OCR JS, ONNX Runtime Web, runtime WASM, and both model files into one HTML file.</p>
+<ul>
+<li>The regular Web build can use Solver/Training/Batch Workers; Standalone falls back to the main thread when workers are unavailable.</li>
+<li>The browser may still restrict clipboard, camera, system share, and file pickers independently of offline operation.</li>
+<li>The single file is large, so first open and first OCR initialization may be slower.</li>
+</ul>
+<p>If OCR works in the regular build but fails in Standalone, verify that <code>ort.min.js</code>, runtime WASM, <code>puzzle_localizer.ort</code>, and <code>puzzle_classifier.ort</code> are fully embedded, and that the OCR module has no remaining dynamic <code>import()</code> or local <code>fetch()</code>.</p>
+</div>
+</div>
+</section>
+<section id="troubleshooting">
+<h2>18. 常见问题 / Troubleshooting</h2>
+<table>
+<thead>
+<tr><th>问题 / Issue</th><th>原因 / Cause</th><th>处理 / Fix</th></tr>
+</thead>
+<tbody>
+<tr><td>加载总是用了剪贴板里的旧题</td><td>“剪贴板优先”已勾选。</td><td>取消勾选，或先更新剪贴板内容。</td></tr>
+<tr><td>图片识别提示 <code>no available backend found</code></td><td>ORT runtime/WASM 路径错误或 Standalone 内联不完整。</td><td>普通版检查 OCR runtime 资源；Standalone 重新打包。</td></tr>
+<tr><td>OCR 下载反复从头开始</td><td>服务器不支持 Range、缓存被禁用，或隐私模式清理了本地数据。</td><td>使用支持 Range 的静态托管，允许站点存储；网络恢复后重试。</td></tr>
+<tr><td>OCR 盘面数字身份错误</td><td>模型把彩色出数识别成提示数，或反之。</td><td>在对照校正窗口切换“提示数/出数”，或导入后用 OCR 角色按钮继续修改。</td></tr>
+<tr><td>OCR 非唯一，无法安全使用 UR/AUR</td><td>黑色提示数尚未校正到唯一题面。</td><td>先修正提示数；唯一性未确认前不要使用 UR、AUR、DAUR、GUR 等唯一性前提。</td></tr>
+<tr><td>手工候选标记在手机上点不中</td><td>小候选触控面积较小。</td><td>先点格子，再点大数字盘；删除时长按数字键，或先切换到“删除”。</td></tr>
+<tr><td>“应用全部删数”没有处理预备删数</td><td>预备删数设计为纯视觉标记。</td><td>把确认成立的候选改为“正式删数”。</td></tr>
+<tr><td>截图没有复制到剪贴板</td><td>浏览器不支持图片剪贴板或权限被拒绝。</td><td>程序会回退下载；手机优先尝试系统分享。</td></tr>
+<tr><td>批量任务停止后才出现文件</td><td>浏览器不支持 File System Access API。</td><td>这是正常回退行为；停止后保存下载文件。</td></tr>
+<tr><td>自动解题后盘面没有直接变成终盘</td><td>自动解题生成的是可预览完整路径。</td><td>在“解题路径”查看；需要改当前盘面时使用“提示一步 + 应用提示”。</td></tr>
+<tr><td>技巧找不到，但 native 测试能找到</td><td>技巧未启用、候选状态不同，或前端 WASM/缓存不是最新版。</td><td>检查技巧页，重新载入同一候选盘，并刷新版本缓存。</td></tr>
+<tr><td>手机全屏后进入做题模式</td><td>小屏/触屏全屏会自动选择专用做题布局。</td><td>使用“分析模式”返回；OCR 校正全屏不会触发该切换。</td></tr>
+<tr><td>TLG 开启后普通标记消失</td><td>TLG 独占视觉和候选触摸层，普通标记被临时隐藏。</td><td>关闭“启用 TLG 编辑”，原标记会恢复。</td></tr>
+<tr><td>恢复现场后没有手工标记</td><td>主现场不保存手工颜色、圈、链和区块。</td><td>重要结构使用“截图”保存。</td></tr>
+<tr><td>TLG 查找有 Links 数量，但盘面没有 Links 高亮</td><td>旧版本只从用户 Links 绘制，自动 Links 没有独立结果状态；或浏览器仍缓存旧 <code>app.js</code>。</td><td>覆盖本修复包并强制刷新。新版使用“结果 Links”高亮，自动 Links 不再需要写入用户 Links。</td></tr>
+<tr><td>加一个 Truth 后再次查找，不再自动生成 Links</td><td>“当前 TLG 状态”中仍有用户 Links。任意一个用户 Link 都会切换到显式结构模式。</td><td>删除全部用户 Links 后再查找。结果 Links 是只读结果，不会阻止自动生成。</td></tr>
+<tr><td>第一次自动查找正常，第二次结构却像沿用旧 Links</td><td>旧版本曾把自动 Links 同步回用户 Links。</td><td>使用新版；Find 现在只更新结果 Links，不修改用户 Links。输入变化会清除旧结果。</td></tr>
+<tr><td>“Link 类型=自动”但没有自动生成整套 Links</td><td>该下拉框只解释两个点击端点，不是后端自动生成开关。</td><td>确保用户 Links 为空，然后点击“查找删数”。</td></tr>
+<tr><td>转换/移除后下一次查找进入显式 Links 模式</td><td>转换和移除是结构修改，成功结果会提交为用户 Links。</td><td>这是预期行为。要重新全自动生成，删除全部用户 Links。</td></tr>
+<tr><td>手机长按候选没有出现 TLG 菜单</td><td>页面还是旧缓存，或长按时手指移动过大。</td><td>确认 TLG 已启用，覆盖新版并刷新；稳定按住候选约 0.6 秒，不要拖动。</td></tr>
+<tr><td>手机 TLG 只能选一个候选，无法批量</td><td>普通短按会执行当前模式并清除批选。</td><td>用“长按候选→点菜单外关闭→长按下一个”的方式累加，最后在菜单执行；重来时点“清除候选选择”。</td></tr>
+<tr><td>标准 AUR 报重复或形成意外结构</td><td>把四格中很多本体候选都标进同一 AUR 组，后端会两两配对。</td><td>每个标准 AUR 组只选两个对角、异数字、异行异列候选点。</td></tr>
+<tr><td>AUR 提示初始盘没有可交换完成</td><td>严格门控下，初始候选盘不同时包含两种交替完成，或 OCR/候选导入不完整。</td><td>核对初始候选和提示数。只有明确的训练盘才改用训练门控。</td></tr>
+<tr><td>DAUR 没有展开任何 AUR/DUR</td><td>候选池缺少本体候选、当前 deadly completion 已消失，或初始交换前提不成立。</td><td>缩小并核对池，确保只含完整本体候选；查看结果中的验证错误。</td></tr>
+<tr><td>DAUR 展开数量很多、运行很慢</td><td>候选池太宽，程序把其中全部有效 AUR/DUR 同时加入证明。</td><td>按目标局部结构缩小候选池，移除 guardian、删数目标和无关候选。</td></tr>
+<tr><td>GUR 报没有合法完成或没有等价完成对</td><td>候选云漏候选、混入区域外候选，或该局部结构本身不是可证明 deadly 等价类。</td><td>重新定义精确格集合和每格允许候选；严格模式还要核对初始候选前提。</td></tr>
+<tr><td>GUR 超过预算</td><td>格数、候选字母表或局部完成数过大。</td><td>缩小到目标局部区域；上限为 16 格、64 候选点，实际可用规模通常应更小。</td></tr>
+<tr><td>Virtual Set 结果不合理</td><td>把“至少/至多”条件误填成精确基数，或“应用 Truths 数”填错。</td><td>Virtual Set 必须是恰好 <code>k</code> 个真值；当前 <code>k</code> 只支持 1–4，0 会按 1。</td></tr>
+<tr><td>“清空全部逻辑”后候选盘还在</td><td>右键/长按菜单命令设计为保留临时 TLG 候选盘。</td><td>要连候选盘一起清除，使用面板“清空 TLG 状态”。</td></tr>
+</tbody>
+</table>
+</section>
+<section id="credits">
+<h2>19. 模型与来源声明 / Credits</h2>
+<div class="pair">
+<div class="zh">
+<p>数独图片识别使用 Alex Kubiesa / Sudoku OCR 训练的本地模型。识别只在浏览器本地执行，不上传图片，也不使用在线 fallback。</p>
+<p>建议保留声明：</p>
+<pre>数独图片识别功能使用
 Alex Kubiesa / Sudoku OCR
 训练的本地识别模型。
 本项目不使用在线 fallback。</pre>
-        </div>
-        <div class="en">
-          <p>Sudoku image recognition uses a local model trained by Alex Kubiesa / Sudoku OCR. Recognition is performed locally in the browser; images are not uploaded and no online fallback is used.</p>
-          <p>Recommended attribution:</p>
-          <pre>Sudoku image recognition uses
+</div>
+<div class="en">
+<p>Sudoku image recognition uses a local model trained by Alex Kubiesa / Sudoku OCR. Recognition is performed locally in the browser; images are not uploaded and no online fallback is used.</p>
+<p>Recommended attribution:</p>
+<pre>Sudoku image recognition uses
 a local model trained by
 Alex Kubiesa / Sudoku OCR.
 No online fallback is used.</pre>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <script>
+</div>
+</div>
+</section>
+</main>
+<script>
     (() => {
       const requested = new URLSearchParams(location.search).get("lang");
       const initial = requested === "zh" || requested === "en" ? requested : "bilingual";

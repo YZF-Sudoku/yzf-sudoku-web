@@ -1,7 +1,7 @@
 import createModule from "./sudoku_wasm.js?v=wasm-bc6a0cc50d73c7d3";
 
-const APP_VERSION = "wasm-bc6a0cc50d73c7d3";
-const MANUAL_VERSION = "20260629-manual-v2";
+const APP_VERSION = "wasm-bc6a0cc50d73c7d3-tlg-links-v2-clear-active";
+const MANUAL_VERSION = "20260703-manual-v2.1";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const OCR_ASSET_VERSION = "20260630-role-glyph-core-v8";
@@ -267,15 +267,11 @@ const btnMobileSolveNewPuzzle = document.getElementById("btnMobileSolveNewPuzzle
 const btnMobileSolveFullscreen = document.getElementById("btnMobileSolveFullscreen");
 const mobileSolveNewPuzzleBackdrop = document.getElementById("mobileSolveNewPuzzleBackdrop");
 const mobileSolveNewPuzzlePanel = document.getElementById("mobileSolveNewPuzzlePanel");
-const mobileSolveNewPuzzleSetup = document.getElementById("mobileSolveNewPuzzleSetup");
 const mobileSolveNewPuzzleOptions = document.getElementById("mobileSolveNewPuzzleOptions");
 const mobileSolveNewPuzzleWarning = document.getElementById("mobileSolveNewPuzzleWarning");
-const mobileSolveNewPuzzleConfirmView = document.getElementById("mobileSolveNewPuzzleConfirmView");
 const btnMobileSolveNewPuzzleClose = document.getElementById("btnMobileSolveNewPuzzleClose");
 const btnMobileSolveNewPuzzleCancel = document.getElementById("btnMobileSolveNewPuzzleCancel");
 const btnMobileSolveNewPuzzleGenerate = document.getElementById("btnMobileSolveNewPuzzleGenerate");
-const btnMobileSolveNewPuzzleConfirmBack = document.getElementById("btnMobileSolveNewPuzzleConfirmBack");
-const btnMobileSolveNewPuzzleConfirmContinue = document.getElementById("btnMobileSolveNewPuzzleConfirmContinue");
 const btnMobileSolveClear = document.getElementById("btnMobileSolveClear");
 const btnMobileSolveUndo = document.getElementById("btnMobileSolveUndo");
 const btnMobileSolveRedo = document.getElementById("btnMobileSolveRedo");
@@ -328,8 +324,6 @@ let mobileSolveMarksPlacement = "";
 let mobileSolveCandidatesVisible = true;
 let mobileSolveSameDigitHighlight = true;
 let mobileSolveNewPuzzleOpen = false;
-let mobileSolveNewPuzzleConfirmOpen = false;
-let mobileSolveNewPuzzlePendingDifficulty = 0;
 let mobileSolvePuzzleBaselineSignature = "";
 let ocrCorrectionState = null;
 let ocrCorrectionRoot = null;
@@ -657,10 +651,6 @@ const uiText = {
     mobileSolveNewPuzzleHint: "选择难度后生成，生成完成后继续留在做题模式。",
     mobileSolveNewPuzzleWarning: "当前作答进度或标记将在生成新题后清除。",
     mobileSolveNewPuzzleConfirm: "当前作答进度或标记将被清除，确定生成新题吗？",
-    mobileSolveNewPuzzleConfirmTitle: "清除当前进度？",
-    mobileSolveNewPuzzleConfirmDetail: "新题生成成功后将替换当前题目，现有作答、候选和手工标记无法通过撤销恢复。",
-    mobileSolveNewPuzzleConfirmBack: "返回选择",
-    mobileSolveNewPuzzleConfirmContinue: "继续生成",
     mobileSolveNewPuzzleGenerate: "生成",
     mobileSolveNewPuzzleGenerating: "生成中…",
     mobileSolveNewPuzzleCancel: "取消",
@@ -727,6 +717,7 @@ const uiText = {
     tlgDebugPlaceholder: "仅用于调试导入；TLG 主要通过盘面点击输入。",
     tlgTruths: "Truths",
     tlgLinks: "Links",
+    tlgUserLinks: "用户 Links",
     tlgVirtualSet: "Virtual Set",
     tlgAurCorners: "AUR Corners",
     tlgDaurCandidates: "DAUR 候选池",
@@ -767,6 +758,8 @@ const uiText = {
     tlgCandidateGridImportedTraining: "TLG 训练候选盘已导入：{candidates} 个候选。训练模式允许初始缺数，只核验当前 deadly completion。",
     tlgSummaryTruths: "Truths={count}",
     tlgSummaryLinks: "Links={count}",
+    tlgSummaryUserLinks: "用户 Links={count}",
+    tlgSummaryResultLinks: "结果 Links={count}",
     tlgSummaryVirtual: "Virtual={count}",
     tlgSummaryAurs: "AUR={count}",
     tlgSummaryAurCorners: "AUR 角候选={count}",
@@ -821,7 +814,8 @@ const uiText = {
     tlgToggleGurBatch: "切换 GUR 通用候选云",
     tlgClearAurBatch: "清空 AUR 角候选",
     tlgClearAllLogic: "清空全部逻辑",
-    tlgCandidatesSelected: "已选择 {count} 个候选数；右键打开 TLG 菜单。",
+    tlgCandidatesSelected: "已选择 {count} 个候选数；电脑右键或手机长按可打开 TLG 菜单。",
+    tlgClearCandidateSelection: "清空候选选择",
     tlgBatchAdded: "已添加 {count} 个 {kind}。",
     tlgBatchRemoved: "已移除 {count} 个 {kind}。",
     tlgBatchToggledOn: "已加入 {count} 个候选数到 {kind}。",
@@ -1186,10 +1180,6 @@ const uiText = {
     mobileSolveNewPuzzleHint: "Choose a difficulty and generate without leaving solve mode.",
     mobileSolveNewPuzzleWarning: "Your current progress or manual marks will be cleared when a new puzzle is generated.",
     mobileSolveNewPuzzleConfirm: "Your current progress or manual marks will be cleared. Generate a new puzzle?",
-    mobileSolveNewPuzzleConfirmTitle: "Clear current progress?",
-    mobileSolveNewPuzzleConfirmDetail: "After the new puzzle is generated, the current puzzle, entries, candidates, and manual marks cannot be restored with Undo.",
-    mobileSolveNewPuzzleConfirmBack: "Go back",
-    mobileSolveNewPuzzleConfirmContinue: "Generate anyway",
     mobileSolveNewPuzzleGenerate: "Generate",
     mobileSolveNewPuzzleGenerating: "Generating…",
     mobileSolveNewPuzzleCancel: "Cancel",
@@ -1250,12 +1240,13 @@ const uiText = {
     tlgStatusOptional: "TLG Solver is optional and parked at the bottom of Controls. Existing solver behavior is unchanged unless TLG editing is enabled.",
     tlgEditingEnabled: "TLG editing enabled",
     tlgStateTitle: "Current TLG State",
-    tlgSolutionTitle: "Truths/Links 结果",
+    tlgSolutionTitle: "Truths/Links Result",
     tlgNoInput: "No TLG input yet.",
     tlgDebugImport: "Debug / Import",
     tlgDebugPlaceholder: "Debug import only. Board input is the primary TLG workflow.",
     tlgTruths: "Truths",
     tlgLinks: "Links",
+    tlgUserLinks: "User Links",
     tlgVirtualSet: "Virtual Set",
     tlgAurCorners: "AUR Corners",
     tlgDaurCandidates: "DAUR Candidate Pool",
@@ -1296,6 +1287,8 @@ const uiText = {
     tlgCandidateGridImportedTraining: "TLG training grid imported: {candidates} candidates. Training mode allows missing initial candidates and checks only the current deadly completion.",
     tlgSummaryTruths: "Truths={count}",
     tlgSummaryLinks: "Links={count}",
+    tlgSummaryUserLinks: "User Links={count}",
+    tlgSummaryResultLinks: "Result Links={count}",
     tlgSummaryVirtual: "Virtual={count}",
     tlgSummaryAurs: "AURs={count}",
     tlgSummaryAurCorners: "AUR Corners={count}",
@@ -1350,7 +1343,8 @@ const uiText = {
     tlgToggleGurBatch: "Toggle GUR Candidate Cloud",
     tlgClearAurBatch: "Clear AUR Corners",
     tlgClearAllLogic: "Clear All Logic",
-    tlgCandidatesSelected: "{count} candidates selected; right-click to open the TLG menu.",
+    tlgCandidatesSelected: "{count} candidates selected; right-click on desktop or long-press on touch to open the TLG menu.",
+    tlgClearCandidateSelection: "Clear Candidate Selection",
     tlgBatchAdded: "Added {count} {kind} descriptors.",
     tlgBatchRemoved: "Removed {count} {kind} descriptors.",
     tlgBatchToggledOn: "Added {count} candidates to {kind}.",
@@ -2205,7 +2199,7 @@ function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
     });
     installManualMarkProtectedTouch(
       candidate,
-      () => manualMarksActive() && manualMarkTouchEraseCandidateMode() && Boolean(candidate.textContent.trim()),
+      () => !tlgSolverEditingActive() && manualMarksActive() && manualMarkTouchEraseCandidateMode() && Boolean(candidate.textContent.trim()),
       () => {
         selectedIndex = cellIndex;
         renderBoardSnapshot(currentSnapshot, currentHint);
@@ -2219,6 +2213,7 @@ function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
       },
       () => `candidate:${cellIndex}:${Number(candidate.dataset.digit || 0)}`
     );
+    installTlgCandidateProtectedTouch(candidate, cellIndex);
   });
 }
 
@@ -11436,7 +11431,13 @@ const tlgSolverState = {
   selectedCandidates: new Set(),
   busyTask: "",
   truths: [],
+  // User-authored Links are persistent TLG input.  They must never be replaced
+  // merely because Find Eliminations derived an automatic Link set.
   links: [],
+  // The last successful solver structure is kept separately for result
+  // highlighting and follow-up structure-mutation actions.
+  resultLinks: [],
+  resultLinksAvailable: false,
   virtualCandidates: new Set(),
   aurGroups: [new Set(), new Set()],
   dynamicAurCandidates: new Set(),
@@ -11588,6 +11589,8 @@ function setTlgSolverStatus(text, tone = "") {
 function clearTlgSolverComputedResult() {
   tlgSolverState.eliminations = [];
   tlgSolverState.assignments = [];
+  tlgSolverState.resultLinks = [];
+  tlgSolverState.resultLinksAvailable = false;
   tlgSolverState.lastResponse = null;
   tlgSolverState.lastStatusResponse = null;
   if (tlgSolverSolutionPanel) tlgSolverSolutionPanel.hidden = true;
@@ -11602,7 +11605,8 @@ function clearTlgSolverComputedResult() {
 }
 
 function announceTlgSolver(text, tone = "ok") {
-  // Any edit invalidates the previously computed Links/eliminations.
+  // Any input edit invalidates the result-only Links/eliminations while
+  // preserving the user's own Links for the next request.
   clearTlgSolverComputedResult();
   tlgSolverState.lastMessage = text;
   tlgSolverState.lastTone = tone;
@@ -11622,6 +11626,20 @@ function tlgSolverPrettyValue(value) {
     .replace(/^box-link:/, "")
     .replace(/^cell-link:/, "")
     .replace(/^link:/, "");
+}
+
+function tlgSolverEffectiveLinks() {
+  return tlgSolverState.resultLinksAvailable
+    ? tlgSolverState.resultLinks
+    : tlgSolverState.links;
+}
+
+function tlgSolverRequestLinks(action) {
+  // A fresh Find must inspect only user-authored Links.  An empty user list is
+  // the backend signal to derive automatic Links again.  Follow-up mutation
+  // actions operate on the last successful result structure instead.
+  if (action === "findAllEliminations") return tlgSolverState.links;
+  return tlgSolverEffectiveLinks();
 }
 
 function tlgSolverCandidateKeyToNrc(key) {
@@ -11719,8 +11737,8 @@ function formatTlgAssignment(candidate) {
 }
 
 function buildTlgSolutionText(response) {
-  const truthItems = response?.truthsCanonical || tlgSolverState.truths;
-  const linkItems = response?.linksCanonical || tlgSolverState.links;
+  const truthItems = response?.truthsCanonical || response?.truthsState || tlgSolverState.truths;
+  const linkItems = response?.linksCanonical || response?.linksState || tlgSolverEffectiveLinks();
   const truths = groupTlgDescriptors(truthItems, true);
   const links = groupTlgDescriptors(linkItems, false);
   const activeAurGroups = tlgSolverState.aurGroups.filter((group) => group.size > 0);
@@ -11774,7 +11792,7 @@ function renderTlgSolverStateList() {
   if (!tlgSolverStateList) return;
   const parts = [];
   parts.push(renderTlgSolverChipList(ui("tlgTruths"), tlgSolverState.truths, "truths", tlgSolverPrettyValue));
-  parts.push(renderTlgSolverChipList(ui("tlgLinks"), tlgSolverState.links, "links", tlgSolverPrettyValue));
+  parts.push(renderTlgSolverChipList(ui("tlgUserLinks"), tlgSolverState.links, "links", tlgSolverPrettyValue));
   parts.push(renderTlgSolverChipList(ui("tlgVirtualSet"), [...tlgSolverState.virtualCandidates], "virtual", tlgSolverCandidateKeyToNrc));
   parts.push(renderTlgSolverChipList(`${ui("tlgAurCorners")} 1`, [...tlgSolverState.aurGroups[0]], "aur0", tlgSolverCandidateKeyToNrc));
   parts.push(renderTlgSolverChipList(`${ui("tlgAurCorners")} 2`, [...tlgSolverState.aurGroups[1]], "aur1", tlgSolverCandidateKeyToNrc));
@@ -11796,7 +11814,7 @@ function removeTlgSolverStateItem(category, value) {
   const candidateCategory = category === "virtual" || category === "aur0" || category === "aur1" || category === "daur" || category === "gur";
   const categoryLabels = {
     truths: ui("tlgTruths"),
-    links: ui("tlgLinks"),
+    links: ui("tlgUserLinks"),
     virtual: ui("tlgVirtualSet"),
     aur0: ui("tlgAurGroup1"),
     aur1: ui("tlgAurGroup2"),
@@ -11829,7 +11847,10 @@ function summarizeTlgSolverState(prefix = "") {
   const parts = [];
   if (prefix) parts.push(prefix);
   parts.push(uif("tlgSummaryTruths", { count: tlgSolverState.truths.length }));
-  parts.push(uif("tlgSummaryLinks", { count: tlgSolverState.links.length }));
+  parts.push(uif("tlgSummaryUserLinks", { count: tlgSolverState.links.length }));
+  if (tlgSolverState.resultLinksAvailable) {
+    parts.push(uif("tlgSummaryResultLinks", { count: tlgSolverState.resultLinks.length }));
+  }
   parts.push(uif("tlgSummaryVirtual", { count: tlgSolverState.virtualCandidates.size }));
   const activeAurGroups = tlgSolverState.aurGroups.filter((group) => group.size > 0);
   const aurCorners = activeAurGroups.reduce((sum, group) => sum + group.size, 0);
@@ -12090,8 +12111,9 @@ function tlgApplyHouseMembershipOverlay(candidate, truthTypes, linkTypes) {
 function applyTlgSolverMarksToCellElement(cellNode, cellIndex) {
   if (!tlgSolverEditingActive()) return;
   if (!tlgSolverCellAcceptsInput(cellIndex)) return;
+  const effectiveLinks = tlgSolverEffectiveLinks();
   const cellHasTruth = tlgCellHasDescriptor(tlgSolverState.truths, cellIndex, "truth");
-  const cellHasLink = tlgCellHasDescriptor(tlgSolverState.links, cellIndex, "link");
+  const cellHasLink = tlgCellHasDescriptor(effectiveLinks, cellIndex, "link");
   if (cellHasLink) {
     // Cell Links retain their original cell-level meaning: tint the whole cell.
     // V574's candidate-level Link rendering applies only to row/column/box Links.
@@ -12120,7 +12142,7 @@ function applyTlgSolverMarksToCellElement(cellNode, cellIndex) {
     if (isElimination) candidate.classList.add("tlg-elimination");
 
     const truthTypes = tlgCandidateHouseTypes(tlgSolverState.truths, cellIndex, digit, "truth");
-    let linkTypes = tlgCandidateHouseTypes(tlgSolverState.links, cellIndex, digit, "link");
+    let linkTypes = tlgCandidateHouseTypes(effectiveLinks, cellIndex, digit, "link");
 
     // Row/column/box Links are candidate-level memberships. Show them
     // only where that candidate is Truth-covered or is a final elimination.
@@ -12132,6 +12154,126 @@ function applyTlgSolverMarksToCellElement(cellNode, cellIndex) {
     const ep = tlgSolverState.selectedEndpoint;
     if (ep && ep.cellIndex === cellIndex && ep.digit === digit) candidate.classList.add("tlg-selected-endpoint");
   });
+}
+
+let tlgTouchSuppressClickUntil = 0;
+let tlgTouchSuppressCandidateKey = "";
+
+function installTlgCandidateProtectedTouch(candidate, cellIndex) {
+  if (!candidate) return;
+  let timer = 0;
+  let touchId = null;
+  let startX = 0;
+  let startY = 0;
+  let lastX = 0;
+  let lastY = 0;
+  let longPressFired = false;
+  const suppressionKey = () => `tlg:${cellIndex}:${Number(candidate.dataset.digit || 0)}`;
+  const enabled = () => {
+    const digit = Number(candidate.dataset.digit || 0);
+    return tlgSolverEditingActive() && !tlgSolverState.busyTask &&
+      tlgSolverCellAcceptsInput(cellIndex) && digit > 0 && Boolean(candidate.textContent.trim());
+  };
+  const clearTimer = () => {
+    if (timer) window.clearTimeout(timer);
+    timer = 0;
+  };
+  const reset = () => {
+    clearTimer();
+    touchId = null;
+    longPressFired = false;
+  };
+  const findTouch = (list) => {
+    if (touchId == null) return null;
+    return Array.from(list || []).find((touch) => touch.identifier === touchId) || null;
+  };
+  const suppressFollowup = (event) => {
+    if (Date.now() > tlgTouchSuppressClickUntil) return;
+    if (tlgTouchSuppressCandidateKey !== suppressionKey()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.type === "click") {
+      tlgTouchSuppressClickUntil = 0;
+      tlgTouchSuppressCandidateKey = "";
+    }
+  };
+  const armSuppression = () => {
+    tlgTouchSuppressClickUntil = Date.now() + 1100;
+    tlgTouchSuppressCandidateKey = suppressionKey();
+  };
+  const syntheticEvent = (additive = false) => ({
+    preventDefault() {},
+    stopPropagation() {},
+    clientX: lastX,
+    clientY: lastY,
+    ctrlKey: additive,
+    metaKey: false,
+    pointerType: "touch",
+    tlgTouch: true,
+  });
+
+  candidate.style.touchAction = "manipulation";
+  candidate.style.userSelect = "none";
+  candidate.style.webkitUserSelect = "none";
+  candidate.style.webkitTouchCallout = "none";
+  candidate.addEventListener("click", suppressFollowup, true);
+  candidate.addEventListener("contextmenu", (event) => {
+    if (Date.now() <= tlgTouchSuppressClickUntil && tlgTouchSuppressCandidateKey === suppressionKey()) {
+      suppressFollowup(event);
+    }
+  }, true);
+  candidate.addEventListener("touchstart", (event) => {
+    if (!enabled()) return;
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
+    event.preventDefault();
+    event.stopPropagation();
+    reset();
+    touchId = touch.identifier;
+    startX = lastX = touch.clientX;
+    startY = lastY = touch.clientY;
+    timer = window.setTimeout(() => {
+      timer = 0;
+      if (!enabled() || touchId == null) return;
+      longPressFired = true;
+      armSuppression();
+      try { navigator.vibrate?.(12); } catch (_) {}
+      const digit = Number(candidate.dataset.digit || 0);
+      // Touch long-press is additive so users can close the menu, long-press
+      // more candidates, then execute one batch operation.
+      openTlgSolverContextMenu(cellIndex, digit, syntheticEvent(true), candidate);
+    }, MANUAL_MARK_LONG_PRESS_MS);
+  }, { passive: false });
+  candidate.addEventListener("touchmove", (event) => {
+    const touch = findTouch(event.changedTouches) || findTouch(event.touches);
+    if (!touch) return;
+    event.preventDefault();
+    lastX = touch.clientX;
+    lastY = touch.clientY;
+    if (Math.hypot(lastX - startX, lastY - startY) > MANUAL_MARK_LONG_PRESS_MOVE_PX) reset();
+  }, { passive: false });
+  candidate.addEventListener("touchend", (event) => {
+    const touch = findTouch(event.changedTouches);
+    if (!touch) return;
+    event.preventDefault();
+    event.stopPropagation();
+    lastX = touch.clientX;
+    lastY = touch.clientY;
+    const shouldTap = Boolean(timer) && !longPressFired;
+    clearTimer();
+    armSuppression();
+    touchId = null;
+    if (shouldTap && enabled()) {
+      const digit = Number(candidate.dataset.digit || 0);
+      handleTlgSolverCandidateClick(cellIndex, digit, syntheticEvent(false), candidate);
+    }
+    longPressFired = false;
+  }, { passive: false });
+  candidate.addEventListener("touchcancel", (event) => {
+    if (touchId == null) return;
+    event.preventDefault();
+    reset();
+  }, { passive: false });
 }
 
 let tlgContextMenuNode = null;
@@ -12273,6 +12415,8 @@ function clearTlgSolverLogicOnly(messageKey = "tlgLogicCleared") {
   tlgSolverState.selectedCandidates.clear();
   tlgSolverState.truths = [];
   tlgSolverState.links = [];
+  tlgSolverState.resultLinks = [];
+  tlgSolverState.resultLinksAvailable = false;
   tlgSolverState.virtualCandidates.clear();
   tlgSolverState.aurGroups.forEach((group) => group.clear());
   tlgSolverState.dynamicAurCandidates.clear();
@@ -12311,7 +12455,21 @@ function tlgMenuSubmenu(label, entries) {
   trigger.type = "button";
   trigger.className = "tlg-context-item tlg-context-submenu-trigger";
   trigger.setAttribute("aria-haspopup", "menu");
+  trigger.setAttribute("aria-expanded", "false");
   trigger.textContent = label;
+  trigger.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const open = !wrapper.classList.contains("tlg-context-submenu-open");
+    wrapper.parentElement?.querySelectorAll?.(".tlg-context-submenu-wrap.tlg-context-submenu-open").forEach((node) => {
+      if (node !== wrapper) {
+        node.classList.remove("tlg-context-submenu-open");
+        node.querySelector?.(".tlg-context-submenu-trigger")?.setAttribute("aria-expanded", "false");
+      }
+    });
+    wrapper.classList.toggle("tlg-context-submenu-open", open);
+    trigger.setAttribute("aria-expanded", open ? "true" : "false");
+  });
   const submenu = document.createElement("div");
   submenu.className = "tlg-context-submenu";
   submenu.setAttribute("role", "menu");
@@ -12403,6 +12561,12 @@ function openTlgSolverContextMenu(cellIndex, digit, event, candidate) {
   separator2.className = "tlg-context-separator";
   separator2.setAttribute("role", "separator");
   root.appendChild(separator2);
+  root.appendChild(tlgMenuButton(ui("tlgClearCandidateSelection"), () => {
+    tlgSolverState.selectedCandidates.clear();
+    tlgSolverState.selectedEndpoint = null;
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    updateTlgSolverUi();
+  }));
   root.appendChild(tlgMenuButton(ui("tlgClearAllLogic"), () => clearTlgSolverLogicOnly()));
 
   document.body.appendChild(root);
@@ -12675,7 +12839,7 @@ function buildTlgSolverRequestV440(action = "findAllEliminations") {
     inputMode: tlgSolverMode?.value || "truths",
     linkType: tlgSolverLinkType?.value || "auto",
     truths: tlgCanonicalDescriptorState(tlgSolverState.truths, "truths"),
-    links: tlgCanonicalDescriptorState(tlgSolverState.links, "links"),
+    links: tlgCanonicalDescriptorState(tlgSolverRequestLinks(action), "links"),
     virtualSet: { candidates: virtualCandidates },
     aurs: aurGroups,
     daurs: dynamicAurCandidates.length ? [{ candidates: dynamicAurCandidates }] : [],
@@ -12726,7 +12890,7 @@ function formatTlgResponseStatus(response) {
   const rank = response?.rank || {};
   let summary = localizeTlgBackendMessage(response?.result || response?.status || ui("tlgResponse"));
   if (response?.ok !== false && (response?.phase === "find-eliminations" || response?.phase === "find-eliminations-phase1")) {
-    const foundLinks = counts.links ?? tlgSolverState.links.length;
+    const foundLinks = counts.links ?? tlgSolverEffectiveLinks().length;
     const foundElims = counts.eliminations ?? 0;
     summary = foundLinks === 0 && foundElims === 0
       ? uif("tlgNoConsequencesSummary", { truths: counts.truths ?? tlgSolverState.truths.length })
@@ -12771,10 +12935,16 @@ function renderTlgSolverResponse(response, rawText) {
   const responseOk = response?.ok !== false;
   if (responseOk) {
     const phase = String(response?.phase || "");
-    const usedAutoLinks = response?.usedAutoLinks === true;
     if (Array.isArray(response?.truthsState)) tlgSolverState.truths = [...response.truthsState];
-    if (Array.isArray(response?.linksState) && !(phase === "find-eliminations" && usedAutoLinks)) {
-      tlgSolverState.links = [...response.linksState];
+    if (Array.isArray(response?.linksState)) {
+      tlgSolverState.resultLinks = [...response.linksState];
+      tlgSolverState.resultLinksAvailable = true;
+      // Find is observational: whether Links were automatic or explicit, it
+      // must not mutate the user's input list.  Convert/Remove are explicit
+      // structure edits, so their successful output becomes the new user state.
+      if (phase === "convert-truths-to-links" || phase === "remove-unused-links") {
+        tlgSolverState.links = [...response.linksState];
+      }
     }
     tlgSolverState.eliminations = (Array.isArray(response?.eliminations) ? response.eliminations : [])
       .map(normalizeTlgResponseCandidate)
@@ -12827,7 +12997,17 @@ async function runTlgSolverAction(action, runningMessage) {
 }
 
 async function runTlgSolverFindEliminations() {
-  return runTlgSolverAction("findAllEliminations", ui("tlgFindRunning"));
+  // The ordinary board-selection highlight is unrelated to the TLG proof
+  // overlay.  Clear it as soon as a search starts, and again after completion,
+  // so a previously active cell cannot be mistaken for Truth/Link/AUR output.
+  selectedIndex = -1;
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  try {
+    return await runTlgSolverAction("findAllEliminations", ui("tlgFindRunning"));
+  } finally {
+    selectedIndex = -1;
+    renderBoardSnapshot(currentSnapshot, currentHint);
+  }
 }
 
 async function runTlgSolverConvertTruths() {
@@ -12851,7 +13031,10 @@ function clearTlgSolverState() {
   tlgSolverState.genericAurCandidates.clear();
   tlgSolverState.eliminations = [];
   tlgSolverState.assignments = [];
+  tlgSolverState.resultLinks = [];
+  tlgSolverState.resultLinksAvailable = false;
   tlgSolverState.lastResponse = null;
+  tlgSolverState.lastStatusResponse = null;
   tlgSolverState.lastMessage = "";
   tlgSolverState.lastTone = "";
   tlgSolverState.candidateGrid = null;
@@ -14834,14 +15017,9 @@ function updateMobileSolveLanguage() {
   setTextById("mobileSolveNewPuzzleTitle", ui("mobileSolveNewPuzzleTitle"));
   setTextById("mobileSolveNewPuzzleHint", ui("mobileSolveNewPuzzleHint"));
   setTextById("mobileSolveNewPuzzleWarning", ui("mobileSolveNewPuzzleWarning"));
-  setTextById("mobileSolveNewPuzzleConfirmTitle", ui("mobileSolveNewPuzzleConfirmTitle"));
-  setTextById("mobileSolveNewPuzzleConfirmMessage", ui("mobileSolveNewPuzzleConfirm"));
-  setTextById("mobileSolveNewPuzzleConfirmDetail", ui("mobileSolveNewPuzzleConfirmDetail"));
   setTextById("mobileSolveNewPuzzleDifficultyLegend", ui("mobileSolveNewPuzzleDifficulty"));
   setTextById("btnMobileSolveNewPuzzleClose", ui("close"));
   setTextById("btnMobileSolveNewPuzzleCancel", ui("mobileSolveNewPuzzleCancel"));
-  setTextById("btnMobileSolveNewPuzzleConfirmBack", ui("mobileSolveNewPuzzleConfirmBack"));
-  setTextById("btnMobileSolveNewPuzzleConfirmContinue", ui("mobileSolveNewPuzzleConfirmContinue"));
   if (!btnMobileSolveNewPuzzleGenerate?.disabled) setTextById("btnMobileSolveNewPuzzleGenerate", ui("mobileSolveNewPuzzleGenerate"));
   const mobileDifficultyKeys = [
     "mobileDifficultyRandom", "mobileDifficultyEasy", "mobileDifficultyMedium", "mobileDifficultyHard",
@@ -14901,33 +15079,13 @@ function syncMobileNewPuzzleDifficultyChoice(difficulty = difficultySelect?.valu
   return normalized;
 }
 
-function setMobileSolveNewPuzzleConfirm(open, options = {}) {
-  const { difficulty = mobileSolveNewPuzzlePendingDifficulty, focus = true } = options;
-  mobileSolveNewPuzzleConfirmOpen = Boolean(open && mobileSolveNewPuzzleOpen);
-  if (mobileSolveNewPuzzleConfirmOpen) {
-    mobileSolveNewPuzzlePendingDifficulty = normalizeMobileNewPuzzleDifficulty(difficulty);
-  }
-  if (mobileSolveNewPuzzleSetup) mobileSolveNewPuzzleSetup.hidden = mobileSolveNewPuzzleConfirmOpen;
-  if (mobileSolveNewPuzzleConfirmView) mobileSolveNewPuzzleConfirmView.hidden = !mobileSolveNewPuzzleConfirmOpen;
-  mobileSolveNewPuzzlePanel?.classList.toggle("is-confirming", mobileSolveNewPuzzleConfirmOpen);
-  if (!focus || !mobileSolveNewPuzzleOpen) return;
-  window.requestAnimationFrame(() => {
-    if (mobileSolveNewPuzzleConfirmOpen) {
-      btnMobileSolveNewPuzzleConfirmContinue?.focus?.({ preventScroll: true });
-    } else {
-      btnMobileSolveNewPuzzleGenerate?.focus?.({ preventScroll: true });
-    }
-  });
-}
-
 function setMobileSolveNewPuzzlePanel(open) {
   mobileSolveNewPuzzleOpen = Boolean(open && mobileSolveActive);
-  setMobileSolveNewPuzzleConfirm(false, { focus: false });
   if (mobileSolveNewPuzzlePanel) mobileSolveNewPuzzlePanel.hidden = !mobileSolveNewPuzzleOpen;
   if (mobileSolveNewPuzzleBackdrop) mobileSolveNewPuzzleBackdrop.hidden = !mobileSolveNewPuzzleOpen;
   btnMobileSolveNewPuzzle?.setAttribute("aria-expanded", mobileSolveNewPuzzleOpen ? "true" : "false");
   if (mobileSolveNewPuzzleOpen) {
-    mobileSolveNewPuzzlePendingDifficulty = syncMobileNewPuzzleDifficultyChoice(difficultySelect?.value || loadMobileNewPuzzleDifficulty());
+    syncMobileNewPuzzleDifficultyChoice(difficultySelect?.value || loadMobileNewPuzzleDifficulty());
     if (mobileSolveNewPuzzleWarning) mobileSolveNewPuzzleWarning.hidden = !mobileSolveCurrentPuzzleHasProgress();
     window.requestAnimationFrame(() => {
       const selected = mobileSolveNewPuzzleOptions?.querySelector('input[name="mobileSolveNewPuzzleDifficulty"]:checked');
@@ -14945,21 +15103,13 @@ function openMobileSolveNewPuzzlePanel() {
   setMobileSolveNewPuzzlePanel(true);
 }
 
-async function generateMobileSolveNewPuzzle(options = {}) {
-  const { confirmed = false, difficulty: requestedDifficulty = null } = options;
+async function generateMobileSolveNewPuzzle() {
   if (!engine || btnMobileSolveNewPuzzleGenerate?.disabled) return;
   const checked = mobileSolveNewPuzzleOptions?.querySelector('input[name="mobileSolveNewPuzzleDifficulty"]:checked');
-  const difficulty = saveMobileNewPuzzleDifficulty(requestedDifficulty ?? checked?.value ?? difficultySelect?.value ?? 0);
-  syncMobileNewPuzzleDifficultyChoice(difficulty);
-  if (mobileSolveCurrentPuzzleHasProgress() && !confirmed) {
-    setMobileSolveNewPuzzleConfirm(true, { difficulty });
-    return;
-  }
+  const difficulty = saveMobileNewPuzzleDifficulty(checked?.value ?? difficultySelect?.value ?? 0);
+  if (mobileSolveCurrentPuzzleHasProgress() && !window.confirm(ui("mobileSolveNewPuzzleConfirm"))) return;
 
   btnMobileSolveNewPuzzleGenerate.disabled = true;
-  if (btnMobileSolveNewPuzzleConfirmContinue) btnMobileSolveNewPuzzleConfirmContinue.disabled = true;
-  mobileSolveNewPuzzlePanel?.setAttribute("aria-busy", "true");
-  setMobileSolveNewPuzzleConfirm(false, { focus: false });
   setTextById("btnMobileSolveNewPuzzleGenerate", ui("mobileSolveNewPuzzleGenerating"));
   try {
     setStatus(uif("generatingPuzzle", { difficulty: selectedDifficultyLabel() }));
@@ -14975,8 +15125,6 @@ async function generateMobileSolveNewPuzzle(options = {}) {
     scheduleMobileSolveLayout();
   } finally {
     btnMobileSolveNewPuzzleGenerate.disabled = false;
-    if (btnMobileSolveNewPuzzleConfirmContinue) btnMobileSolveNewPuzzleConfirmContinue.disabled = false;
-    mobileSolveNewPuzzlePanel?.removeAttribute("aria-busy");
     setTextById("btnMobileSolveNewPuzzleGenerate", ui("mobileSolveNewPuzzleGenerate"));
   }
 }
@@ -15100,13 +15248,6 @@ function installMobileSolveMode() {
   btnMobileSolveNewPuzzleClose?.addEventListener("click", () => setMobileSolveNewPuzzlePanel(false));
   btnMobileSolveNewPuzzleCancel?.addEventListener("click", () => setMobileSolveNewPuzzlePanel(false));
   btnMobileSolveNewPuzzleGenerate?.addEventListener("click", generateMobileSolveNewPuzzle);
-  btnMobileSolveNewPuzzleConfirmBack?.addEventListener("click", () => {
-    if (mobileSolveNewPuzzleWarning) mobileSolveNewPuzzleWarning.hidden = !mobileSolveCurrentPuzzleHasProgress();
-    setMobileSolveNewPuzzleConfirm(false);
-  });
-  btnMobileSolveNewPuzzleConfirmContinue?.addEventListener("click", () => {
-    generateMobileSolveNewPuzzle({ confirmed: true, difficulty: mobileSolveNewPuzzlePendingDifficulty });
-  });
   mobileSolveNewPuzzleBackdrop?.addEventListener("click", () => setMobileSolveNewPuzzlePanel(false));
   mobileSolveNewPuzzleOptions?.addEventListener("change", (event) => {
     const target = event.target;
