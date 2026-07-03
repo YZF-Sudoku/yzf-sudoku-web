@@ -4992,11 +4992,11 @@
 
           <section id="tabTechniques" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnTechniques" data-tab-panel="techniques" hidden>
             <div class="technique-toolbar">
-              <button id="btnTechAllIn" class="compact primary" type="button">All In</button>
-              <button id="btnTechHighSpeed" class="compact" type="button">High Speed</button>
-              <button id="btnTechExtremeSpeed" class="compact" type="button">Extreme Speed</button>
-              <button id="btnTechWhipRating" class="compact" type="button">Whip Rating</button>
-              <button id="btnTechBraidRating" class="compact" type="button">Braid Rating</button>
+              <button id="btnTechAllIn" class="compact primary" type="button" title="启用所有已实现的技巧。" aria-label="启用所有已实现的技巧。">全选</button>
+              <button id="btnTechHighSpeed" class="compact" type="button" title="关闭最耗时的高级技巧，在覆盖率和求解速度之间取平衡。" aria-label="关闭最耗时的高级技巧，在覆盖率和求解速度之间取平衡。">高速</button>
+              <button id="btnTechExtremeSpeed" class="compact" type="button" title="仅保留更适合快速求解的技巧，优先降低求解耗时。" aria-label="仅保留更适合快速求解的技巧，优先降低求解耗时。">极速</button>
+              <button id="btnTechWhipRating" class="compact" type="button" title="仅启用基础技巧与 Whip/gWhip，并使用评级所需的 Whip 配置。" aria-label="仅启用基础技巧与 Whip/gWhip，并使用评级所需的 Whip 配置。">whip评分</button>
+              <button id="btnTechBraidRating" class="compact" type="button" title="仅启用基础技巧与 Braid/gBraid，用于 Braid 评级。" aria-label="仅启用基础技巧与 Braid/gBraid，用于 Braid 评级。">braid评分</button>
             </div>
             <div id="techniqueList" class="technique-list"></div>
           </section>
@@ -5268,6 +5268,6 @@
       })();
     </script>
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=wasm-45c2375977db9425&ui=20260703-step-i18n-v3"></script>
+    <script type="module" src="./app.js?v=wasm-45c2375977db9425&ui=20260703-step-i18n-v4-tech-config"></script>
   </body>
 </html>

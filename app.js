@@ -1069,6 +1069,18 @@ const uiText = {
     techniqueHeader: "技巧",
     scoreHeader: "评分",
     difficultyLevel: "难度 {level}",
+    techPresetAllIn: "全选",
+    techPresetAllInTitle: "启用所有已实现的技巧。",
+    techPresetHighSpeed: "高速",
+    techPresetHighSpeedTitle: "关闭最耗时的高级技巧，在覆盖率和求解速度之间取平衡。",
+    techPresetExtremeSpeed: "极速",
+    techPresetExtremeSpeedTitle: "仅保留更适合快速求解的技巧，优先降低求解耗时。",
+    techPresetWhipRating: "whip评分",
+    techPresetWhipRatingTitle: "仅启用基础技巧与 Whip/gWhip，并使用评级所需的 Whip 配置。",
+    techPresetBraidRating: "braid评分",
+    techPresetBraidRatingTitle: "仅启用基础技巧与 Braid/gBraid，用于 Braid 评级。",
+    techOptionWithAMSLS: "包含 AMSLS",
+    techOptionWithJEPOM: "包含 JEPOM",
     manualMarksTitle: "手工标记",
     manualMarkModeLabel: "模式",
     manualMarkLineLabel: "链线",
@@ -1598,6 +1610,18 @@ const uiText = {
     techniqueHeader: "Technique",
     scoreHeader: "Score",
     difficultyLevel: "Difficulty {level}",
+    techPresetAllIn: "All In",
+    techPresetAllInTitle: "Enable every implemented technique.",
+    techPresetHighSpeed: "High Speed",
+    techPresetHighSpeedTitle: "Disable the most expensive advanced techniques to balance coverage and solving speed.",
+    techPresetExtremeSpeed: "Extreme Speed",
+    techPresetExtremeSpeedTitle: "Keep only techniques suited to fast solving and prioritize lower solve time.",
+    techPresetWhipRating: "Whip Rating",
+    techPresetWhipRatingTitle: "Enable only the basic techniques and Whip/gWhip with the Whip rating configuration.",
+    techPresetBraidRating: "Braid Rating",
+    techPresetBraidRatingTitle: "Enable only the basic techniques and Braid/gBraid for Braid rating.",
+    techOptionWithAMSLS: "with AMSLS",
+    techOptionWithJEPOM: "with JEPOM",
     manualMarksTitle: "Manual Marks",
     manualMarkModeLabel: "Mode",
     manualMarkLineLabel: "Line",
@@ -3247,6 +3271,16 @@ function applyStaticLanguage() {
   setTextById("tabBtnTechniques", ui("techniques"));
   setTextById("tabBtnPath", ui("path"));
   setTextById("tabBtnAllSteps", ui("allSteps"));
+  setButtonText(btnTechAllIn, ui("techPresetAllIn"));
+  setTitleAndAria(btnTechAllIn, ui("techPresetAllInTitle"));
+  setButtonText(btnTechHighSpeed, ui("techPresetHighSpeed"));
+  setTitleAndAria(btnTechHighSpeed, ui("techPresetHighSpeedTitle"));
+  setButtonText(btnTechExtremeSpeed, ui("techPresetExtremeSpeed"));
+  setTitleAndAria(btnTechExtremeSpeed, ui("techPresetExtremeSpeedTitle"));
+  setButtonText(btnTechWhipRating, ui("techPresetWhipRating"));
+  setTitleAndAria(btnTechWhipRating, ui("techPresetWhipRatingTitle"));
+  setButtonText(btnTechBraidRating, ui("techPresetBraidRating"));
+  setTitleAndAria(btnTechBraidRating, ui("techPresetBraidRatingTitle"));
   setTextById("manualAdvancedTitle", ui("manualAdvancedTitle"));
   setTextById("btnManualAdvancedRun", ui("runManualAdvanced"));
   setTextById("btnManualAdvancedClear", ui("clearManualAdvanced"));
@@ -10268,8 +10302,8 @@ function renderTechniques() {
       subLabel.append(subInput, subText);
       nameCell.appendChild(subLabel);
     };
-    if (item.kind === "ComplexAIC") addSubOption("withAMSLS", "with AMSLS");
-    if (item.kind === "JE") addSubOption("withJEPOM", "with JEPOM");
+    if (item.kind === "ComplexAIC") addSubOption("withAMSLS", ui("techOptionWithAMSLS"));
+    if (item.kind === "JE") addSubOption("withJEPOM", ui("techOptionWithJEPOM"));
 
     const scoreCell = document.createElement("td");
     scoreCell.className = "technique-score-cell";
@@ -15465,11 +15499,11 @@ function applyTechniquePreset(mode) {
   const nextWhipMemoryMode = mode === "whipRating" ? "large" : (whipMemoryMode === "large" ? "large" : "auto");
   applyTechniqueState(next, nextWhipMemoryMode);
   const label = {
-    allIn: "All In",
-    highSpeed: "High Speed",
-    extremeSpeed: "Extreme Speed",
-    whipRating: "Whip Rating",
-    braidRating: "Braid Rating",
+    allIn: ui("techPresetAllIn"),
+    highSpeed: ui("techPresetHighSpeed"),
+    extremeSpeed: ui("techPresetExtremeSpeed"),
+    whipRating: ui("techPresetWhipRating"),
+    braidRating: ui("techPresetBraidRating"),
   }[mode] || mode;
   setStatus(`${ui("techniquePresetApplied")}: ${label}.`);
 }
