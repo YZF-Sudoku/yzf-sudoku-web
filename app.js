@@ -1,6 +1,11 @@
-import createModule from "./sudoku_wasm.js?v=wasm-bc6a0cc50d73c7d3";
+import createModule from "./sudoku_wasm.js?v=wasm-45c2375977db9425";
+import {
+  categoryNameForLocale,
+  localizedStepDescription,
+  techniqueNameForStep,
+} from "./step-localization.js?v=20260703-step-i18n-v3";
 
-const APP_VERSION = "wasm-bc6a0cc50d73c7d3-tlg-links-v2-clear-active";
+const APP_VERSION = "wasm-45c2375977db9425";
 const MANUAL_VERSION = "20260703-manual-v2.1";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
@@ -3406,7 +3411,7 @@ function text(key) {
 }
 
 function techniqueName(step) {
-  return i18n[lang.value].technique[step.kind] || step.title || step.kind;
+  return techniqueNameForStep(step, lang.value);
 }
 
 function stepDisplayName(step) {
@@ -3419,7 +3424,7 @@ function stepDisplayName(step) {
 }
 
 function categoryName(category) {
-  return i18n[lang.value].category?.[category] || category || "Other";
+  return categoryNameForLocale(category, lang.value);
 }
 
 function paintBeforeLongTask() {
@@ -8941,7 +8946,7 @@ function fishStructureText(step) {
   return `${techniqueName(step)}: candidate ${candidate}, fish cells ${fishCells}, rows ${rows}, columns ${cols} => remove ${action}`;
 }
 
-function formatHintDesc(step) {
+function formatLegacyHintDesc(step) {
   const name = techniqueName(step);
   const action = actionText(step);
   const candidate = candidatesText(step.candidates);
@@ -8995,6 +9000,13 @@ function formatHintDesc(step) {
     return `${name}: ${candidate || step.title} ${house ? `${locale.inHouse} ${house} ` : ""}=> ${locale.remove} ${action}`;
   }
   return descriptionWithTechniqueName(step, name, locale.noAction) || `${name}: ${locale.noAction}`;
+}
+
+
+function formatHintDesc(step) {
+  // Lazy display-only localization: solving has already completed here.
+  const localized = localizedStepDescription(step, lang.value);
+  return localized || formatLegacyHintDesc(step);
 }
 
 
@@ -11129,7 +11141,14 @@ function renderStepNode(record, index) {
     children.push(renderLeaf("操作", "与当前路径步骤相同", "string"));
   }
 
-  const summaryText = isRankedChainSummaryStep(step) ? rankedChainSummaryText(step) : "";
+  // Keep Chinese path rows compact.  The localized explanation and complete
+  // language-neutral chain notation live in the expandable Hint.Desc leaf.
+  // English retains the legacy reference-style row summary.
+  const summaryText = isRankedChainSummaryStep(step)
+    ? (lang.value === "zh"
+      ? (actionText(step) ? `${stepDisplayName(step)}: => ${actionText(step)}` : stepDisplayName(step))
+      : rankedChainSummaryText(step))
+    : "";
   const label = `#${record.stepIndex || index + 1} ${summaryText || stepDisplayName(step)}`;
   const detailParts = [];
   if (!summaryText && step.house) detailParts.push(`house=${step.house}`);
@@ -11178,7 +11197,12 @@ function renderStepCollectionTreeView(data, options = {}) {
     detailParts.push(`YZFRate=${data.yzfRate ?? 0}`);
   }
   const rating = data.rating || summarizePathRating(data.path || []);
-  const hardest = rating?.hardestTitle || (rating?.hardestKind ? `${rating.hardestKind}${Number(rating.hardestRank || 0) > 0 ? `[${rating.hardestRank}]` : ""}` : "");
+  const hardestBase = rating?.hardestKind
+    ? techniqueName({ kind: rating.hardestKind, title: rating.hardestTitle || rating.hardestKind })
+    : String(rating?.hardestTitle || "");
+  const hardest = hardestBase
+    ? `${hardestBase}${Number(rating?.hardestRank || 0) > 0 ? `[${rating.hardestRank}]` : ""}`
+    : "";
   if (hardest) {
     detailParts.push(`Hardest=${hardest}`);
   }

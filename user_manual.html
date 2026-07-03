@@ -331,6 +331,10 @@
     .demo-candidate.gur { outline: 5px double #7c2d12; outline-offset: -5px; background: rgba(254,215,170,.72); }
     .demo-candidate.endpoint { box-shadow: inset 0 0 0 3px #0ea5e9; }
     .demo-candidate.multi { background: rgba(254,226,226,.78); }
+    .demo-candidate.chain-pending { background: #ffd64a; color: #8a2600; outline: 3px solid rgba(220,38,38,.78); outline-offset: -4px; }
+    .demo-candidate.chain-on { background: #30d45f; color: #053b18; }
+    .demo-candidate.chain-off { background: #7fc7ff; color: #043c6f; }
+    .demo-chain-delete-x { stroke: #b42318; stroke-width: 5; stroke-linecap: round; }
     .demo-candidate.pre-elim,
     .demo-candidate.formal-elim,
     .demo-candidate.both-elim,
@@ -477,7 +481,7 @@
 <h1>YZF Sudoku 使用手册 / User Manual</h1>
 <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
 <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-<div class="meta">Version: Manual v2.2 · Updated: 2026-07-03</div>
+<div class="meta">Version: Manual v2.3 · Updated: 2026-07-03</div>
 </div>
 <div aria-label="Manual language view / 手册语言视图" class="manual-language-toolbar" role="group">
 <button aria-pressed="true" data-manual-lang-button="bilingual" type="button">双语 / Bilingual</button>
@@ -979,7 +983,7 @@
 <tr><td>候选画圈</td><td>突出关键候选、guardian、链端点或共同结论。</td></tr>
 <tr><td>预备删数</td><td>只画待验证的删除符号，不改变候选，适合试推。</td></tr>
 <tr><td>正式删数</td><td>加入待应用集合；点击“应用全部删数”后才真正删除。</td></tr>
-<tr><td>手动画链</td><td>依次选择两个候选，绘制强链、弱链、构造强链或构造弱链。</td></tr>
+<tr><td>手动画链</td><td>依次选择两个仍存在的候选作为起点和终点。可新建、改型、反向或删除指定旧边；强/弱与构造链均由“链线”下拉框决定。</td></tr>
 <tr><td>区块标记</td><td>连续选择多个候选，形成圆形、胶囊或凸包区域。</td></tr>
 </tbody>
 </table>
@@ -988,33 +992,67 @@
 <li>选择颜色后，“添加”写入当前模式标记，“删除”移除当前模式对应标记，不会误删其它类型。</li>
 <li>颜色选择器可添加自定义色；自定义色保存在当前浏览器。</li>
 <li>同一候选可叠加不同类型的标记；看不清时应减少层数，而不是误以为后一次一定覆盖前一次。</li>
-<li>画链模式中，同一对端点再次画同类型边会删边；改画另一类型会原位改型。“删除/次要动作”用于弱链或构造弱链。</li>
+<li>画链模式中的“添加/删除”并不是普通标记的添加/擦除语义：主动作按“链线”下拉框绘制；次要动作是弱链快捷方式。删除指定旧边应使用下面的“重复同类型边”流程。</li>
 </ul>
+<h3>手动画链：新建、改型、反向与删除指定旧边</h3>
+<ol>
+<li><strong>新建边：</strong>选择“手动画链”和目标链线类型，依次选择起点候选、终点候选。黄色脉冲候选表示正在等待第二端点。</li>
+<li><strong>删除任意一条旧边：</strong>先把“链线”切回这条边<strong>当前实际类型</strong>，再依次点它的两个端点。端点顺序可以相反；同端点、同类型会切换为删除。</li>
+<li><strong>改边类型：</strong>对同一对端点选择另一种类型再画一次。程序会原位替换类型，而不是再叠一条边。</li>
+<li><strong>改变箭头方向：</strong>同一边改型或重画时，最后一次选择的“起点 → 终点”成为显示方向；判断是不是同一条边时不区分方向。</li>
+<li><strong>撤销最后一边：</strong>“撤销线”只弹出链线列表中的最后一条边，不能指定更早的边。删除较早的边应使用第 2 步。</li>
+<li><strong>取消误选起点：</strong>第二端点尚未选择时点“取消起点”。切换标记模式也会清掉未完成起点。</li>
+</ol>
+<div class="warn"><strong>最容易误操作的地方：</strong>若重画旧边时选错类型，结果是“改型”而不是删除；若只点“撤销线”，删除的是最后一条边而不一定是你正在看的那条。画链模式下界面中的次要/删除动作也不是任意边橡皮擦。</div>
+<h4>电脑删除旧边示例</h4>
+<p>假设旧边是 <code>2r1c1 → 7r4c5</code> 的“构造弱链”：选择“构造弱链”，左键 <code>2r1c1</code>，再左键 <code>7r4c5</code>；也可以反过来点。第二次完成后该边删除。</p>
+<h4>手机删除旧边示例</h4>
+<p>选择“手动画链”和旧边类型；轻触起点所在格，再轻触数字盘中的起点数字；随后轻触终点所在格，再轻触终点数字。手机画链不使用候选长按删除，长按删除只适用于候选颜色、圈、删数和区块节点。</p>
 <h3>电脑操作</h3>
 <ul>
 <li><strong>整格上色：</strong>左键格子添加；切换到“删除”后再点格子移除。</li>
 <li><strong>候选类模式：</strong>左键候选添加，右键候选删除当前模式标记。</li>
 <li><strong>替代输入：</strong>先点格子，再点大数字盘，也能定位候选，适合缩放后候选较小的情况。</li>
-<li><strong>区块：</strong>右键某个节点只移除该节点；区块没有节点时自动删除。</li>
+<li><strong>画链：</strong>左键选择两个端点。要删除较早的指定边，先选回该边当前类型，再左键重复这两个端点；右键不是链线橡皮擦。</li>
+<li><strong>区块：</strong>右键某个候选会把该节点从草稿以及所有包含它的已完成区块中移除；区块没有节点时自动删除。</li>
 </ul>
 <h3>手机/触屏操作</h3>
 <ul>
 <li><strong>整格上色：</strong>轻触格子添加，长按格子约 0.6 秒删除。</li>
 <li><strong>候选上色、画圈、预备删数、正式删数、区块：</strong>先点格子，再轻触大数字键添加；长按同一数字键约 0.5–0.6 秒删除。也可直接长按盘面小候选删除。</li>
-<li><strong>不方便长按：</strong>先点“删除”，再轻触格子或大数字键，效果相同。</li>
+<li><strong>不方便长按：</strong>先点“删除”，再轻触格子或大数字键，效果相同；但画链是例外，删除指定边要重复选择同端点和同类型。</li>
+<li><strong>手机画链：</strong>依次使用“点格子 → 点大数字键”指定起点候选和终点候选。要删除旧边，完整重复同类型、同端点的四步输入。</li>
 <li>候选类标记会自动显示候选。长按删除只删手工标记，不会直接删真实候选。</li>
 <li>做题模式中点“标记”打开面板；竖屏空间足够时内嵌在盘面下方，横屏或高度不足时进入抽屉。</li>
 </ul>
+<h3>操作速查表</h3>
+<table>
+<thead><tr><th>模式</th><th>电脑添加</th><th>电脑删除</th><th>手机添加</th><th>手机删除</th></tr></thead>
+<tbody>
+<tr><td>整格上色</td><td>左键格子</td><td>右键格子，或切“删除”后左键</td><td>轻触格子</td><td>长按格子，或切“删除”后轻触</td></tr>
+<tr><td>候选上色/圈/两种删数</td><td>左键小候选，或选格后点数字盘</td><td>右键小候选，或切“删除”后点数字盘</td><td>选格后轻触数字盘</td><td>长按小候选/数字盘，或切“删除”后轻触</td></tr>
+<tr><td>手动画链</td><td>依次左键两个候选</td><td>选回旧边当前类型，再重复两个端点</td><td>起点格+数字，终点格+数字</td><td>重复同类型、同端点；不使用长按</td></tr>
+<tr><td>区块</td><td>左键加节点</td><td>右键节点</td><td>选格后轻触数字盘</td><td>长按候选/数字盘，或切“删除”</td></tr>
+</tbody>
+</table>
+<div class="note">候选类标记只能作用于当前真实存在的候选。一个候选已被真实删除或格子已经出数后，不能再给它新增圈、颜色、链端点或区块节点。</div>
 <h3>链与区块工具</h3>
 <ul>
-<li><strong>撤销线：</strong>删除最后一条手动画链。</li>
-<li><strong>取消起点：</strong>取消尚未完成的链起点，避免下一次点击接到错误端点。</li>
+<li><strong>撤销线：</strong>只删除链线列表中的最后一条边。它不是“点哪条删哪条”；指定旧边请重复同类型端点。</li>
+<li><strong>取消起点：</strong>取消黄色脉冲显示的未完成链起点，避免下一次候选被误接为终点。</li>
 <li><strong>完成区块：</strong>把当前候选节点集合固定成区块。</li>
 <li><strong>撤销区块：</strong>有草稿时先撤销最后一个节点；没有草稿时撤销最后一个已完成区块。</li>
 <li><strong>清空标记：</strong>清除全部颜色、圈、删数、线和区块，不改变题目本身。</li>
 </ul>
+<h3>区块编辑的边界行为</h3>
+<ul>
+<li>第一个节点确定当前草稿区块的颜色；草稿未完成时再换颜色，不会重染已经开始的草稿。先完成区块，再用新颜色开始下一个。</li>
+<li>1 个节点显示圆形，2 个节点显示胶囊，3 个及以上节点按凸包包围。</li>
+<li>删除某候选节点时，会同时从当前草稿和所有包含该节点的已完成区块中移除；因此重叠区块也会一起变化。</li>
+</ul>
 <h3>应用删数与截图</h3>
-<p>“应用全部删数”只处理“正式删数”，不处理“预备删数”。勾选“清除简单步骤”后，还会连续应用 Full House、Hidden/Naked Single、Locked Candidates、Pair、Triple 和 Quad，直到遇到更高级步骤。</p>
+<p>“应用全部删数”只处理“正式删数”，不处理“预备删数”。只会删除执行时仍真实存在的候选；已经出数或已经不存在的旧标记会跳过。成功应用的正式删数标记会移出待应用集合，预备删数仍保留。</p>
+<p>勾选“清除简单步骤”后，即使当前没有正式删数，也会尝试连续应用 Full House、Hidden/Naked Single、Locked Candidates、Pair、Triple 和 Quad，直到遇到更高级步骤或无步骤。</p>
 <p>“截图”按屏幕当前显示生成 PNG，包含全部手工标记。电脑优先复制到图片剪贴板；手机优先系统分享；能力不可用时回退下载。</p>
 <h3>与 TLG 的关系</h3>
 <p>TLG 编辑和手工标记都需要接管候选触摸，因此不能同时操作。开启 TLG 时，普通技巧高亮、链路和手工标记只暂时隐藏；关闭 TLG 后恢复。要继续画普通标记，先关闭“启用 TLG 编辑”。</p>
@@ -1041,7 +1079,7 @@
 <tr><td>Circle Candidates</td><td>Emphasizes key candidates, guardians, endpoints, or common conclusions.</td></tr>
 <tr><td>Provisional Eliminations</td><td>Visual test deletions only; candidates remain live.</td></tr>
 <tr><td>Eliminations</td><td>Adds to the pending set; Apply All Eliminations performs the actual deletion.</td></tr>
-<tr><td>Draw Chain</td><td>Selects two candidates for strong, weak, construction-strong, or construction-weak edges.</td></tr>
+<tr><td>Draw Chain</td><td>Selects two live candidates as start and end. An edge can be created, retyped, reversed, or removed; the Line selector controls strong/weak and construction variants.</td></tr>
 <tr><td>Block Mark</td><td>Collects candidates into a circle, capsule, or convex-hull region.</td></tr>
 </tbody>
 </table>
@@ -1050,33 +1088,67 @@
 <li>Add writes the current mark; Erase removes only the current mark type.</li>
 <li>Custom colors are stored in the current browser.</li>
 <li>Different mark types can coexist on one candidate. Reduce layers when the display becomes ambiguous.</li>
-<li>In chain mode, drawing the same edge type again removes it; another edge type updates it in place. The secondary/Erase action selects weak or construction-weak drawing.</li>
+<li>Chain mode does not use Add/Erase like ordinary marks: the primary action draws the selected Line type, while the secondary action is a weak-link shortcut. Remove a specific old edge with the same-type redraw workflow below.</li>
 </ul>
+<h3>Manual Chains: Create, Retype, Reverse, and Remove a Specific Edge</h3>
+<ol>
+<li><strong>Create:</strong> choose Draw Chain and the desired Line type, then select the start and end candidates. A pulsing yellow candidate means the second endpoint is pending.</li>
+<li><strong>Remove any old edge:</strong> set Line to that edge's <strong>current type</strong>, then select its two endpoints again. Endpoint order may be reversed; same endpoints plus same type toggles the edge off.</li>
+<li><strong>Retype:</strong> redraw the same endpoint pair with a different type. The existing edge is replaced in place rather than duplicated.</li>
+<li><strong>Reverse the arrow:</strong> the most recent start-to-end order becomes the displayed direction. Edge identity itself is undirected.</li>
+<li><strong>Undo the latest edge:</strong> Undo Line removes only the last edge in the chain list. Use step 2 for an earlier edge.</li>
+<li><strong>Cancel a mistaken start:</strong> press Cancel Start before choosing endpoint two. Changing mark mode also clears a pending start.</li>
+</ol>
+<div class="warn"><strong>Common trap:</strong> redrawing with the wrong type retypes the edge instead of deleting it. Undo Line removes the latest edge, not necessarily the one currently being inspected. The secondary/Erase action in chain mode is not an arbitrary-edge eraser.</div>
+<h4>Desktop example</h4>
+<p>To remove a Construction Weak edge <code>2r1c1 → 7r4c5</code>, select Construction Weak, left-click <code>2r1c1</code>, then left-click <code>7r4c5</code>. Reversed endpoint order also works.</p>
+<h4>Mobile example</h4>
+<p>Select Draw Chain and the old edge type; tap the start cell and its digit on the large pad, then the end cell and its digit. Candidate long-press erase is not used for chains; it applies only to candidate colors, circles, eliminations, and block nodes.</p>
 <h3>Desktop</h3>
 <ul>
 <li><strong>Color Cells:</strong> left-click to add; choose Erase and click to remove.</li>
 <li><strong>Candidate modes:</strong> left-click adds; right-click erases the current mark type.</li>
 <li><strong>Alternative:</strong> select a cell, then use the large digit pad when tiny candidates are hard to hit.</li>
-<li><strong>Blocks:</strong> right-click removes one node; an empty block is discarded.</li>
+<li><strong>Chains:</strong> left-click the two endpoints. To remove an earlier specific edge, select its current type and redraw the same pair; right-click is not an edge eraser.</li>
+<li><strong>Blocks:</strong> right-click removes that candidate from the draft and every completed block containing it; empty blocks are discarded.</li>
 </ul>
 <h3>Mobile / Touch</h3>
 <ul>
 <li><strong>Color Cells:</strong> tap to add; hold the cell for about 0.6 seconds to erase.</li>
 <li><strong>Candidate colors, circles, provisional/formal eliminations, and blocks:</strong> select a cell, tap a large digit to add, or hold it for about 0.5–0.6 seconds to erase. Direct long-press on a tiny candidate also works.</li>
-<li><strong>Without long-press:</strong> choose Erase first, then tap the cell or large digit.</li>
+<li><strong>Without long-press:</strong> choose Erase first, then tap the cell or large digit. Chains are the exception: remove a specific edge by repeating the same endpoints and type.</li>
+<li><strong>Mobile chains:</strong> use “tap cell → tap large digit” for the start candidate and again for the end candidate. Removing an old edge repeats the full same-type, same-endpoint sequence.</li>
 <li>Candidate modes automatically reveal candidates. Long-press erases only the manual mark, not the live candidate.</li>
 <li>In Solve Mode, press Marks. It appears inline when portrait space allows, otherwise in the drawer.</li>
 </ul>
+<h3>Operation Matrix</h3>
+<table>
+<thead><tr><th>Mode</th><th>Desktop add</th><th>Desktop remove</th><th>Mobile add</th><th>Mobile remove</th></tr></thead>
+<tbody>
+<tr><td>Cell color</td><td>Left-click cell</td><td>Right-click cell, or choose Erase and left-click</td><td>Tap cell</td><td>Hold cell, or choose Erase and tap</td></tr>
+<tr><td>Candidate color/circle/eliminations</td><td>Left-click a tiny candidate, or select cell and use pad</td><td>Right-click candidate, or choose Erase and use pad</td><td>Select cell and tap pad</td><td>Hold candidate/pad, or choose Erase and tap</td></tr>
+<tr><td>Manual chain</td><td>Left-click two candidates</td><td>Select the old edge's current type and repeat both endpoints</td><td>Start cell+digit, then end cell+digit</td><td>Repeat same type and endpoints; no long-press</td></tr>
+<tr><td>Block</td><td>Left-click to add nodes</td><td>Right-click a node</td><td>Select cell and tap pad</td><td>Hold candidate/pad, or choose Erase</td></tr>
+</tbody>
+</table>
+<div class="note">Candidate mark modes can target only candidates that currently exist on the live board. Once a candidate is truly removed or its cell is solved, it cannot receive a new circle, color, chain endpoint, or block node.</div>
 <h3>Chain and Block Tools</h3>
 <ul>
-<li><strong>Undo Line:</strong> removes the latest manual edge.</li>
-<li><strong>Cancel Start:</strong> cancels an unfinished chain start.</li>
+<li><strong>Undo Line:</strong> removes only the latest edge in the chain list. It is not a pick-an-edge eraser; redraw the same type and endpoints for a specific old edge.</li>
+<li><strong>Cancel Start:</strong> cancels the pulsing-yellow unfinished start so the next candidate is not attached accidentally.</li>
 <li><strong>Finish Block:</strong> commits the current candidate collection.</li>
 <li><strong>Undo Block:</strong> removes the latest draft node first, or the latest completed block when no draft exists.</li>
 <li><strong>Clear Marks:</strong> clears all manual colors, circles, eliminations, lines, and blocks without changing the puzzle.</li>
 </ul>
+<h3>Block Editing Boundaries</h3>
+<ul>
+<li>The first node locks the current draft block color. Changing color before finishing does not recolor that draft; finish it and start a new block.</li>
+<li>One node renders a circle, two nodes a capsule, and three or more nodes a convex hull.</li>
+<li>Erasing one candidate removes it from the current draft and every completed block containing it, so overlapping blocks may all change.</li>
+</ul>
 <h3>Apply and Capture</h3>
-<p>Apply All Eliminations commits Formal Eliminations only. With Clear Easy Steps enabled, it continues through Full House, Hidden/Naked Single, Locked Candidates, Pair, Triple, and Quad until a higher technique is reached.</p>
+<p>Apply All Eliminations commits Formal Eliminations only, and only candidates that still exist at execution time. Stale marks on solved or already-removed candidates are skipped. Successfully applied formal marks leave the pending set; provisional marks remain.</p>
+<p>With Clear Easy Steps enabled, easy-step cleanup is attempted even when there are no formal eliminations. It continues through Full House, Hidden/Naked Single, Locked Candidates, Pair, Triple, and Quad until a higher technique or no step is reached.</p>
 <p>Capture creates a PNG exactly as displayed. Desktop first tries the image clipboard; mobile first tries system share; unsupported cases fall back to download.</p>
 <h3>Relationship with TLG</h3>
 <p>TLG editing and manual marks both need candidate touch ownership, so they cannot be edited simultaneously. TLG temporarily hides ordinary highlights, chains, and marks; disabling TLG restores them.</p>
@@ -1095,6 +1167,8 @@
 <div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate formal-elim"><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">正式删数：红色 X</span><span class="visual-en">Formal: red X</span></strong><span class="visual-zh">加入待应用集合，可由“应用全部删数”真正删除。</span><span class="visual-en">Added to the actionable set and removed by Apply All Eliminations.</span></div></div>
 <div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate both-elim"><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">预备 + 正式叠加</span><span class="visual-en">Provisional + formal</span></strong><span class="visual-zh">一条绿斜线和一条红斜线，表示同一候选同时有两种标记。</span><span class="visual-en">One green and one red diagonal show that both marks exist.</span></div></div>
 <div class="visual-demo-card wide"><div class="visual-demo-stage"><svg aria-hidden="true" class="demo-chain-svg" viewbox="0 0 100 72"><line class="edge" x1="10" x2="90" y1="14" y2="14"></line><circle class="node" cx="10" cy="14" r="6"></circle><circle class="node" cx="90" cy="14" r="6"></circle><line class="edge weak" x1="10" x2="90" y1="36" y2="36"></line><circle class="node" cx="10" cy="36" r="6"></circle><circle class="node" cx="90" cy="36" r="6"></circle><line class="edge construct weak" x1="10" x2="90" y1="58" y2="58"></line><circle class="node construct" cx="10" cy="58" r="6"></circle><circle class="node construct" cx="90" cy="58" r="6"></circle></svg></div><div class="visual-demo-copy"><strong><span class="visual-zh">手动画链</span><span class="visual-en">Manual chains</span></strong><span class="visual-zh">红实线＝强链；红虚线＝弱链；橙色＝构造链，虚线仍表示构造弱链。</span><span class="visual-en">Red solid = strong; red dashed = weak; orange = construction, with dashed orange for construction weak.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><div style="display:flex;gap:10px;align-items:center"><div class="demo-candidate small chain-pending"><b>2</b></div><span style="font-size:22px">→</span><div class="demo-candidate small"><b>7</b></div></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">等待第二端点</span><span class="visual-en">Waiting for endpoint two</span></strong><span class="visual-zh">黄色脉冲候选是未完成起点。选错时点“取消起点”，不要继续误接。</span><span class="visual-en">The pulsing yellow candidate is an unfinished start. Use Cancel Start after a mistake.</span></div></div>
+<div class="visual-demo-card wide"><div class="visual-demo-stage"><svg aria-hidden="true" class="demo-chain-svg" viewbox="0 0 100 72"><line class="edge weak" x1="10" x2="90" y1="36" y2="36"></line><circle class="node" cx="10" cy="36" r="6"></circle><circle class="node" cx="90" cy="36" r="6"></circle><line class="demo-chain-delete-x" x1="42" x2="58" y1="26" y2="46"></line><line class="demo-chain-delete-x" x1="58" x2="42" y1="26" y2="46"></line></svg></div><div class="visual-demo-copy"><strong><span class="visual-zh">删除指定旧边：同类型重画</span><span class="visual-en">Remove a specific edge: redraw same type</span></strong><span class="visual-zh">先选回旧边当前类型，再重复两个端点；顺序可反。类型不同会改型，不会删除。</span><span class="visual-en">Select the edge's current type and repeat its endpoints in either order. A different type retypes instead of removing.</span></div></div>
 <div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-block"></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">完成区块</span><span class="visual-en">Finished block</span></strong><span class="visual-zh">区块使用半透明填充和外框；草稿区块会额外使用虚线。</span><span class="visual-en">A completed block uses translucent fill and outline; a draft additionally uses dashes.</span></div></div>
 </div>
 </div>
@@ -1665,6 +1739,11 @@
 <tr><td>OCR 盘面数字身份错误</td><td>模型把彩色出数识别成提示数，或反之。</td><td>在对照校正窗口切换“提示数/出数”，或导入后用 OCR 角色按钮继续修改。</td></tr>
 <tr><td>OCR 非唯一，无法安全使用 UR/AUR</td><td>黑色提示数尚未校正到唯一题面。</td><td>先修正提示数；唯一性未确认前不要使用 UR、AUR、DAUR、GUR 等唯一性前提。</td></tr>
 <tr><td>手工候选标记在手机上点不中</td><td>小候选触控面积较小。</td><td>先点格子，再点大数字盘；删除时长按数字键，或先切换到“删除”。</td></tr>
+<tr><td>想删除较早的手动画链，却删掉了最后一条</td><td>“撤销线”只删除链线列表中的最后一条边。</td><td>选择目标旧边当前类型，重新选择它的两个端点；同端点、同类型会删除该指定边。</td></tr>
+<tr><td>重画旧链边后没有删除，反而变成另一种线</td><td>重画时选择的链线类型与旧边当前类型不同。</td><td>先把“链线”切回旧边的精确类型，再重复端点。端点顺序不影响识别。</td></tr>
+<tr><td>画链模式下点“删除/清除”没有像橡皮擦一样删边</td><td>画链的次要动作是弱链/构造弱链快捷方式，不是任意边删除模式。</td><td>删除指定边使用“同类型重画”；删除最后一边用“撤销线”；全部删除用“清空标记”。</td></tr>
+<tr><td>手动画链突然不显示</td><td>某个端点候选已被真实删除或该格已经出数；渲染只显示两端仍存在的边。</td><td>检查真实候选盘。恢复端点候选后边可重新显示；不再需要时清空标记。</td></tr>
+<tr><td>删除一个区块节点后，另一个重叠区块也变了</td><td>节点删除会作用于草稿和所有包含该候选的已完成区块。</td><td>这是当前交互设计。需要独立保留时，避免让两个区块共享同一候选节点。</td></tr>
 <tr><td>“应用全部删数”没有处理预备删数</td><td>预备删数设计为纯视觉标记。</td><td>把确认成立的候选改为“正式删数”。</td></tr>
 <tr><td>截图没有复制到剪贴板</td><td>浏览器不支持图片剪贴板或权限被拒绝。</td><td>程序会回退下载；手机优先尝试系统分享。</td></tr>
 <tr><td>批量任务停止后才出现文件</td><td>浏览器不支持 File System Access API。</td><td>这是正常回退行为；停止后保存下载文件。</td></tr>
