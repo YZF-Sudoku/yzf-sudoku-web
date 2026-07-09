@@ -1958,6 +1958,14 @@
       stroke-width: 22;
       stroke-opacity: 0.22;
     }
+    .manual-mini-region {
+      fill: none;
+      stroke-width: 24;
+      stroke-linecap: round;
+      stroke-opacity: 0.24;
+      pointer-events: none;
+      filter: drop-shadow(0 1px 0 rgba(255,255,255,0.78));
+    }
     .manual-marks-panel {
       margin-top: 6px;
       padding: 6px;
@@ -2309,6 +2317,13 @@
     }
     .numpad .ocr-role-toggle[hidden] {
       display: none !important;
+    }
+    body.board-pointer-mouse:not(.mobile-solve-mode) #tabControls > #numpad,
+    body.board-pointer-mouse:not(.mobile-solve-mode) .manual-mark-touch-only {
+      display: none !important;
+    }
+    body.board-pointer-mouse:not(.mobile-solve-mode) .manual-mark-mode-control {
+      grid-column: 1 / -1;
     }
     .sudoku-cell.selected {
       background: #dbeafe;
@@ -5026,7 +5041,7 @@
             <div class="brand-title">YZF_Sudoku</div>
             <div id="brandSubtitle" class="brand-subtitle">移动优先逻辑训练器</div>
           </div>
-          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260709-manual-v2.3-tlg-share" target="_blank" rel="noopener">使用手册</a>
+          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260709-manual-v2.5-tlg-input-guard" target="_blank" rel="noopener">使用手册</a>
           <button id="btnStepExplain" class="step-explain-button" type="button" disabled title="当前没有可解释的步骤。" aria-label="当前没有可解释的步骤。">解释</button>
           <a id="techniquesLink" class="manual-link" href="./techniques.html" target="_blank" rel="noopener">技巧说明</a>
           <button id="btnMobileSolveMode" class="mobile-solve-entry" type="button" title="做题模式" aria-label="做题模式">做题</button>
@@ -5126,7 +5141,7 @@
               <summary><span id="manualMarksTitle">手工标记</span></summary>
               <div class="manual-marks-content">
               <div class="manual-marks-grid">
-                <label><span id="manualMarkModeLabel">模式</span><select id="manualMarkMode">
+                <label class="manual-mark-mode-control"><span id="manualMarkModeLabel">模式</span><select id="manualMarkMode">
                   <option value="off">关闭标记</option>
                   <option value="cellColor">整格上色</option>
                   <option value="candidateColor">候选上色</option>
@@ -5134,16 +5149,18 @@
                   <option value="preElim">预备删数</option>
                   <option value="elim">正式删数</option>
                   <option value="chain">手动画链</option>
+                  <option value="construction">构造链</option>
+                  <option value="miniRegion">微型区域</option>
                   <option value="block">区块标记</option>
                 </select></label>
-                <label><span id="manualMarkLineLabel">链线</span><select id="manualMarkLineType">
+                <label class="manual-mark-touch-only"><span id="manualMarkLineLabel">链线</span><select id="manualMarkLineType">
                   <option value="strong">强链（实线）</option>
                   <option value="weak">弱链（虚线）</option>
                   <option value="constructionStrong">构造强链</option>
                   <option value="constructionWeak">构造弱链</option>
                 </select></label>
               </div>
-              <div class="manual-mark-actions" role="group" aria-label="manual mark action">
+              <div class="manual-mark-actions manual-mark-touch-only" role="group" aria-label="manual mark action">
                 <button id="manualMarkPrimary" type="button" class="compact active">添加</button>
                 <button id="manualMarkSecondary" type="button" class="compact">清除</button>
               </div>
@@ -5663,6 +5680,6 @@
       })();
     </script>
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=20260709-tlg-share-v1"></script>
+    <script type="module" src="./app.js?v=20260709-fb-pointer-tlg-guard-v2"></script>
   </body>
 </html>

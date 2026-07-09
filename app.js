@@ -6,7 +6,7 @@ import {
 } from "./step-localization.js?v=20260703-step-i18n-v3";
 
 const APP_VERSION = "wasm-6aa39cc1d081d5c5";
-const MANUAL_VERSION = "20260709-manual-v2.3-tlg-share";
+const MANUAL_VERSION = "20260709-manual-v2.5-tlg-input-guard";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const OCR_ASSET_VERSION = "20260630-role-glyph-core-v8";
@@ -354,6 +354,7 @@ let currentPreviewRecord = null;
 let selectedIndex = -1;
 let selectedDigit = 1;
 let inputMode = "value";
+let boardPointerMode = window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches ? "mouse" : "touch";
 let mobileSolveActive = false;
 let mobileSolveDrawerOpen = false;
 let mobileSolveLayoutRaf = 0;
@@ -389,6 +390,26 @@ let yzfBranchContext = {
   summaryText: "",
   contextKey: "",
 };
+
+function normalizeBoardPointerMode(pointerType = "") {
+  return String(pointerType || "").toLowerCase() === "mouse" ? "mouse" : "touch";
+}
+
+function setBoardPointerMode(pointerType = "") {
+  const next = normalizeBoardPointerMode(pointerType);
+  if (boardPointerMode === next && document.body.classList.contains(`board-pointer-${next}`)) return next;
+  boardPointerMode = next;
+  document.body.classList.toggle("board-pointer-mouse", next === "mouse");
+  document.body.classList.toggle("board-pointer-touch", next !== "mouse");
+  return next;
+}
+
+function boardEventUsesMouse(event, fallbackNode = null) {
+  const pointerType = event?.pointerType || fallbackNode?.dataset?.boardPointerType || "";
+  return normalizeBoardPointerMode(pointerType || boardPointerMode) === "mouse";
+}
+
+setBoardPointerMode(boardPointerMode);
 let yzfHintBaseText = "";
 
 const APP_URL_PARAMS = new URLSearchParams(window.location.search);
@@ -1032,7 +1053,7 @@ const uiText = {
     chooseDigit: "选择数字",
     candidateMode: "候选",
     valueMode: "出数",
-    inputModeTitle: "切换出数/候选模式。先按数字，再点格子切换。",
+    inputModeTitle: "触摸/触控笔：切换出数/候选模式，先选数字再点格。鼠标直接在盘面使用左/右键。",
     currentInput: "当前",
     techniquePresetApplied: "已应用技巧预设",
     wasmLoadFailed: "wasm 加载失败",
@@ -1233,6 +1254,8 @@ const uiText = {
     markPreElim: "预备删数",
     markElim: "正式删数",
     markChain: "手动画链",
+    markConstruction: "构造链",
+    markMiniRegion: "微型区域",
     markBlock: "区块标记",
     markPrimary: "添加",
     markSecondary: "删除",
@@ -1242,6 +1265,14 @@ const uiText = {
     markWeak: "弱链（虚线）",
     markConstructionStrong: "构造强链",
     markConstructionWeak: "构造弱链",
+    markStrongAction: "强链",
+    markWeakAction: "弱链",
+    markConstructionStrongAction: "构造强链",
+    markConstructionWeakAction: "构造弱链",
+    markMiniRegionGreenAction: "绿色区域",
+    markMiniRegionBlueAction: "蓝色区域",
+    markMiniRegionGreen: "绿色",
+    markMiniRegionBlue: "蓝色",
     markApplyElims: "应用全部删数",
     markCleanEasy: "清除简单步骤",
     markCleanedEasy: "已清除 {count} 个简单步骤。",
@@ -1261,7 +1292,7 @@ const uiText = {
     markNoElimsButCleaned: "没有手工删数，已清除 {easy} 个简单步骤。",
     markEasyCleanStopped: "简单步骤清除已停止：{reason}",
     markClearAll: "清空标记",
-    markUndoLine: "撤销线",
+    markUndoLine: "撤销线/区域",
     markCancelChain: "取消起点",
     markFinishBlock: "完成区块",
     markUndoBlock: "撤销区块",
@@ -1273,17 +1304,23 @@ const uiText = {
     markChainAdded: "已添加链线：{from} -> {to}。",
     markChainUpdated: "已将链线 {from} -> {to} 改为{type}。",
     markChainRemoved: "已删除链线：{from} -> {to}。",
+    markMiniRegionStart: "微型区域起点：{target}。请选择第二个候选。",
+    markMiniRegionAdded: "已添加{type}微型区域：{from} -> {to}。",
+    markMiniRegionUpdated: "已将微型区域 {from} -> {to} 改为{type}。",
+    markMiniRegionRemoved: "已删除微型区域：{from} -> {to}。",
+    markExistingCandidateRequired: "{target} 当前不是有效候选，不能作为链、构造、微型区域或区块端点。",
+    mouseCandidateAbsent: "{target} 当前不存在；请先右键恢复该候选，再用左键出数。",
     markBlockAdded: "已加入区块：{target}。",
     markBlockRemoved: "已移除区块标记：{target}。",
     markBlockFinished: "已完成区块标记。",
     markBlockUndone: "已撤销上一个区块标记。",
     markNoBlock: "没有可完成或撤销的区块。",
     markChainCancelled: "已取消链起点。",
-    markLineUndone: "已撤销上一条链线。",
+    markLineUndone: "已撤销上一条链线或微型区域。",
     markAllCleared: "已清空手工标记。",
     markAppliedElims: "已应用 {count} 个手工删数。",
     markNoElims: "没有可应用的手工删数。",
-    markModeHint: "手机：轻触添加、长按约 0.5 秒删除；候选类先点格子，再轻触/长按大数字键。也可切换“添加/删除”。电脑左键添加、右键删除。",
+    markModeHint: "鼠标：左键/右键按 FB 规则操作；触摸或触控笔：先选格，再用大数字键和面板按钮。链、构造链与微型区域的左右键分别表示两种关系。",
     workerUnsupported: "当前浏览器不支持后台 Worker",
     trainingWorkerFailed: "训练题生成失败",
     trainingWorkerRuntimeFailed: "训练题 Worker 运行失败",
@@ -1672,7 +1709,7 @@ const uiText = {
     chooseDigit: "Choose digit",
     candidateMode: "Candidates",
     valueMode: "Values",
-    inputModeTitle: "Toggle value/candidate mode. Choose a digit first, then tap a cell.",
+    inputModeTitle: "Touch/pen: toggle Value/Candidate, choose a digit, then tap a cell. Mouse input uses direct left/right clicks on the board.",
     currentInput: "Current",
     techniquePresetApplied: "Applied technique preset",
     wasmLoadFailed: "wasm load failed",
@@ -1873,6 +1910,8 @@ const uiText = {
     markPreElim: "Pre-eliminations",
     markElim: "Eliminations",
     markChain: "Draw chain",
+    markConstruction: "Construction",
+    markMiniRegion: "Mini-Region",
     markBlock: "Block mark",
     markPrimary: "Add",
     markSecondary: "Erase",
@@ -1882,6 +1921,14 @@ const uiText = {
     markWeak: "Weak / dashed",
     markConstructionStrong: "Construction strong",
     markConstructionWeak: "Construction weak",
+    markStrongAction: "Strong",
+    markWeakAction: "Weak",
+    markConstructionStrongAction: "Construction strong",
+    markConstructionWeakAction: "Construction weak",
+    markMiniRegionGreenAction: "Green region",
+    markMiniRegionBlueAction: "Blue region",
+    markMiniRegionGreen: "green",
+    markMiniRegionBlue: "blue",
     markApplyElims: "Apply all eliminations",
     markCleanEasy: "With cleaning easy steps",
     markCleanedEasy: "Cleaned {count} easy steps.",
@@ -1901,7 +1948,7 @@ const uiText = {
     markNoElimsButCleaned: "No manual eliminations; cleaned {easy} easy steps.",
     markEasyCleanStopped: "Easy-step cleaning stopped: {reason}",
     markClearAll: "Clear marks",
-    markUndoLine: "Undo line",
+    markUndoLine: "Undo line/region",
     markCancelChain: "Cancel start",
     markFinishBlock: "Finish block",
     markUndoBlock: "Undo block",
@@ -1913,17 +1960,23 @@ const uiText = {
     markChainAdded: "Added chain line: {from} -> {to}.",
     markChainUpdated: "Changed chain line {from} -> {to} to {type}.",
     markChainRemoved: "Removed chain line: {from} -> {to}.",
+    markMiniRegionStart: "Mini-Region start: {target}. Choose the second candidate.",
+    markMiniRegionAdded: "Added a {type} Mini-Region: {from} -> {to}.",
+    markMiniRegionUpdated: "Changed Mini-Region {from} -> {to} to {type}.",
+    markMiniRegionRemoved: "Removed Mini-Region: {from} -> {to}.",
+    markExistingCandidateRequired: "{target} is not an active candidate and cannot be used as a chain, construction, Mini-Region, or block endpoint.",
+    mouseCandidateAbsent: "{target} is absent. Restore the candidate with right-click before setting it with left-click.",
     markBlockAdded: "Added to block: {target}.",
     markBlockRemoved: "Removed block mark on {target}.",
     markBlockFinished: "Finished block mark.",
     markBlockUndone: "Undid the last block mark.",
     markNoBlock: "No block mark to finish or undo.",
     markChainCancelled: "Cancelled chain start.",
-    markLineUndone: "Undid the last chain line.",
+    markLineUndone: "Undid the latest chain line or Mini-Region.",
     markAllCleared: "Cleared all manual marks.",
     markAppliedElims: "Applied {count} manual eliminations.",
     markNoElims: "No manual eliminations to apply.",
-    markModeHint: "Touch: tap to add and long-press for about 0.5 s to erase. For candidate marks, select a cell, then tap/hold the large digit key. Add/Erase buttons remain available. Desktop uses left/right click.",
+    markModeHint: "Mouse: left/right click follows the FB rules. Touch or pen: select a cell, then use the large digit keys and panel buttons. For chains, construction, and Mini-Regions, left/right represent the two relation types.",
     workerUnsupported: "This browser does not support background Workers",
     trainingWorkerFailed: "Training puzzle generation failed",
     trainingWorkerRuntimeFailed: "Training worker failed",
@@ -2006,12 +2059,14 @@ const manualMarks = {
   preEliminations: new Set(),
   eliminations: new Set(),
   chains: [],
+  miniRegions: [],
   blocks: [],
 };
 let manualBlockDraft = null;
 let manualMarkButton = "primary";
 let manualMarkColorId = "4";
 let manualChainStart = null;
+let manualMiniRegionStart = null;
 
 function manualMarkModeValue() {
   return manualMarkMode?.value || "off";
@@ -2022,7 +2077,11 @@ function manualMarksActive() {
 }
 
 function manualMarkNeedsDigit(mode = manualMarkModeValue()) {
-  return ["candidateColor", "circle", "preElim", "elim", "chain", "block"].includes(mode);
+  return ["candidateColor", "circle", "preElim", "elim", "chain", "construction", "miniRegion", "block"].includes(mode);
+}
+
+function manualMarkRequiresExistingCandidate(mode = manualMarkModeValue()) {
+  return ["chain", "construction", "miniRegion", "block"].includes(mode);
 }
 
 const MANUAL_MARK_LONG_PRESS_MS = 580;
@@ -2053,6 +2112,9 @@ function installManualMarkLongPress(target, enabled, onLongPress, suppressionKey
     typeof suppressionKey === "function" ? suppressionKey() : suppressionKey || ""
   );
   const suppressFollowup = (event) => {
+    // A hybrid tablet may receive a real mouse action immediately after a touch.
+    // Suppress only the browser-generated touch follow-up, never a genuine mouse click.
+    if (boardEventUsesMouse(event, target)) return;
     if (Date.now() > manualMarkSuppressTouchClickUntil) return;
     if (manualMarkSuppressTouchClickKey !== resolvedSuppressionKey()) return;
     event.preventDefault();
@@ -2135,6 +2197,9 @@ function installManualMarkProtectedTouch(target, enabled, onShortTouch, onLongPr
     return null;
   };
   const suppressFollowup = (event) => {
+    // A hybrid tablet may receive a real mouse action immediately after a touch.
+    // Suppress only the browser-generated touch follow-up, never a genuine mouse click.
+    if (boardEventUsesMouse(event, target)) return;
     if (Date.now() > manualMarkSuppressTouchClickUntil) return;
     if (manualMarkSuppressTouchClickKey !== resolvedSuppressionKey()) return;
     event.preventDefault();
@@ -2154,6 +2219,9 @@ function installManualMarkProtectedTouch(target, enabled, onShortTouch, onLongPr
   target.style.webkitTouchCallout = "none";
   target.addEventListener("click", suppressFollowup, true);
   target.addEventListener("contextmenu", (event) => {
+    // Keep the native context menu suppressed for touch/pen long-press only.
+    // A real mouse right-click must reach the FB-style mark handler below.
+    if (boardEventUsesMouse(event, target)) return;
     if (!enabled() && Date.now() > manualMarkSuppressTouchClickUntil) return;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -2349,7 +2417,16 @@ function updateManualMarkControls() {
   manualMarkSwatches?.querySelectorAll(".manual-mark-swatch").forEach((button) => {
     button.classList.toggle("active", String(button.dataset.colorId) === String(manualMarkColorId));
   });
-  if (manualMarkLineType) manualMarkLineType.disabled = mode !== "chain";
+  if (manualMarkLineType) manualMarkLineType.disabled = !["chain", "construction"].includes(mode);
+  const actionKeys = mode === "chain"
+    ? ["markStrongAction", "markWeakAction"]
+    : mode === "construction"
+      ? ["markConstructionStrongAction", "markConstructionWeakAction"]
+      : mode === "miniRegion"
+        ? ["markMiniRegionGreenAction", "markMiniRegionBlueAction"]
+        : ["markPrimary", "markSecondary"];
+  setTextById("manualMarkPrimary", ui(actionKeys[0]));
+  setTextById("manualMarkSecondary", ui(actionKeys[1]));
   if (manualMarkFinishBlock) manualMarkFinishBlock.disabled = mode !== "block";
   if (manualMarkUndoBlock) manualMarkUndoBlock.disabled = mode !== "block";
   if (manualMarkStatus && (!manualMarkStatus.textContent || manualMarkStatus.textContent === uiText.zh.markOffStatus || manualMarkStatus.textContent === uiText.en.markOffStatus)) {
@@ -2394,7 +2471,7 @@ function applyManualMarksToCellElement(cellNode, cellIndex) {
   const candidates = cellNode.querySelectorAll(".candidate[data-digit]");
   candidates.forEach((candidate) => {
     const digit = Number(candidate.dataset.digit || 0);
-    if (!digit || !candidate.textContent.trim()) return;
+    if (!digit) return;
     const key = manualMarkKey(cellIndex, digit);
     const candidateColor = manualMarks.candidateColors.get(key);
     if (candidateColor) {
@@ -2422,49 +2499,91 @@ function applyManualMarksToCellElement(cellNode, cellIndex) {
   applyTlgSolverMarksToCellElement(cellNode, cellIndex);
 }
 
-function manualMarkDirectCandidateClickAllowed(candidate, event) {
-  const pointerType = candidate?.dataset?.manualPointerType || event?.pointerType || "";
-  if (pointerType && pointerType !== "mouse") return false;
-  if (window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches) return true;
-  return pointerType === "mouse";
-}
-
 function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
   cellNode.querySelectorAll(".candidate[data-digit]").forEach((candidate) => {
     candidate.addEventListener("pointerdown", (event) => {
-      candidate.dataset.manualPointerType = event.pointerType || "";
+      candidate.dataset.boardPointerType = event.pointerType || "";
+      setBoardPointerMode(event.pointerType || "");
     }, { passive: true });
     candidate.addEventListener("click", (event) => {
       const digit = Number(candidate.dataset.digit || 0);
       if (handleTlgSolverCandidateClick(cellIndex, digit, event, candidate)) return;
-      if (!manualMarksActive()) return;
-      if (!digit || !candidate.textContent.trim()) return;
-      if (!manualMarkDirectCandidateClickAllowed(candidate, event)) {
-        // Touch/pen flow: do not consume the candidate tap. Let the parent cell
-        // become selected, then the large numpad chooses the target digit.
+      const mouseInput = boardEventUsesMouse(event, candidate);
+      if (manualMarksActive()) {
+        if (!mouseInput || !digit) return;
+        event.preventDefault();
+        event.stopPropagation();
+        selectedIndex = cellIndex;
+        const mode = manualMarkModeValue();
+        if (manualMarkRequiresExistingCandidate(mode) && !boardCandidateExists(cellIndex, digit)) {
+          renderBoardSnapshot(currentSnapshot, currentHint);
+          setManualMarkStatus(uif("markExistingCandidateRequired", { target: manualMarkTargetText(cellIndex, digit) }));
+          return;
+        }
+        applyManualMarkTarget(cellIndex, digit, "mousePrimary");
         return;
       }
+      if (!mouseInput || !digit || isOcrDraftSnapshot(currentSnapshot)) return;
       event.preventDefault();
       event.stopPropagation();
       selectedIndex = cellIndex;
-      applyManualMarkTarget(cellIndex, digit, "primary");
+      if (!engine || !currentSnapshot) return;
+      if (isFixedCell(cellIndex)) {
+        renderBoardSnapshot(currentSnapshot, currentHint);
+        setStatus(ui("fixedCell"));
+        return;
+      }
+      const cell = currentSnapshot.cells?.[cellIndex];
+      if (cell?.value > 0) return;
+      if (!boardCandidateExists(cellIndex, digit)) {
+        renderBoardSnapshot(currentSnapshot, currentHint);
+        setStatus(uif("mouseCandidateAbsent", { target: manualMarkTargetText(cellIndex, digit) }));
+        return;
+      }
+      selectedDigit = digit;
+      refreshAfterEdit(engine.set_value_json(cellIndex, digit));
     });
     candidate.addEventListener("contextmenu", (event) => {
       const digit = Number(candidate.dataset.digit || 0);
       if (openTlgSolverContextMenu(cellIndex, digit, event, candidate)) return;
-      if (!manualMarksActive()) return;
-      if (!digit || !candidate.textContent.trim()) return;
-      // Only desktop/fine-pointer right click maps to the secondary action.
-      // Touch devices use long-press or the explicit Add/Erase button.
-      if (!manualMarkDirectCandidateClickAllowed(candidate, event)) return;
+      const mouseInput = boardEventUsesMouse(event, candidate);
+      if (manualMarksActive()) {
+        if (!mouseInput || !digit) return;
+        event.preventDefault();
+        event.stopPropagation();
+        selectedIndex = cellIndex;
+        const mode = manualMarkModeValue();
+        if (manualMarkRequiresExistingCandidate(mode) && !boardCandidateExists(cellIndex, digit)) {
+          renderBoardSnapshot(currentSnapshot, currentHint);
+          setManualMarkStatus(uif("markExistingCandidateRequired", { target: manualMarkTargetText(cellIndex, digit) }));
+          return;
+        }
+        applyManualMarkTarget(cellIndex, digit, "mouseSecondary");
+        return;
+      }
+      if (!mouseInput || !digit || isOcrDraftSnapshot(currentSnapshot)) return;
       event.preventDefault();
       event.stopPropagation();
       selectedIndex = cellIndex;
-      applyManualMarkTarget(cellIndex, digit, "secondary");
+      if (!engine || !currentSnapshot) return;
+      if (isFixedCell(cellIndex)) {
+        setStatus(ui("fixedCandidate"));
+        return;
+      }
+      const cell = currentSnapshot.cells?.[cellIndex];
+      if (cell?.value > 0) {
+        setStatus(ui("solvedCandidate"));
+        return;
+      }
+      selectedDigit = digit;
+      refreshAfterEdit(engine.toggle_candidate_json(cellIndex, digit));
     });
     installManualMarkProtectedTouch(
       candidate,
-      () => !tlgSolverEditingActive() && manualMarksActive() && manualMarkTouchEraseCandidateMode() && Boolean(candidate.textContent.trim()),
+      () => {
+        if (tlgSolverEditingActive() || !manualMarksActive() || !manualMarkTouchEraseCandidateMode()) return false;
+        return !manualMarkRequiresExistingCandidate() || Boolean(candidate.textContent.trim());
+      },
       () => {
         selectedIndex = cellIndex;
         renderBoardSnapshot(currentSnapshot, currentHint);
@@ -2472,9 +2591,10 @@ function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
       },
       () => {
         const digit = Number(candidate.dataset.digit || 0);
-        if (!digit || !boardCandidateExists(cellIndex, digit)) return;
+        if (!digit) return;
+        if (manualMarkRequiresExistingCandidate() && !boardCandidateExists(cellIndex, digit)) return;
         selectedIndex = cellIndex;
-        applyManualMarkTarget(cellIndex, digit, "secondary");
+        applyManualMarkTarget(cellIndex, digit, "mouseSecondary");
       },
       () => `candidate:${cellIndex}:${Number(candidate.dataset.digit || 0)}`
     );
@@ -2510,11 +2630,17 @@ function normalizeManualChainType(type) {
   return "strong";
 }
 
-function manualMarkLineTypeForButton(button = "primary") {
+function manualMarkLineTypeForButton(button = "primary", mode = manualMarkModeValue(), mouseAction = false) {
+  const secondary = button === "secondary";
+  if (mouseAction) {
+    if (mode === "construction") return secondary ? "constructionWeak" : "constructionStrong";
+    return secondary ? "weak" : "strong";
+  }
   const selected = normalizeManualChainType(manualMarkLineType?.value || "strong");
-  if (button !== "secondary") return selected;
-  if (selected === "constructionStrong" || selected === "constructionWeak") return "constructionWeak";
-  return "weak";
+  if (mode === "construction") {
+    return selected === "weak" || selected === "constructionWeak" ? "constructionWeak" : "constructionStrong";
+  }
+  return selected === "weak" || selected === "constructionWeak" ? "weak" : "strong";
 }
 
 function manualChainEndpointEquals(a, b) {
@@ -2560,6 +2686,25 @@ function editManualChainEdge(from, to, type) {
     to: { ...to },
     type: normalizedType,
   };
+  return "updated";
+}
+
+function manualMiniRegionMatches(region, from, to) {
+  return manualChainEdgeMatches(region, from, to);
+}
+
+function editManualMiniRegion(from, to, type) {
+  const normalizedType = type === "blue" ? "blue" : "green";
+  const existingIndex = manualMarks.miniRegions.findIndex((region) => manualMiniRegionMatches(region, from, to));
+  if (existingIndex < 0) {
+    manualMarks.miniRegions.push({ from: { ...from }, to: { ...to }, type: normalizedType });
+    return "added";
+  }
+  if (manualMarks.miniRegions[existingIndex]?.type === normalizedType) {
+    manualMarks.miniRegions.splice(existingIndex, 1);
+    return "removed";
+  }
+  manualMarks.miniRegions[existingIndex] = { from: { ...from }, to: { ...to }, type: normalizedType };
   return "updated";
 }
 
@@ -2632,12 +2777,21 @@ function applyManualChainEndpointHighlights() {
     addManualChainEndpointClass(manualChainStart.cell, manualChainStart.digit, "manual-chain-start");
     addManualChainEndpointClass(manualChainStart.cell, manualChainStart.digit, "manual-chain-pending");
   }
+  if (manualMiniRegionStart) {
+    addManualChainEndpointClass(manualMiniRegionStart.cell, manualMiniRegionStart.digit, "manual-chain-start");
+    addManualChainEndpointClass(manualMiniRegionStart.cell, manualMiniRegionStart.digit, "manual-chain-pending");
+  }
 
   for (const edge of manualMarks.chains || []) {
     if (!edge?.from || !edge?.to) continue;
     addManualChainEndpointClass(Number(edge.from.cell), Number(edge.from.digit), "manual-chain-start");
     const targetClass = manualChainStrength(edge) === "strong" ? "manual-chain-on" : "manual-chain-off";
     addManualChainEndpointClass(Number(edge.to.cell), Number(edge.to.digit), targetClass);
+  }
+  for (const region of manualMarks.miniRegions || []) {
+    if (!region?.from || !region?.to) continue;
+    addManualChainEndpointClass(Number(region.from.cell), Number(region.from.digit), "manual-chain-start");
+    addManualChainEndpointClass(Number(region.to.cell), Number(region.to.digit), region.type === "blue" ? "manual-chain-off" : "manual-chain-on");
   }
 }
 
@@ -2735,11 +2889,29 @@ function renderManualBlockMarks(svg) {
   svg.appendChild(layer);
 }
 
+function renderManualMiniRegions(svg) {
+  if (!manualMarks.miniRegions.length) return;
+  const layer = createSvgElement("g", { "data-layer": "manual-mini-regions" });
+  for (const region of manualMarks.miniRegions) {
+    if (!boardCandidateExists(region.from?.cell, region.from?.digit) || !boardCandidateExists(region.to?.cell, region.to?.digit)) continue;
+    const start = manualMarkCandidateCenter(region.from.cell, region.from.digit);
+    const end = manualMarkCandidateCenter(region.to.cell, region.to.digit);
+    const line = manualMarkShortenedLine(start, end, 0);
+    const color = region.type === "blue" ? "#2563eb" : "#16a34a";
+    layer.appendChild(createSvgElement("path", {
+      class: `manual-mini-region ${region.type === "blue" ? "blue" : "green"}`,
+      d: `M ${line.x1.toFixed(2)} ${line.y1.toFixed(2)} L ${line.x2.toFixed(2)} ${line.y2.toFixed(2)}`,
+      stroke: color,
+    }));
+  }
+  svg.appendChild(layer);
+}
+
 function renderManualMarkOverlay() {
   clearManualMarkOverlay();
   if (tlgSolverEditingActive()) return;
   const hasBlocks = manualMarks.blocks.length > 0 || (manualBlockDraft?.nodes?.length > 0);
-  if (!boardStage || (manualMarks.chains.length === 0 && !hasBlocks)) return;
+  if (!boardStage || (manualMarks.chains.length === 0 && manualMarks.miniRegions.length === 0 && !hasBlocks)) return;
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.id = "manualMarkOverlay";
   svg.classList.add("manual-mark-overlay");
@@ -2747,6 +2919,7 @@ function renderManualMarkOverlay() {
   svg.setAttribute("aria-hidden", "true");
 
   createOverlayMarkerDefs(svg);
+  renderManualMiniRegions(svg);
   renderManualBlockMarks(svg);
   const edgeLayer = createSvgElement("g", { "data-layer": "manual-chain-edges" });
   const nodeById = new Map();
@@ -2809,9 +2982,11 @@ function clearManualMarks() {
   manualMarks.preEliminations.clear();
   manualMarks.eliminations.clear();
   manualMarks.chains.length = 0;
+  manualMarks.miniRegions.length = 0;
   manualMarks.blocks.length = 0;
   manualBlockDraft = null;
   manualChainStart = null;
+  manualMiniRegionStart = null;
   renderBoardSnapshot(currentSnapshot, currentHint);
   setManualMarkStatus(ui("markAllCleared"));
 }
@@ -2826,12 +3001,18 @@ function clearManualMarkAt(cell, digit = 0, mode = manualMarkModeValue()) {
     else if (mode === "circle") manualMarks.circles.delete(key);
     else if (mode === "preElim") manualMarks.preEliminations.delete(key);
     else if (mode === "elim") manualMarks.eliminations.delete(key);
-    else if (mode === "chain") {
+    else if (mode === "chain" || mode === "construction") {
       manualMarks.chains = manualMarks.chains.filter((edge) => !(
         (edge.from.cell === cell && edge.from.digit === digit) ||
         (edge.to.cell === cell && edge.to.digit === digit)
       ));
       if (manualChainStart?.cell === cell && manualChainStart?.digit === digit) manualChainStart = null;
+    } else if (mode === "miniRegion") {
+      manualMarks.miniRegions = manualMarks.miniRegions.filter((region) => !(
+        (region.from.cell === cell && region.from.digit === digit) ||
+        (region.to.cell === cell && region.to.digit === digit)
+      ));
+      if (manualMiniRegionStart?.cell === cell && manualMiniRegionStart?.digit === digit) manualMiniRegionStart = null;
     } else if (mode === "block") {
       removeManualBlockTarget(cell, digit);
     }
@@ -2840,19 +3021,21 @@ function clearManualMarkAt(cell, digit = 0, mode = manualMarkModeValue()) {
 
 function applyManualMarkTarget(cell, digit = 0, forcedButton = null) {
   const mode = manualMarkModeValue();
-  const button = forcedButton || manualMarkButton;
+  const rawButton = forcedButton || manualMarkButton;
+  const mouseAction = String(rawButton).startsWith("mouse");
+  const button = String(rawButton).toLowerCase().includes("secondary") ? "secondary" : "primary";
   if (mode === "off") return false;
   const color = currentManualMarkColor();
   const cellIndex = Number(cell);
   const digitValue = Number(digit || 0);
-  if (manualMarkNeedsDigit(mode) && (!digitValue || !boardCandidateExists(cellIndex, digitValue))) {
+  if (manualMarkNeedsDigit(mode) && (!digitValue || (manualMarkRequiresExistingCandidate(mode) && !boardCandidateExists(cellIndex, digitValue)))) {
     selectedIndex = cellIndex;
     renderBoardSnapshot(currentSnapshot, currentHint);
     setManualMarkStatus(uif("markCellSelected", { cell: manualMarkCellText(cellIndex) }));
     return true;
   }
 
-  if (button === "secondary" && mode !== "chain") {
+  if (button === "secondary" && !["chain", "construction", "miniRegion"].includes(mode)) {
     clearManualMarkAt(cellIndex, digitValue, mode);
     renderBoardSnapshot(currentSnapshot, currentHint);
     setManualMarkStatus(uif("markRemoved", { target: manualMarkTargetText(cellIndex, digitValue) }));
@@ -2877,7 +3060,7 @@ function applyManualMarkTarget(cell, digit = 0, forcedButton = null) {
     renderBoardSnapshot(currentSnapshot, currentHint);
     setManualMarkStatus(uif("markBlockAdded", { target: manualMarkTargetText(cellIndex, digitValue) }));
     return true;
-  } else if (mode === "chain") {
+  } else if (mode === "chain" || mode === "construction") {
     const endpoint = { cell: cellIndex, digit: digitValue };
     if (!manualChainStart) {
       manualChainStart = endpoint;
@@ -2886,7 +3069,7 @@ function applyManualMarkTarget(cell, digit = 0, forcedButton = null) {
       return true;
     }
     let chainAction = "none";
-    const requestedType = manualMarkLineTypeForButton(button);
+    const requestedType = manualMarkLineTypeForButton(button, mode, mouseAction);
     if (manualChainStart.cell !== endpoint.cell || manualChainStart.digit !== endpoint.digit) {
       chainAction = editManualChainEdge(manualChainStart, endpoint, requestedType);
     }
@@ -2904,6 +3087,32 @@ function applyManualMarkTarget(cell, digit = 0, forcedButton = null) {
       }));
     } else {
       setManualMarkStatus(uif("markChainAdded", { from: fromText, to: toText }));
+    }
+    return true;
+  } else if (mode === "miniRegion") {
+    const endpoint = { cell: cellIndex, digit: digitValue };
+    if (!manualMiniRegionStart) {
+      manualMiniRegionStart = endpoint;
+      renderBoardSnapshot(currentSnapshot, currentHint);
+      setManualMarkStatus(uif("markMiniRegionStart", { target: manualMarkTargetText(cellIndex, digitValue) }));
+      return true;
+    }
+    let action = "none";
+    const regionType = button === "secondary" ? "blue" : "green";
+    if (!manualChainEndpointEquals(manualMiniRegionStart, endpoint)) {
+      action = editManualMiniRegion(manualMiniRegionStart, endpoint, regionType);
+    }
+    const fromText = manualMarkTargetText(manualMiniRegionStart.cell, manualMiniRegionStart.digit);
+    const toText = manualMarkTargetText(endpoint.cell, endpoint.digit);
+    manualMiniRegionStart = null;
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    const typeText = ui(regionType === "blue" ? "markMiniRegionBlue" : "markMiniRegionGreen");
+    if (action === "removed") {
+      setManualMarkStatus(uif("markMiniRegionRemoved", { from: fromText, to: toText }));
+    } else if (action === "updated") {
+      setManualMarkStatus(uif("markMiniRegionUpdated", { from: fromText, to: toText, type: typeText }));
+    } else {
+      setManualMarkStatus(uif("markMiniRegionAdded", { from: fromText, to: toText, type: typeText }));
     }
     return true;
   }
@@ -3388,17 +3597,28 @@ function initManualMarksControls() {
   });
   manualMarkMode?.addEventListener("change", () => {
     manualChainStart = null;
+    manualMiniRegionStart = null;
     updateManualMarkControls();
     renderBoardSnapshot(currentSnapshot, currentHint);
     setManualMarkStatus(manualMarksActive() ? ui("markModeHint") : ui("markOffStatus"));
   });
-  manualMarkLineType?.addEventListener("change", updateManualMarkControls);
+  manualMarkLineType?.addEventListener("change", () => {
+    const weak = String(manualMarkLineType.value).toLowerCase().includes("weak");
+    manualMarkButton = weak ? "secondary" : "primary";
+    updateManualMarkControls();
+  });
   manualMarkPrimary?.addEventListener("click", () => {
     manualMarkButton = "primary";
+    const mode = manualMarkModeValue();
+    if (manualMarkLineType && mode === "chain") manualMarkLineType.value = "strong";
+    if (manualMarkLineType && mode === "construction") manualMarkLineType.value = "constructionStrong";
     updateManualMarkControls();
   });
   manualMarkSecondary?.addEventListener("click", () => {
     manualMarkButton = "secondary";
+    const mode = manualMarkModeValue();
+    if (manualMarkLineType && mode === "chain") manualMarkLineType.value = "weak";
+    if (manualMarkLineType && mode === "construction") manualMarkLineType.value = "constructionWeak";
     updateManualMarkControls();
   });
   manualMarkAddColor?.addEventListener("click", () => {
@@ -3419,12 +3639,14 @@ function initManualMarksControls() {
   manualMarkScreenshot?.addEventListener("click", shareManualBoardScreenshot);
   manualMarkClear?.addEventListener("click", clearManualMarks);
   manualMarkUndoLine?.addEventListener("click", () => {
-    manualMarks.chains.pop();
+    if (manualMarkModeValue() === "miniRegion") manualMarks.miniRegions.pop();
+    else manualMarks.chains.pop();
     renderBoardSnapshot(currentSnapshot, currentHint);
     setManualMarkStatus(ui("markLineUndone"));
   });
   manualMarkCancelChain?.addEventListener("click", () => {
     manualChainStart = null;
+    manualMiniRegionStart = null;
     renderBoardSnapshot(currentSnapshot, currentHint);
     setManualMarkStatus(ui("markChainCancelled"));
   });
@@ -3434,7 +3656,7 @@ function initManualMarksControls() {
     if (manualMarksActive()) event.preventDefault();
   });
   window.addEventListener("resize", () => {
-    if (manualMarks.chains.length > 0) window.requestAnimationFrame(renderManualMarkOverlay);
+    if (manualMarks.chains.length > 0 || manualMarks.miniRegions.length > 0) window.requestAnimationFrame(renderManualMarkOverlay);
     invalidateManualScreenshotDomCache();
   }, { passive: true });
   updateManualMarkControls();
@@ -3680,6 +3902,8 @@ function applyStaticLanguage() {
       preElim: "markPreElim",
       elim: "markElim",
       chain: "markChain",
+      construction: "markConstruction",
+      miniRegion: "markMiniRegion",
       block: "markBlock",
     };
     [...manualMarkMode.options].forEach((option) => {
@@ -3839,9 +4063,11 @@ function mobileSolveManualMarksHaveContent() {
     || manualMarks.preEliminations.size > 0
     || manualMarks.eliminations.size > 0
     || manualMarks.chains.length > 0
+    || manualMarks.miniRegions.length > 0
     || manualMarks.blocks.length > 0
     || Boolean(manualBlockDraft?.nodes?.length)
-    || Boolean(manualChainStart);
+    || Boolean(manualChainStart)
+    || Boolean(manualMiniRegionStart);
 }
 
 function mobileSolveCurrentPuzzleHasProgress() {
@@ -9986,9 +10212,13 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     node.style.gridColumn = String((index % 9) * 2 + 1);
     node.style.gridRow = String(Math.floor(index / 9) * 2 + 1);
     node.title = `r${Math.floor(index / 9) + 1}c${(index % 9) + 1}`;
+    node.addEventListener("pointerdown", (event) => {
+      node.dataset.boardPointerType = event.pointerType || "";
+      setBoardPointerMode(event.pointerType || "");
+    }, { passive: true });
     installManualMarkLongPress(
       node,
-      () => manualMarksActive() && manualMarkModeValue() === "cellColor",
+      () => !tlgSolverEditingActive() && manualMarksActive() && manualMarkModeValue() === "cellColor",
       () => {
         selectedIndex = index;
         applyManualMarkTarget(index, 0, "secondary");
@@ -9998,18 +10228,50 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     node.addEventListener("click", (event) => {
       if (handleTlgSolverCellClick(index, event)) return;
       selectedIndex = index;
+      if (boardEventUsesMouse(event, node) && !isOcrDraftSnapshot(currentSnapshot)) {
+        if (manualMarksActive()) {
+          if (manualMarkModeValue() === "cellColor") {
+            applyManualMarkTarget(index, 0, "mousePrimary");
+          } else {
+            renderBoardSnapshot(currentSnapshot, currentHint);
+            setManualMarkStatus(uif("markCellSelected", { cell: manualMarkCellText(index) }));
+          }
+          return;
+        }
+        const currentCell = currentSnapshot?.cells?.[index];
+        if (currentCell?.value > 0) {
+          if (isFixedCell(index)) {
+            renderBoardSnapshot(currentSnapshot, currentHint);
+            setStatus(ui("fixedCell"));
+          } else {
+            refreshAfterEdit(engine.set_value_json(index, 0));
+          }
+        } else {
+          renderBoardSnapshot(currentSnapshot, currentHint);
+        }
+        return;
+      }
       handleCellTap(index);
     });
     node.addEventListener("contextmenu", (event) => {
-      if (!manualMarksActive()) return;
-      event.preventDefault();
-      selectedIndex = index;
-      if (manualMarkModeValue() === "cellColor") {
-        applyManualMarkTarget(index, 0, "secondary");
-      } else {
-        renderBoardSnapshot(currentSnapshot, currentHint);
-        setManualMarkStatus(uif("markCellSelected", { cell: manualMarkCellText(index) }));
+      if (tlgSolverEditingActive()) {
+        consumeTlgSolverFixedCellEvent(event);
+        closeTlgSolverContextMenu();
+        return;
       }
+      if (!boardEventUsesMouse(event, node)) return;
+      if (manualMarksActive()) {
+        event.preventDefault();
+        selectedIndex = index;
+        if (manualMarkModeValue() === "cellColor") {
+          applyManualMarkTarget(index, 0, "mouseSecondary");
+        } else {
+          renderBoardSnapshot(currentSnapshot, currentHint);
+          setManualMarkStatus(uif("markCellSelected", { cell: manualMarkCellText(index) }));
+        }
+        return;
+      }
+      if (!isOcrDraftSnapshot(currentSnapshot)) event.preventDefault();
     });
 
     if (placements.has(index)) {
@@ -10147,6 +10409,7 @@ function refreshAfterHistory(responseText, changedText, emptyText) {
 }
 
 function handleValueTap(index) {
+  if (tlgSolverEditingActive()) return;
   if (isOcrDraftSnapshot(currentSnapshot)) {
     toggleOcrDraftValue(index, selectedDigit);
     return;
@@ -10165,6 +10428,7 @@ function handleValueTap(index) {
 }
 
 function handleCandidateTap(index) {
+  if (tlgSolverEditingActive()) return;
   if (isOcrDraftSnapshot(currentSnapshot)) {
     toggleOcrDraftCandidate(index, selectedDigit);
     return;
@@ -10187,6 +10451,7 @@ function handleCandidateTap(index) {
 }
 
 function handleCellTap(index) {
+  if (tlgSolverEditingActive()) return;
   if (!engine || !currentSnapshot) {
     renderBoardSnapshot(currentSnapshot, currentHint);
     return;
@@ -12934,12 +13199,14 @@ function installTlgContextMenuListeners() {
 
 function openTlgSolverContextMenu(cellIndex, digit, event, candidate) {
   if (!tlgSolverEditingActive()) return false;
-  if (tlgSolverState.busyTask) return consumeTlgSolverFixedCellEvent(event);
-  if (!tlgSolverCellAcceptsInput(cellIndex)) return consumeTlgSolverFixedCellEvent(event);
-  if (!digit || !candidate?.textContent?.trim()) return false;
-  event?.preventDefault?.();
-  event?.stopPropagation?.();
+  // Right-click/long-press on any TLG board location is exclusively owned by
+  // TLG. Invalid or empty slots are swallowed instead of restoring candidates
+  // through the ordinary board editor or opening the browser context menu.
+  consumeTlgSolverFixedCellEvent(event);
   closeTlgSolverContextMenu();
+  if (tlgSolverState.busyTask) return true;
+  if (!tlgSolverCellAcceptsInput(cellIndex)) return true;
+  if (!digit || !candidate?.textContent?.trim()) return true;
   installTlgContextMenuListeners();
 
   const key = tlgSolverCandidateKey(cellIndex, digit);
@@ -13066,14 +13333,25 @@ function toggleTlgDescriptorValue(array, value, kind) {
 
 function handleTlgSolverCandidateClick(cellIndex, digit, event, candidate) {
   if (!tlgSolverEditingActive()) return false;
-  if (tlgSolverState.busyTask) return consumeTlgSolverFixedCellEvent(event);
-  if (!tlgSolverCellAcceptsInput(cellIndex)) return consumeTlgSolverFixedCellEvent(event);
-  if (!digit || !candidate?.textContent?.trim()) return false;
-  event?.preventDefault?.();
-  event?.stopPropagation?.();
+  // TLG owns every board event while editing is enabled. Even an empty
+  // candidate slot is a handled no-op; it must never fall through to normal
+  // Value/Candidate input or manual-mark handlers.
+  consumeTlgSolverFixedCellEvent(event);
   closeTlgSolverContextMenu();
-  selectedIndex = cellIndex;
+  if (tlgSolverState.busyTask) return true;
+  if (!tlgSolverCellAcceptsInput(cellIndex)) return true;
   const mode = tlgSolverMode?.value || "truths";
+  if (!digit || !candidate?.textContent?.trim()) {
+    // Empty candidate positions are the only practical cell-background target
+    // in the 3x3 candidate grid. Preserve the documented Cell Truth shortcut
+    // for a plain Truths-mode click, but never let Ctrl/Command selection or
+    // other TLG modes fall through to ordinary Sudoku editing.
+    if (mode === "truths" && !(event?.ctrlKey || event?.metaKey)) {
+      return toggleTlgSolverCellTruth(cellIndex);
+    }
+    return true;
+  }
+  selectedIndex = cellIndex;
   const key = tlgSolverCandidateKey(cellIndex, digit);
   if (event?.ctrlKey || event?.metaKey) {
     if (tlgSolverState.selectedCandidates.has(key)) tlgSolverState.selectedCandidates.delete(key);
@@ -13157,14 +13435,7 @@ function handleTlgSolverCandidateClick(cellIndex, digit, event, candidate) {
   return true;
 }
 
-function handleTlgSolverCellClick(cellIndex, event) {
-  if (!tlgSolverEditingActive()) return false;
-  if (tlgSolverState.busyTask) return consumeTlgSolverFixedCellEvent(event);
-  if (!tlgSolverCellAcceptsInput(cellIndex)) return consumeTlgSolverFixedCellEvent(event);
-  if ((tlgSolverMode?.value || "truths") !== "truths") return false;
-  event?.preventDefault?.();
-  event?.stopPropagation?.();
-  closeTlgSolverContextMenu();
+function toggleTlgSolverCellTruth(cellIndex) {
   tlgSolverState.selectedCandidates.clear();
   selectedIndex = cellIndex;
   const value = `cell-truth:${tlgSolverCellText(cellIndex)}`;
@@ -13174,6 +13445,18 @@ function handleTlgSolverCellClick(cellIndex, event) {
   renderBoardSnapshot(currentSnapshot, currentHint);
   updateTlgSolverUi();
   return true;
+}
+
+function handleTlgSolverCellClick(cellIndex, event) {
+  if (!tlgSolverEditingActive()) return false;
+  // Non-candidate cell clicks are also owned by TLG. In Truths mode the cell
+  // background toggles a Cell Truth; in every other mode it is a safe no-op.
+  consumeTlgSolverFixedCellEvent(event);
+  closeTlgSolverContextMenu();
+  if (tlgSolverState.busyTask) return true;
+  if (!tlgSolverCellAcceptsInput(cellIndex)) return true;
+  if ((tlgSolverMode?.value || "truths") !== "truths") return true;
+  return toggleTlgSolverCellTruth(cellIndex);
 }
 
 function tlgCandidateKeysToPayload(keys) {
@@ -17246,6 +17529,7 @@ async function exitMobileSolveMode(options = {}) {
 }
 
 function clearMobileSolveSelection() {
+  if (tlgSolverEditingActive()) return false;
   if (!engine || !currentSnapshot || selectedIndex < 0) {
     setStatus(ui("mobileSelectCellFirst"));
     return false;

@@ -481,7 +481,7 @@
 <h1>YZF Sudoku 使用手册 / User Manual</h1>
 <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
 <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-<div class="meta">Version: Manual v2.3 · Updated: 2026-07-03</div>
+<div class="meta">Version: Manual v2.5 · Updated: 2026-07-09</div>
 </div>
 <div aria-label="Manual language view / 手册语言视图" class="manual-language-toolbar" role="group">
 <button aria-pressed="true" data-manual-lang-button="bilingual" type="button">双语 / Bilingual</button>
@@ -580,14 +580,15 @@
 <li><strong>顶部入口：</strong>语言、使用手册、解释、技巧说明；小屏或触屏设备还会显示“做题”。</li>
 <li><strong>主要操作：</strong>生成、训练生成、加载、撤销、重做、自动解题、提示一步、应用提示、所有步骤、全屏。</li>
 <li><strong>四个页签：</strong>操作、技巧、解题路径、可选步骤。</li>
-<li><strong>数字盘：</strong>选择 1–9，并切换“出数/候选”；OCR 草稿还会多一个“提示数/出数”角色按钮。</li>
+<li><strong>数字盘：</strong>供触摸、触控笔和手机做题模式使用。最近一次盘面输入来自鼠标时，普通电脑界面的数字盘自动隐藏；OCR 草稿仍可显示“提示数/出数”角色按钮。</li>
 </ul>
 <h3>电脑与手机的关键差异</h3>
 <table>
 <thead><tr><th>功能</th><th>电脑</th><th>手机/触屏</th></tr></thead>
 <tbody>
 <tr><td>图片输入</td><td>文件、剪贴板按钮、<span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>选择图片或拍照识别</td></tr>
-<tr><td>手工候选标记</td><td>可直接左键候选；右键删除当前模式标记</td><td>先点格子，再轻触数字键添加、长按约 0.5 秒删除；也可切换“添加/删除”</td></tr>
+<tr><td>普通出数/候选</td><td>左键候选出数；左键用户大数清除；右键候选删除/恢复</td><td>先选数字与“出数/候选”，再轻触格子</td></tr>
+<tr><td>手工候选标记</td><td>按当前模式使用左/右键；链、构造链和微型区域由第二次点击的左右键决定类型</td><td>先点格子，再使用大数字键和面板按钮；长按可删除常规视觉标记</td></tr>
 <tr><td>替换解题路径</td><td>右键可替换步骤</td><td>长按约 0.65 秒</td></tr>
 <tr><td>标记截图</td><td>优先复制 PNG 到剪贴板，失败时下载</td><td>优先打开系统分享，失败时下载</td></tr>
 <tr><td>做题布局</td><td>通常使用分析主界面</td><td>可进入专用做题模式，盘面和数字盘始终可见</td></tr>
@@ -601,7 +602,7 @@
 <li><strong>Top entries:</strong> language, User Manual, Explain, and Technique Guide. Small-screen or coarse-pointer devices also show Solve.</li>
 <li><strong>Main actions:</strong> Generate, Training Generate, Load, Undo, Redo, Auto Solve, Hint, Apply Hint, All Steps, and Fullscreen.</li>
 <li><strong>Four tabs:</strong> Controls, Techniques, Solve Path, and Available Steps.</li>
-<li><strong>Number pad:</strong> select 1–9 and switch between Value and Candidate. OCR drafts also show a Given/Solved role button.</li>
+<li><strong>Number pad:</strong> used for touch, pen, and Solve mode. It is hidden in the normal desktop layout after mouse input; OCR drafts may also show a Given/Solved role button.</li>
 </ul>
 <h3>Desktop vs Mobile</h3>
 <table>
@@ -735,8 +736,8 @@
 <h3>推荐的完整做题流程</h3>
 <ol>
 <li><strong>载入题目：</strong>粘贴题串、使用图片识别、恢复现场，或生成一题。先确认黑色提示数无误；OCR 题尤其要先校正提示数/出数身份。</li>
-<li><strong>选择输入类型：</strong>在数字盘附近选择“出数”或“候选”。出数用于填写确定答案，候选用于增删铅笔数。</li>
-<li><strong>选择数字再点格：</strong>先在数字盘选择 1–9，再点击/轻触目标格。出数模式写入大数字；候选模式切换该候选。</li>
+<li><strong>鼠标输入：</strong>直接在盘面操作，不需要数字盘。左键当前候选将其设为出数；左键用户填写的大数将其清除；右键候选位置删除或恢复候选。</li>
+<li><strong>触摸/触控笔输入：</strong>数字盘自动显示。先选择“出数/候选”和 1–9，再轻触目标格。</li>
 <li><strong>人工分析：</strong>需要圈候选、画链、上色或暂存删数时，打开“手工标记”。手工标记与真实候选盘分离，不会因为画了红叉就自动删候选。</li>
 <li><strong>核对逻辑：</strong>“提示一步”只预览程序找到的下一步；确认后点“应用提示”才真正写入盘面。也可在“可选步骤”中比较多个合法步骤。</li>
 <li><strong>继续与回退：</strong>每次正式出数、候选编辑、应用提示都进入撤销历史。误操作立即使用“撤销”，确认无误后再继续。</li>
@@ -744,13 +745,15 @@
 </ol>
 <h3>出数模式</h3>
 <ul>
-<li>选择数字后点击空格，写入用户出数。</li>
+<li>鼠标：左键点击空格中当前真实存在的候选，将其写为用户出数。已被删除的候选不能直接出数，需先右键恢复。</li>
+<li>触摸/触控笔：选择数字后轻触空格，写入用户出数。</li>
 <li>再次输入该格当前的大数字，可清除用户出数；原始提示数受保护，不能用普通做题操作覆盖。</li>
 <li>出数后，盘面候选会按当前局面更新。若填入与规则冲突的数字，状态区会提示局面无效。</li>
 </ul>
 <h3>候选模式</h3>
 <ul>
-<li>选择数字后点击空格，在该格添加或移除这个候选。</li>
+<li>鼠标：右键候选位置切换该候选；存在时删除，不存在时在不违反行、列、宫约束的前提下恢复。</li>
+<li>触摸/触控笔：选择候选模式和数字后轻触空格，切换该候选。</li>
 <li>候选模式改的是<strong>真实当前候选盘</strong>，会直接影响后续提示、自动解题、评分和 TLG。</li>
 <li>“隐藏候选数”只改变显示，不会删除候选；再次显示后原候选仍在。</li>
 <li>手工标记中的“预备删数/正式删数”不是候选模式。前者纯视觉，后者只有点击“应用全部删数”才会写入真实候选盘。</li>
@@ -765,7 +768,7 @@
 <p>图片识别结果可先作为草稿进入盘面，即使提示数暂时不是唯一解也能继续校正。校正完成后再使用需要唯一性前提的技巧，特别是 UR、AUR、DAUR 和 GUR。</p>
 <h3>电脑与手机的基本操作差异</h3>
 <ul>
-<li><strong>电脑：</strong>可直接点击格子或候选，也可使用键盘、右键和 <span class="kbd">Ctrl</span>/<span class="kbd">Command</span> 批选。</li>
+<li><strong>鼠标：</strong>使用 FB 风格直接操作，数字盘自动隐藏。左键候选出数，左键用户大数清除，右键候选删除/恢复。</li>
 <li><strong>手机：</strong>普通做题优先使用“先选数字，再点格”的大按钮流程。精细候选标记则先选格子，再点大数字键，避免点不中小候选。</li>
 <li>开启 TLG 编辑后，盘面点击由 TLG 接管；要恢复普通出数/候选编辑，先关闭“启用 TLG 编辑”。</li>
 </ul>
@@ -775,8 +778,8 @@
 <h3>Recommended End-to-End Workflow</h3>
 <ol>
 <li><strong>Load a puzzle:</strong> paste a string, use OCR, restore a session, or generate one. Verify all black givens first; OCR puzzles may need given/user-digit role correction.</li>
-<li><strong>Choose input type:</strong> select Value or Candidate. Value enters a confirmed digit; Candidate edits pencil marks.</li>
-<li><strong>Select a digit, then a cell:</strong> choose 1–9 on the number pad and click/tap the target. Value writes a large digit; Candidate toggles that pencil mark.</li>
+<li><strong>Mouse input:</strong> work directly on the board. Left-click an active candidate to set it; left-click a user value to clear it; right-click a candidate slot to remove or restore it.</li>
+<li><strong>Touch/pen input:</strong> the number pad is shown. Choose Value/Candidate and 1–9, then tap the target cell.</li>
 <li><strong>Analyze manually:</strong> open Manual Marks for circles, colors, chains, blocks, or staged eliminations. Visual marks are separate from the real candidate grid.</li>
 <li><strong>Check logic:</strong> Hint only previews the next program step. Press Apply Hint to commit it. Available Steps can compare multiple legal options.</li>
 <li><strong>Continue or recover:</strong> formal values, candidate edits, and applied hints enter Undo history. Undo mistakes before continuing.</li>
@@ -805,7 +808,7 @@
 <p>An OCR result may enter as an editable draft even before the givens form a unique puzzle. Correct it before using techniques that require uniqueness, especially UR, AUR, DAUR, and GUR.</p>
 <h3>Desktop vs Mobile</h3>
 <ul>
-<li><strong>Desktop:</strong> direct clicks, keyboard input, right-click, and <span class="kbd">Ctrl</span>/<span class="kbd">Command</span> batch selection are available.</li>
+<li><strong>Mouse:</strong> FB-style direct input is used and the number pad is hidden. Left-click sets an active candidate, left-click clears a user value, and right-click removes/restores a candidate.</li>
 <li><strong>Mobile:</strong> ordinary solving should use the large “choose digit, then cell” flow. For precise candidate marks, select a cell and use the large digit buttons.</li>
 <li>When TLG editing is enabled, TLG owns board input. Disable it to resume ordinary Value/Candidate editing.</li>
 </ul>
@@ -967,7 +970,7 @@
 <h3>一套完整的使用流程</h3>
 <ol>
 <li>先完成题面和候选盘的校正，选中准备分析的格子。</li>
-<li>打开“手工标记”，选择模式、颜色和“添加/删除”动作。</li>
+<li>打开“手工标记”并选择模式与颜色。鼠标直接用左右键；触摸/触控笔使用面板中的成对动作按钮。</li>
 <li>整格模式直接点格；候选模式可直接点小候选，手机也可先点格再点大数字键。</li>
 <li>画链时依次点起点和终点；区块模式逐个选择节点后点“完成区块”。</li>
 <li>预备删数只用于推演；确认成立后改为正式删数，再点“应用全部删数”。</li>
@@ -983,8 +986,10 @@
 <tr><td>候选画圈</td><td>突出关键候选、guardian、链端点或共同结论。</td></tr>
 <tr><td>预备删数</td><td>只画待验证的删除符号，不改变候选，适合试推。</td></tr>
 <tr><td>正式删数</td><td>加入待应用集合；点击“应用全部删数”后才真正删除。</td></tr>
-<tr><td>手动画链</td><td>依次选择两个仍存在的候选作为起点和终点。可新建、改型、反向或删除指定旧边；强/弱与构造链均由“链线”下拉框决定。</td></tr>
-<tr><td>区块标记</td><td>连续选择多个候选，形成圆形、胶囊或凸包区域。</td></tr>
+<tr><td>手动画链</td><td>只画普通强/弱链。鼠标第二端左键＝强链，右键＝弱链；触摸使用“强链/弱链”按钮。</td></tr>
+<tr><td>构造链</td><td>与手动画链分开。鼠标第二端左键＝构造强链，右键＝构造弱链；触摸使用对应按钮。</td></tr>
+<tr><td>微型区域</td><td>严格复刻 FB 的双端点胶囊：第二端左键生成绿色区域，右键生成蓝色区域；重复同色同端点删除。</td></tr>
+<tr><td>区块标记</td><td>本项目扩展能力：连续选择多个当前候选，形成圆形、胶囊或凸包区域。</td></tr>
 </tbody>
 </table>
 <h3>添加、删除与颜色</h3>
@@ -992,28 +997,31 @@
 <li>选择颜色后，“添加”写入当前模式标记，“删除”移除当前模式对应标记，不会误删其它类型。</li>
 <li>颜色选择器可添加自定义色；自定义色保存在当前浏览器。</li>
 <li>同一候选可叠加不同类型的标记；看不清时应减少层数，而不是误以为后一次一定覆盖前一次。</li>
-<li>画链模式中的“添加/删除”并不是普通标记的添加/擦除语义：主动作按“链线”下拉框绘制；次要动作是弱链快捷方式。删除指定旧边应使用下面的“重复同类型边”流程。</li>
+<li>链、构造链和微型区域使用成对动作：强/弱、构造强/构造弱、绿色/蓝色。重复相同类型和相同端点会删除该对象。</li>
 </ul>
-<h3>手动画链：新建、改型、反向与删除指定旧边</h3>
+<h3>链、构造链与微型区域</h3>
 <ol>
-<li><strong>新建边：</strong>选择“手动画链”和目标链线类型，依次选择起点候选、终点候选。黄色脉冲候选表示正在等待第二端点。</li>
-<li><strong>删除任意一条旧边：</strong>先把“链线”切回这条边<strong>当前实际类型</strong>，再依次点它的两个端点。端点顺序可以相反；同端点、同类型会切换为删除。</li>
-<li><strong>改边类型：</strong>对同一对端点选择另一种类型再画一次。程序会原位替换类型，而不是再叠一条边。</li>
+<li><strong>鼠标画链：</strong>先点起点；在第二端使用左键生成强链，右键生成弱链。构造链模式同理，只是线色为橙色。</li>
+<li><strong>触摸画链：</strong>先选择“强链/弱链”或“构造强链/构造弱链”按钮，再按“格子 → 大数字键”指定两个端点。</li>
+<li><strong>微型区域：</strong>先点起点；第二端左键为绿色胶囊，右键为蓝色胶囊。触摸使用“绿色区域/蓝色区域”按钮。</li>
+<li><strong>删除或改型：</strong>同端点、同类型重画会删除；同端点、不同类型重画会原位改型。</li>
 <li><strong>改变箭头方向：</strong>同一边改型或重画时，最后一次选择的“起点 → 终点”成为显示方向；判断是不是同一条边时不区分方向。</li>
 <li><strong>撤销最后一边：</strong>“撤销线”只弹出链线列表中的最后一条边，不能指定更早的边。删除较早的边应使用第 2 步。</li>
 <li><strong>取消误选起点：</strong>第二端点尚未选择时点“取消起点”。切换标记模式也会清掉未完成起点。</li>
 </ol>
-<div class="warn"><strong>最容易误操作的地方：</strong>若重画旧边时选错类型，结果是“改型”而不是删除；若只点“撤销线”，删除的是最后一条边而不一定是你正在看的那条。画链模式下界面中的次要/删除动作也不是任意边橡皮擦。</div>
-<h4>电脑删除旧边示例</h4>
-<p>假设旧边是 <code>2r1c1 → 7r4c5</code> 的“构造弱链”：选择“构造弱链”，左键 <code>2r1c1</code>，再左键 <code>7r4c5</code>；也可以反过来点。第二次完成后该边删除。</p>
+<div class="warn"><strong>最容易误操作的地方：</strong>右键在链、构造链和微型区域中代表第二种关系，不是任意对象橡皮擦。删除指定对象要重复同类型、同端点；“撤销线”只撤销当前类别中的最后一项。</div>
+<h4>鼠标删除旧边示例</h4>
+<p>假设旧边是 <code>2r1c1 → 7r4c5</code> 的构造弱链：切到“构造链”，左键起点，再右键终点；端点顺序可以反过来。重复完成后该边删除。</p>
 <h4>手机删除旧边示例</h4>
-<p>选择“手动画链”和旧边类型；轻触起点所在格，再轻触数字盘中的起点数字；随后轻触终点所在格，再轻触终点数字。手机画链不使用候选长按删除，长按删除只适用于候选颜色、圈、删数和区块节点。</p>
+<p>选择对应模式和强/弱（或绿色/蓝色）按钮；轻触起点格和数字，再轻触终点格和数字。重复同类型、同端点即可删除。</p>
 <h3>电脑操作</h3>
+<p>检测到鼠标输入后，数字盘、链线下拉框和“添加/删除”按钮会自动隐藏；改用触摸或触控笔操作盘面时会自动恢复。平板连接鼠标时可在两套规则间即时切换。</p>
 <ul>
-<li><strong>整格上色：</strong>左键格子添加；切换到“删除”后再点格子移除。</li>
+<li><strong>整格上色：</strong>左键格子添加，右键格子删除。</li>
 <li><strong>候选类模式：</strong>左键候选添加，右键候选删除当前模式标记。</li>
-<li><strong>替代输入：</strong>先点格子，再点大数字盘，也能定位候选，适合缩放后候选较小的情况。</li>
-<li><strong>画链：</strong>左键选择两个端点。要删除较早的指定边，先选回该边当前类型，再左键重复这两个端点；右键不是链线橡皮擦。</li>
+<li><strong>候选颜色、圈和两种删数：</strong>可以标记九宫候选位置，即使该候选已从真实候选盘删除。</li>
+<li><strong>画链/构造链：</strong>第一端任意键；第二端左键为强，右键为弱。重复同类型端点删除。</li>
+<li><strong>微型区域：</strong>第二端左键绿色、右键蓝色；重复同色端点删除。</li>
 <li><strong>区块：</strong>右键某个候选会把该节点从草稿以及所有包含它的已完成区块中移除；区块没有节点时自动删除。</li>
 </ul>
 <h3>手机/触屏操作</h3>
@@ -1021,7 +1029,7 @@
 <li><strong>整格上色：</strong>轻触格子添加，长按格子约 0.6 秒删除。</li>
 <li><strong>候选上色、画圈、预备删数、正式删数、区块：</strong>先点格子，再轻触大数字键添加；长按同一数字键约 0.5–0.6 秒删除。也可直接长按盘面小候选删除。</li>
 <li><strong>不方便长按：</strong>先点“删除”，再轻触格子或大数字键，效果相同；但画链是例外，删除指定边要重复选择同端点和同类型。</li>
-<li><strong>手机画链：</strong>依次使用“点格子 → 点大数字键”指定起点候选和终点候选。要删除旧边，完整重复同类型、同端点的四步输入。</li>
+<li><strong>手机链/构造链/微型区域：</strong>先选择成对按钮中的类型，再依次使用“点格子 → 点大数字键”指定两个端点。重复同类型端点删除。</li>
 <li>候选类标记会自动显示候选。长按删除只删手工标记，不会直接删真实候选。</li>
 <li>做题模式中点“标记”打开面板；竖屏空间足够时内嵌在盘面下方，横屏或高度不足时进入抽屉。</li>
 </ul>
@@ -1031,15 +1039,17 @@
 <tbody>
 <tr><td>整格上色</td><td>左键格子</td><td>右键格子，或切“删除”后左键</td><td>轻触格子</td><td>长按格子，或切“删除”后轻触</td></tr>
 <tr><td>候选上色/圈/两种删数</td><td>左键小候选，或选格后点数字盘</td><td>右键小候选，或切“删除”后点数字盘</td><td>选格后轻触数字盘</td><td>长按小候选/数字盘，或切“删除”后轻触</td></tr>
-<tr><td>手动画链</td><td>依次左键两个候选</td><td>选回旧边当前类型，再重复两个端点</td><td>起点格+数字，终点格+数字</td><td>重复同类型、同端点；不使用长按</td></tr>
+<tr><td>手动画链</td><td>第一端任意；第二端左键＝强链</td><td>第二端右键＝弱链；重复同类型端点删除</td><td>选强/弱按钮后输入两端</td><td>重复同类型、同端点</td></tr>
+<tr><td>构造链</td><td>第一端任意；第二端左键＝构造强链</td><td>第二端右键＝构造弱链；重复同类型端点删除</td><td>选构造强/弱按钮后输入两端</td><td>重复同类型、同端点</td></tr>
+<tr><td>微型区域</td><td>第二端左键＝绿色</td><td>第二端右键＝蓝色；重复同色端点删除</td><td>选绿色/蓝色按钮后输入两端</td><td>重复同色、同端点</td></tr>
 <tr><td>区块</td><td>左键加节点</td><td>右键节点</td><td>选格后轻触数字盘</td><td>长按候选/数字盘，或切“删除”</td></tr>
 </tbody>
 </table>
-<div class="note">候选类标记只能作用于当前真实存在的候选。一个候选已被真实删除或格子已经出数后，不能再给它新增圈、颜色、链端点或区块节点。</div>
+<div class="note">候选上色、候选画圈、预备删数和正式删数可作用于九宫候选位置，即使该候选已从真实盘面删除；链、构造链、微型区域和区块端点仍必须是当前真实存在的候选。</div>
 <h3>链与区块工具</h3>
 <ul>
-<li><strong>撤销线：</strong>只删除链线列表中的最后一条边。它不是“点哪条删哪条”；指定旧边请重复同类型端点。</li>
-<li><strong>取消起点：</strong>取消黄色脉冲显示的未完成链起点，避免下一次候选被误接为终点。</li>
+<li><strong>撤销线：</strong>在链/构造链模式撤销最后一条线；在微型区域模式撤销最后一个区域。指定旧对象请重复同类型端点。</li>
+<li><strong>取消起点：</strong>取消黄色脉冲显示的未完成链、构造链或微型区域起点。</li>
 <li><strong>完成区块：</strong>把当前候选节点集合固定成区块。</li>
 <li><strong>撤销区块：</strong>有草稿时先撤销最后一个节点；没有草稿时撤销最后一个已完成区块。</li>
 <li><strong>清空标记：</strong>清除全部颜色、圈、删数、线和区块，不改变题目本身。</li>
@@ -1063,7 +1073,7 @@
 <h3>Complete Workflow</h3>
 <ol>
 <li>Correct the puzzle and candidate grid, then select the area to analyze.</li>
-<li>Open Manual Marks and choose a mode, color, and Add/Erase action.</li>
+<li>Open Manual Marks and choose a mode and color. Mouse input uses left/right clicks directly; touch and pen input use the paired action buttons in the panel.</li>
 <li>Cell modes target the cell; candidate modes can target tiny candidates, or on mobile use a selected cell plus the large digit pad.</li>
 <li>For a chain, select start and end. For a block, collect nodes and press Finish Block.</li>
 <li>Use Provisional Eliminations while testing. Convert confirmed conclusions to Formal Eliminations, then press Apply All Eliminations.</li>
@@ -1079,8 +1089,10 @@
 <tr><td>Circle Candidates</td><td>Emphasizes key candidates, guardians, endpoints, or common conclusions.</td></tr>
 <tr><td>Provisional Eliminations</td><td>Visual test deletions only; candidates remain live.</td></tr>
 <tr><td>Eliminations</td><td>Adds to the pending set; Apply All Eliminations performs the actual deletion.</td></tr>
-<tr><td>Draw Chain</td><td>Selects two live candidates as start and end. An edge can be created, retyped, reversed, or removed; the Line selector controls strong/weak and construction variants.</td></tr>
-<tr><td>Block Mark</td><td>Collects candidates into a circle, capsule, or convex-hull region.</td></tr>
+<tr><td>Draw Chain</td><td>Ordinary strong/weak links only. On mouse input, left-click endpoint two for strong and right-click for weak; touch uses the Strong/Weak buttons.</td></tr>
+<tr><td>Construction</td><td>Separate from ordinary chains. Endpoint two uses left-click for construction strong and right-click for construction weak.</td></tr>
+<tr><td>Mini-Region</td><td>FB-style two-endpoint capsule. Endpoint two uses left-click for green and right-click for blue; repeating the same color and endpoints removes it.</td></tr>
+<tr><td>Block Mark</td><td>Project extension: collects live candidates into a circle, capsule, or convex-hull region.</td></tr>
 </tbody>
 </table>
 <h3>Add, Erase, and Colors</h3>
@@ -1088,28 +1100,31 @@
 <li>Add writes the current mark; Erase removes only the current mark type.</li>
 <li>Custom colors are stored in the current browser.</li>
 <li>Different mark types can coexist on one candidate. Reduce layers when the display becomes ambiguous.</li>
-<li>Chain mode does not use Add/Erase like ordinary marks: the primary action draws the selected Line type, while the secondary action is a weak-link shortcut. Remove a specific old edge with the same-type redraw workflow below.</li>
+<li>Chains, construction links, and Mini-Regions use paired actions: Strong/Weak, Construction Strong/Weak, and Green/Blue. Repeating the same type and endpoints removes that object.</li>
 </ul>
-<h3>Manual Chains: Create, Retype, Reverse, and Remove a Specific Edge</h3>
+<h3>Chains, Construction, and Mini-Regions</h3>
 <ol>
-<li><strong>Create:</strong> choose Draw Chain and the desired Line type, then select the start and end candidates. A pulsing yellow candidate means the second endpoint is pending.</li>
-<li><strong>Remove any old edge:</strong> set Line to that edge's <strong>current type</strong>, then select its two endpoints again. Endpoint order may be reversed; same endpoints plus same type toggles the edge off.</li>
-<li><strong>Retype:</strong> redraw the same endpoint pair with a different type. The existing edge is replaced in place rather than duplicated.</li>
+<li><strong>Mouse chains:</strong> choose the start candidate, then left-click endpoint two for strong or right-click it for weak. Construction mode uses the same buttons with orange links.</li>
+<li><strong>Touch chains:</strong> choose Strong/Weak or Construction Strong/Weak, then use “cell → large digit” for both endpoints.</li>
+<li><strong>Mini-Region:</strong> choose the start, then left-click endpoint two for green or right-click it for blue. Touch uses the Green/Blue buttons.</li>
+<li><strong>Remove or retype:</strong> same endpoints plus same type removes; same endpoints plus a different type retypes in place.</li>
 <li><strong>Reverse the arrow:</strong> the most recent start-to-end order becomes the displayed direction. Edge identity itself is undirected.</li>
 <li><strong>Undo the latest edge:</strong> Undo Line removes only the last edge in the chain list. Use step 2 for an earlier edge.</li>
 <li><strong>Cancel a mistaken start:</strong> press Cancel Start before choosing endpoint two. Changing mark mode also clears a pending start.</li>
 </ol>
-<div class="warn"><strong>Common trap:</strong> redrawing with the wrong type retypes the edge instead of deleting it. Undo Line removes the latest edge, not necessarily the one currently being inspected. The secondary/Erase action in chain mode is not an arbitrary-edge eraser.</div>
-<h4>Desktop example</h4>
-<p>To remove a Construction Weak edge <code>2r1c1 → 7r4c5</code>, select Construction Weak, left-click <code>2r1c1</code>, then left-click <code>7r4c5</code>. Reversed endpoint order also works.</p>
+<div class="warn"><strong>Common trap:</strong> right-click means the second relation type for chains, construction, and Mini-Regions; it is not a generic eraser. Remove a specific object by repeating the same type and endpoints. Undo Line removes the latest object in the current line/region category.</div>
+<h4>Mouse example</h4>
+<p>To remove a Construction Weak edge <code>2r1c1 → 7r4c5</code>, choose Construction, left-click the start, then right-click the endpoint. Reversed endpoint order also works.</p>
 <h4>Mobile example</h4>
-<p>Select Draw Chain and the old edge type; tap the start cell and its digit on the large pad, then the end cell and its digit. Candidate long-press erase is not used for chains; it applies only to candidate colors, circles, eliminations, and block nodes.</p>
+<p>Choose the mode and paired type button, then tap the start cell and digit followed by the end cell and digit. Repeat the same type and endpoints to remove it.</p>
 <h3>Desktop</h3>
+<p>After mouse input is detected, the number pad, line-type selector, and Add/Erase buttons hide automatically. Touch or pen input on the board restores them, so a tablet with a mouse can switch between both rule sets immediately.</p>
 <ul>
-<li><strong>Color Cells:</strong> left-click to add; choose Erase and click to remove.</li>
+<li><strong>Color Cells:</strong> left-click to add and right-click to remove.</li>
 <li><strong>Candidate modes:</strong> left-click adds; right-click erases the current mark type.</li>
-<li><strong>Alternative:</strong> select a cell, then use the large digit pad when tiny candidates are hard to hit.</li>
-<li><strong>Chains:</strong> left-click the two endpoints. To remove an earlier specific edge, select its current type and redraw the same pair; right-click is not an edge eraser.</li>
+<li><strong>Candidate color/circle/eliminations:</strong> may target a 3×3 candidate slot even when that candidate has already been removed from the live grid.</li>
+<li><strong>Chains/Construction:</strong> endpoint two uses left-click for strong and right-click for weak. Repeat the same type and endpoints to remove.</li>
+<li><strong>Mini-Region:</strong> endpoint two uses left-click for green and right-click for blue. Repeat the same color and endpoints to remove.</li>
 <li><strong>Blocks:</strong> right-click removes that candidate from the draft and every completed block containing it; empty blocks are discarded.</li>
 </ul>
 <h3>Mobile / Touch</h3>
@@ -1117,7 +1132,7 @@
 <li><strong>Color Cells:</strong> tap to add; hold the cell for about 0.6 seconds to erase.</li>
 <li><strong>Candidate colors, circles, provisional/formal eliminations, and blocks:</strong> select a cell, tap a large digit to add, or hold it for about 0.5–0.6 seconds to erase. Direct long-press on a tiny candidate also works.</li>
 <li><strong>Without long-press:</strong> choose Erase first, then tap the cell or large digit. Chains are the exception: remove a specific edge by repeating the same endpoints and type.</li>
-<li><strong>Mobile chains:</strong> use “tap cell → tap large digit” for the start candidate and again for the end candidate. Removing an old edge repeats the full same-type, same-endpoint sequence.</li>
+<li><strong>Mobile chain/construction/Mini-Region:</strong> choose the paired type button, then use “tap cell → tap large digit” for both endpoints. Repeat the same type and endpoints to remove.</li>
 <li>Candidate modes automatically reveal candidates. Long-press erases only the manual mark, not the live candidate.</li>
 <li>In Solve Mode, press Marks. It appears inline when portrait space allows, otherwise in the drawer.</li>
 </ul>
@@ -1127,15 +1142,17 @@
 <tbody>
 <tr><td>Cell color</td><td>Left-click cell</td><td>Right-click cell, or choose Erase and left-click</td><td>Tap cell</td><td>Hold cell, or choose Erase and tap</td></tr>
 <tr><td>Candidate color/circle/eliminations</td><td>Left-click a tiny candidate, or select cell and use pad</td><td>Right-click candidate, or choose Erase and use pad</td><td>Select cell and tap pad</td><td>Hold candidate/pad, or choose Erase and tap</td></tr>
-<tr><td>Manual chain</td><td>Left-click two candidates</td><td>Select the old edge's current type and repeat both endpoints</td><td>Start cell+digit, then end cell+digit</td><td>Repeat same type and endpoints; no long-press</td></tr>
+<tr><td>Manual chain</td><td>Endpoint two left-click = strong</td><td>Endpoint two right-click = weak; repeat same type/endpoints to remove</td><td>Choose Strong/Weak, then enter both endpoints</td><td>Repeat same type and endpoints</td></tr>
+<tr><td>Construction</td><td>Endpoint two left-click = construction strong</td><td>Endpoint two right-click = construction weak; repeat to remove</td><td>Choose paired button, then enter both endpoints</td><td>Repeat same type and endpoints</td></tr>
+<tr><td>Mini-Region</td><td>Endpoint two left-click = green</td><td>Endpoint two right-click = blue; repeat same color/endpoints to remove</td><td>Choose Green/Blue, then enter both endpoints</td><td>Repeat same color and endpoints</td></tr>
 <tr><td>Block</td><td>Left-click to add nodes</td><td>Right-click a node</td><td>Select cell and tap pad</td><td>Hold candidate/pad, or choose Erase</td></tr>
 </tbody>
 </table>
-<div class="note">Candidate mark modes can target only candidates that currently exist on the live board. Once a candidate is truly removed or its cell is solved, it cannot receive a new circle, color, chain endpoint, or block node.</div>
+<div class="note">Candidate color, circle, provisional, and formal elimination marks may target a 3×3 candidate slot even after that candidate has been removed from the live grid. Chain, construction, Mini-Region, and block endpoints must still be active candidates.</div>
 <h3>Chain and Block Tools</h3>
 <ul>
-<li><strong>Undo Line:</strong> removes only the latest edge in the chain list. It is not a pick-an-edge eraser; redraw the same type and endpoints for a specific old edge.</li>
-<li><strong>Cancel Start:</strong> cancels the pulsing-yellow unfinished start so the next candidate is not attached accidentally.</li>
+<li><strong>Undo Line:</strong> removes the latest chain/construction edge, or the latest Mini-Region when that mode is selected. Redraw the same type and endpoints for a specific old object.</li>
+<li><strong>Cancel Start:</strong> cancels the pulsing-yellow unfinished chain, construction, or Mini-Region start.</li>
 <li><strong>Finish Block:</strong> commits the current candidate collection.</li>
 <li><strong>Undo Block:</strong> removes the latest draft node first, or the latest completed block when no draft exists.</li>
 <li><strong>Clear Marks:</strong> clears all manual colors, circles, eliminations, lines, and blocks without changing the puzzle.</li>
@@ -1219,7 +1236,8 @@
 <div class="pair">
 <div class="zh">
 <p>TLG Solver 用 Truth、Link 和额外唯一性约束描述一个集合证明，再枚举满足全部约束的投影，从共同结果中得到删数或出数。它不是普通提示器：用户必须明确告诉程序哪些集合和 deadly-pattern 约束属于当前证明。</p>
-<p>勾选“启用 TLG 编辑”后，TLG 接管候选点击和专属高亮。普通技巧高亮、链路和手工标记只暂时隐藏；关闭 TLG 后恢复。关闭 TLG 会释放临时导入的 TLG 候选盘和计算结果，但保留已输入的 Truth、用户 Link、Virtual Set、AUR、DAUR、GUR 标记。</p>
+<p>勾选“启用 TLG 编辑”后，TLG 独占整个盘面的鼠标、触摸和长按输入以及专属高亮。普通技巧高亮、链路和手工标记只暂时隐藏；关闭 TLG 后恢复。关闭 TLG 会释放临时导入的 TLG 候选盘和计算结果，但保留已输入的 Truth、用户 Link、Virtual Set、AUR、DAUR、GUR 标记。</p>
+<div class="note"><strong>输入兜底：</strong>TLG 开启期间，Truths 模式左键轻触空候选位置仍按 Cell Truth 处理；除此之外，空候选位置的右键/长按、固定格、出数格，以及非 Truths 模式的单元格空白点击都会被安全忽略。它们不会回落为普通出数、恢复候选、数字盘输入或手工标记。只有关闭“启用 TLG 编辑”后，普通盘面编辑才会恢复。</div>
 <h3>13.1 先理解四类状态</h3>
 <table>
 <thead><tr><th>状态</th><th>含义</th><th>什么时候变化</th></tr></thead>
@@ -1332,7 +1350,8 @@
 <li><strong>长按候选约 0.6 秒：</strong>把该候选加入批选并打开 TLG 菜单。菜单子项用轻触展开，不依赖桌面 hover。</li>
 <li><strong>选择多个候选：</strong>长按第一个候选，轻触菜单外关闭；再长按下一个候选。长按是累加选择，重复直到选完，再在菜单执行批量动作。</li>
 <li><strong>重新开始批选：</strong>从菜单点“清除候选选择”。不要用普通短按候选来继续批选，因为普通短按会按当前模式执行并清掉原批选。</li>
-<li><strong>Cell Truth：</strong>Truths 模式轻触空单元格背景，不要点候选数字。</li>
+<li><strong>Cell Truth：</strong>Truths 模式轻触空单元格背景或已删除候选的空位置，不要点仍存在的候选数字。</li>
+<li><strong>误触空位置：</strong>除上述 Cell Truth 快捷操作外，空候选位置的右键、长按及其他模式点击都会被忽略，不会修改真实盘面。</li>
 <li>TLG 开启时，普通手工标记的候选长按处理会暂停，避免两个模式争抢同一次触摸。</li>
 </ul>
 <h3>13.13 查找、转换与移除的正确顺序</h3>
@@ -1407,7 +1426,8 @@
 </div>
 <div class="en">
 <p>TLG Solver describes a set proof with Truths, Links, and optional uniqueness constraints, enumerates projections satisfying all premises, and derives common eliminations or assignments. It is not an ordinary hint button: the user defines the proof structure.</p>
-<p>Enable TLG Editing gives TLG ownership of candidate input and its visual layer. Ordinary technique highlights, chains, and manual marks are hidden rather than deleted. Disabling TLG releases the temporary TLG candidate grid and computed result, while keeping the entered Truths, User Links, Virtual Set, AUR, DAUR, and GUR marks.</p>
+<p>Enable TLG Editing gives TLG exclusive ownership of all board mouse, touch, long-press input, and its visual layer. Ordinary technique highlights, chains, and manual marks are hidden rather than deleted. Disabling TLG releases the temporary TLG candidate grid and computed result, while keeping the entered Truths, User Links, Virtual Set, AUR, DAUR, and GUR marks.</p>
+<div class="note"><strong>Input guard:</strong> while TLG is enabled, a plain left tap on an empty candidate slot in Truths mode still acts as the Cell Truth shortcut. Otherwise, right-click/long-press on an empty slot, fixed/solved cells, and cell-background clicks outside Truths mode are safe no-ops. They never fall through to ordinary value entry, candidate restoration, the number pad, or manual marks. Ordinary board editing resumes only after TLG Editing is disabled.</div>
 <h3>13.1 Four Different States</h3>
 <table>
 <thead><tr><th>State</th><th>Meaning</th><th>When It Changes</th></tr></thead>
@@ -1520,7 +1540,8 @@
 <li><strong>Hold about 0.6 seconds:</strong> adds the candidate to batch selection and opens the TLG menu. Submenus open by tap rather than desktop hover.</li>
 <li><strong>Select several:</strong> long-press one candidate, tap outside to close, then long-press another. Long-press is additive; repeat and execute the batch action from the menu.</li>
 <li><strong>Restart selection:</strong> choose Clear Candidate Selection. A normal short tap is not a batch-selection continuation; it runs the current mode and clears the previous batch.</li>
-<li><strong>Cell Truth:</strong> in Truths mode tap the empty cell background rather than a candidate glyph.</li>
+<li><strong>Cell Truth:</strong> in Truths mode tap empty cell background or an inactive candidate slot rather than an active candidate glyph.</li>
+<li><strong>Accidental empty-slot input:</strong> except for that plain Cell Truth tap, right-click, long-press, Ctrl/Command-click, and clicks in other TLG modes are ignored and cannot alter the underlying Sudoku board.</li>
 <li>Manual-mark candidate holds are suspended while TLG is active, avoiding touch-handler conflicts.</li>
 </ul>
 <h3>13.13 Find, Convert, and Remove</h3>
@@ -1718,7 +1739,8 @@
 <li><strong>长按候选约 0.6 秒：</strong>加入批选并打开 TLG 菜单。子菜单可直接轻触展开。</li>
 <li><strong>多选：</strong>长按第一个候选后点菜单外关闭，再长按第二个；选择会累加。选完后从菜单批量加入 Truth/Link/VSet/AUR/DAUR/GUR。</li>
 <li><strong>清空批选：</strong>使用菜单“清除候选选择”。普通短按会执行当前模式，不适合作为继续批选。</li>
-<li><strong>Cell Truth：</strong>Truths 模式轻触空格背景。</li>
+<li><strong>Cell Truth：</strong>Truths 模式轻触空格背景或已删除候选的空位置。</li>
+<li><strong>空位置兜底：</strong>除 Cell Truth 的普通轻触外，空位置的右键、长按及其他模式点击都被忽略，不会恢复候选或填入数字。</li>
 </ul>
 <div class="note">TLG 与普通手工标记不能同时接管候选长按。开启 TLG 时手工标记暂时隐藏且不响应；关闭 TLG 后恢复。</div>
 <h3>“更多”里的功能</h3>
@@ -1825,9 +1847,10 @@
 <tr><td>OCR 盘面数字身份错误</td><td>模型把彩色出数识别成提示数，或反之。</td><td>在对照校正窗口切换“提示数/出数”，或导入后用 OCR 角色按钮继续修改。</td></tr>
 <tr><td>OCR 非唯一，无法安全使用 UR/AUR</td><td>黑色提示数尚未校正到唯一题面。</td><td>先修正提示数；唯一性未确认前不要使用 UR、AUR、DAUR、GUR 等唯一性前提。</td></tr>
 <tr><td>手工候选标记在手机上点不中</td><td>小候选触控面积较小。</td><td>先点格子，再点大数字盘；删除时长按数字键，或先切换到“删除”。</td></tr>
-<tr><td>想删除较早的手动画链，却删掉了最后一条</td><td>“撤销线”只删除链线列表中的最后一条边。</td><td>选择目标旧边当前类型，重新选择它的两个端点；同端点、同类型会删除该指定边。</td></tr>
-<tr><td>重画旧链边后没有删除，反而变成另一种线</td><td>重画时选择的链线类型与旧边当前类型不同。</td><td>先把“链线”切回旧边的精确类型，再重复端点。端点顺序不影响识别。</td></tr>
-<tr><td>画链模式下点“删除/清除”没有像橡皮擦一样删边</td><td>画链的次要动作是弱链/构造弱链快捷方式，不是任意边删除模式。</td><td>删除指定边使用“同类型重画”；删除最后一边用“撤销线”；全部删除用“清空标记”。</td></tr>
+<tr><td>想删除较早的手动画链，却删掉了最后一条</td><td>“撤销线”只删除当前链/区域类别中的最后一个对象。</td><td>切回该对象所属模式，按原左右键关系重复选择两个端点；同端点、同类型会删除指定对象。</td></tr>
+<tr><td>重画旧链边后没有删除，反而变成另一种线</td><td>第二端使用的鼠标键（或触摸动作按钮）与旧对象类型不同。</td><td>普通/构造链：第二端左键为强、右键为弱；微型区域：左键绿色、右键蓝色。按旧类型重复端点即可删除。</td></tr>
+<tr><td>画链模式下右键没有像橡皮擦一样删边</td><td>鼠标右键在链、构造链和微型区域中表示第二种关系类型，不是任意对象删除。</td><td>删除指定对象使用“同类型重画”；删除最后一个对象用“撤销线”；全部删除用“清空标记”。</td></tr>
+<tr><td>平板接上鼠标后数字盘消失，手指一碰又出现</td><td>程序按每一次输入的来源切换规则：鼠标使用 FB 直接操作，触摸/触控笔使用数字盘。</td><td>这是预期行为。鼠标左/右键直接操作盘面；改用手指或笔时继续使用数字盘和面板按钮。</td></tr>
 <tr><td>手动画链突然不显示</td><td>某个端点候选已被真实删除或该格已经出数；渲染只显示两端仍存在的边。</td><td>检查真实候选盘。恢复端点候选后边可重新显示；不再需要时清空标记。</td></tr>
 <tr><td>删除一个区块节点后，另一个重叠区块也变了</td><td>节点删除会作用于草稿和所有包含该候选的已完成区块。</td><td>这是当前交互设计。需要独立保留时，避免让两个区块共享同一候选节点。</td></tr>
 <tr><td>“应用全部删数”没有处理预备删数</td><td>预备删数设计为纯视觉标记。</td><td>把确认成立的候选改为“正式删数”。</td></tr>
