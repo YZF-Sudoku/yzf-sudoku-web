@@ -712,6 +712,322 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
+
+    .tlg-library-dialog {
+      width: min(1040px, calc(100vw - 24px));
+      max-width: 1040px;
+      max-height: min(88dvh, 820px);
+      padding: 0;
+      border: 1px solid #9fb5d1;
+      border-radius: 12px;
+      background: #f8fbff;
+      color: #1e3550;
+      box-shadow: 0 24px 70px rgba(15, 35, 65, 0.28);
+      overflow: hidden;
+    }
+    .tlg-library-dialog::backdrop {
+      background: rgba(15, 23, 42, 0.48);
+      backdrop-filter: blur(2px);
+    }
+    .tlg-library-shell {
+      display: grid;
+      grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto;
+      max-height: min(88dvh, 820px);
+      min-height: min(640px, calc(100dvh - 24px));
+    }
+    .tlg-library-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #cbd8e8;
+      background: #eaf3ff;
+    }
+    .tlg-library-header strong {
+      font-size: 16px;
+      color: #123e73;
+    }
+    .tlg-library-header button {
+      min-width: 36px;
+      min-height: 32px;
+      margin: 0;
+      padding: 4px 10px;
+    }
+    .tlg-library-toolbar,
+    .tlg-library-filebar,
+    .tlg-library-sharebar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px 0;
+    }
+    .tlg-library-toolbar button,
+    .tlg-library-filebar button,
+    .tlg-library-sharebar button {
+      min-height: 32px;
+      margin: 0;
+    }
+    .tlg-library-filebar {
+      padding-bottom: 8px;
+      border-bottom: 1px solid #d7e1ee;
+    }
+    .tlg-library-filebar label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-width: 0;
+      font-size: 12px;
+      color: #425b79;
+    }
+    .tlg-library-filebar select {
+      min-width: 140px;
+      height: 32px;
+      margin: 0;
+      padding: 3px 26px 3px 7px;
+    }
+    .tlg-library-sharebar {
+      padding-top: 7px;
+      padding-bottom: 7px;
+      border-bottom: 1px solid #d7e1ee;
+      background: #f4f8fd;
+    }
+    .tlg-library-share-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(230px, 0.38fr);
+      gap: 8px 10px;
+      padding: 8px 10px;
+      border-bottom: 1px solid #d7e1ee;
+      background: #eef5fd;
+    }
+    .tlg-library-share-panel[hidden] { display: none; }
+    .tlg-library-share-panel label {
+      display: grid;
+      grid-row: 1 / span 2;
+      gap: 4px;
+      min-width: 0;
+      color: #3f5874;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .tlg-library-share-panel textarea {
+      width: 100%;
+      min-width: 0;
+      min-height: 126px;
+      margin: 0;
+      padding: 8px;
+      resize: vertical;
+      border: 1px solid #afc2d9;
+      border-radius: 7px;
+      background: #fff;
+      color: #16324f;
+      font: 12px/1.42 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      overflow-wrap: anywhere;
+    }
+    .tlg-library-share-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-content: start;
+      gap: 6px;
+    }
+    .tlg-library-share-actions button {
+      min-height: 32px;
+      margin: 0;
+    }
+    .tlg-library-share-summary {
+      min-height: 72px;
+      padding: 8px;
+      border: 1px solid #d2dfed;
+      border-radius: 7px;
+      background: #fff;
+      color: #405a78;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .tlg-library-share-summary[data-tone="error"] {
+      border-color: #edb6b1;
+      background: #fff5f4;
+      color: #8d261d;
+    }
+    .tlg-library-share-summary[data-tone="ok"] {
+      border-color: #b9dec8;
+      background: #f3fbf6;
+      color: #126344;
+    }
+    .tlg-library-main {
+      display: grid;
+      grid-template-columns: minmax(360px, 1.25fr) minmax(280px, 0.75fr);
+      gap: 10px;
+      min-height: 0;
+      padding: 10px;
+      overflow: hidden;
+    }
+    .tlg-library-list-panel,
+    .tlg-library-editor {
+      min-width: 0;
+      min-height: 0;
+      border: 1px solid #cbd8e8;
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .tlg-library-search-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border-bottom: 1px solid #e0e8f2;
+    }
+    .tlg-library-search-row input {
+      width: 100%;
+      min-width: 0;
+      height: 34px;
+      margin: 0;
+    }
+    .tlg-library-count {
+      color: #5c6f86;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .tlg-library-table-wrap {
+      height: calc(100% - 51px);
+      min-height: 240px;
+      overflow: auto;
+      overscroll-behavior: contain;
+    }
+    .tlg-library-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 12px;
+    }
+    .tlg-library-table th,
+    .tlg-library-table td {
+      padding: 6px 7px;
+      border-bottom: 1px solid #edf1f6;
+      overflow: hidden;
+      text-align: left;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tlg-library-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f1f6fc;
+      color: #405a78;
+      font-weight: 800;
+    }
+    .tlg-library-table th:nth-child(1),
+    .tlg-library-table td:nth-child(1) { width: 52px; text-align: right; }
+    .tlg-library-table th:nth-child(3),
+    .tlg-library-table td:nth-child(3) { width: 88px; }
+    .tlg-library-table th:nth-child(4),
+    .tlg-library-table td:nth-child(4) { width: 104px; }
+    .tlg-library-row { cursor: pointer; }
+    .tlg-library-row:hover { background: #f4f8fd; }
+    .tlg-library-row[aria-selected="true"] {
+      background: #e6f1ff;
+      box-shadow: inset 3px 0 0 #3478f6;
+    }
+    .tlg-library-empty {
+      padding: 28px 12px;
+      color: #718096;
+      text-align: center;
+    }
+    .tlg-library-editor {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      padding: 10px;
+      overflow: auto;
+    }
+    .tlg-library-editor label {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      color: #3f5874;
+      font-size: 12px;
+      font-weight: 750;
+    }
+    .tlg-library-editor input,
+    .tlg-library-editor textarea {
+      width: 100%;
+      min-width: 0;
+      margin: 0;
+      font: inherit;
+      font-weight: 500;
+    }
+    .tlg-library-editor textarea {
+      min-height: 150px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+    .tlg-library-summary {
+      padding: 8px;
+      border: 1px solid #d9e4f1;
+      border-radius: 7px;
+      background: #f7faff;
+      color: #4b617b;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+    .tlg-library-status {
+      min-height: 34px;
+      padding: 8px 11px;
+      border-top: 1px solid #cbd8e8;
+      background: #eef5fd;
+      color: #294663;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .tlg-library-status[data-tone="error"] {
+      background: #fff1f0;
+      color: #8d261d;
+    }
+    .tlg-library-status[data-tone="ok"] {
+      background: #edf9f2;
+      color: #126344;
+    }
+    @media (max-width: 760px) {
+      .tlg-library-dialog {
+        width: 100vw;
+        max-width: none;
+        max-height: 100dvh;
+        height: 100dvh;
+        border: 0;
+        border-radius: 0;
+      }
+      .tlg-library-shell {
+        min-height: 100dvh;
+        max-height: 100dvh;
+      }
+      .tlg-library-main {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(250px, 1fr) auto;
+        overflow: auto;
+      }
+      .tlg-library-list-panel { min-height: 300px; }
+      .tlg-library-editor textarea { min-height: 100px; }
+      .tlg-library-toolbar,
+      .tlg-library-filebar,
+      .tlg-library-sharebar { gap: 5px; }
+      .tlg-library-toolbar button,
+      .tlg-library-filebar button,
+      .tlg-library-sharebar button { flex: 1 1 auto; }
+      .tlg-library-filebar label { flex: 1 1 100%; }
+      .tlg-library-filebar select { flex: 1 1 auto; }
+      .tlg-library-share-panel { grid-template-columns: minmax(0, 1fr); }
+      .tlg-library-share-panel label { grid-row: auto; }
+      .tlg-library-share-panel textarea { min-height: 150px; }
+    }
+
     .candidate.tlg-virtual-candidate {
       outline: max(1px, 0.14em) solid #7c3aed;
       outline-offset: max(-3px, -0.22em);
@@ -4003,19 +4319,22 @@
     .mobile-solve-shell.mobile-hide-candidates .candidate-grid {
       visibility: hidden;
     }
-    .mobile-solve-shell .sudoku-cell.mobile-same-digit {
+    .mobile-solve-shell .sudoku-cell.mobile-same-digit,
+    .mobile-solve-shell .sudoku-cell.mobile-same-digit-candidate {
       background: #fff3c4;
       box-shadow: inset 0 0 0 2px #f0a51a;
     }
-    .mobile-solve-shell .sudoku-cell.mobile-same-digit .cell-value {
+    .mobile-solve-shell .sudoku-cell.mobile-same-digit-value .cell-value {
       color: #9a4f08;
       text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
     }
-    .mobile-solve-shell .sudoku-cell.mobile-same-digit.selected {
+    .mobile-solve-shell .sudoku-cell.mobile-same-digit.selected,
+    .mobile-solve-shell .sudoku-cell.mobile-same-digit-candidate.selected,
+    .mobile-solve-shell .sudoku-cell.mobile-same-digit-value.selected {
       background: #dceafe;
       box-shadow: inset 0 0 0 3px #3478f6;
     }
-    .mobile-solve-shell .sudoku-cell.mobile-same-digit.selected .cell-value {
+    .mobile-solve-shell .sudoku-cell.mobile-same-digit-value.selected .cell-value {
       color: inherit;
       text-shadow: none;
     }
@@ -4707,7 +5026,7 @@
             <div class="brand-title">YZF_Sudoku</div>
             <div id="brandSubtitle" class="brand-subtitle">移动优先逻辑训练器</div>
           </div>
-          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260703-manual-v2.1" target="_blank" rel="noopener">使用手册</a>
+          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260709-manual-v2.3-tlg-share" target="_blank" rel="noopener">使用手册</a>
           <button id="btnStepExplain" class="step-explain-button" type="button" disabled title="当前没有可解释的步骤。" aria-label="当前没有可解释的步骤。">解释</button>
           <a id="techniquesLink" class="manual-link" href="./techniques.html" target="_blank" rel="noopener">技巧说明</a>
           <button id="btnMobileSolveMode" class="mobile-solve-entry" type="button" title="做题模式" aria-label="做题模式">做题</button>
@@ -4918,6 +5237,7 @@
                   <button id="btnTlgConvertTruths" type="button" class="compact" disabled>转换冗余 Truths</button>
                   <button id="btnTlgRemoveUnused" type="button" class="compact" disabled>移除未使用 Links</button>
                   <button id="btnTlgClear" type="button" class="compact">清空 TLG 状态</button>
+                  <button id="btnTlgLibrary" type="button" class="compact">TLG 题库</button>
                 </div>
                 <div id="tlgSolverStatus" class="tlg-solver-status">TLG Solver 是可选附加功能；未启用 TLG 编辑时不会影响现有解题流程。</div>
                 <div id="tlgSolverSolutionPanel" class="tlg-solver-solution-panel" aria-live="polite" hidden>
@@ -4934,6 +5254,81 @@
                   <pre id="tlgSolverRaw" class="tlg-solver-json" hidden></pre>
                 </details>
               </details>
+              <dialog id="tlgLibraryDialog" class="tlg-library-dialog" aria-labelledby="tlgLibraryDialogTitle">
+                <div class="tlg-library-shell">
+                  <div class="tlg-library-header">
+                    <strong id="tlgLibraryDialogTitle">TLG 逻辑题库</strong>
+                    <button id="btnTlgLibraryClose" type="button" class="compact" aria-label="关闭">×</button>
+                  </div>
+                  <div class="tlg-library-toolbar" role="group" aria-label="题库记录操作">
+                    <button id="btnTlgLibraryRead" type="button" class="compact primary">读取</button>
+                    <button id="btnTlgLibraryInsert" type="button" class="compact">插入</button>
+                    <button id="btnTlgLibraryReplace" type="button" class="compact">替换</button>
+                    <button id="btnTlgLibraryAppend" type="button" class="compact">追加</button>
+                    <button id="btnTlgLibraryDelete" type="button" class="compact">删除</button>
+                  </div>
+                  <div class="tlg-library-filebar">
+                    <label><span id="tlgLibraryImportModeLabel">导入方式</span>
+                      <select id="tlgLibraryImportMode">
+                        <option value="append">追加到末尾</option>
+                        <option value="insert">插入到当前位置</option>
+                        <option value="replaceAll">替换整个题库</option>
+                      </select>
+                    </label>
+                    <button id="btnTlgLibraryImport" type="button" class="compact">导入 .tlgdb</button>
+                    <button id="btnTlgLibraryExportSelected" type="button" class="compact">导出选中</button>
+                    <button id="btnTlgLibraryExportAll" type="button" class="compact">导出题库</button>
+                    <input id="tlgLibraryFileInput" type="file" accept=".tlgdb,application/octet-stream" hidden />
+                  </div>
+                  <div class="tlg-library-sharebar" role="group" aria-label="TLG 文字样例操作">
+                    <button id="btnTlgLibraryCopyText" type="button" class="compact">复制样例</button>
+                    <button id="btnTlgLibraryCopyCompact" type="button" class="compact">复制单行</button>
+                    <button id="btnTlgLibraryPasteText" type="button" class="compact">粘贴样例</button>
+                    <button id="btnTlgLibraryImportText" type="button" class="compact">导入文本</button>
+                    <button id="btnTlgLibraryExportText" type="button" class="compact">导出文本</button>
+                    <input id="tlgLibraryTextFileInput" type="file" accept=".tlg.txt,.txt,text/plain" hidden />
+                  </div>
+                  <div id="tlgLibrarySharePanel" class="tlg-library-share-panel" hidden>
+                    <label><span id="tlgLibraryShareTextLabel">文字样例</span>
+                      <textarea id="tlgLibraryShareText" spellcheck="false" placeholder="粘贴 YZF-TLG-CASE:1 多行样例，或 YZFTLG1 单行样例。"></textarea>
+                    </label>
+                    <div class="tlg-library-share-actions">
+                      <button id="btnTlgLibraryLoadText" type="button" class="compact primary">载入样例</button>
+                      <button id="btnTlgLibraryClearText" type="button" class="compact">清空</button>
+                      <button id="btnTlgLibraryCloseText" type="button" class="compact">收起</button>
+                    </div>
+                    <div id="tlgLibraryShareSummary" class="tlg-library-share-summary" aria-live="polite">可粘贴别人分享的 TLG 文字样例；解析成功后会先显示结构摘要。</div>
+                  </div>
+                  <div class="tlg-library-main">
+                    <section class="tlg-library-list-panel" aria-label="TLG 题库记录">
+                      <div class="tlg-library-search-row">
+                        <input id="tlgLibrarySearch" type="search" autocomplete="off" placeholder="搜索标题、标签、来源或笔记" />
+                        <span id="tlgLibraryCount" class="tlg-library-count">0 / 0</span>
+                      </div>
+                      <div class="tlg-library-table-wrap">
+                        <table class="tlg-library-table">
+                          <thead><tr>
+                            <th id="tlgLibraryColumnIndex">序号</th>
+                            <th id="tlgLibraryColumnTitle">标题</th>
+                            <th id="tlgLibraryColumnType">类型</th>
+                            <th id="tlgLibraryColumnResult">结构</th>
+                          </tr></thead>
+                          <tbody id="tlgLibraryList"></tbody>
+                        </table>
+                        <div id="tlgLibraryEmpty" class="tlg-library-empty">题库尚无记录。</div>
+                      </div>
+                    </section>
+                    <section class="tlg-library-editor" aria-label="TLG 记录资料">
+                      <label><span id="tlgLibraryTitleLabel">标题</span><input id="tlgLibraryTitle" type="text" autocomplete="off" /></label>
+                      <label><span id="tlgLibraryTagsLabel">标签</span><input id="tlgLibraryTags" type="text" autocomplete="off" placeholder="例如：AUR, Rank 0" /></label>
+                      <label><span id="tlgLibrarySourceLabel">来源</span><input id="tlgLibrarySource" type="text" autocomplete="off" /></label>
+                      <label><span id="tlgLibraryNotesLabel">学习笔记</span><textarea id="tlgLibraryNotes"></textarea></label>
+                      <div id="tlgLibraryRecordSummary" class="tlg-library-summary">请选择一条记录，或填写资料后保存当前 TLG。</div>
+                    </section>
+                  </div>
+                  <div id="tlgLibraryStatus" class="tlg-library-status" aria-live="polite">本地题库使用固定 2048 字节记录；请定期导出 .tlgdb 备份。</div>
+                </div>
+              </dialog>
               <div class="yzf-debug-panel">
                 <div class="yzf-debug-title">YZF typ=4 debug sample</div>
               <div class="yzf-debug-controls">
@@ -4992,11 +5387,11 @@
 
           <section id="tabTechniques" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnTechniques" data-tab-panel="techniques" hidden>
             <div class="technique-toolbar">
-              <button id="btnTechAllIn" class="compact primary" type="button" title="启用所有已实现的技巧。" aria-label="启用所有已实现的技巧。">全选</button>
-              <button id="btnTechHighSpeed" class="compact" type="button" title="关闭最耗时的高级技巧，在覆盖率和求解速度之间取平衡。" aria-label="关闭最耗时的高级技巧，在覆盖率和求解速度之间取平衡。">高速</button>
-              <button id="btnTechExtremeSpeed" class="compact" type="button" title="仅保留更适合快速求解的技巧，优先降低求解耗时。" aria-label="仅保留更适合快速求解的技巧，优先降低求解耗时。">极速</button>
-              <button id="btnTechWhipRating" class="compact" type="button" title="仅启用基础技巧与 Whip/gWhip，并使用评级所需的 Whip 配置。" aria-label="仅启用基础技巧与 Whip/gWhip，并使用评级所需的 Whip 配置。">whip评分</button>
-              <button id="btnTechBraidRating" class="compact" type="button" title="仅启用基础技巧与 Braid/gBraid，用于 Braid 评级。" aria-label="仅启用基础技巧与 Braid/gBraid，用于 Braid 评级。">braid评分</button>
+              <button id="btnTechAllIn" class="compact primary" type="button">All In</button>
+              <button id="btnTechHighSpeed" class="compact" type="button">High Speed</button>
+              <button id="btnTechExtremeSpeed" class="compact" type="button">Extreme Speed</button>
+              <button id="btnTechWhipRating" class="compact" type="button">Whip Rating</button>
+              <button id="btnTechBraidRating" class="compact" type="button">Braid Rating</button>
             </div>
             <div id="techniqueList" class="technique-list"></div>
           </section>
@@ -5268,6 +5663,6 @@
       })();
     </script>
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=wasm-45c2375977db9425&ui=20260703-step-i18n-v4-tech-config"></script>
+    <script type="module" src="./app.js?v=20260709-tlg-share-v1"></script>
   </body>
 </html>

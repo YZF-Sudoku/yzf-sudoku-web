@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-45c2375977db9425";
+import createModule from "./sudoku_wasm.js?v=wasm-08539b4f006be1d9";
 
-const APP_VERSION = "wasm-45c2375977db9425";
+const APP_VERSION = "wasm-08539b4f006be1d9";
 
 let enginePromise = null;
 
@@ -40,7 +40,9 @@ self.addEventListener("message", async (event) => {
       );
     } else {
       if (typeof engine.tlgSolverFindEliminationsV440 !== "function") {
-        throw new Error("TLG solver entry point is not available in this WASM build.");
+        const unavailable = new Error("TLG solver entry point is not available in this WASM build.");
+        unavailable.code = "TLG_ENTRY_UNAVAILABLE";
+        throw unavailable;
       }
       resultText = engine.tlgSolverFindEliminationsV440(String(message.requestJson || ""));
     }
@@ -58,6 +60,7 @@ self.addEventListener("message", async (event) => {
       task: message.type,
       requestId: message.requestId,
       error: error instanceof Error ? error.message : String(error),
+      errorCode: error?.code || "WORKER_RUNTIME_FAILED",
       elapsedMs: performance.now() - startedAt,
     });
   }

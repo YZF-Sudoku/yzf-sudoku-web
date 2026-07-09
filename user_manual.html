@@ -637,7 +637,7 @@
 <p>电脑浏览器拒绝剪贴板权限时，可取消“剪贴板优先”后直接加载文本框。手机做题模式中的“题面输入”会返回分析界面并自动展开输入面板。</p>
 <h3>自动保存现场</h3>
 <p>程序会在本机浏览器保存当前盘面、候选状态、语言和技巧配置，下次打开时自动恢复。“清除本地保存”会删除下次恢复所用的盘面、语言和技巧配置，但不会清空当前盘面。</p>
-<div class="warn">手工标记、当前提示预览、解题路径预览和 TLG 临时逻辑不会作为主现场保存。重要结构请截图或导出。</div>
+<div class="warn">手工标记、当前提示预览和解题路径预览不会作为主现场保存。TLG 逻辑也不属于主现场；请使用“TLG 题库”保存，并定期导出 <code>.tlgdb</code> 文件备份。</div>
 <h3>Coach 候选数 mask</h3>
 <p><code>userCellCandidates</code> 由 81 个十进制 mask 组成，用 <code>-</code> 分隔。数字 <code>d</code> 对应 <code>1 &lt;&lt; d</code>；例如候选 2、3、6 的 mask 为 <code>4 + 8 + 64 = 76</code>。</p>
 </div>
@@ -658,7 +658,7 @@
 <p>If desktop clipboard permission is denied, disable Prefer Clipboard and load the text area directly. Puzzle Input inside mobile solve mode returns to the analysis view and opens the input panel.</p>
 <h3>Automatic Session Restore</h3>
 <p>The browser locally saves the current board, candidate state, language, and technique configuration, then restores them on the next visit. Clear Saved Session removes the board, language, and technique data used for the next restore, but does not clear the current board.</p>
-<div class="warn">Manual marks, the current hint preview, solve-path previews, and temporary TLG logic are not part of the main saved session. Capture or export important structures.</div>
+<div class="warn">Manual marks, the current hint preview, and solve-path previews are not part of the main saved session. TLG logic is also separate from the main session; save it in the TLG Library and export a <code>.tlgdb</code> backup regularly.</div>
 <h3>Coach Candidate Masks</h3>
 <p><code>userCellCandidates</code> contains 81 decimal masks separated by <code>-</code>. Digit <code>d</code> corresponds to <code>1 &lt;&lt; d</code>; candidates 2, 3, and 6 therefore use <code>4 + 8 + 64 = 76</code>.</p>
 </div>
@@ -1361,6 +1361,49 @@
 <li><strong>右键/长按菜单“清空全部逻辑”：</strong>清除全部 TLG 逻辑和结果，但保留已导入的临时候选盘。</li>
 <li><strong>面板“清空 TLG 状态”：</strong>连同临时候选盘一起清除，主数独题目本身不受影响。</li>
 </ul>
+<h3>13.17 TLG 逻辑题库</h3>
+<p>“TLG 题库”用于把候选盘、Truth/Link 结构和唯一性约束固化为可重复学习的案例。它与主现场自动保存相互独立：浏览器本地题库适合日常操作，<code>.tlgdb</code> 文件才是跨设备、重装和长期归档的备份。</p>
+<h4>定长二进制记录</h4>
+<p>题库采用 YZF 私有二进制格式，每条记录固定为 <strong>2048 字节</strong>。文件头之后可直接按“文件头 + 序号 × 2048”定位记录，因此读取、原位替换和顺序管理都很直接。每条记录有独立 CRC32 校验；文件头也有校验，损坏时会拒绝导入，而不会把坏数据写入当前题库。</p>
+<p>一条记录保存：</p>
+<ul>
+<li>原始给定数、当前大数、初始候选盘和当前活动候选盘；</li>
+<li>324 位 Truths、324 位用户 Links，以及计算后的结果 Links；</li>
+<li>两组 AUR、DAUR、GUR、Virtual Set，各使用 729 位候选位图；</li>
+<li>Virtual Set 的精确基数、唯一性门控、输入模式和 Link 类型；</li>
+<li>最近一次删数、出数结果，以及标题、标签、来源和学习笔记。</li>
+</ul>
+<div class="note">题库保存结构化数据，不保存依赖界面语言的结果长文本。读取后，程序会按当前中英文设置重新生成状态和结果说明。</div>
+<h4>读取、插入、替换、追加、删除</h4>
+<ul>
+<li><strong>读取：</strong>恢复所选案例的候选盘、全部 TLG 输入、操作选项和结果快照，并自动开启 TLG 编辑。题库盘面是独立的 TLG 视图；关闭 TLG 后，原来的主数独现场重新显示。</li>
+<li><strong>插入：</strong>把当前 TLG 保存到所选记录之前；没有选中记录时按追加处理。</li>
+<li><strong>替换：</strong>用当前 TLG 覆盖所选记录，保留该记录的位置和首次创建时间。</li>
+<li><strong>追加：</strong>把当前 TLG 保存到题库末尾，生成新的记录 ID。</li>
+<li><strong>删除：</strong>删除所选记录；执行前会要求确认。</li>
+</ul>
+<p>标题、标签、来源和笔记来自题库窗口右侧。由于记录定长，各字段按 UTF-8 字节限制：标题 128、标签 96、来源 128、笔记 512 字节。中文通常占 3 个字节；超过上限会明确报错，不会静默截断。</p>
+<h4>二进制题库导入与导出</h4>
+<ul>
+<li><strong>导出选中：</strong>生成只含所选记录的 <code>.tlgdb</code> 文件。</li>
+<li><strong>导出题库：</strong>按当前顺序导出全部记录。</li>
+<li><strong>追加到末尾：</strong>把导入文件中的记录作为新记录放到题库末尾。</li>
+<li><strong>插入到当前位置：</strong>把导入记录按文件顺序插入所选记录之前；没有选中记录时追加。</li>
+<li><strong>替换整个题库：</strong>清空浏览器本地题库，再载入文件中的全部记录；该操作会二次确认。</li>
+</ul>
+<h4>分享单个 TLG 文字样例</h4>
+<p>二进制题库适合长期保存和批量管理；论坛、聊天、Issue 或个人笔记中分享一个案例时，可使用 <code>.tlg.txt</code> 文字样例。文字操作针对<strong>当前 TLG 工作区</strong>以及题库窗口右侧填写的标题、标签、来源和笔记，因此案例尚未存入题库时也能直接分享。</p>
+<ul>
+<li><strong>复制样例：</strong>复制可阅读的多行 <code>YZF-TLG-CASE:1</code> 格式。字段名固定为英文标识，不随界面语言变化；标题和笔记保持原文。</li>
+<li><strong>复制单行：</strong>复制以 <code>YZFTLG1</code> 开头的紧凑单行格式，适合不便保留换行的聊天框或论坛输入框。</li>
+<li><strong>粘贴样例：</strong>尝试读取剪贴板并展开文字框；浏览器拒绝剪贴板权限时，可在框内手动粘贴。</li>
+<li><strong>导入文本：</strong>读取 <code>.tlg.txt</code> 或普通 <code>.txt</code> 文件到文字框。</li>
+<li><strong>导出文本：</strong>把当前 TLG 工作区保存为 <code>标题.tlg.txt</code>。</li>
+<li><strong>载入样例：</strong>解析成功后先显示标题、类型、Truth/Link 数、活动候选和结论摘要；确认后才替换当前临时 TLG 状态，不会自动写入题库。需要长期保存时，再使用“插入、替换或追加”。</li>
+</ul>
+<p>文字样例无损保存原题、当前大数、两套候选位图、Truths、Links、AUR 1/2、DAUR、GUR、Virtual Set 及其 Truth 数、结果 Links、删数、出数、操作选项和元数据。多行版使用可读的 <code>7r3c4</code> 候选和 <code>1r3</code> 约束表示；两套完整候选盘采用 Base64URL 位图，以免一条案例膨胀为两份 729 字符串。程序导出的文字包含 CRC32，复制被截断或意外改动时会拒绝载入。</p>
+<div class="note"><code>.tlg.txt</code> 适合分享单例，但不替代整库备份。多行版和单行版都能重新导入，并恢复为同一套结构化 TLG 状态。</div>
+<div class="warn">浏览器清理站点数据、无痕模式结束、重装系统或更换设备，都可能丢失 IndexedDB 中的本地题库。完成重要逻辑后应立即导出 <code>.tlgdb</code>；需要公开讨论的单个案例再同时导出或复制 <code>.tlg.txt</code>。</div>
 </div>
 <div class="en">
 <p>TLG Solver describes a set proof with Truths, Links, and optional uniqueness constraints, enumerates projections satisfying all premises, and derives common eliminations or assignments. It is not an ordinary hint button: the user defines the proof structure.</p>
@@ -1506,6 +1549,49 @@
 <li><strong>Clear All Logic in the context menu:</strong> clears all TLG logic and result while preserving the temporary candidate grid.</li>
 <li><strong>Clear TLG State in the panel:</strong> also removes the temporary candidate grid; the main Sudoku puzzle remains.</li>
 </ul>
+<h3>13.17 TLG Logic Library</h3>
+<p>The TLG Library turns a candidate grid, Truth/Link structure, and uniqueness premises into a reusable study case. It is independent of the main-session autosave: the browser library is convenient for daily work, while an exported <code>.tlgdb</code> file is the durable backup for another device, reinstall, or long-term archive.</p>
+<h4>Fixed-Size Binary Records</h4>
+<p>The library uses a private YZF binary format with exactly <strong>2048 bytes per record</strong>. After the file header, a record is located directly at “header + index × 2048,” making reads, in-place replacement, and ordered management straightforward. Every record has its own CRC32 checksum and the file header is checked as well. Damaged input is rejected before it can change the local library.</p>
+<p>Each record stores:</p>
+<ul>
+<li>original givens, current placed digits, the initial candidate grid, and the current active candidate grid;</li>
+<li>324-bit Truths, 324-bit User Links, and computed Result Links;</li>
+<li>two AUR groups, DAUR, GUR, and Virtual Set, each as a 729-bit candidate bitmap;</li>
+<li>Virtual Set cardinality, uniqueness gate, input mode, and Link type;</li>
+<li>the latest eliminations and assignments, plus title, tags, source, and study notes.</li>
+</ul>
+<div class="note">The library stores structured data rather than language-dependent result prose. After a record is read, status and result text are regenerated in the current UI language.</div>
+<h4>Read, Insert, Replace, Append, and Delete</h4>
+<ul>
+<li><strong>Read:</strong> restores the candidate grid, all TLG inputs, options, and the result snapshot, then enables TLG editing. The library grid is an independent TLG view; disabling TLG reveals the previous main Sudoku session again.</li>
+<li><strong>Insert:</strong> saves the current TLG before the selected record. With no selection, it behaves like Append.</li>
+<li><strong>Replace:</strong> overwrites the selected record while preserving its position and original creation time.</li>
+<li><strong>Append:</strong> saves the current TLG at the end with a new record ID.</li>
+<li><strong>Delete:</strong> removes the selected record after confirmation.</li>
+</ul>
+<p>Title, tags, source, and notes come from the editor on the right. Because the record is fixed-size, UTF-8 byte limits apply: 128 for title, 96 for tags, 128 for source, and 512 for notes. Text beyond a limit is rejected explicitly and is never silently truncated.</p>
+<h4>Binary Library Import and Export</h4>
+<ul>
+<li><strong>Export Selected:</strong> creates a <code>.tlgdb</code> containing only the selected record.</li>
+<li><strong>Export Library:</strong> exports every record in the current order.</li>
+<li><strong>Append to End:</strong> imports file records as new records at the end.</li>
+<li><strong>Insert at Current Position:</strong> inserts file records before the selected record in file order; without a selection, it appends.</li>
+<li><strong>Replace Entire Library:</strong> clears the local browser library and loads all file records after a second confirmation.</li>
+</ul>
+<h4>Sharing One TLG Case as Text</h4>
+<p>The binary library is for durable storage and bulk management. To share one case in a forum, chat, issue, or notebook, use a <code>.tlg.txt</code> text case. Text actions use the <strong>current TLG workspace</strong> plus the title, tags, source, and notes currently shown in the library editor, so an unsaved case can be shared directly.</p>
+<ul>
+<li><strong>Copy Case:</strong> copies the readable multiline <code>YZF-TLG-CASE:1</code> format. Field names are stable English identifiers independent of UI language; titles and notes remain unchanged.</li>
+<li><strong>Copy One Line:</strong> copies the compact <code>YZFTLG1</code> form for chat or forum fields that do not preserve line breaks.</li>
+<li><strong>Paste Case:</strong> attempts to read the clipboard and opens the text box. If browser permission blocks clipboard access, paste into the box manually.</li>
+<li><strong>Import Text:</strong> reads a <code>.tlg.txt</code> or ordinary <code>.txt</code> file into the text box.</li>
+<li><strong>Export Text:</strong> saves the current TLG workspace as <code>title.tlg.txt</code>.</li>
+<li><strong>Load Case:</strong> first shows a parsed summary of title, type, Truth/Link counts, active candidates, and conclusions. Only after confirmation does it replace the temporary TLG state. It does not save into the library automatically; use Insert, Replace, or Append afterward for durable storage.</li>
+</ul>
+<p>A text case losslessly stores givens, current placed digits, both candidate bitmaps, Truths, Links, AUR 1/2, DAUR, GUR, Virtual Set and its cardinality, Result Links, eliminations, assignments, options, and metadata. The multiline form uses readable candidate notation such as <code>7r3c4</code> and descriptor notation such as <code>1r3</code>. The two complete candidate grids use Base64URL bitmaps instead of two 729-character strings. Exported text includes CRC32, so truncated or unintentionally modified content is rejected.</p>
+<div class="note"><code>.tlg.txt</code> is convenient for sharing one case, but it does not replace a full-library backup. Both the multiline and one-line forms import into the same structured TLG state.</div>
+<div class="warn">Clearing site data, ending a private-browsing session, reinstalling the system, or moving to another device can remove the IndexedDB library. Export a <code>.tlgdb</code> after preserving important logic, and additionally copy or export <code>.tlg.txt</code> for individual cases you want to discuss publicly.</div>
 </div>
 </div>
 

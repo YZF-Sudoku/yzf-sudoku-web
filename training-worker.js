@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-45c2375977db9425";
+import createModule from "./sudoku_wasm.js?v=wasm-08539b4f006be1d9";
 
-const APP_VERSION = "wasm-45c2375977db9425";
+const APP_VERSION = "wasm-08539b4f006be1d9";
 
 let enginePromise = null;
 
@@ -34,6 +34,7 @@ self.addEventListener("message", async (event) => {
     self.postMessage({
       type: "error",
       error: error instanceof Error ? error.message : String(error),
+      errorCode: error?.code || "WORKER_RUNTIME_FAILED",
     });
   }
 });

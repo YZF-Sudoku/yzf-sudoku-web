@@ -1,12 +1,12 @@
-import createModule from "./sudoku_wasm.js?v=wasm-45c2375977db9425";
+import createModule from "./sudoku_wasm.js?v=wasm-6aa39cc1d081d5c5";
 import {
   categoryNameForLocale,
   localizedStepDescription,
   techniqueNameForStep,
 } from "./step-localization.js?v=20260703-step-i18n-v3";
 
-const APP_VERSION = "wasm-45c2375977db9425";
-const MANUAL_VERSION = "20260703-manual-v2.1";
+const APP_VERSION = "wasm-6aa39cc1d081d5c5";
+const MANUAL_VERSION = "20260709-manual-v2.3-tlg-share";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const OCR_ASSET_VERSION = "20260630-role-glyph-core-v8";
@@ -68,6 +68,41 @@ const btnTlgFindEliminations = document.getElementById("btnTlgFindEliminations")
 const btnTlgConvertTruths = document.getElementById("btnTlgConvertTruths");
 const btnTlgRemoveUnused = document.getElementById("btnTlgRemoveUnused");
 const btnTlgClear = document.getElementById("btnTlgClear");
+const btnTlgLibrary = document.getElementById("btnTlgLibrary");
+const tlgLibraryDialog = document.getElementById("tlgLibraryDialog");
+const btnTlgLibraryClose = document.getElementById("btnTlgLibraryClose");
+const btnTlgLibraryRead = document.getElementById("btnTlgLibraryRead");
+const btnTlgLibraryInsert = document.getElementById("btnTlgLibraryInsert");
+const btnTlgLibraryReplace = document.getElementById("btnTlgLibraryReplace");
+const btnTlgLibraryAppend = document.getElementById("btnTlgLibraryAppend");
+const btnTlgLibraryDelete = document.getElementById("btnTlgLibraryDelete");
+const tlgLibraryImportMode = document.getElementById("tlgLibraryImportMode");
+const btnTlgLibraryImport = document.getElementById("btnTlgLibraryImport");
+const btnTlgLibraryExportSelected = document.getElementById("btnTlgLibraryExportSelected");
+const btnTlgLibraryExportAll = document.getElementById("btnTlgLibraryExportAll");
+const btnTlgLibraryCopyText = document.getElementById("btnTlgLibraryCopyText");
+const btnTlgLibraryCopyCompact = document.getElementById("btnTlgLibraryCopyCompact");
+const btnTlgLibraryPasteText = document.getElementById("btnTlgLibraryPasteText");
+const btnTlgLibraryImportText = document.getElementById("btnTlgLibraryImportText");
+const btnTlgLibraryExportText = document.getElementById("btnTlgLibraryExportText");
+const btnTlgLibraryLoadText = document.getElementById("btnTlgLibraryLoadText");
+const btnTlgLibraryClearText = document.getElementById("btnTlgLibraryClearText");
+const btnTlgLibraryCloseText = document.getElementById("btnTlgLibraryCloseText");
+const tlgLibraryFileInput = document.getElementById("tlgLibraryFileInput");
+const tlgLibraryTextFileInput = document.getElementById("tlgLibraryTextFileInput");
+const tlgLibrarySharePanel = document.getElementById("tlgLibrarySharePanel");
+const tlgLibraryShareText = document.getElementById("tlgLibraryShareText");
+const tlgLibraryShareSummary = document.getElementById("tlgLibraryShareSummary");
+const tlgLibrarySearch = document.getElementById("tlgLibrarySearch");
+const tlgLibraryCount = document.getElementById("tlgLibraryCount");
+const tlgLibraryList = document.getElementById("tlgLibraryList");
+const tlgLibraryEmpty = document.getElementById("tlgLibraryEmpty");
+const tlgLibraryTitle = document.getElementById("tlgLibraryTitle");
+const tlgLibraryTags = document.getElementById("tlgLibraryTags");
+const tlgLibrarySource = document.getElementById("tlgLibrarySource");
+const tlgLibraryNotes = document.getElementById("tlgLibraryNotes");
+const tlgLibraryRecordSummary = document.getElementById("tlgLibraryRecordSummary");
+const tlgLibraryStatus = document.getElementById("tlgLibraryStatus");
 const tlgSolverStatus = document.getElementById("tlgSolverStatus");
 const tlgSolverStateList = document.getElementById("tlgSolverStateList");
 const tlgSolverImportText = document.getElementById("tlgSolverImportText");
@@ -296,6 +331,9 @@ let solverWorker = null;
 let solverTaskSeq = 0;
 const solverWorkerRequests = new Map();
 let solverBusyTask = "";
+let ratingWorker = null;
+let ratingTaskSeq = 0;
+let ratingTask = null;
 let batchWorker = null;
 let batchTaskSeq = 0;
 let batchWorkerActiveReject = null;
@@ -661,12 +699,12 @@ const uiText = {
     mobileSolveNewPuzzleCancel: "取消",
     mobileSolveNewPuzzleDifficulty: "难度",
     mobileDifficultyRandom: "随机",
-    mobileDifficultyEasy: "简单",
-    mobileDifficultyMedium: "中等",
-    mobileDifficultyHard: "困难",
-    mobileDifficultyUnfair: "不公平",
-    mobileDifficultyExtreme: "极难",
-    mobileDifficultyInsane: "疯狂",
+    mobileDifficultyEasy: "入门",
+    mobileDifficultyMedium: "初级",
+    mobileDifficultyHard: "进阶",
+    mobileDifficultyUnfair: "棘手",
+    mobileDifficultyExtreme: "极限",
+    mobileDifficultyInsane: "骨灰",
     mobileSolveMore: "更多",
     mobileSolveMoreTitle: "更多功能",
     mobileSolveClear: "清除",
@@ -713,6 +751,111 @@ const uiText = {
     tlgConvertTruths: "转换冗余 Truths",
     tlgRemoveUnused: "移除未使用 Links",
     tlgClearState: "清空 TLG 状态",
+    tlgLibraryButton: "TLG 题库",
+    tlgLibraryDialogTitle: "TLG 逻辑题库",
+    tlgLibraryReadAction: "读取",
+    tlgLibraryInsertAction: "插入",
+    tlgLibraryReplaceAction: "替换",
+    tlgLibraryAppendAction: "追加",
+    tlgLibraryDeleteAction: "删除",
+    tlgLibraryImportModeLabel: "导入方式",
+    tlgLibraryImportAppend: "追加到末尾",
+    tlgLibraryImportInsert: "插入到当前位置",
+    tlgLibraryImportReplaceAll: "替换整个题库",
+    tlgLibraryImportAction: "导入 .tlgdb",
+    tlgLibraryExportSelectedAction: "导出选中",
+    tlgLibraryExportAllAction: "导出题库",
+    tlgLibraryCopyTextAction: "复制样例",
+    tlgLibraryCopyCompactAction: "复制单行",
+    tlgLibraryPasteTextAction: "粘贴样例",
+    tlgLibraryImportTextAction: "导入文本",
+    tlgLibraryExportTextAction: "导出文本",
+    tlgLibraryShareToolbarAria: "TLG 文字样例操作",
+    tlgLibraryShareTextLabel: "文字样例",
+    tlgLibraryShareTextPlaceholder: "粘贴 YZF-TLG-CASE:1 多行样例，或 YZFTLG1 单行样例。",
+    tlgLibraryLoadTextAction: "载入样例",
+    tlgLibraryClearTextAction: "清空",
+    tlgLibraryCloseTextAction: "收起",
+    tlgLibraryShareEmptyHint: "可粘贴别人分享的 TLG 文字样例；解析成功后会先显示结构摘要。",
+    tlgLibrarySearchPlaceholder: "搜索标题、标签、来源或笔记",
+    tlgLibraryColumnIndex: "序号",
+    tlgLibraryColumnTitle: "标题",
+    tlgLibraryColumnType: "类型",
+    tlgLibraryColumnResult: "结构",
+    tlgLibraryEmpty: "题库尚无记录。",
+    tlgLibraryTitleLabel: "标题",
+    tlgLibraryTagsLabel: "标签",
+    tlgLibrarySourceLabel: "来源",
+    tlgLibraryNotesLabel: "学习笔记",
+    tlgLibraryTagsPlaceholder: "例如：AUR, Rank 0",
+    tlgLibraryEditorHint: "请选择一条记录，或填写资料后保存当前 TLG。",
+    tlgLibraryIdle: "本地题库使用固定 2048 字节记录；请定期导出 .tlgdb 备份。",
+    tlgLibraryRecordListAria: "TLG 题库记录",
+    tlgLibraryEditorAria: "TLG 记录资料",
+    tlgLibraryToolbarAria: "题库记录操作",
+    tlgLibraryDefaultTitle: "TLG 逻辑 {stamp}",
+    tlgLibraryUntitled: "未命名记录 {index}",
+    tlgLibraryUntitledPlain: "未命名记录",
+    tlgLibraryResultUnit: "结论",
+    tlgLibraryRecordSummary: "类型：{type}\nTruths：{truths}　Links：{links}\n活动候选：{candidates}　结论：{results}\n最后修改：{date}",
+    tlgLibraryLoadedToSolver: "已从题库恢复：{title}",
+    tlgLibraryNoGrid: "当前没有可保存的数独盘面或候选状态。",
+    tlgLibraryTextTooLong: "{field} 超过固定记录上限（最多 {limit} 个 UTF-8 字节）。",
+    tlgLibraryInvalidRecordSize: "TLG 记录长度不是固定的 2048 字节。",
+    tlgLibraryInvalidRecordMagic: "无法识别该 TLG 记录。",
+    tlgLibraryUnsupportedRecordVersion: "暂不支持 TLG 记录版本 {version}。",
+    tlgLibraryRecordCrcFailed: "TLG 记录校验失败，内容可能已损坏。",
+    tlgLibraryInvalidTextLength: "TLG 记录中的文本长度字段无效。",
+    tlgLibraryFileTooShort: "文件过短，不是有效的 TLG 题库。",
+    tlgLibraryInvalidFileMagic: "文件标识不正确；请选择 YZF TLG .tlgdb 题库。",
+    tlgLibraryUnsupportedFileVersion: "暂不支持 TLG 题库版本 {version}。",
+    tlgLibraryIncompatibleLayout: "该题库的记录布局与当前版本不兼容。",
+    tlgLibraryFileLengthMismatch: "题库长度不符：应为 {expected} 字节，实际为 {actual} 字节。",
+    tlgLibraryHeaderCrcFailed: "题库文件头校验失败。",
+    tlgLibraryDuplicateIdInFile: "题库文件含有重复记录 ID：{id}。",
+    tlgLibraryIndexedDbUnavailable: "当前浏览器不支持本地 TLG 题库存储。",
+    tlgLibraryOpenFailed: "无法打开本地 TLG 题库。",
+    tlgLibraryStorageFailed: "本地 TLG 题库写入失败。",
+    tlgLibraryStoredRecordDamaged: "本地题库第 {id} 条记录已损坏：{error}",
+    tlgLibrarySelectFirst: "请先选择一条题库记录。",
+    tlgLibrarySolverBusy: "TLG 正在计算；请等待当前操作完成后再读取或保存题库。",
+    tlgLibraryDuplicateConfirm: "题库中已有相同逻辑（{title}）。仍要保存一份吗？",
+    tlgLibraryReplaced: "已替换第 {index} 条：{title}",
+    tlgLibraryInserted: "已插入为第 {index} 条：{title}",
+    tlgLibraryAppended: "已追加为第 {index} 条：{title}",
+    tlgLibraryDeleteConfirm: "确定删除“{title}”吗？",
+    tlgLibraryDeleted: "已删除：{title}",
+    tlgLibraryRead: "已读取：{title}",
+    tlgLibraryNothingToExport: "题库中没有可导出的记录。",
+    tlgLibraryExportedSelected: "已导出选中记录：{count} 条，{bytes} 字节。",
+    tlgLibraryExportedAll: "已导出题库：{count} 条，{bytes} 字节。",
+    tlgLibraryEmptyImport: "导入文件不含任何 TLG 记录。",
+    tlgLibraryReplaceAllConfirm: "这会删除本地现有题库，并用文件中的 {count} 条记录替换。确定继续吗？",
+    tlgLibraryImported: "已导入 {count} 条 TLG 记录。",
+    tlgLibraryImportFailed: "TLG 题库导入失败：{error}",
+    tlgLibraryTextCopied: "TLG 文字样例已复制到剪贴板（{bytes} 字节）。",
+    tlgLibraryCompactCopied: "TLG 单行样例已复制到剪贴板（{bytes} 字节）。",
+    tlgLibraryClipboardReadFailed: "无法直接读取剪贴板；请在文字样例框中手动粘贴。",
+    tlgLibraryClipboardWriteFailed: "复制失败；请展开文字样例后手动复制。",
+    tlgLibraryTextExported: "已导出文字样例：{bytes} 字节。",
+    tlgLibraryTextFileReadFailed: "无法读取文字样例文件：{error}",
+    tlgLibraryTextEmpty: "请先粘贴或导入 TLG 文字样例。",
+    tlgLibraryTextInvalidHeader: "无法识别 TLG 文字样例格式。",
+    tlgLibraryTextUnsupportedVersion: "暂不支持 TLG 文字样例版本 {version}。",
+    tlgLibraryTextMissingField: "TLG 文字样例缺少必要字段：{field}。",
+    tlgLibraryTextInvalidField: "TLG 文字样例字段 {field} 无效。",
+    tlgLibraryTextInvalidCandidate: "无法识别候选：{value}。",
+    tlgLibraryTextInvalidDescriptor: "无法识别 Truth/Link 描述符：{value}。",
+    tlgLibraryTextInvalidBitmap: "字段 {field} 的候选位图无效。",
+    tlgLibraryTextCrcFailed: "文字样例校验失败，内容可能被截断或改动。",
+    tlgLibraryTextPreview: "标题：{title}\n类型：{type}\nTruths：{truths}　Links：{links}\n活动候选：{candidates}　结论：{results}\n文字大小：{bytes} 字节",
+    tlgLibraryTextLoadConfirm: "载入文字样例“{title}”？当前 TLG 临时状态将被替换。",
+    tlgLibraryTextLoaded: "已载入文字样例：{title}",
+    tlgLibraryTextParseFailed: "文字样例解析失败：{error}",
+    tlgLibraryTextReady: "文字样例解析成功，可以载入。",
+    tlgLibraryTextPanelOpened: "请粘贴文字样例，然后确认载入。",
+    tlgLibraryLoading: "正在读取本地 TLG 题库…",
+    tlgLibraryOpenError: "无法打开 TLG 题库：{error}",
     tlgStatusOptional: "TLG Solver 是可选附加功能，放在操作区最下方；未启用 TLG 编辑时不会影响现有解题流程。",
     tlgEditingEnabled: "TLG 编辑已启用",
     tlgStateTitle: "当前 TLG 状态",
@@ -859,6 +1002,12 @@ const uiText = {
     sessionRestoreFailed: "恢复上次现场失败：{message}",
     sessionCleared: "已清除本地保存的盘面和技巧配置。",
     ratePuzzle: "评分当前题目",
+    rateCancel: "取消评分",
+    rateStarting: "正在启动后台评分……再次点击可取消。",
+    rateRunning: "正在后台评分：已运行 {seconds} 秒。再次点击可取消。",
+    rateCancelled: "评分已取消。",
+    rateWorkerFailed: "后台评分失败：{error}",
+    rateForegroundFallback: "当前环境不支持后台 Worker，评分将在前台运行，期间界面可能暂时无响应。",
     allStepsFilterPlaceholder: "过滤：技巧、删数或描述",
     allTechniques: "全部技巧",
     defaultSort: "默认排序",
@@ -1069,18 +1218,6 @@ const uiText = {
     techniqueHeader: "技巧",
     scoreHeader: "评分",
     difficultyLevel: "难度 {level}",
-    techPresetAllIn: "全选",
-    techPresetAllInTitle: "启用所有已实现的技巧。",
-    techPresetHighSpeed: "高速",
-    techPresetHighSpeedTitle: "关闭最耗时的高级技巧，在覆盖率和求解速度之间取平衡。",
-    techPresetExtremeSpeed: "极速",
-    techPresetExtremeSpeedTitle: "仅保留更适合快速求解的技巧，优先降低求解耗时。",
-    techPresetWhipRating: "whip评分",
-    techPresetWhipRatingTitle: "仅启用基础技巧与 Whip/gWhip，并使用评级所需的 Whip 配置。",
-    techPresetBraidRating: "braid评分",
-    techPresetBraidRatingTitle: "仅启用基础技巧与 Braid/gBraid，用于 Braid 评级。",
-    techOptionWithAMSLS: "包含 AMSLS",
-    techOptionWithJEPOM: "包含 JEPOM",
     manualMarksTitle: "手工标记",
     manualMarkModeLabel: "模式",
     manualMarkLineLabel: "链线",
@@ -1254,6 +1391,111 @@ const uiText = {
     tlgConvertTruths: "Convert Redundant Truths",
     tlgRemoveUnused: "Remove Unused Links",
     tlgClearState: "Clear TLG State",
+    tlgLibraryButton: "TLG Library",
+    tlgLibraryDialogTitle: "TLG Logic Library",
+    tlgLibraryReadAction: "Read",
+    tlgLibraryInsertAction: "Insert",
+    tlgLibraryReplaceAction: "Replace",
+    tlgLibraryAppendAction: "Append",
+    tlgLibraryDeleteAction: "Delete",
+    tlgLibraryImportModeLabel: "Import Mode",
+    tlgLibraryImportAppend: "Append to End",
+    tlgLibraryImportInsert: "Insert at Current Position",
+    tlgLibraryImportReplaceAll: "Replace Entire Library",
+    tlgLibraryImportAction: "Import .tlgdb",
+    tlgLibraryExportSelectedAction: "Export Selected",
+    tlgLibraryExportAllAction: "Export Library",
+    tlgLibraryCopyTextAction: "Copy Case",
+    tlgLibraryCopyCompactAction: "Copy One Line",
+    tlgLibraryPasteTextAction: "Paste Case",
+    tlgLibraryImportTextAction: "Import Text",
+    tlgLibraryExportTextAction: "Export Text",
+    tlgLibraryShareToolbarAria: "TLG text-case actions",
+    tlgLibraryShareTextLabel: "Text Case",
+    tlgLibraryShareTextPlaceholder: "Paste a multiline YZF-TLG-CASE:1 case or a one-line YZFTLG1 case.",
+    tlgLibraryLoadTextAction: "Load Case",
+    tlgLibraryClearTextAction: "Clear",
+    tlgLibraryCloseTextAction: "Collapse",
+    tlgLibraryShareEmptyHint: "Paste a shared TLG text case here. A structure summary is shown before it is loaded.",
+    tlgLibrarySearchPlaceholder: "Search title, tags, source, or notes",
+    tlgLibraryColumnIndex: "No.",
+    tlgLibraryColumnTitle: "Title",
+    tlgLibraryColumnType: "Type",
+    tlgLibraryColumnResult: "Structure",
+    tlgLibraryEmpty: "The library has no records yet.",
+    tlgLibraryTitleLabel: "Title",
+    tlgLibraryTagsLabel: "Tags",
+    tlgLibrarySourceLabel: "Source",
+    tlgLibraryNotesLabel: "Study Notes",
+    tlgLibraryTagsPlaceholder: "Example: AUR, Rank 0",
+    tlgLibraryEditorHint: "Select a record, or enter metadata and save the current TLG.",
+    tlgLibraryIdle: "The local library uses fixed 2048-byte records. Export a .tlgdb backup regularly.",
+    tlgLibraryRecordListAria: "TLG library records",
+    tlgLibraryEditorAria: "TLG record metadata",
+    tlgLibraryToolbarAria: "Library record actions",
+    tlgLibraryDefaultTitle: "TLG Logic {stamp}",
+    tlgLibraryUntitled: "Untitled Record {index}",
+    tlgLibraryUntitledPlain: "Untitled Record",
+    tlgLibraryResultUnit: " results",
+    tlgLibraryRecordSummary: "Type: {type}\nTruths: {truths}  Links: {links}\nActive candidates: {candidates}  Results: {results}\nLast modified: {date}",
+    tlgLibraryLoadedToSolver: "Restored from library: {title}",
+    tlgLibraryNoGrid: "There is no Sudoku grid or candidate state to save.",
+    tlgLibraryTextTooLong: "{field} exceeds the fixed-record limit ({limit} UTF-8 bytes maximum).",
+    tlgLibraryInvalidRecordSize: "The TLG record is not the fixed 2048-byte size.",
+    tlgLibraryInvalidRecordMagic: "This TLG record is not recognized.",
+    tlgLibraryUnsupportedRecordVersion: "TLG record version {version} is not supported.",
+    tlgLibraryRecordCrcFailed: "The TLG record checksum failed; the record may be damaged.",
+    tlgLibraryInvalidTextLength: "A text-length field in the TLG record is invalid.",
+    tlgLibraryFileTooShort: "The file is too short to be a valid TLG library.",
+    tlgLibraryInvalidFileMagic: "Invalid file signature. Select a YZF TLG .tlgdb library.",
+    tlgLibraryUnsupportedFileVersion: "TLG library version {version} is not supported.",
+    tlgLibraryIncompatibleLayout: "This library record layout is incompatible with the current version.",
+    tlgLibraryFileLengthMismatch: "Library length mismatch: expected {expected} bytes, got {actual} bytes.",
+    tlgLibraryHeaderCrcFailed: "The library header checksum failed.",
+    tlgLibraryDuplicateIdInFile: "The library file contains duplicate record ID {id}.",
+    tlgLibraryIndexedDbUnavailable: "This browser does not support local TLG library storage.",
+    tlgLibraryOpenFailed: "Could not open the local TLG library.",
+    tlgLibraryStorageFailed: "Could not write the local TLG library.",
+    tlgLibraryStoredRecordDamaged: "Local record {id} is damaged: {error}",
+    tlgLibrarySelectFirst: "Select a library record first.",
+    tlgLibrarySolverBusy: "TLG is still computing. Wait for the current operation before reading or saving the library.",
+    tlgLibraryDuplicateConfirm: "The library already contains the same logic ({title}). Save another copy?",
+    tlgLibraryReplaced: "Replaced record {index}: {title}",
+    tlgLibraryInserted: "Inserted as record {index}: {title}",
+    tlgLibraryAppended: "Appended as record {index}: {title}",
+    tlgLibraryDeleteConfirm: "Delete “{title}”?",
+    tlgLibraryDeleted: "Deleted: {title}",
+    tlgLibraryRead: "Read: {title}",
+    tlgLibraryNothingToExport: "There are no records to export.",
+    tlgLibraryExportedSelected: "Exported the selected record: {count} record, {bytes} bytes.",
+    tlgLibraryExportedAll: "Exported library: {count} records, {bytes} bytes.",
+    tlgLibraryEmptyImport: "The imported file contains no TLG records.",
+    tlgLibraryReplaceAllConfirm: "This will delete the current local library and replace it with {count} records from the file. Continue?",
+    tlgLibraryImported: "Imported {count} TLG records.",
+    tlgLibraryImportFailed: "TLG library import failed: {error}",
+    tlgLibraryTextCopied: "The TLG text case was copied to the clipboard ({bytes} bytes).",
+    tlgLibraryCompactCopied: "The one-line TLG case was copied to the clipboard ({bytes} bytes).",
+    tlgLibraryClipboardReadFailed: "The clipboard could not be read directly. Paste into the text-case box manually.",
+    tlgLibraryClipboardWriteFailed: "Copy failed. Expand the text-case box and copy it manually.",
+    tlgLibraryTextExported: "Exported the text case ({bytes} bytes).",
+    tlgLibraryTextFileReadFailed: "Could not read the text-case file: {error}",
+    tlgLibraryTextEmpty: "Paste or import a TLG text case first.",
+    tlgLibraryTextInvalidHeader: "The TLG text-case format is not recognized.",
+    tlgLibraryTextUnsupportedVersion: "TLG text-case version {version} is not supported.",
+    tlgLibraryTextMissingField: "The TLG text case is missing required field {field}.",
+    tlgLibraryTextInvalidField: "Field {field} in the TLG text case is invalid.",
+    tlgLibraryTextInvalidCandidate: "Unrecognized candidate: {value}.",
+    tlgLibraryTextInvalidDescriptor: "Unrecognized Truth/Link descriptor: {value}.",
+    tlgLibraryTextInvalidBitmap: "The candidate bitmap in field {field} is invalid.",
+    tlgLibraryTextCrcFailed: "The text-case checksum failed; the content may have been truncated or changed.",
+    tlgLibraryTextPreview: "Title: {title}\nType: {type}\nTruths: {truths}  Links: {links}\nActive candidates: {candidates}  Results: {results}\nText size: {bytes} bytes",
+    tlgLibraryTextLoadConfirm: "Load text case “{title}”? The current temporary TLG state will be replaced.",
+    tlgLibraryTextLoaded: "Loaded text case: {title}",
+    tlgLibraryTextParseFailed: "Text-case parse failed: {error}",
+    tlgLibraryTextReady: "The text case parsed successfully and is ready to load.",
+    tlgLibraryTextPanelOpened: "Paste a text case, then confirm to load it.",
+    tlgLibraryLoading: "Loading the local TLG library…",
+    tlgLibraryOpenError: "Could not open the TLG library: {error}",
     tlgStatusOptional: "TLG Solver is optional and parked at the bottom of Controls. Existing solver behavior is unchanged unless TLG editing is enabled.",
     tlgEditingEnabled: "TLG editing enabled",
     tlgStateTitle: "Current TLG State",
@@ -1400,6 +1642,12 @@ const uiText = {
     sessionRestoreFailed: "Failed to restore the last session: {message}",
     sessionCleared: "Cleared the saved board and technique settings in this browser.",
     ratePuzzle: "Rate puzzle",
+    rateCancel: "Cancel rating",
+    rateStarting: "Starting background rating... Click again to cancel.",
+    rateRunning: "Rating in the background: {seconds} seconds elapsed. Click again to cancel.",
+    rateCancelled: "Rating cancelled.",
+    rateWorkerFailed: "Background rating failed: {error}",
+    rateForegroundFallback: "Background Worker is unavailable in this environment. Rating will run on the main thread and the page may temporarily stop responding.",
     allStepsFilterPlaceholder: "Filter: technique / action / description",
     allTechniques: "All techniques",
     defaultSort: "Default order",
@@ -1610,18 +1858,6 @@ const uiText = {
     techniqueHeader: "Technique",
     scoreHeader: "Score",
     difficultyLevel: "Difficulty {level}",
-    techPresetAllIn: "All In",
-    techPresetAllInTitle: "Enable every implemented technique.",
-    techPresetHighSpeed: "High Speed",
-    techPresetHighSpeedTitle: "Disable the most expensive advanced techniques to balance coverage and solving speed.",
-    techPresetExtremeSpeed: "Extreme Speed",
-    techPresetExtremeSpeedTitle: "Keep only techniques suited to fast solving and prioritize lower solve time.",
-    techPresetWhipRating: "Whip Rating",
-    techPresetWhipRatingTitle: "Enable only the basic techniques and Whip/gWhip with the Whip rating configuration.",
-    techPresetBraidRating: "Braid Rating",
-    techPresetBraidRatingTitle: "Enable only the basic techniques and Braid/gBraid for Braid rating.",
-    techOptionWithAMSLS: "with AMSLS",
-    techOptionWithJEPOM: "with JEPOM",
     manualMarksTitle: "Manual Marks",
     manualMarkModeLabel: "Mode",
     manualMarkLineLabel: "Line",
@@ -3271,16 +3507,6 @@ function applyStaticLanguage() {
   setTextById("tabBtnTechniques", ui("techniques"));
   setTextById("tabBtnPath", ui("path"));
   setTextById("tabBtnAllSteps", ui("allSteps"));
-  setButtonText(btnTechAllIn, ui("techPresetAllIn"));
-  setTitleAndAria(btnTechAllIn, ui("techPresetAllInTitle"));
-  setButtonText(btnTechHighSpeed, ui("techPresetHighSpeed"));
-  setTitleAndAria(btnTechHighSpeed, ui("techPresetHighSpeedTitle"));
-  setButtonText(btnTechExtremeSpeed, ui("techPresetExtremeSpeed"));
-  setTitleAndAria(btnTechExtremeSpeed, ui("techPresetExtremeSpeedTitle"));
-  setButtonText(btnTechWhipRating, ui("techPresetWhipRating"));
-  setTitleAndAria(btnTechWhipRating, ui("techPresetWhipRatingTitle"));
-  setButtonText(btnTechBraidRating, ui("techPresetBraidRating"));
-  setTitleAndAria(btnTechBraidRating, ui("techPresetBraidRatingTitle"));
   setTextById("manualAdvancedTitle", ui("manualAdvancedTitle"));
   setTextById("btnManualAdvancedRun", ui("runManualAdvanced"));
   setTextById("btnManualAdvancedClear", ui("clearManualAdvanced"));
@@ -3302,6 +3528,61 @@ function applyStaticLanguage() {
   setTextById("btnTlgConvertTruths", ui("tlgConvertTruths"));
   setTextById("btnTlgRemoveUnused", ui("tlgRemoveUnused"));
   setTextById("btnTlgClear", ui("tlgClearState"));
+  setTextById("btnTlgLibrary", ui("tlgLibraryButton"));
+  setTextById("tlgLibraryDialogTitle", ui("tlgLibraryDialogTitle"));
+  setTextById("btnTlgLibraryRead", ui("tlgLibraryReadAction"));
+  setTextById("btnTlgLibraryInsert", ui("tlgLibraryInsertAction"));
+  setTextById("btnTlgLibraryReplace", ui("tlgLibraryReplaceAction"));
+  setTextById("btnTlgLibraryAppend", ui("tlgLibraryAppendAction"));
+  setTextById("btnTlgLibraryDelete", ui("tlgLibraryDeleteAction"));
+  setTextById("tlgLibraryImportModeLabel", ui("tlgLibraryImportModeLabel"));
+  setTextById("btnTlgLibraryImport", ui("tlgLibraryImportAction"));
+  setTextById("btnTlgLibraryExportSelected", ui("tlgLibraryExportSelectedAction"));
+  setTextById("btnTlgLibraryExportAll", ui("tlgLibraryExportAllAction"));
+  setTextById("btnTlgLibraryCopyText", ui("tlgLibraryCopyTextAction"));
+  setTextById("btnTlgLibraryCopyCompact", ui("tlgLibraryCopyCompactAction"));
+  setTextById("btnTlgLibraryPasteText", ui("tlgLibraryPasteTextAction"));
+  setTextById("btnTlgLibraryImportText", ui("tlgLibraryImportTextAction"));
+  setTextById("btnTlgLibraryExportText", ui("tlgLibraryExportTextAction"));
+  setTextById("tlgLibraryShareTextLabel", ui("tlgLibraryShareTextLabel"));
+  setTextById("btnTlgLibraryLoadText", ui("tlgLibraryLoadTextAction"));
+  setTextById("btnTlgLibraryClearText", ui("tlgLibraryClearTextAction"));
+  setTextById("btnTlgLibraryCloseText", ui("tlgLibraryCloseTextAction"));
+  setTextById("tlgLibraryColumnIndex", ui("tlgLibraryColumnIndex"));
+  setTextById("tlgLibraryColumnTitle", ui("tlgLibraryColumnTitle"));
+  setTextById("tlgLibraryColumnType", ui("tlgLibraryColumnType"));
+  setTextById("tlgLibraryColumnResult", ui("tlgLibraryColumnResult"));
+  setTextById("tlgLibraryEmpty", ui("tlgLibraryEmpty"));
+  setTextById("tlgLibraryTitleLabel", ui("tlgLibraryTitleLabel"));
+  setTextById("tlgLibraryTagsLabel", ui("tlgLibraryTagsLabel"));
+  setTextById("tlgLibrarySourceLabel", ui("tlgLibrarySourceLabel"));
+  setTextById("tlgLibraryNotesLabel", ui("tlgLibraryNotesLabel"));
+  setTitleAndAria(btnTlgLibraryClose, ui("close"));
+  if (tlgLibrarySearch) {
+    tlgLibrarySearch.placeholder = ui("tlgLibrarySearchPlaceholder");
+    tlgLibrarySearch.setAttribute("aria-label", ui("tlgLibrarySearchPlaceholder"));
+  }
+  if (tlgLibraryTags) tlgLibraryTags.placeholder = ui("tlgLibraryTagsPlaceholder");
+  if (tlgLibraryShareText) {
+    tlgLibraryShareText.placeholder = ui("tlgLibraryShareTextPlaceholder");
+    tlgLibraryShareText.setAttribute("aria-label", ui("tlgLibraryShareTextLabel"));
+  }
+  if (tlgLibraryShareSummary) {
+    if (String(tlgLibraryShareText?.value || "").trim()) tlgLibraryPreviewShareText();
+    else tlgLibraryShareSummary.textContent = ui("tlgLibraryShareEmptyHint");
+  }
+  if (tlgLibraryImportMode) {
+    const importLabels = { append: "tlgLibraryImportAppend", insert: "tlgLibraryImportInsert", replaceAll: "tlgLibraryImportReplaceAll" };
+    [...tlgLibraryImportMode.options].forEach((option) => {
+      const key = importLabels[option.value];
+      if (key) option.textContent = ui(key);
+    });
+  }
+  document.querySelector(".tlg-library-toolbar")?.setAttribute("aria-label", ui("tlgLibraryToolbarAria"));
+  document.querySelector(".tlg-library-sharebar")?.setAttribute("aria-label", ui("tlgLibraryShareToolbarAria"));
+  document.querySelector(".tlg-library-list-panel")?.setAttribute("aria-label", ui("tlgLibraryRecordListAria"));
+  document.querySelector(".tlg-library-editor")?.setAttribute("aria-label", ui("tlgLibraryEditorAria"));
+  if (tlgLibraryDialog?.open) renderTlgLibrary();
   setTextById("tlgSolverStateTitle", ui("tlgStateTitle"));
   setTextById("tlgSolverSolutionTitle", ui("tlgSolutionTitle"));
   setTextById("tlgSolverDebugSummary", ui("tlgDebugImport"));
@@ -3351,7 +3632,7 @@ function applyStaticLanguage() {
   updateExportFormatLabels();
   setTextById("btnClearSavedSession", ui("clearSavedSession"));
   setTitleAndAria(btnClearSavedSession, ui("clearSavedSessionTitle"));
-  setTextById("btnRate", ui("ratePuzzle"));
+  setTextById("btnRate", ratingTask ? ui("rateCancel") : ui("ratePuzzle"));
   setTextById("btnImageOcrPickText", ui("ocrPickImage"));
   setTextById("btnImageOcrCameraText", ui("ocrCameraImage"));
   setTextById("btnImageOcrClipboard", ui("ocrClipboardImage"));
@@ -9784,6 +10065,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
   // start/end markers remain visible and are not masked by solver highlights.
   applyManualChainEndpointHighlights();
   syncMobileSolveDigitHighlights();
+  syncMobileSolveCompletedDigitButtons();
   invalidateManualScreenshotDomCache();
 }
 
@@ -10003,6 +10285,7 @@ function updateInputControls() {
   numpad.title = `${ui("currentInput")}: ${inputMode === "candidate" ? ui("candidateMode") : ui("valueMode")} ${selectedDigit}${roleText}. ${ui("inputModeTitle")}`;
   updateMobileSolveInputState();
   syncMobileSolveDigitHighlights();
+  syncMobileSolveCompletedDigitButtons();
 }
 
 function loadTechniqueState() {
@@ -10141,6 +10424,96 @@ async function runSolverWorkerTask(task, payload) {
       requestId,
       techniqueConfig: getTechniqueConfigPayload(techniqueState.length ? techniqueState : loadTechniqueState()),
       ...payload,
+    });
+  });
+}
+
+
+function setRatingBusy(busy) {
+  if (!btnRate) return;
+  setButtonText(btnRate, busy ? ui("rateCancel") : ui("ratePuzzle"));
+  btnRate.setAttribute("aria-busy", busy ? "true" : "false");
+  btnRate.dataset.ratingBusy = busy ? "true" : "false";
+}
+
+function finishRatingTask(task, { cancelled = false } = {}) {
+  if (!task || ratingTask !== task) return;
+  if (task.timer) window.clearInterval(task.timer);
+  if (ratingWorker) {
+    ratingWorker.terminate();
+    ratingWorker = null;
+  }
+  ratingTask = null;
+  setRatingBusy(false);
+  if (cancelled) setStatus(ui("rateCancelled"));
+}
+
+function cancelRatingTask() {
+  if (!ratingTask) return false;
+  const task = ratingTask;
+  const reject = task.reject;
+  finishRatingTask(task, { cancelled: true });
+  if (typeof reject === "function") reject(new Error("rating_cancelled"));
+  return true;
+}
+
+async function runRatingTask(input, fallbackPuzzle) {
+  const canUseWorker = !window.YZF_STANDALONE && typeof Worker !== "undefined";
+  if (!canUseWorker) {
+    setRatingBusy(true);
+    setStatus(ui("rateForegroundFallback"));
+    // Let the warning paint before entering the synchronous WASM call.
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    try {
+      const startedAt = performance.now();
+      const resultText = typeof engine.rate_import_text_json === "function"
+        ? engine.rate_import_text_json(input)
+        : engine.rate_puzzle_json(fallbackPuzzle);
+      return { resultText, elapsedMs: performance.now() - startedAt, fallback: true };
+    } finally {
+      setRatingBusy(false);
+    }
+  }
+
+  const task = {
+    id: ++ratingTaskSeq,
+    startedAt: performance.now(),
+    timer: 0,
+  };
+  ratingTask = task;
+  setRatingBusy(true);
+  setStatus(ui("rateStarting"));
+  task.timer = window.setInterval(() => {
+    if (ratingTask !== task) return;
+    const seconds = Math.max(0, Math.floor((performance.now() - task.startedAt) / 1000));
+    setYzfHintBaseText(uif("rateRunning", { seconds }));
+  }, 1000);
+
+  return new Promise((resolve, reject) => {
+    task.reject = reject;
+    const worker = new Worker(`./rating-worker.js?v=${APP_VERSION}`, { type: "module" });
+    ratingWorker = worker;
+    worker.addEventListener("message", (event) => {
+      const message = event.data || {};
+      if (ratingTask !== task || message.requestId !== task.id) return;
+      if (message.type === "started") return;
+      finishRatingTask(task);
+      if (message.type === "result") {
+        resolve(message);
+      } else {
+        reject(new Error(message.error || ui("workerTaskFailed")));
+      }
+    });
+    worker.addEventListener("error", (event) => {
+      if (ratingTask !== task) return;
+      finishRatingTask(task);
+      reject(new Error(event.message || ui("workerTaskFailed")));
+    });
+    worker.postMessage({
+      type: "rate",
+      requestId: task.id,
+      input,
+      fallbackPuzzle,
     });
   });
 }
@@ -10302,8 +10675,8 @@ function renderTechniques() {
       subLabel.append(subInput, subText);
       nameCell.appendChild(subLabel);
     };
-    if (item.kind === "ComplexAIC") addSubOption("withAMSLS", ui("techOptionWithAMSLS"));
-    if (item.kind === "JE") addSubOption("withJEPOM", ui("techOptionWithJEPOM"));
+    if (item.kind === "ComplexAIC") addSubOption("withAMSLS", "with AMSLS");
+    if (item.kind === "JE") addSubOption("withJEPOM", "with JEPOM");
 
     const scoreCell = document.createElement("td");
     scoreCell.className = "technique-score-cell";
@@ -13160,9 +13533,1584 @@ function initTlgSolverControls() {
     removeTlgSolverStateItem(button.dataset.tlgRemoveCategory || "", button.dataset.tlgRemoveValue || "");
   });
   installTlgContextMenuListeners();
+  initTlgLibraryControls();
   if (tlgSolverDebug) tlgSolverDebug.hidden = !APP_DEBUG_MODE;
   updateTlgSolverUi();
 }
+
+const TLG_LIBRARY_DB_NAME = "yzf-tlg-library-v1";
+const TLG_LIBRARY_DB_VERSION = 1;
+const TLG_LIBRARY_FILE_MAGIC = "YZFTLGDB";
+const TLG_LIBRARY_RECORD_MAGIC = "TLGR";
+const TLG_LIBRARY_FILE_HEADER_SIZE = 64;
+const TLG_LIBRARY_RECORD_SIZE = 2048;
+const TLG_LIBRARY_SCHEMA_VERSION = 1;
+const TLG_LIBRARY_ORDER_STEP = 1024;
+const TLG_LIBRARY_TEXT_LIMITS = Object.freeze({ title: 128, tags: 96, source: 128, notes: 512 });
+const TLG_LIBRARY_OFFSETS = Object.freeze({
+  givens: 64,
+  values: 105,
+  initialCandidates: 146,
+  activeCandidates: 238,
+  truths: 330,
+  links: 371,
+  aur1: 412,
+  aur2: 504,
+  daur: 596,
+  gur: 688,
+  virtual: 780,
+  resultLinks: 872,
+  eliminations: 913,
+  assignments: 1005,
+  title: 1097,
+  tags: 1225,
+  source: 1321,
+  notes: 1449,
+  reserved: 1961,
+});
+const TLG_LIBRARY_MODE_VALUES = Object.freeze(["truths", "links", "virtualSet", "aur", "daur", "gur"]);
+const TLG_LIBRARY_LINK_TYPE_VALUES = Object.freeze(["auto", "rowColumn", "box", "cell"]);
+
+let tlgLibraryDbPromise = null;
+let tlgLibraryRecords = [];
+let tlgLibrarySelectedId = null;
+let tlgLibraryNextId = 1;
+let tlgLibraryBusy = false;
+let tlgLibraryCrcTable = null;
+let tlgLibrarySharePreview = null;
+let tlgLibrarySharePreviewTimer = 0;
+
+function tlgLibrarySetStatus(message, tone = "") {
+  if (!tlgLibraryStatus) return;
+  tlgLibraryStatus.textContent = String(message || "");
+  if (tone) tlgLibraryStatus.dataset.tone = tone;
+  else tlgLibraryStatus.removeAttribute("data-tone");
+}
+
+function tlgLibraryBuildCrcTable() {
+  if (tlgLibraryCrcTable) return tlgLibraryCrcTable;
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i += 1) {
+    let value = i;
+    for (let bit = 0; bit < 8; bit += 1) {
+      value = (value & 1) ? (0xedb88320 ^ (value >>> 1)) : (value >>> 1);
+    }
+    table[i] = value >>> 0;
+  }
+  tlgLibraryCrcTable = table;
+  return table;
+}
+
+function tlgLibraryCrc32(input) {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input || 0);
+  const table = tlgLibraryBuildCrcTable();
+  let crc = 0xffffffff;
+  for (const byte of bytes) crc = table[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function tlgLibraryAsciiWrite(bytes, offset, text, length) {
+  for (let i = 0; i < length; i += 1) bytes[offset + i] = text.charCodeAt(i) || 0;
+}
+
+function tlgLibraryAsciiRead(bytes, offset, length) {
+  return String.fromCharCode(...bytes.subarray(offset, offset + length));
+}
+
+function tlgLibraryEncodeText(value, maxBytes, fieldKey) {
+  const encoded = new TextEncoder().encode(String(value || "").trim());
+  if (encoded.length > maxBytes) {
+    throw new Error(uif("tlgLibraryTextTooLong", {
+      field: ui(fieldKey),
+      limit: maxBytes,
+    }));
+  }
+  return encoded;
+}
+
+function tlgLibraryWriteText(bytes, offset, maxBytes, encoded) {
+  bytes.fill(0, offset, offset + maxBytes);
+  bytes.set(encoded.subarray(0, maxBytes), offset);
+}
+
+function tlgLibraryReadText(bytes, offset, length) {
+  if (!length) return "";
+  return new TextDecoder("utf-8", { fatal: false }).decode(bytes.subarray(offset, offset + length));
+}
+
+function tlgLibraryPackDigits(text) {
+  const normalized = String(text || "").padEnd(81, ".").slice(0, 81);
+  const bytes = new Uint8Array(41);
+  for (let index = 0; index < 81; index += 1) {
+    const ch = normalized[index];
+    const value = ch >= "1" && ch <= "9" ? Number(ch) : 0;
+    const byteIndex = index >> 1;
+    if ((index & 1) === 0) bytes[byteIndex] |= value & 0x0f;
+    else bytes[byteIndex] |= (value & 0x0f) << 4;
+  }
+  return bytes;
+}
+
+function tlgLibraryUnpackDigits(bytes) {
+  let text = "";
+  for (let index = 0; index < 81; index += 1) {
+    const packed = bytes[index >> 1] || 0;
+    const value = (index & 1) === 0 ? (packed & 0x0f) : ((packed >> 4) & 0x0f);
+    text += value >= 1 && value <= 9 ? String(value) : ".";
+  }
+  return text;
+}
+
+function tlgLibraryCandidateIdFromKey(key) {
+  const [cellText, digitText] = String(key || "").split(":");
+  const cellIndex = Number(cellText);
+  const digit = Number(digitText);
+  if (!Number.isInteger(cellIndex) || cellIndex < 0 || cellIndex >= 81 || !Number.isInteger(digit) || digit < 1 || digit > 9) return -1;
+  return cellIndex * 9 + digit - 1;
+}
+
+function tlgLibraryCandidateKeyFromId(candidateId) {
+  const value = Number(candidateId);
+  if (!Number.isInteger(value) || value < 0 || value >= 729) return "";
+  return tlgSolverCandidateKey(Math.floor(value / 9), (value % 9) + 1);
+}
+
+function tlgLibraryPackCandidateKeys(keys) {
+  const bytes = new Uint8Array(92);
+  for (const key of keys || []) {
+    const id = tlgLibraryCandidateIdFromKey(key);
+    if (id < 0) continue;
+    bytes[id >> 3] |= 1 << (id & 7);
+  }
+  return bytes;
+}
+
+function tlgLibraryUnpackCandidateKeys(bytes) {
+  const values = new Set();
+  for (let id = 0; id < 729; id += 1) {
+    if ((bytes[id >> 3] & (1 << (id & 7))) !== 0) values.add(tlgLibraryCandidateKeyFromId(id));
+  }
+  return values;
+}
+
+function tlgLibraryDescriptorId(token) {
+  const match = /^([1-9])([rcnb])([1-9])$/i.exec(String(token || "").trim());
+  if (!match) return -1;
+  const first = Number(match[1]) - 1;
+  const second = Number(match[3]) - 1;
+  const family = match[2].toLowerCase();
+  const base = family === "r" ? 0 : family === "c" ? 81 : family === "n" ? 162 : 243;
+  return base + first * 9 + second;
+}
+
+function tlgLibraryDescriptorToken(id) {
+  const value = Number(id);
+  if (!Number.isInteger(value) || value < 0 || value >= 324) return "";
+  const family = value < 81 ? "r" : value < 162 ? "c" : value < 243 ? "n" : "b";
+  const local = value % 81;
+  return `${Math.floor(local / 9) + 1}${family}${(local % 9) + 1}`;
+}
+
+function tlgLibraryPackDescriptors(values) {
+  const bytes = new Uint8Array(41);
+  for (const raw of values || []) {
+    const canonical = tlgCanonicalDescriptor(raw);
+    const id = tlgLibraryDescriptorId(canonical);
+    if (id < 0) continue;
+    bytes[id >> 3] |= 1 << (id & 7);
+  }
+  return bytes;
+}
+
+function tlgLibraryUnpackDescriptors(bytes, kind) {
+  const prefix = kind === "links" ? "descriptor-link:" : "descriptor-truth:";
+  const values = [];
+  for (let id = 0; id < 324; id += 1) {
+    if ((bytes[id >> 3] & (1 << (id & 7))) !== 0) values.push(prefix + tlgLibraryDescriptorToken(id));
+  }
+  return values;
+}
+
+function tlgLibraryCandidateKeysFromPayload(payload) {
+  const keys = new Set();
+  for (const candidate of payload || []) {
+    const normalized = normalizeTlgResponseCandidate(candidate);
+    if (normalized) keys.add(tlgSolverCandidateKey(normalized.cell, normalized.digit));
+  }
+  return keys;
+}
+
+function tlgLibraryCandidateObjectsFromKeys(keys) {
+  return [...(keys || [])].map((key) => {
+    const id = tlgLibraryCandidateIdFromKey(key);
+    if (id < 0) return null;
+    const cell = Math.floor(id / 9);
+    const digit = (id % 9) + 1;
+    return { cell, digit, row: Math.floor(cell / 9) + 1, column: (cell % 9) + 1 };
+  }).filter(Boolean);
+}
+
+function tlgLibraryNormalizeMeta(meta = {}) {
+  return {
+    title: String(meta.title || "").trim(),
+    tags: String(meta.tags || "").trim(),
+    source: String(meta.source || "").trim(),
+    notes: String(meta.notes || "").trim(),
+  };
+}
+
+function tlgLibraryDefaultTitle() {
+  const now = new Date();
+  const stamp = new Intl.DateTimeFormat(lang.value === "en" ? "en-CA" : "zh-CN", {
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  }).format(now);
+  return uif("tlgLibraryDefaultTitle", { stamp });
+}
+
+function tlgLibraryCurrentMeta() {
+  return tlgLibraryNormalizeMeta({
+    title: tlgLibraryTitle?.value || "",
+    tags: tlgLibraryTags?.value || "",
+    source: tlgLibrarySource?.value || "",
+    notes: tlgLibraryNotes?.value || "",
+  });
+}
+
+function tlgLibraryCaptureState(meta, identity = {}) {
+  const snapshot = tlgSolverEffectiveSnapshot(currentSnapshot);
+  const values = snapshotBoardString(snapshot);
+  const givensText = snapshotGivensString(snapshot);
+  if (values.length !== 81 || givensText.length !== 81 || !Array.isArray(snapshot?.cells)) {
+    throw new Error(ui("tlgLibraryNoGrid"));
+  }
+  const normalizedMeta = tlgLibraryNormalizeMeta(meta);
+  if (!normalizedMeta.title) normalizedMeta.title = tlgLibraryDefaultTitle();
+  const now = Math.floor(Date.now() / 1000);
+  const activeCandidates = new Set(tlgSolverActiveCandidatePayload().map((item) => tlgSolverCandidateKey(item.cellIndex, item.digit)));
+  const initialCandidates = new Set(tlgSolverInitialCandidatePayload().map((item) => tlgSolverCandidateKey(item.cellIndex, item.digit)));
+  const truths = tlgCanonicalDescriptorState(tlgSolverState.truths, "truths");
+  const links = tlgCanonicalDescriptorState(tlgSolverState.links, "links");
+  const resultLinks = tlgCanonicalDescriptorState(tlgSolverState.resultLinks, "links");
+  return {
+    id: Number(identity.id || 0) >>> 0,
+    createdAt: Number(identity.createdAt || now) >>> 0,
+    updatedAt: now >>> 0,
+    meta: normalizedMeta,
+    givens: givensText,
+    values,
+    initialCandidates,
+    activeCandidates,
+    truths,
+    links,
+    aur1: new Set(tlgSolverState.aurGroups[0]),
+    aur2: new Set(tlgSolverState.aurGroups[1]),
+    daur: new Set(tlgSolverState.dynamicAurCandidates),
+    gur: new Set(tlgSolverState.genericAurCandidates),
+    virtual: new Set(tlgSolverState.virtualCandidates),
+    resultLinks,
+    eliminations: tlgLibraryCandidateKeysFromPayload(tlgSolverState.eliminations),
+    assignments: tlgLibraryCandidateKeysFromPayload(tlgSolverState.assignments),
+    truthsToApply: Math.max(0, Math.min(255, Number(tlgSolverTruthsToApply?.value || 0) || 0)),
+    premiseMode: tlgSolverAurPremiseMode?.value || "unique-puzzle-derived",
+    inputMode: tlgSolverMode?.value || "truths",
+    aurGroup: Math.max(0, Math.min(1, Number(tlgSolverAurGroup?.value || 0) || 0)),
+    linkType: tlgSolverLinkType?.value || "auto",
+    hasCandidateGrid: !!tlgSolverState.candidateGrid,
+    resultLinksAvailable: !!tlgSolverState.resultLinksAvailable,
+    hasResult: tlgSolverState.eliminations.length > 0 || tlgSolverState.assignments.length > 0 || !!tlgSolverState.lastResponse,
+  };
+}
+
+function tlgLibraryEncodeRecord(record) {
+  const bytes = new Uint8Array(TLG_LIBRARY_RECORD_SIZE);
+  const view = new DataView(bytes.buffer);
+  const title = tlgLibraryEncodeText(record.meta?.title, TLG_LIBRARY_TEXT_LIMITS.title, "tlgLibraryTitleLabel");
+  const tags = tlgLibraryEncodeText(record.meta?.tags, TLG_LIBRARY_TEXT_LIMITS.tags, "tlgLibraryTagsLabel");
+  const source = tlgLibraryEncodeText(record.meta?.source, TLG_LIBRARY_TEXT_LIMITS.source, "tlgLibrarySourceLabel");
+  const notes = tlgLibraryEncodeText(record.meta?.notes, TLG_LIBRARY_TEXT_LIMITS.notes, "tlgLibraryNotesLabel");
+  tlgLibraryAsciiWrite(bytes, 0, TLG_LIBRARY_RECORD_MAGIC, 4);
+  view.setUint16(4, TLG_LIBRARY_SCHEMA_VERSION, true);
+  let flags = 0;
+  if (record.hasCandidateGrid) flags |= 1;
+  if (record.premiseMode === "candidate-grid-asserted") flags |= 2;
+  if (record.resultLinksAvailable) flags |= 4;
+  if (record.hasResult) flags |= 8;
+  view.setUint16(6, flags, true);
+  view.setUint32(8, Number(record.id || 0) >>> 0, true);
+  view.setUint32(12, Number(record.createdAt || 0) >>> 0, true);
+  view.setUint32(16, Number(record.updatedAt || 0) >>> 0, true);
+  view.setUint32(20, 0, true);
+  view.setUint32(24, 0, true);
+  view.setUint32(28, tlgLibraryCrc32(new TextEncoder().encode(APP_VERSION)), true);
+  view.setUint8(32, Number(record.truthsToApply || 0) & 0xff);
+  view.setUint8(33, Math.max(0, TLG_LIBRARY_MODE_VALUES.indexOf(record.inputMode)));
+  view.setUint8(34, Number(record.aurGroup || 0) & 0xff);
+  view.setUint8(35, Math.max(0, TLG_LIBRARY_LINK_TYPE_VALUES.indexOf(record.linkType)));
+  view.setUint16(36, record.truths.size ?? record.truths.length ?? 0, true);
+  view.setUint16(38, record.links.size ?? record.links.length ?? 0, true);
+  view.setUint16(40, record.resultLinks.size ?? record.resultLinks.length ?? 0, true);
+  view.setUint16(42, record.eliminations.size ?? record.eliminations.length ?? 0, true);
+  view.setUint16(44, record.assignments.size ?? record.assignments.length ?? 0, true);
+  view.setUint16(46, record.virtual.size ?? record.virtual.length ?? 0, true);
+  view.setUint16(48, record.aur1.size ?? record.aur1.length ?? 0, true);
+  view.setUint16(50, record.aur2.size ?? record.aur2.length ?? 0, true);
+  view.setUint16(52, record.daur.size ?? record.daur.length ?? 0, true);
+  view.setUint16(54, record.gur.size ?? record.gur.length ?? 0, true);
+  view.setUint16(56, title.length, true);
+  view.setUint16(58, tags.length, true);
+  view.setUint16(60, source.length, true);
+  view.setUint16(62, notes.length, true);
+  bytes.set(tlgLibraryPackDigits(record.givens), TLG_LIBRARY_OFFSETS.givens);
+  bytes.set(tlgLibraryPackDigits(record.values), TLG_LIBRARY_OFFSETS.values);
+  bytes.set(tlgLibraryPackCandidateKeys(record.initialCandidates), TLG_LIBRARY_OFFSETS.initialCandidates);
+  bytes.set(tlgLibraryPackCandidateKeys(record.activeCandidates), TLG_LIBRARY_OFFSETS.activeCandidates);
+  bytes.set(tlgLibraryPackDescriptors(record.truths), TLG_LIBRARY_OFFSETS.truths);
+  bytes.set(tlgLibraryPackDescriptors(record.links), TLG_LIBRARY_OFFSETS.links);
+  bytes.set(tlgLibraryPackCandidateKeys(record.aur1), TLG_LIBRARY_OFFSETS.aur1);
+  bytes.set(tlgLibraryPackCandidateKeys(record.aur2), TLG_LIBRARY_OFFSETS.aur2);
+  bytes.set(tlgLibraryPackCandidateKeys(record.daur), TLG_LIBRARY_OFFSETS.daur);
+  bytes.set(tlgLibraryPackCandidateKeys(record.gur), TLG_LIBRARY_OFFSETS.gur);
+  bytes.set(tlgLibraryPackCandidateKeys(record.virtual), TLG_LIBRARY_OFFSETS.virtual);
+  bytes.set(tlgLibraryPackDescriptors(record.resultLinks), TLG_LIBRARY_OFFSETS.resultLinks);
+  bytes.set(tlgLibraryPackCandidateKeys(record.eliminations), TLG_LIBRARY_OFFSETS.eliminations);
+  bytes.set(tlgLibraryPackCandidateKeys(record.assignments), TLG_LIBRARY_OFFSETS.assignments);
+  tlgLibraryWriteText(bytes, TLG_LIBRARY_OFFSETS.title, TLG_LIBRARY_TEXT_LIMITS.title, title);
+  tlgLibraryWriteText(bytes, TLG_LIBRARY_OFFSETS.tags, TLG_LIBRARY_TEXT_LIMITS.tags, tags);
+  tlgLibraryWriteText(bytes, TLG_LIBRARY_OFFSETS.source, TLG_LIBRARY_TEXT_LIMITS.source, source);
+  tlgLibraryWriteText(bytes, TLG_LIBRARY_OFFSETS.notes, TLG_LIBRARY_TEXT_LIMITS.notes, notes);
+  const contentHash = tlgLibraryCrc32(bytes.subarray(TLG_LIBRARY_OFFSETS.givens, TLG_LIBRARY_OFFSETS.title));
+  view.setUint32(24, contentHash, true);
+  const crcBytes = bytes.slice();
+  new DataView(crcBytes.buffer).setUint32(20, 0, true);
+  view.setUint32(20, tlgLibraryCrc32(crcBytes), true);
+  return bytes;
+}
+
+function tlgLibraryDecodeRecord(input, { skipCrc = false } = {}) {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input || 0);
+  if (bytes.byteLength !== TLG_LIBRARY_RECORD_SIZE) throw new Error(ui("tlgLibraryInvalidRecordSize"));
+  if (tlgLibraryAsciiRead(bytes, 0, 4) !== TLG_LIBRARY_RECORD_MAGIC) throw new Error(ui("tlgLibraryInvalidRecordMagic"));
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const version = view.getUint16(4, true);
+  if (version !== TLG_LIBRARY_SCHEMA_VERSION) throw new Error(uif("tlgLibraryUnsupportedRecordVersion", { version }));
+  if (!skipCrc) {
+    const expected = view.getUint32(20, true);
+    const copy = bytes.slice();
+    new DataView(copy.buffer).setUint32(20, 0, true);
+    if (tlgLibraryCrc32(copy) !== expected) throw new Error(ui("tlgLibraryRecordCrcFailed"));
+  }
+  const lengths = {
+    title: view.getUint16(56, true), tags: view.getUint16(58, true), source: view.getUint16(60, true), notes: view.getUint16(62, true),
+  };
+  for (const [key, length] of Object.entries(lengths)) {
+    if (length > TLG_LIBRARY_TEXT_LIMITS[key]) throw new Error(ui("tlgLibraryInvalidTextLength"));
+  }
+  const flags = view.getUint16(6, true);
+  return {
+    bytes: bytes.slice(),
+    version,
+    id: view.getUint32(8, true),
+    createdAt: view.getUint32(12, true),
+    updatedAt: view.getUint32(16, true),
+    contentHash: view.getUint32(24, true),
+    engineHash: view.getUint32(28, true),
+    hasCandidateGrid: (flags & 1) !== 0,
+    premiseMode: (flags & 2) !== 0 ? "candidate-grid-asserted" : "unique-puzzle-derived",
+    resultLinksAvailable: (flags & 4) !== 0,
+    hasResult: (flags & 8) !== 0,
+    truthsToApply: view.getUint8(32),
+    inputMode: TLG_LIBRARY_MODE_VALUES[view.getUint8(33)] || "truths",
+    aurGroup: Math.min(1, view.getUint8(34)),
+    linkType: TLG_LIBRARY_LINK_TYPE_VALUES[view.getUint8(35)] || "auto",
+    givens: tlgLibraryUnpackDigits(bytes.subarray(TLG_LIBRARY_OFFSETS.givens, TLG_LIBRARY_OFFSETS.givens + 41)),
+    values: tlgLibraryUnpackDigits(bytes.subarray(TLG_LIBRARY_OFFSETS.values, TLG_LIBRARY_OFFSETS.values + 41)),
+    initialCandidates: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.initialCandidates, TLG_LIBRARY_OFFSETS.initialCandidates + 92)),
+    activeCandidates: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.activeCandidates, TLG_LIBRARY_OFFSETS.activeCandidates + 92)),
+    truths: tlgLibraryUnpackDescriptors(bytes.subarray(TLG_LIBRARY_OFFSETS.truths, TLG_LIBRARY_OFFSETS.truths + 41), "truths"),
+    links: tlgLibraryUnpackDescriptors(bytes.subarray(TLG_LIBRARY_OFFSETS.links, TLG_LIBRARY_OFFSETS.links + 41), "links"),
+    aur1: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.aur1, TLG_LIBRARY_OFFSETS.aur1 + 92)),
+    aur2: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.aur2, TLG_LIBRARY_OFFSETS.aur2 + 92)),
+    daur: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.daur, TLG_LIBRARY_OFFSETS.daur + 92)),
+    gur: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.gur, TLG_LIBRARY_OFFSETS.gur + 92)),
+    virtual: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.virtual, TLG_LIBRARY_OFFSETS.virtual + 92)),
+    resultLinks: tlgLibraryUnpackDescriptors(bytes.subarray(TLG_LIBRARY_OFFSETS.resultLinks, TLG_LIBRARY_OFFSETS.resultLinks + 41), "links"),
+    eliminations: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.eliminations, TLG_LIBRARY_OFFSETS.eliminations + 92)),
+    assignments: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.assignments, TLG_LIBRARY_OFFSETS.assignments + 92)),
+    meta: {
+      title: tlgLibraryReadText(bytes, TLG_LIBRARY_OFFSETS.title, lengths.title),
+      tags: tlgLibraryReadText(bytes, TLG_LIBRARY_OFFSETS.tags, lengths.tags),
+      source: tlgLibraryReadText(bytes, TLG_LIBRARY_OFFSETS.source, lengths.source),
+      notes: tlgLibraryReadText(bytes, TLG_LIBRARY_OFFSETS.notes, lengths.notes),
+    },
+  };
+}
+
+function tlgLibraryRewriteIdentity(input, id, { preserveCreatedAt = true, touchUpdatedAt = false } = {}) {
+  const bytes = input instanceof Uint8Array ? input.slice() : new Uint8Array(input || 0).slice();
+  const view = new DataView(bytes.buffer);
+  const now = Math.floor(Date.now() / 1000);
+  view.setUint32(8, Number(id) >>> 0, true);
+  if (!preserveCreatedAt) view.setUint32(12, now, true);
+  if (touchUpdatedAt) view.setUint32(16, now, true);
+  view.setUint32(20, 0, true);
+  view.setUint32(20, tlgLibraryCrc32(bytes), true);
+  return bytes;
+}
+
+function tlgLibraryBuildFile(records) {
+  const ordered = [...records].sort((a, b) => a.order - b.order);
+  const bytes = new Uint8Array(TLG_LIBRARY_FILE_HEADER_SIZE + ordered.length * TLG_LIBRARY_RECORD_SIZE);
+  const view = new DataView(bytes.buffer);
+  tlgLibraryAsciiWrite(bytes, 0, TLG_LIBRARY_FILE_MAGIC, 8);
+  view.setUint16(8, TLG_LIBRARY_SCHEMA_VERSION, true);
+  view.setUint16(10, TLG_LIBRARY_RECORD_SIZE, true);
+  view.setUint32(12, ordered.length, true);
+  view.setUint16(16, TLG_LIBRARY_FILE_HEADER_SIZE, true);
+  view.setUint16(18, 0, true);
+  const now = Math.floor(Date.now() / 1000);
+  view.setUint32(20, now, true);
+  view.setUint32(24, now, true);
+  view.setUint32(28, Math.max(tlgLibraryNextId, 1), true);
+  view.setUint32(32, 0, true);
+  ordered.forEach((entry, index) => {
+    bytes.set(entry.bytes instanceof Uint8Array ? entry.bytes : new Uint8Array(entry.bytes), TLG_LIBRARY_FILE_HEADER_SIZE + index * TLG_LIBRARY_RECORD_SIZE);
+  });
+  const headerCopy = bytes.slice(0, TLG_LIBRARY_FILE_HEADER_SIZE);
+  new DataView(headerCopy.buffer).setUint32(32, 0, true);
+  view.setUint32(32, tlgLibraryCrc32(headerCopy), true);
+  return bytes;
+}
+
+function tlgLibraryParseFile(input) {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input || 0);
+  if (bytes.length < TLG_LIBRARY_FILE_HEADER_SIZE) throw new Error(ui("tlgLibraryFileTooShort"));
+  if (tlgLibraryAsciiRead(bytes, 0, 8) !== TLG_LIBRARY_FILE_MAGIC) throw new Error(ui("tlgLibraryInvalidFileMagic"));
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const version = view.getUint16(8, true);
+  const recordSize = view.getUint16(10, true);
+  const count = view.getUint32(12, true);
+  const headerSize = view.getUint16(16, true);
+  if (version !== TLG_LIBRARY_SCHEMA_VERSION) throw new Error(uif("tlgLibraryUnsupportedFileVersion", { version }));
+  if (recordSize !== TLG_LIBRARY_RECORD_SIZE || headerSize !== TLG_LIBRARY_FILE_HEADER_SIZE) throw new Error(ui("tlgLibraryIncompatibleLayout"));
+  const expectedLength = headerSize + count * recordSize;
+  if (bytes.length !== expectedLength) throw new Error(uif("tlgLibraryFileLengthMismatch", { expected: expectedLength, actual: bytes.length }));
+  const expectedCrc = view.getUint32(32, true);
+  const headerCopy = bytes.slice(0, headerSize);
+  new DataView(headerCopy.buffer).setUint32(32, 0, true);
+  if (tlgLibraryCrc32(headerCopy) !== expectedCrc) throw new Error(ui("tlgLibraryHeaderCrcFailed"));
+  const records = [];
+  const seenIds = new Set();
+  for (let index = 0; index < count; index += 1) {
+    const offset = headerSize + index * recordSize;
+    const recordBytes = bytes.slice(offset, offset + recordSize);
+    const decoded = tlgLibraryDecodeRecord(recordBytes);
+    if (seenIds.has(decoded.id)) throw new Error(uif("tlgLibraryDuplicateIdInFile", { id: decoded.id }));
+    seenIds.add(decoded.id);
+    records.push({ id: decoded.id, order: (index + 1) * TLG_LIBRARY_ORDER_STEP, bytes: recordBytes, decoded });
+  }
+  const nextId = records.reduce((value, entry) => Math.max(value, entry.id + 1), Math.max(view.getUint32(28, true), 1));
+  return { records, nextId };
+}
+
+
+const TLG_TEXT_CASE_HEADER = "YZF-TLG-CASE:1";
+const TLG_TEXT_COMPACT_HEADER = "YZFTLG1";
+
+function tlgTextBase64UrlEncodeBytes(input) {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input || 0);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, Math.min(bytes.length, offset + chunkSize)));
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function tlgTextBase64UrlDecodeBytes(value, field = "") {
+  const text = String(value || "").trim().replace(/-/g, "+").replace(/_/g, "/");
+  if (!text || /[^A-Za-z0-9+/=]/.test(text)) throw new Error(uif("tlgLibraryTextInvalidBitmap", { field }));
+  const padded = text + "=".repeat((4 - (text.length % 4)) % 4);
+  try {
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return bytes;
+  } catch (_) {
+    throw new Error(uif("tlgLibraryTextInvalidBitmap", { field }));
+  }
+}
+
+function tlgTextBase64UrlEncodeUtf8(value) {
+  return tlgTextBase64UrlEncodeBytes(new TextEncoder().encode(String(value || "")));
+}
+
+function tlgTextBase64UrlDecodeUtf8(value, field = "META") {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(tlgTextBase64UrlDecodeBytes(value, field));
+  } catch (error) {
+    if (error?.message) throw error;
+    throw new Error(uif("tlgLibraryTextInvalidField", { field }));
+  }
+}
+
+function tlgTextHexCrc(value) {
+  return tlgLibraryCrc32(new TextEncoder().encode(String(value || ""))).toString(16).toUpperCase().padStart(8, "0");
+}
+
+function tlgTextNormalizeDigits(value, field) {
+  const text = String(value || "").trim().replace(/0/g, ".");
+  if (text.length !== 81 || /[^.1-9]/.test(text)) throw new Error(uif("tlgLibraryTextInvalidField", { field }));
+  return text;
+}
+
+function tlgTextCandidateTokenFromKey(key, compact = false) {
+  const id = tlgLibraryCandidateIdFromKey(key);
+  if (id < 0) return "";
+  const digit = (id % 9) + 1;
+  const cell = Math.floor(id / 9);
+  const row = Math.floor(cell / 9) + 1;
+  const column = (cell % 9) + 1;
+  return compact ? `${digit}${row}${column}` : `${digit}r${row}c${column}`;
+}
+
+function tlgTextCandidateKeyFromToken(raw) {
+  const token = String(raw || "").trim();
+  if (!token) return "";
+  let match = /^([1-9])r([1-9])c([1-9])$/i.exec(token);
+  if (!match) match = /^([1-9])([1-9])([1-9])$/.exec(token);
+  if (!match) throw new Error(uif("tlgLibraryTextInvalidCandidate", { value: token }));
+  const digit = Number(match[1]);
+  const row = Number(match[2]);
+  const column = Number(match[3]);
+  return tlgSolverCandidateKey((row - 1) * 9 + column - 1, digit);
+}
+
+function tlgTextSplitTokens(value) {
+  return String(value || "").trim().split(/[\s,;]+/).map((item) => item.trim()).filter(Boolean);
+}
+
+function tlgTextSerializeCandidateSet(values, compact = false) {
+  return [...(values || [])]
+    .map((key) => ({ key, id: tlgLibraryCandidateIdFromKey(key) }))
+    .filter((item) => item.id >= 0)
+    .sort((a, b) => a.id - b.id)
+    .map((item) => tlgTextCandidateTokenFromKey(item.key, compact))
+    .join(compact ? "," : " ");
+}
+
+function tlgTextParseCandidateSet(value) {
+  const result = new Set();
+  for (const token of tlgTextSplitTokens(value)) result.add(tlgTextCandidateKeyFromToken(token));
+  return result;
+}
+
+function tlgTextSerializeDescriptors(values, compact = false) {
+  return [...(values || [])]
+    .map((raw) => tlgCanonicalDescriptor(raw))
+    .filter((token) => tlgLibraryDescriptorId(token) >= 0)
+    .sort((a, b) => tlgLibraryDescriptorId(a) - tlgLibraryDescriptorId(b))
+    .join(compact ? "," : " ");
+}
+
+function tlgTextParseDescriptors(value, kind) {
+  const prefix = kind === "links" ? "descriptor-link:" : "descriptor-truth:";
+  const result = [];
+  const seen = new Set();
+  for (const raw of tlgTextSplitTokens(value)) {
+    const canonical = tlgCanonicalDescriptor(raw);
+    if (tlgLibraryDescriptorId(canonical) < 0) throw new Error(uif("tlgLibraryTextInvalidDescriptor", { value: raw }));
+    if (!seen.has(canonical)) {
+      seen.add(canonical);
+      result.push(prefix + canonical);
+    }
+  }
+  result.sort((a, b) => tlgLibraryDescriptorId(tlgCanonicalDescriptor(a)) - tlgLibraryDescriptorId(tlgCanonicalDescriptor(b)));
+  return result;
+}
+
+function tlgTextRecordFlags(record) {
+  let flags = 0;
+  if (record.hasCandidateGrid) flags |= 1;
+  if (record.premiseMode === "candidate-grid-asserted") flags |= 2;
+  if (record.resultLinksAvailable) flags |= 4;
+  if (record.hasResult) flags |= 8;
+  return flags;
+}
+
+function tlgTextRecordFromFields(fields) {
+  for (const key of ["GIVENS", "VALUES", "INITIAL-BITS", "ACTIVE-BITS"]) {
+    if (!fields.has(key)) throw new Error(uif("tlgLibraryTextMissingField", { field: key }));
+  }
+  const initialBytes = tlgTextBase64UrlDecodeBytes(fields.get("INITIAL-BITS"), "INITIAL-BITS");
+  const activeBytes = tlgTextBase64UrlDecodeBytes(fields.get("ACTIVE-BITS"), "ACTIVE-BITS");
+  if (initialBytes.length !== 92) throw new Error(uif("tlgLibraryTextInvalidBitmap", { field: "INITIAL-BITS" }));
+  if (activeBytes.length !== 92) throw new Error(uif("tlgLibraryTextInvalidBitmap", { field: "ACTIVE-BITS" }));
+  const options = new Map();
+  for (const item of String(fields.get("OPTIONS") || "").split(";")) {
+    const split = item.indexOf("=");
+    if (split > 0) options.set(item.slice(0, split).trim().toLowerCase(), item.slice(split + 1).trim());
+  }
+  const flags = Math.max(0, Number(fields.get("FLAGS") || 0) || 0) >>> 0;
+  const premiseMode = options.get("premise") || ((flags & 2) ? "candidate-grid-asserted" : "unique-puzzle-derived");
+  const inputMode = options.get("mode") || "truths";
+  const linkType = options.get("link") || "auto";
+  if (!TLG_LIBRARY_MODE_VALUES.includes(inputMode)) throw new Error(uif("tlgLibraryTextInvalidField", { field: "OPTIONS.mode" }));
+  if (!TLG_LIBRARY_LINK_TYPE_VALUES.includes(linkType)) throw new Error(uif("tlgLibraryTextInvalidField", { field: "OPTIONS.link" }));
+  if (!["unique-puzzle-derived", "candidate-grid-asserted"].includes(premiseMode)) throw new Error(uif("tlgLibraryTextInvalidField", { field: "OPTIONS.premise" }));
+  const parseJsonText = (key) => {
+    const value = fields.get(key);
+    if (value == null || value === "") return "";
+    try {
+      const parsed = JSON.parse(value);
+      return typeof parsed === "string" ? parsed : String(parsed ?? "");
+    } catch (_) {
+      throw new Error(uif("tlgLibraryTextInvalidField", { field: key }));
+    }
+  };
+  const truthsToApply = Math.max(0, Math.min(255, Number(options.get("truths") || 0) || 0));
+  const aurGroup = Math.max(0, Math.min(1, Number(options.get("aur") || 0) || 0));
+  const record = {
+    id: Math.max(0, Number(fields.get("ID") || 0) || 0) >>> 0,
+    createdAt: Math.max(0, Number(fields.get("CREATED") || 0) || 0) >>> 0,
+    updatedAt: Math.max(0, Number(fields.get("UPDATED") || 0) || 0) >>> 0,
+    meta: tlgLibraryNormalizeMeta({
+      title: parseJsonText("TITLE"),
+      tags: parseJsonText("TAGS"),
+      source: parseJsonText("SOURCE"),
+      notes: parseJsonText("NOTE"),
+    }),
+    givens: tlgTextNormalizeDigits(fields.get("GIVENS"), "GIVENS"),
+    values: tlgTextNormalizeDigits(fields.get("VALUES"), "VALUES"),
+    initialCandidates: tlgLibraryUnpackCandidateKeys(initialBytes),
+    activeCandidates: tlgLibraryUnpackCandidateKeys(activeBytes),
+    truths: tlgTextParseDescriptors(fields.get("TRUTHS"), "truths"),
+    links: tlgTextParseDescriptors(fields.get("LINKS"), "links"),
+    aur1: tlgTextParseCandidateSet(fields.get("AUR1")),
+    aur2: tlgTextParseCandidateSet(fields.get("AUR2")),
+    daur: tlgTextParseCandidateSet(fields.get("DAUR")),
+    gur: tlgTextParseCandidateSet(fields.get("GUR")),
+    virtual: tlgTextParseCandidateSet(fields.get("VIRTUAL")),
+    resultLinks: tlgTextParseDescriptors(fields.get("RESULT-LINKS"), "links"),
+    eliminations: tlgTextParseCandidateSet(fields.get("ELIM")),
+    assignments: tlgTextParseCandidateSet(fields.get("SET")),
+    truthsToApply,
+    premiseMode,
+    inputMode,
+    aurGroup,
+    linkType,
+    hasCandidateGrid: (flags & 1) !== 0 || activeBytes.some((value) => value !== 0),
+    resultLinksAvailable: (flags & 4) !== 0 || !!String(fields.get("RESULT-LINKS") || "").trim(),
+    hasResult: (flags & 8) !== 0 || !!String(fields.get("ELIM") || fields.get("SET") || "").trim(),
+  };
+  if (!record.meta.title) record.meta.title = ui("tlgLibraryUntitledPlain");
+  if (!record.createdAt) record.createdAt = Math.floor(Date.now() / 1000);
+  if (!record.updatedAt) record.updatedAt = record.createdAt;
+  return record;
+}
+
+function tlgLibrarySerializeTextCase(record, { compact = false } = {}) {
+  const flags = tlgTextRecordFlags(record);
+  if (compact) {
+    const metadata = tlgTextBase64UrlEncodeUtf8(JSON.stringify(tlgLibraryNormalizeMeta(record.meta)));
+    const optionValues = [
+      record.premiseMode === "candidate-grid-asserted" ? "C" : "U",
+      Math.max(0, TLG_LIBRARY_MODE_VALUES.indexOf(record.inputMode)),
+      Math.max(0, Math.min(1, Number(record.aurGroup || 0) || 0)),
+      Math.max(0, TLG_LIBRARY_LINK_TYPE_VALUES.indexOf(record.linkType)),
+      Math.max(0, Math.min(255, Number(record.truthsToApply || 0) || 0)),
+      flags,
+      Number(record.createdAt || 0) >>> 0,
+      Number(record.updatedAt || 0) >>> 0,
+    ].join(",");
+    const virtual = `${Math.max(0, Math.min(255, Number(record.truthsToApply || 0) || 0))},${tlgTextSerializeCandidateSet(record.virtual, true)}`;
+    const parts = [
+      TLG_TEXT_COMPACT_HEADER,
+      `M=${metadata}`,
+      `G=${tlgTextNormalizeDigits(record.givens, "GIVENS")}`,
+      `V=${tlgTextNormalizeDigits(record.values, "VALUES")}`,
+      `I=${tlgTextBase64UrlEncodeBytes(tlgLibraryPackCandidateKeys(record.initialCandidates))}`,
+      `P=${tlgTextBase64UrlEncodeBytes(tlgLibraryPackCandidateKeys(record.activeCandidates))}`,
+      `T=${tlgTextSerializeDescriptors(record.truths, true)}`,
+      `L=${tlgTextSerializeDescriptors(record.links, true)}`,
+      `A1=${tlgTextSerializeCandidateSet(record.aur1, true)}`,
+      `A2=${tlgTextSerializeCandidateSet(record.aur2, true)}`,
+      `D=${tlgTextSerializeCandidateSet(record.daur, true)}`,
+      `GUR=${tlgTextSerializeCandidateSet(record.gur, true)}`,
+      `W=${virtual}`,
+      `R=${tlgTextSerializeDescriptors(record.resultLinks, true)}`,
+      `E=${tlgTextSerializeCandidateSet(record.eliminations, true)}`,
+      `S=${tlgTextSerializeCandidateSet(record.assignments, true)}`,
+      `O=${optionValues}`,
+    ];
+    const body = parts.join("|");
+    return `${body}|H=${tlgTextHexCrc(body)}`;
+  }
+  const lines = [
+    TLG_TEXT_CASE_HEADER,
+    `TITLE:${JSON.stringify(String(record.meta?.title || ""))}`,
+    `TAGS:${JSON.stringify(String(record.meta?.tags || ""))}`,
+    `SOURCE:${JSON.stringify(String(record.meta?.source || ""))}`,
+    `GIVENS:${tlgTextNormalizeDigits(record.givens, "GIVENS")}`,
+    `VALUES:${tlgTextNormalizeDigits(record.values, "VALUES")}`,
+    `INITIAL-BITS:${tlgTextBase64UrlEncodeBytes(tlgLibraryPackCandidateKeys(record.initialCandidates))}`,
+    `ACTIVE-BITS:${tlgTextBase64UrlEncodeBytes(tlgLibraryPackCandidateKeys(record.activeCandidates))}`,
+    `TRUTHS:${tlgTextSerializeDescriptors(record.truths)}`,
+    `LINKS:${tlgTextSerializeDescriptors(record.links)}`,
+    `AUR1:${tlgTextSerializeCandidateSet(record.aur1)}`,
+    `AUR2:${tlgTextSerializeCandidateSet(record.aur2)}`,
+    `DAUR:${tlgTextSerializeCandidateSet(record.daur)}`,
+    `GUR:${tlgTextSerializeCandidateSet(record.gur)}`,
+    `VIRTUAL[${Math.max(0, Math.min(255, Number(record.truthsToApply || 0) || 0))}]:${tlgTextSerializeCandidateSet(record.virtual)}`,
+    `RESULT-LINKS:${tlgTextSerializeDescriptors(record.resultLinks)}`,
+    `ELIM:${tlgTextSerializeCandidateSet(record.eliminations)}`,
+    `SET:${tlgTextSerializeCandidateSet(record.assignments)}`,
+    `OPTIONS:premise=${record.premiseMode || "unique-puzzle-derived"};mode=${record.inputMode || "truths"};aur=${Math.max(0, Math.min(1, Number(record.aurGroup || 0) || 0))};link=${record.linkType || "auto"};truths=${Math.max(0, Math.min(255, Number(record.truthsToApply || 0) || 0))}`,
+    `FLAGS:${flags}`,
+    `ID:${Number(record.id || 0) >>> 0}`,
+    `CREATED:${Number(record.createdAt || 0) >>> 0}`,
+    `UPDATED:${Number(record.updatedAt || 0) >>> 0}`,
+    `NOTE:${JSON.stringify(String(record.meta?.notes || ""))}`,
+  ];
+  const body = `${lines.join("\n")}\n`;
+  return `${body}CRC32:${tlgTextHexCrc(body)}\nEND`;
+}
+
+function tlgLibraryParseMultilineTextCase(text) {
+  const normalized = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").trim();
+  const lines = normalized.split("\n");
+  const header = String(lines.shift() || "").trim();
+  const match = /^YZF-TLG-CASE:(\d+)$/.exec(header);
+  if (!match) throw new Error(ui("tlgLibraryTextInvalidHeader"));
+  if (Number(match[1]) !== 1) throw new Error(uif("tlgLibraryTextUnsupportedVersion", { version: match[1] }));
+  const fields = new Map();
+  let crcValue = "";
+  const bodyLines = [header];
+  for (const line of lines) {
+    if (line === "END") break;
+    const split = line.indexOf(":");
+    if (split < 0) continue;
+    const rawKey = line.slice(0, split).trim();
+    const value = line.slice(split + 1);
+    if (rawKey === "CRC32") {
+      crcValue = value.trim().toUpperCase();
+      continue;
+    }
+    bodyLines.push(line);
+    const virtualMatch = /^VIRTUAL\[(\d+)\]$/.exec(rawKey);
+    if (virtualMatch) {
+      fields.set("VIRTUAL", value);
+      const current = fields.get("OPTIONS") || "";
+      fields.set("OPTIONS", `${current}${current ? ";" : ""}truths=${virtualMatch[1]}`);
+    } else {
+      fields.set(rawKey, value);
+    }
+  }
+  if (crcValue) {
+    const body = `${bodyLines.join("\n")}\n`;
+    if (tlgTextHexCrc(body) !== crcValue) throw new Error(ui("tlgLibraryTextCrcFailed"));
+  }
+  return tlgTextRecordFromFields(fields);
+}
+
+function tlgLibraryParseCompactTextCase(text) {
+  const normalized = String(text || "").replace(/^\uFEFF/, "").trim();
+  const parts = normalized.split("|");
+  const header = parts.shift();
+  const match = /^YZFTLG(\d+)$/.exec(header || "");
+  if (!match) throw new Error(ui("tlgLibraryTextInvalidHeader"));
+  if (Number(match[1]) !== 1) throw new Error(uif("tlgLibraryTextUnsupportedVersion", { version: match[1] }));
+  const fields = new Map();
+  let crcValue = "";
+  const bodyParts = [header];
+  for (const part of parts) {
+    const split = part.indexOf("=");
+    if (split < 1) continue;
+    const key = part.slice(0, split);
+    const value = part.slice(split + 1);
+    if (key === "H") crcValue = value.toUpperCase();
+    else {
+      fields.set(key, value);
+      bodyParts.push(part);
+    }
+  }
+  if (crcValue && tlgTextHexCrc(bodyParts.join("|")) !== crcValue) throw new Error(ui("tlgLibraryTextCrcFailed"));
+  let meta;
+  try {
+    meta = JSON.parse(tlgTextBase64UrlDecodeUtf8(fields.get("M"), "M"));
+  } catch (_) {
+    throw new Error(uif("tlgLibraryTextInvalidField", { field: "M" }));
+  }
+  const options = String(fields.get("O") || "").split(",");
+  if (options.length < 8) throw new Error(uif("tlgLibraryTextInvalidField", { field: "O" }));
+  const modeIndex = Number(options[1]);
+  const linkIndex = Number(options[3]);
+  if (!TLG_LIBRARY_MODE_VALUES[modeIndex] || !TLG_LIBRARY_LINK_TYPE_VALUES[linkIndex]) throw new Error(uif("tlgLibraryTextInvalidField", { field: "O" }));
+  const virtualParts = String(fields.get("W") || "0,").split(",");
+  const truthsToApply = Math.max(0, Math.min(255, Number(virtualParts.shift() || options[4] || 0) || 0));
+  const flags = Math.max(0, Number(options[5] || 0) || 0) >>> 0;
+  const mapped = new Map([
+    ["TITLE", JSON.stringify(String(meta?.title || ""))],
+    ["TAGS", JSON.stringify(String(meta?.tags || ""))],
+    ["SOURCE", JSON.stringify(String(meta?.source || ""))],
+    ["NOTE", JSON.stringify(String(meta?.notes || ""))],
+    ["GIVENS", fields.get("G") || ""],
+    ["VALUES", fields.get("V") || ""],
+    ["INITIAL-BITS", fields.get("I") || ""],
+    ["ACTIVE-BITS", fields.get("P") || ""],
+    ["TRUTHS", fields.get("T") || ""],
+    ["LINKS", fields.get("L") || ""],
+    ["AUR1", fields.get("A1") || ""],
+    ["AUR2", fields.get("A2") || ""],
+    ["DAUR", fields.get("D") || ""],
+    ["GUR", fields.get("GUR") || ""],
+    ["VIRTUAL", virtualParts.join(",")],
+    ["RESULT-LINKS", fields.get("R") || ""],
+    ["ELIM", fields.get("E") || ""],
+    ["SET", fields.get("S") || ""],
+    ["OPTIONS", `premise=${options[0] === "C" ? "candidate-grid-asserted" : "unique-puzzle-derived"};mode=${TLG_LIBRARY_MODE_VALUES[modeIndex]};aur=${options[2] || 0};link=${TLG_LIBRARY_LINK_TYPE_VALUES[linkIndex]};truths=${truthsToApply}`],
+    ["FLAGS", String(flags)],
+    ["CREATED", options[6] || "0"],
+    ["UPDATED", options[7] || "0"],
+  ]);
+  return tlgTextRecordFromFields(mapped);
+}
+
+function tlgLibraryParseTextCase(text) {
+  const normalized = String(text || "").trim();
+  if (!normalized) throw new Error(ui("tlgLibraryTextEmpty"));
+  if (normalized.startsWith(`${TLG_TEXT_COMPACT_HEADER}|`)) return tlgLibraryParseCompactTextCase(normalized);
+  if (normalized.startsWith(TLG_TEXT_CASE_HEADER)) return tlgLibraryParseMultilineTextCase(normalized);
+  throw new Error(ui("tlgLibraryTextInvalidHeader"));
+}
+
+function tlgLibraryOpenDb() {
+  if (tlgLibraryDbPromise) return tlgLibraryDbPromise;
+  tlgLibraryDbPromise = new Promise((resolve, reject) => {
+    if (!globalThis.indexedDB) {
+      reject(new Error(ui("tlgLibraryIndexedDbUnavailable")));
+      return;
+    }
+    const request = indexedDB.open(TLG_LIBRARY_DB_NAME, TLG_LIBRARY_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains("records")) {
+        const store = db.createObjectStore("records", { keyPath: "id" });
+        store.createIndex("order", "order", { unique: true });
+      }
+      if (!db.objectStoreNames.contains("meta")) db.createObjectStore("meta", { keyPath: "key" });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error(ui("tlgLibraryOpenFailed")));
+  });
+  return tlgLibraryDbPromise;
+}
+
+function tlgLibraryRequest(request) {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error(ui("tlgLibraryStorageFailed")));
+  });
+}
+
+function tlgLibraryTransactionDone(transaction) {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error || new Error(ui("tlgLibraryStorageFailed")));
+    transaction.onabort = () => reject(transaction.error || new Error(ui("tlgLibraryStorageFailed")));
+  });
+}
+
+async function tlgLibraryLoadRecords() {
+  const db = await tlgLibraryOpenDb();
+  const transaction = db.transaction(["records", "meta"], "readonly");
+  const done = tlgLibraryTransactionDone(transaction);
+  const rawRequest = tlgLibraryRequest(transaction.objectStore("records").getAll());
+  const nextRequest = tlgLibraryRequest(transaction.objectStore("meta").get("nextId"));
+  const [raw, nextMeta] = await Promise.all([rawRequest, nextRequest]);
+  await done;
+  const records = [];
+  for (const item of raw || []) {
+    try {
+      const bytes = item.bytes instanceof ArrayBuffer ? new Uint8Array(item.bytes) : new Uint8Array(item.bytes || 0);
+      const decoded = tlgLibraryDecodeRecord(bytes);
+      records.push({ id: Number(item.id), order: Number(item.order), bytes: bytes.slice(), decoded });
+    } catch (error) {
+      throw new Error(uif("tlgLibraryStoredRecordDamaged", { id: item.id, error: error?.message || error }));
+    }
+  }
+  records.sort((a, b) => a.order - b.order || a.id - b.id);
+  tlgLibraryRecords = records;
+  tlgLibraryNextId = records.reduce((value, entry) => Math.max(value, entry.id + 1), Math.max(Number(nextMeta?.value || 1), 1));
+  if (tlgLibrarySelectedId != null && !records.some((entry) => entry.id === tlgLibrarySelectedId)) tlgLibrarySelectedId = null;
+  return records;
+}
+
+async function tlgLibraryPutEntries(entries, nextId = tlgLibraryNextId) {
+  const db = await tlgLibraryOpenDb();
+  const transaction = db.transaction(["records", "meta"], "readwrite");
+  const store = transaction.objectStore("records");
+  for (const entry of entries) {
+    store.put({ id: entry.id, order: entry.order, bytes: entry.bytes.buffer.slice(entry.bytes.byteOffset, entry.bytes.byteOffset + entry.bytes.byteLength) });
+  }
+  transaction.objectStore("meta").put({ key: "nextId", value: nextId });
+  await tlgLibraryTransactionDone(transaction);
+}
+
+async function tlgLibraryDeleteEntry(id) {
+  const db = await tlgLibraryOpenDb();
+  const transaction = db.transaction("records", "readwrite");
+  transaction.objectStore("records").delete(id);
+  await tlgLibraryTransactionDone(transaction);
+}
+
+async function tlgLibraryReplaceAll(entries, nextId) {
+  const db = await tlgLibraryOpenDb();
+  const transaction = db.transaction(["records", "meta"], "readwrite");
+  const store = transaction.objectStore("records");
+  store.clear();
+  entries.forEach((entry, index) => {
+    const order = (index + 1) * TLG_LIBRARY_ORDER_STEP;
+    entry.order = order;
+    store.put({ id: entry.id, order, bytes: entry.bytes.buffer.slice(entry.bytes.byteOffset, entry.bytes.byteOffset + entry.bytes.byteLength) });
+  });
+  transaction.objectStore("meta").put({ key: "nextId", value: nextId });
+  await tlgLibraryTransactionDone(transaction);
+}
+
+async function tlgLibraryRenumber(entries = tlgLibraryRecords) {
+  entries.forEach((entry, index) => { entry.order = (index + 1) * TLG_LIBRARY_ORDER_STEP; });
+  await tlgLibraryReplaceAll(entries, tlgLibraryNextId);
+}
+
+function tlgLibrarySelectedEntry() {
+  return tlgLibraryRecords.find((entry) => entry.id === tlgLibrarySelectedId) || null;
+}
+
+function tlgLibraryTypeLabel(record) {
+  const types = [];
+  if (record.aur1.size || record.aur2.size) types.push("AUR");
+  if (record.daur.size) types.push("DAUR");
+  if (record.gur.size) types.push("GUR");
+  if (record.virtual.size) types.push("VSet");
+  return types.length ? types.join("+") : "TLG";
+}
+
+function tlgLibraryStructureLabel(record) {
+  const resultCount = record.eliminations.size + record.assignments.size;
+  return `T${record.truths.length}/L${record.links.length}${resultCount ? ` · ${resultCount}${ui("tlgLibraryResultUnit")}` : ""}`;
+}
+
+function tlgLibraryFormatTime(seconds) {
+  if (!seconds) return "";
+  try {
+    return new Intl.DateTimeFormat(lang.value === "en" ? "en" : "zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(seconds * 1000));
+  } catch (_) {
+    return "";
+  }
+}
+
+function tlgLibraryRecordSearchText(entry) {
+  const record = entry.decoded;
+  return [record.meta.title, record.meta.tags, record.meta.source, record.meta.notes, tlgLibraryTypeLabel(record), record.givens, record.values]
+    .join(" ").toLocaleLowerCase();
+}
+
+function tlgLibraryFillEditor(record = null) {
+  if (tlgLibraryTitle) tlgLibraryTitle.value = record?.meta?.title || "";
+  if (tlgLibraryTags) tlgLibraryTags.value = record?.meta?.tags || "";
+  if (tlgLibrarySource) tlgLibrarySource.value = record?.meta?.source || "";
+  if (tlgLibraryNotes) tlgLibraryNotes.value = record?.meta?.notes || "";
+  if (tlgLibraryRecordSummary) {
+    tlgLibraryRecordSummary.textContent = record
+      ? uif("tlgLibraryRecordSummary", {
+          type: tlgLibraryTypeLabel(record),
+          truths: record.truths.length,
+          links: record.links.length,
+          candidates: record.activeCandidates.size,
+          results: record.eliminations.size + record.assignments.size,
+          date: tlgLibraryFormatTime(record.updatedAt),
+        })
+      : ui("tlgLibraryEditorHint");
+  }
+}
+
+function tlgLibraryUpdateButtons() {
+  const selected = !!tlgLibrarySelectedEntry();
+  const solverBusy = !!tlgSolverState.busyTask;
+  [btnTlgLibraryRead, btnTlgLibraryReplace, btnTlgLibraryDelete].forEach((button) => {
+    if (button) button.disabled = tlgLibraryBusy || solverBusy || !selected;
+  });
+  if (btnTlgLibraryExportSelected) btnTlgLibraryExportSelected.disabled = tlgLibraryBusy || !selected;
+  [btnTlgLibraryInsert, btnTlgLibraryAppend].forEach((button) => {
+    if (button) button.disabled = tlgLibraryBusy || solverBusy;
+  });
+  if (btnTlgLibraryImport) btnTlgLibraryImport.disabled = tlgLibraryBusy;
+  if (btnTlgLibraryExportAll) btnTlgLibraryExportAll.disabled = tlgLibraryBusy || tlgLibraryRecords.length === 0;
+  [btnTlgLibraryCopyText, btnTlgLibraryCopyCompact, btnTlgLibraryPasteText, btnTlgLibraryImportText, btnTlgLibraryExportText].forEach((button) => {
+    if (button) button.disabled = tlgLibraryBusy || solverBusy;
+  });
+  if (btnTlgLibraryLoadText) btnTlgLibraryLoadText.disabled = tlgLibraryBusy || solverBusy || !tlgLibrarySharePreview;
+  if (btnTlgLibraryClearText) btnTlgLibraryClearText.disabled = tlgLibraryBusy || !String(tlgLibraryShareText?.value || "").length;
+}
+
+function renderTlgLibrary() {
+  if (!tlgLibraryList) return;
+  const query = String(tlgLibrarySearch?.value || "").trim().toLocaleLowerCase();
+  const filtered = query ? tlgLibraryRecords.filter((entry) => tlgLibraryRecordSearchText(entry).includes(query)) : tlgLibraryRecords;
+  tlgLibraryList.replaceChildren();
+  filtered.forEach((entry) => {
+    const record = entry.decoded;
+    const row = document.createElement("tr");
+    row.className = "tlg-library-row";
+    row.dataset.tlgLibraryId = String(entry.id);
+    row.tabIndex = 0;
+    row.setAttribute("aria-selected", entry.id === tlgLibrarySelectedId ? "true" : "false");
+    const index = tlgLibraryRecords.indexOf(entry) + 1;
+    const cells = [String(index), record.meta.title || uif("tlgLibraryUntitled", { index }), tlgLibraryTypeLabel(record), tlgLibraryStructureLabel(record)];
+    cells.forEach((text) => {
+      const td = document.createElement("td");
+      td.textContent = text;
+      td.title = text;
+      row.appendChild(td);
+    });
+    tlgLibraryList.appendChild(row);
+  });
+  if (tlgLibraryEmpty) tlgLibraryEmpty.hidden = filtered.length > 0;
+  if (tlgLibraryCount) tlgLibraryCount.textContent = `${filtered.length} / ${tlgLibraryRecords.length}`;
+  const selected = tlgLibrarySelectedEntry();
+  if (selected) tlgLibraryFillEditor(selected.decoded);
+  else if (!tlgLibraryRecords.length) tlgLibraryFillEditor(null);
+  tlgLibraryUpdateButtons();
+}
+
+function tlgLibrarySelect(id, { focus = false } = {}) {
+  const numericId = Number(id);
+  if (!tlgLibraryRecords.some((entry) => entry.id === numericId)) return;
+  tlgLibrarySelectedId = numericId;
+  renderTlgLibrary();
+  if (focus) tlgLibraryList?.querySelector?.(`[data-tlg-library-id="${numericId}"]`)?.focus?.();
+}
+
+function tlgLibrarySnapshotFromRecord(record) {
+  const active = record.activeCandidates;
+  const cells = Array.from({ length: 81 }, (_, index) => {
+    const value = Number(record.values[index] || 0) || 0;
+    const candidates = [];
+    if (!value) {
+      for (let digit = 1; digit <= 9; digit += 1) {
+        if (active.has(tlgSolverCandidateKey(index, digit))) candidates.push(digit);
+      }
+    }
+    return { index, value, candidates };
+  });
+  return {
+    board: record.values,
+    givens: record.givens,
+    cells,
+    revision: "TLG-LIBRARY",
+    source: "tlg-library",
+    hasCandidates: true,
+  };
+}
+
+function tlgLibraryApplyRecord(record) {
+  closeTlgSolverContextMenu();
+  if (tlgSolverPanel) tlgSolverPanel.open = true;
+  if (tlgSolverEnable) tlgSolverEnable.checked = true;
+  if (tlgSolverMode) tlgSolverMode.value = TLG_LIBRARY_MODE_VALUES.includes(record.inputMode) ? record.inputMode : "truths";
+  if (tlgSolverAurGroup) tlgSolverAurGroup.value = String(record.aurGroup || 0);
+  if (tlgSolverLinkType) tlgSolverLinkType.value = TLG_LIBRARY_LINK_TYPE_VALUES.includes(record.linkType) ? record.linkType : "auto";
+  if (tlgSolverTruthsToApply) tlgSolverTruthsToApply.value = String(record.truthsToApply || 0);
+  if (tlgSolverAurPremiseMode) tlgSolverAurPremiseMode.value = record.premiseMode;
+  tlgSolverState.selectedEndpoint = null;
+  tlgSolverState.selectedCandidates.clear();
+  tlgSolverState.busyTask = "";
+  tlgSolverState.truths = [...record.truths];
+  tlgSolverState.links = [...record.links];
+  tlgSolverState.resultLinks = [...record.resultLinks];
+  tlgSolverState.resultLinksAvailable = record.resultLinksAvailable;
+  tlgSolverState.virtualCandidates = new Set(record.virtual);
+  tlgSolverState.aurGroups = [new Set(record.aur1), new Set(record.aur2)];
+  tlgSolverState.dynamicAurCandidates = new Set(record.daur);
+  tlgSolverState.genericAurCandidates = new Set(record.gur);
+  tlgSolverState.eliminations = tlgLibraryCandidateObjectsFromKeys(record.eliminations);
+  tlgSolverState.assignments = tlgLibraryCandidateObjectsFromKeys(record.assignments);
+  const snapshot = tlgLibrarySnapshotFromRecord(record);
+  tlgSolverState.candidateGrid = {
+    activeCandidates: new Set(record.activeCandidates),
+    initialCandidates: new Set(record.initialCandidates),
+    snapshot,
+    count: record.activeCandidates.size,
+    format: "tlgdb-v1",
+    source: "tlg-library",
+  };
+  if (record.hasResult || record.resultLinksAvailable) {
+    tlgSolverState.lastResponse = {
+      ok: true,
+      phase: "library-snapshot",
+      truthsCanonical: record.truths,
+      linksCanonical: record.resultLinksAvailable ? record.resultLinks : record.links,
+      eliminations: tlgSolverState.eliminations,
+      assignments: tlgSolverState.assignments,
+      counts: {
+        truths: record.truths.length,
+        links: record.resultLinksAvailable ? record.resultLinks.length : record.links.length,
+        eliminations: record.eliminations.size,
+        assignments: record.assignments.size,
+      },
+    };
+    tlgSolverState.lastStatusResponse = tlgSolverState.lastResponse;
+  } else {
+    tlgSolverState.lastResponse = null;
+    tlgSolverState.lastStatusResponse = null;
+  }
+  tlgSolverState.lastMessage = uif("tlgLibraryLoadedToSolver", { title: record.meta.title || ui("tlgLibraryUntitledPlain") });
+  tlgSolverState.lastTone = "ok";
+  selectedIndex = -1;
+  renderBoardSnapshot(currentSnapshot, null);
+  updateTlgSolverUi();
+}
+
+function tlgLibraryCheckDuplicate(recordBytes, excludedId = null) {
+  const decoded = tlgLibraryDecodeRecord(recordBytes);
+  return tlgLibraryRecords.find((entry) => entry.id !== excludedId && entry.decoded.contentHash === decoded.contentHash) || null;
+}
+
+async function tlgLibrarySave(mode) {
+  if (tlgLibraryBusy) return;
+  if (tlgSolverState.busyTask) {
+    tlgLibrarySetStatus(ui("tlgLibrarySolverBusy"), "error");
+    return;
+  }
+  const selected = tlgLibrarySelectedEntry();
+  if (mode === "replace" && !selected) {
+    tlgLibrarySetStatus(ui("tlgLibrarySelectFirst"), "error");
+    return;
+  }
+  tlgLibraryBusy = true;
+  tlgLibraryUpdateButtons();
+  try {
+    const id = mode === "replace" ? selected.id : tlgLibraryNextId++;
+    const createdAt = mode === "replace" ? selected.decoded.createdAt : undefined;
+    const state = tlgLibraryCaptureState(tlgLibraryCurrentMeta(), { id, createdAt });
+    const bytes = tlgLibraryEncodeRecord(state);
+    const duplicate = tlgLibraryCheckDuplicate(bytes, mode === "replace" ? id : null);
+    if (duplicate && !confirm(uif("tlgLibraryDuplicateConfirm", { title: duplicate.decoded.meta.title || ui("tlgLibraryUntitledPlain") }))) {
+      if (mode !== "replace") tlgLibraryNextId -= 1;
+      return;
+    }
+    let order;
+    if (mode === "append" || !selected) {
+      order = tlgLibraryRecords.length ? tlgLibraryRecords[tlgLibraryRecords.length - 1].order + TLG_LIBRARY_ORDER_STEP : TLG_LIBRARY_ORDER_STEP;
+    } else if (mode === "replace") {
+      order = selected.order;
+    } else {
+      const selectedIndex = tlgLibraryRecords.indexOf(selected);
+      const previous = selectedIndex > 0 ? tlgLibraryRecords[selectedIndex - 1].order : 0;
+      const next = selected.order;
+      order = Math.floor((previous + next) / 2);
+      if (order <= previous || order >= next) {
+        await tlgLibraryRenumber(tlgLibraryRecords);
+        const refreshedSelected = tlgLibrarySelectedEntry();
+        const refreshedIndex = tlgLibraryRecords.indexOf(refreshedSelected);
+        const refreshedPrevious = refreshedIndex > 0 ? tlgLibraryRecords[refreshedIndex - 1].order : 0;
+        order = Math.floor((refreshedPrevious + refreshedSelected.order) / 2);
+      }
+    }
+    await tlgLibraryPutEntries([{ id, order, bytes }], tlgLibraryNextId);
+    tlgLibrarySelectedId = id;
+    await tlgLibraryLoadRecords();
+    renderTlgLibrary();
+    tlgLibrarySetStatus(uif(mode === "replace" ? "tlgLibraryReplaced" : mode === "insert" ? "tlgLibraryInserted" : "tlgLibraryAppended", {
+      index: tlgLibraryRecords.findIndex((entry) => entry.id === id) + 1,
+      title: state.meta.title,
+    }), "ok");
+  } catch (error) {
+    tlgLibrarySetStatus(error?.message || String(error), "error");
+  } finally {
+    tlgLibraryBusy = false;
+    tlgLibraryUpdateButtons();
+  }
+}
+
+async function tlgLibraryDeleteSelected() {
+  const selected = tlgLibrarySelectedEntry();
+  if (!selected || tlgLibraryBusy) return;
+  if (!confirm(uif("tlgLibraryDeleteConfirm", { title: selected.decoded.meta.title || ui("tlgLibraryUntitledPlain") }))) return;
+  tlgLibraryBusy = true;
+  tlgLibraryUpdateButtons();
+  try {
+    const oldIndex = tlgLibraryRecords.indexOf(selected);
+    await tlgLibraryDeleteEntry(selected.id);
+    await tlgLibraryLoadRecords();
+    const next = tlgLibraryRecords[Math.min(oldIndex, tlgLibraryRecords.length - 1)] || null;
+    tlgLibrarySelectedId = next?.id ?? null;
+    renderTlgLibrary();
+    tlgLibrarySetStatus(uif("tlgLibraryDeleted", { title: selected.decoded.meta.title || ui("tlgLibraryUntitledPlain") }), "ok");
+  } catch (error) {
+    tlgLibrarySetStatus(error?.message || String(error), "error");
+  } finally {
+    tlgLibraryBusy = false;
+    tlgLibraryUpdateButtons();
+  }
+}
+
+function tlgLibraryReadSelected() {
+  const selected = tlgLibrarySelectedEntry();
+  if (!selected || tlgLibraryBusy) return;
+  if (tlgSolverState.busyTask) {
+    tlgLibrarySetStatus(ui("tlgLibrarySolverBusy"), "error");
+    return;
+  }
+  try {
+    tlgLibraryApplyRecord(selected.decoded);
+    tlgLibrarySetStatus(uif("tlgLibraryRead", { title: selected.decoded.meta.title || ui("tlgLibraryUntitledPlain") }), "ok");
+    if (tlgLibraryDialog?.open) tlgLibraryDialog.close();
+  } catch (error) {
+    tlgLibrarySetStatus(error?.message || String(error), "error");
+  }
+}
+
+function tlgLibraryDownload(bytes, filename, mimeType = "application/octet-stream") {
+  const blob = new Blob([bytes], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function tlgLibraryFilename(prefix) {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").replace("T", "_").slice(0, 19);
+  return `${prefix}_${stamp}.tlgdb`;
+}
+
+function tlgLibraryExport(selectedOnly = false) {
+  const records = selectedOnly ? [tlgLibrarySelectedEntry()].filter(Boolean) : tlgLibraryRecords;
+  if (!records.length) {
+    tlgLibrarySetStatus(ui("tlgLibraryNothingToExport"), "error");
+    return;
+  }
+  const bytes = tlgLibraryBuildFile(records);
+  tlgLibraryDownload(bytes, tlgLibraryFilename(selectedOnly ? "YZF_TLG_case" : "YZF_TLG_library"));
+  tlgLibrarySetStatus(uif(selectedOnly ? "tlgLibraryExportedSelected" : "tlgLibraryExportedAll", { count: records.length, bytes: bytes.length }), "ok");
+}
+
+async function tlgLibraryImportFile(file) {
+  if (!file || tlgLibraryBusy) return;
+  tlgLibraryBusy = true;
+  tlgLibraryUpdateButtons();
+  try {
+    const parsed = tlgLibraryParseFile(new Uint8Array(await file.arrayBuffer()));
+    if (!parsed.records.length) throw new Error(ui("tlgLibraryEmptyImport"));
+    const mode = tlgLibraryImportMode?.value || "append";
+    if (mode === "replaceAll") {
+      if (!confirm(uif("tlgLibraryReplaceAllConfirm", { count: parsed.records.length }))) return;
+      const ids = new Set();
+      let nextId = 1;
+      const entries = parsed.records.map((entry) => {
+        let id = entry.id;
+        if (!id || ids.has(id)) id = nextId;
+        while (ids.has(id)) id += 1;
+        ids.add(id);
+        nextId = Math.max(nextId, id + 1);
+        const bytes = tlgLibraryRewriteIdentity(entry.bytes, id);
+        return { id, order: 0, bytes };
+      });
+      await tlgLibraryReplaceAll(entries, Math.max(nextId, parsed.nextId));
+      tlgLibrarySelectedId = entries[0]?.id ?? null;
+    } else {
+      const usedIds = new Set(tlgLibraryRecords.map((entry) => entry.id));
+      const imported = parsed.records.map((entry) => {
+        let id = tlgLibraryNextId++;
+        while (usedIds.has(id)) id = tlgLibraryNextId++;
+        usedIds.add(id);
+        return { id, order: 0, bytes: tlgLibraryRewriteIdentity(entry.bytes, id) };
+      });
+      if (mode === "insert" && tlgLibrarySelectedEntry()) {
+        const selected = tlgLibrarySelectedEntry();
+        const selectedIndex = tlgLibraryRecords.indexOf(selected);
+        const previous = selectedIndex > 0 ? tlgLibraryRecords[selectedIndex - 1].order : 0;
+        const gap = selected.order - previous;
+        if (gap > imported.length) {
+          imported.forEach((entry, index) => { entry.order = previous + Math.floor(gap * (index + 1) / (imported.length + 1)); });
+          await tlgLibraryPutEntries(imported, tlgLibraryNextId);
+        } else {
+          const combined = [...tlgLibraryRecords];
+          combined.splice(selectedIndex, 0, ...imported);
+          await tlgLibraryReplaceAll(combined, tlgLibraryNextId);
+        }
+      } else {
+        let order = tlgLibraryRecords.length ? tlgLibraryRecords[tlgLibraryRecords.length - 1].order : 0;
+        imported.forEach((entry) => { order += TLG_LIBRARY_ORDER_STEP; entry.order = order; });
+        await tlgLibraryPutEntries(imported, tlgLibraryNextId);
+      }
+      tlgLibrarySelectedId = imported[0]?.id ?? tlgLibrarySelectedId;
+    }
+    await tlgLibraryLoadRecords();
+    renderTlgLibrary();
+    tlgLibrarySetStatus(uif("tlgLibraryImported", { count: parsed.records.length }), "ok");
+  } catch (error) {
+    tlgLibrarySetStatus(uif("tlgLibraryImportFailed", { error: error?.message || error }), "error");
+  } finally {
+    if (tlgLibraryFileInput) tlgLibraryFileInput.value = "";
+    tlgLibraryBusy = false;
+    tlgLibraryUpdateButtons();
+  }
+}
+
+
+function tlgLibrarySetShareSummary(message, tone = "") {
+  if (!tlgLibraryShareSummary) return;
+  tlgLibraryShareSummary.textContent = String(message || "");
+  if (tone) tlgLibraryShareSummary.dataset.tone = tone;
+  else tlgLibraryShareSummary.removeAttribute("data-tone");
+}
+
+function tlgLibraryShowSharePanel(show = true) {
+  if (!tlgLibrarySharePanel) return;
+  tlgLibrarySharePanel.hidden = !show;
+  if (show) requestAnimationFrame(() => tlgLibraryShareText?.focus?.());
+}
+
+function tlgLibraryShareRecord() {
+  return tlgLibraryCaptureState(tlgLibraryCurrentMeta());
+}
+
+function tlgLibraryTextByteLength(value) {
+  return new TextEncoder().encode(String(value || "")).length;
+}
+
+function tlgLibraryTextPreviewMessage(record, text) {
+  return uif("tlgLibraryTextPreview", {
+    title: record.meta.title || ui("tlgLibraryUntitledPlain"),
+    type: tlgLibraryTypeLabel(record),
+    truths: record.truths.length,
+    links: record.links.length,
+    candidates: record.activeCandidates.size,
+    results: record.eliminations.size + record.assignments.size,
+    bytes: tlgLibraryTextByteLength(text),
+  });
+}
+
+function tlgLibraryPreviewShareText() {
+  const text = String(tlgLibraryShareText?.value || "").trim();
+  tlgLibrarySharePreview = null;
+  if (!text) {
+    tlgLibrarySetShareSummary(ui("tlgLibraryShareEmptyHint"));
+    tlgLibraryUpdateButtons();
+    return null;
+  }
+  try {
+    const record = tlgLibraryParseTextCase(text);
+    tlgLibrarySharePreview = record;
+    tlgLibrarySetShareSummary(tlgLibraryTextPreviewMessage(record, text), "ok");
+    tlgLibrarySetStatus(ui("tlgLibraryTextReady"), "ok");
+    tlgLibraryUpdateButtons();
+    return record;
+  } catch (error) {
+    tlgLibrarySetShareSummary(uif("tlgLibraryTextParseFailed", { error: error?.message || error }), "error");
+    tlgLibraryUpdateButtons();
+    return null;
+  }
+}
+
+function tlgLibraryScheduleSharePreview() {
+  clearTimeout(tlgLibrarySharePreviewTimer);
+  tlgLibrarySharePreview = null;
+  tlgLibrarySharePreviewTimer = setTimeout(() => tlgLibraryPreviewShareText(), 180);
+  tlgLibraryUpdateButtons();
+}
+
+function tlgLibrarySetShareText(text, { preview = true } = {}) {
+  if (tlgLibraryShareText) tlgLibraryShareText.value = String(text || "");
+  tlgLibraryShowSharePanel(true);
+  if (preview) tlgLibraryPreviewShareText();
+  else {
+    tlgLibrarySharePreview = null;
+    tlgLibrarySetShareSummary(ui("tlgLibraryShareEmptyHint"));
+    tlgLibraryUpdateButtons();
+  }
+}
+
+async function tlgLibraryWriteClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand?.("copy");
+  textarea.remove();
+  if (!copied) throw new Error(ui("tlgLibraryClipboardWriteFailed"));
+}
+
+async function tlgLibraryCopyCurrentText(compact = false) {
+  if (tlgLibraryBusy || tlgSolverState.busyTask) return;
+  try {
+    const record = tlgLibraryShareRecord();
+    const text = tlgLibrarySerializeTextCase(record, { compact });
+    await tlgLibraryWriteClipboard(text);
+    tlgLibrarySetStatus(uif(compact ? "tlgLibraryCompactCopied" : "tlgLibraryTextCopied", { bytes: tlgLibraryTextByteLength(text) }), "ok");
+  } catch (error) {
+    try {
+      const record = tlgLibraryShareRecord();
+      tlgLibrarySetShareText(tlgLibrarySerializeTextCase(record, { compact }));
+    } catch (_) {
+      // Preserve the original error below.
+    }
+    tlgLibrarySetStatus(error?.message || ui("tlgLibraryClipboardWriteFailed"), "error");
+  }
+}
+
+function tlgLibrarySafeFilenamePart(value) {
+  const normalized = String(value || "TLG_case").trim().replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "_").replace(/\s+/g, " ");
+  return (normalized || "TLG_case").slice(0, 72);
+}
+
+function tlgLibraryExportCurrentText() {
+  if (tlgLibraryBusy || tlgSolverState.busyTask) return;
+  try {
+    const record = tlgLibraryShareRecord();
+    const text = tlgLibrarySerializeTextCase(record);
+    const filename = `${tlgLibrarySafeFilenamePart(record.meta.title)}.tlg.txt`;
+    tlgLibraryDownload(new TextEncoder().encode(text), filename, "text/plain;charset=utf-8");
+    tlgLibrarySetStatus(uif("tlgLibraryTextExported", { bytes: tlgLibraryTextByteLength(text) }), "ok");
+  } catch (error) {
+    tlgLibrarySetStatus(error?.message || String(error), "error");
+  }
+}
+
+async function tlgLibraryOpenPastePanel() {
+  tlgLibraryShowSharePanel(true);
+  tlgLibrarySetStatus(ui("tlgLibraryTextPanelOpened"));
+  if (String(tlgLibraryShareText?.value || "").trim()) {
+    tlgLibraryPreviewShareText();
+    return;
+  }
+  try {
+    if (!navigator.clipboard?.readText) throw new Error(ui("tlgLibraryClipboardReadFailed"));
+    const text = await navigator.clipboard.readText();
+    if (String(text || "").trim()) tlgLibrarySetShareText(text);
+    else tlgLibrarySetShareSummary(ui("tlgLibraryShareEmptyHint"));
+  } catch (_) {
+    tlgLibrarySetShareSummary(ui("tlgLibraryShareEmptyHint"));
+    tlgLibrarySetStatus(ui("tlgLibraryClipboardReadFailed"), "error");
+  }
+}
+
+async function tlgLibraryImportTextFile(file) {
+  if (!file || tlgLibraryBusy) return;
+  try {
+    const text = await file.text();
+    tlgLibrarySetShareText(text);
+  } catch (error) {
+    tlgLibrarySetStatus(uif("tlgLibraryTextFileReadFailed", { error: error?.message || error }), "error");
+  } finally {
+    if (tlgLibraryTextFileInput) tlgLibraryTextFileInput.value = "";
+  }
+}
+
+function tlgLibraryLoadShareText() {
+  if (tlgLibraryBusy || tlgSolverState.busyTask) return;
+  const record = tlgLibrarySharePreview || tlgLibraryPreviewShareText();
+  if (!record) return;
+  const title = record.meta.title || ui("tlgLibraryUntitledPlain");
+  if (!confirm(uif("tlgLibraryTextLoadConfirm", { title }))) return;
+  try {
+    tlgLibraryApplyRecord(record);
+    tlgLibraryFillEditor(record);
+    tlgLibrarySetStatus(uif("tlgLibraryTextLoaded", { title }), "ok");
+  } catch (error) {
+    tlgLibrarySetStatus(uif("tlgLibraryTextParseFailed", { error: error?.message || error }), "error");
+  }
+}
+
+function tlgLibraryClearShareText() {
+  if (tlgLibraryShareText) tlgLibraryShareText.value = "";
+  tlgLibrarySharePreview = null;
+  tlgLibrarySetShareSummary(ui("tlgLibraryShareEmptyHint"));
+  tlgLibraryUpdateButtons();
+}
+
+async function openTlgLibraryDialog() {
+  if (!tlgLibraryDialog || tlgLibraryBusy) return;
+  try {
+    tlgLibraryBusy = true;
+    tlgLibrarySetStatus(ui("tlgLibraryLoading"));
+    await tlgLibraryLoadRecords();
+    if (tlgLibrarySelectedId == null && tlgLibraryRecords.length) tlgLibrarySelectedId = tlgLibraryRecords[0].id;
+    renderTlgLibrary();
+    if (typeof tlgLibraryDialog.showModal === "function") tlgLibraryDialog.showModal();
+    else tlgLibraryDialog.setAttribute("open", "");
+    tlgLibrarySetStatus(ui("tlgLibraryIdle"));
+  } catch (error) {
+    setTlgSolverStatus(uif("tlgLibraryOpenError", { error: error?.message || error }), "error");
+  } finally {
+    tlgLibraryBusy = false;
+    tlgLibraryUpdateButtons();
+  }
+}
+
+function initTlgLibraryControls() {
+  if (!btnTlgLibrary || !tlgLibraryDialog) return;
+  btnTlgLibrary.addEventListener("click", () => { void openTlgLibraryDialog(); });
+  btnTlgLibraryClose?.addEventListener("click", () => tlgLibraryDialog.close());
+  tlgLibraryDialog.addEventListener("click", (event) => {
+    if (event.target === tlgLibraryDialog) tlgLibraryDialog.close();
+  });
+  btnTlgLibraryRead?.addEventListener("click", tlgLibraryReadSelected);
+  btnTlgLibraryInsert?.addEventListener("click", () => { void tlgLibrarySave("insert"); });
+  btnTlgLibraryReplace?.addEventListener("click", () => { void tlgLibrarySave("replace"); });
+  btnTlgLibraryAppend?.addEventListener("click", () => { void tlgLibrarySave("append"); });
+  btnTlgLibraryDelete?.addEventListener("click", () => { void tlgLibraryDeleteSelected(); });
+  btnTlgLibraryImport?.addEventListener("click", () => tlgLibraryFileInput?.click());
+  btnTlgLibraryExportSelected?.addEventListener("click", () => tlgLibraryExport(true));
+  btnTlgLibraryExportAll?.addEventListener("click", () => tlgLibraryExport(false));
+  btnTlgLibraryCopyText?.addEventListener("click", () => { void tlgLibraryCopyCurrentText(false); });
+  btnTlgLibraryCopyCompact?.addEventListener("click", () => { void tlgLibraryCopyCurrentText(true); });
+  btnTlgLibraryPasteText?.addEventListener("click", () => { void tlgLibraryOpenPastePanel(); });
+  btnTlgLibraryImportText?.addEventListener("click", () => tlgLibraryTextFileInput?.click());
+  btnTlgLibraryExportText?.addEventListener("click", tlgLibraryExportCurrentText);
+  btnTlgLibraryLoadText?.addEventListener("click", tlgLibraryLoadShareText);
+  btnTlgLibraryClearText?.addEventListener("click", tlgLibraryClearShareText);
+  btnTlgLibraryCloseText?.addEventListener("click", () => tlgLibraryShowSharePanel(false));
+  tlgLibraryFileInput?.addEventListener("change", () => { void tlgLibraryImportFile(tlgLibraryFileInput.files?.[0]); });
+  tlgLibraryTextFileInput?.addEventListener("change", () => { void tlgLibraryImportTextFile(tlgLibraryTextFileInput.files?.[0]); });
+  tlgLibraryShareText?.addEventListener("input", tlgLibraryScheduleSharePreview);
+  tlgLibrarySearch?.addEventListener("input", renderTlgLibrary);
+  tlgLibraryList?.addEventListener("click", (event) => {
+    const row = event.target?.closest?.("tr[data-tlg-library-id]");
+    if (row) tlgLibrarySelect(row.dataset.tlgLibraryId);
+  });
+  tlgLibraryList?.addEventListener("dblclick", (event) => {
+    const row = event.target?.closest?.("tr[data-tlg-library-id]");
+    if (!row) return;
+    tlgLibrarySelect(row.dataset.tlgLibraryId);
+    tlgLibraryReadSelected();
+  });
+  tlgLibraryList?.addEventListener("keydown", (event) => {
+    const row = event.target?.closest?.("tr[data-tlg-library-id]");
+    if (!row) return;
+    if (event.key === "Enter") {
+      event.preventDefault();
+      tlgLibrarySelect(row.dataset.tlgLibraryId);
+      tlgLibraryReadSelected();
+    }
+  });
+  tlgLibrarySetShareSummary(ui("tlgLibraryShareEmptyHint"));
+  tlgLibraryUpdateButtons();
+}
+
 
 function getManualAdvancedDefaultPuzzle() {
   const fromInput = (givens?.value || "").trim();
@@ -14462,7 +16410,11 @@ btnExportPuzzle?.addEventListener("click", async () => {
   setStatus(copied ? ui("exportCopied") : ui("exportToInput"));
 });
 
-btnRate.addEventListener("click", () => {
+btnRate.addEventListener("click", async () => {
+  if (ratingTask) {
+    cancelRatingTask();
+    return;
+  }
   if (!engine) return;
 
   const rawInput = String(givens.value || "").trim();
@@ -14477,20 +16429,23 @@ btnRate.addEventListener("click", () => {
     return;
   }
 
-  const resultText = typeof engine.rate_import_text_json === "function"
-    ? engine.rate_import_text_json(input)
-    : engine.rate_puzzle_json(normalizePuzzle(input));
-  const result = parseJson(resultText);
-  if (!result) {
-    setStatus(ui("rateFailedSimple"));
-    return;
-  }
+  try {
+    const message = await runRatingTask(input, normalizePuzzle(input));
+    const result = parseJson(message.resultText);
+    if (!result) {
+      setStatus(ui("rateFailedSimple"));
+      return;
+    }
 
-  const suffix = result.inputFormat
-    ? uif("rateInputSuffix", { format: result.inputFormat, mode: result.usedCandidateState ? ui("rateUseCandidateState") : ui("rateUsePuzzle") })
-    : "";
-  setStatus(`${formatRating(result)}${suffix}`);
-  log(JSON.stringify(result, null, 2));
+    const suffix = result.inputFormat
+      ? uif("rateInputSuffix", { format: result.inputFormat, mode: result.usedCandidateState ? ui("rateUseCandidateState") : ui("rateUsePuzzle") })
+      : "";
+    setStatus(`${formatRating(result)}${suffix}`);
+    log(JSON.stringify({ ...result, backgroundElapsedMs: message.elapsedMs }, null, 2));
+  } catch (error) {
+    if (String(error?.message || "") === "rating_cancelled") return;
+    setStatus(uif("rateWorkerFailed", { error: error instanceof Error ? error.message : String(error) }));
+  }
 });
 
 if (btnCandidates) {
@@ -14765,8 +16720,8 @@ function saveMobileSolvePreferences() {
 }
 
 function clearMobileSolveDigitHighlights() {
-  board?.querySelectorAll(".sudoku-cell.mobile-same-digit").forEach((cell) => {
-    cell.classList.remove("mobile-same-digit");
+  board?.querySelectorAll(".sudoku-cell.mobile-same-digit, .sudoku-cell.mobile-same-digit-value, .sudoku-cell.mobile-same-digit-candidate").forEach((cell) => {
+    cell.classList.remove("mobile-same-digit", "mobile-same-digit-value", "mobile-same-digit-candidate");
   });
 }
 
@@ -14777,8 +16732,38 @@ function syncMobileSolveDigitHighlights() {
   if (!Number.isInteger(digit) || digit < 1 || digit > 9) return;
   for (const node of board?.querySelectorAll(".sudoku-cell[data-cell-index]") || []) {
     const index = Number(node.dataset.cellIndex);
-    if (Number(currentSnapshot.cells?.[index]?.value || 0) === digit) {
-      node.classList.add("mobile-same-digit");
+    const cell = currentSnapshot.cells?.[index];
+    const isPlacedDigit = Number(cell?.value || 0) === digit;
+    const hasVisibleCandidate = mobileSolveCandidatesVisible
+      && Number(cell?.value || 0) === 0
+      && Array.isArray(cell?.candidates)
+      && cell.candidates.some((candidate) => Number(candidate) === digit);
+    if (isPlacedDigit) {
+      node.classList.add("mobile-same-digit", "mobile-same-digit-value");
+    } else if (hasVisibleCandidate) {
+      node.classList.add("mobile-same-digit", "mobile-same-digit-candidate");
+    }
+  }
+}
+
+function syncMobileSolveCompletedDigitButtons() {
+  const counts = new Uint8Array(10);
+  if (mobileSolveActive && currentSnapshot) {
+    for (const cell of currentSnapshot.cells || []) {
+      const value = Number(cell?.value || 0);
+      if (value >= 1 && value <= 9) counts[value] += 1;
+    }
+  }
+  for (const button of numpad?.querySelectorAll("button[data-digit]") || []) {
+    const digit = Number(button.dataset.digit || 0);
+    const complete = mobileSolveActive && digit >= 1 && digit <= 9 && counts[digit] >= 9;
+    button.disabled = complete;
+    if (complete) {
+      button.dataset.complete = "true";
+      button.setAttribute("aria-disabled", "true");
+    } else {
+      delete button.dataset.complete;
+      button.removeAttribute("aria-disabled");
     }
   }
 }
@@ -14805,6 +16790,7 @@ function applyMobileSolvePreferences() {
   mobileSolveShell?.classList.toggle("mobile-hide-candidates", !mobileSolveCandidatesVisible);
   updateMobileSolvePreferenceButtons();
   syncMobileSolveDigitHighlights();
+  syncMobileSolveCompletedDigitButtons();
 }
 
 function toggleMobileSolveCandidates() {
@@ -15245,6 +17231,7 @@ async function exitMobileSolveMode(options = {}) {
   restoreMobileSolveManualMarks();
   clearMobileSolveDigitHighlights();
   mobileSolveActive = false;
+  syncMobileSolveCompletedDigitButtons();
   mobileSolveShell.hidden = true;
   mobileSolveShell.style.removeProperty("left");
   mobileSolveShell.style.removeProperty("top");
@@ -15499,11 +17486,11 @@ function applyTechniquePreset(mode) {
   const nextWhipMemoryMode = mode === "whipRating" ? "large" : (whipMemoryMode === "large" ? "large" : "auto");
   applyTechniqueState(next, nextWhipMemoryMode);
   const label = {
-    allIn: ui("techPresetAllIn"),
-    highSpeed: ui("techPresetHighSpeed"),
-    extremeSpeed: ui("techPresetExtremeSpeed"),
-    whipRating: ui("techPresetWhipRating"),
-    braidRating: ui("techPresetBraidRating"),
+    allIn: "All In",
+    highSpeed: "High Speed",
+    extremeSpeed: "Extreme Speed",
+    whipRating: "Whip Rating",
+    braidRating: "Braid Rating",
   }[mode] || mode;
   setStatus(`${ui("techniquePresetApplied")}: ${label}.`);
 }

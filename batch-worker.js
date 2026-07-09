@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-45c2375977db9425";
+import createModule from "./sudoku_wasm.js?v=wasm-08539b4f006be1d9";
 
-const APP_VERSION = "wasm-45c2375977db9425";
+const APP_VERSION = "wasm-08539b4f006be1d9";
 let enginePromise = null;
 let cancelRequested = false;
 
@@ -54,6 +54,7 @@ function makeSolveItem(engine, input, config) {
       input,
       puzzle: String(input || "").slice(0, 120),
       error: imported?.error || "import failed",
+      errorCode: imported?.errorCode || "IMPORT_FAILED",
     };
   }
   const solve = parseJson(engine.solve_summary_json(Number(config.maxSteps || 500)));
@@ -140,6 +141,7 @@ self.addEventListener("message", (event) => {
       type: "error",
       taskId: message.taskId,
       error: error instanceof Error ? error.message : String(error),
+      errorCode: error?.code || "WORKER_RUNTIME_FAILED",
     });
   });
 });
