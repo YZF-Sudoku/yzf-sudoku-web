@@ -1,4 +1,4 @@
-import createModule from "./sudoku_wasm.js?v=wasm-35d525443820b7aa";
+import createModule from "./sudoku_wasm.js?v=wasm-491c4f72f07dc27e";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -6,7 +6,7 @@ import {
   techniqueNameForStep,
 } from "./step-localization.js?v=20260710-step-i18n-v5-title-proof";
 
-const APP_VERSION = "wasm-35d525443820b7aa";
+const APP_VERSION = "wasm-491c4f72f07dc27e";
 const MANUAL_VERSION = "20260709-manual-v2.5-tlg-input-guard";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
