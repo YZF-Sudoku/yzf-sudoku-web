@@ -1510,6 +1510,21 @@
     .sudoku-cell.hint-structure { background: #fff; }
     .sudoku-cell.hint-place { background: #e8f8ef; }
     .sudoku-cell.hint-eliminate { background: #fff; }
+    .sudoku-cell.solver-cell-bkclr {
+      background: var(--solver-cell-bg, #eef5ff) !important;
+    }
+    .sudoku-cell.solver-cell-bkclr-1 { background: #86E8D0 !important; }
+    .sudoku-cell.solver-cell-bkclr-2 { background: #7FBBFF !important; }
+    .sudoku-cell.solver-cell-bkclr-3 { background: #D8B2FF !important; }
+    .sudoku-cell.solver-cell-bkclr-4 { background: #FFC059 !important; }
+    .sudoku-cell.solver-cell-bkclr-5 { background: #B1A5F3 !important; }
+    .sudoku-cell.solver-cell-bkclr-6 { background: #F7A5A7 !important; }
+    .sudoku-cell.solver-cell-bkclr-7 { background: #86F280 !important; }
+    .sudoku-cell.solver-cell-bkclr-8 { background: #86F280 !important; }
+    .sudoku-cell.solver-cell-bkclr-9 { background: #FFFF00 !important; }
+    .sudoku-cell.solver-cell-bkclr-10 { background: #FFA500 !important; }
+    .sudoku-cell.solver-cell-bkclr-11 { background: #FF7684 !important; }
+    .sudoku-cell.solver-cell-bkclr-12 { background: #EB0000 !important; }
     .sudoku-cell.hint-peer { background: #f8fafc; }
     .cell-value {
       font-size: var(--yzf-value-font-size, clamp(22px, 60cqw, 42px));
@@ -3134,6 +3149,46 @@
       margin-top: 8px;
       padding-top: 8px;
       border-top: 1px dashed rgba(148, 163, 184, 0.38);
+    }
+    .step-explain-panel .step-explain-sections,
+    .step-explain-dialog-content .step-explain-sections {
+      display: grid;
+      gap: 8px;
+    }
+    .step-explain-panel .step-explain-section,
+    .step-explain-dialog-content .step-explain-section {
+      padding: 8px 10px;
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.48);
+    }
+    .step-explain-panel .step-explain-section-heading,
+    .step-explain-dialog-content .step-explain-section-heading {
+      margin-bottom: 3px;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+    .step-explain-panel .step-explain-section-body,
+    .step-explain-dialog-content .step-explain-section-body {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .step-explain-panel .step-explain-section-conclusion,
+    .step-explain-dialog-content .step-explain-section-conclusion {
+      border-color: rgba(20, 102, 204, 0.28);
+      background: rgba(20, 102, 204, 0.055);
+    }
+    .step-explain-panel .step-explain-eureka,
+    .step-explain-dialog-content .step-explain-eureka {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.55;
     }
     .step-explain-panel .step-explain-meta {
       display: flex;
@@ -5680,6 +5735,6 @@
       })();
     </script>
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=20260709-fb-pointer-tlg-guard-v2"></script>
+    <script type="module" src="./app.js?v=wasm-35d525443820b7aa"></script>
   </body>
 </html>

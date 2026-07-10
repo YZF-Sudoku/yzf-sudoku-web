@@ -481,7 +481,7 @@
 <h1>YZF Sudoku 使用手册 / User Manual</h1>
 <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
 <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-<div class="meta">Version: Manual v2.5 · Updated: 2026-07-09</div>
+<div class="meta">Version: Manual v2.6 · Updated: 2026-07-10</div>
 </div>
 <div aria-label="Manual language view / 手册语言视图" class="manual-language-toolbar" role="group">
 <button aria-pressed="true" data-manual-lang-button="bilingual" type="button">双语 / Bilingual</button>
@@ -933,6 +933,7 @@
 <p>技巧配置会随主现场自动保存。预设会重置 Complex AIC/JE 的专属子选项，使用后请重新确认。</p>
 <h3>高亮阅读</h3>
 <p>一般高亮包括出数、删数、结构格、强/弱链、ON/OFF 节点、ALS/AF 区域、guardian 和分支。点击顶部“技巧说明”打开 <code>techniques.html</code>，查看每个技巧的玩家向解释。</p>
+<div class="note"><strong>Exocet 系列的颜色分工：</strong>整格背景只表达整体构型角色，例如主 Base、主 Target、Cross/S、Double JE 的第二组 Base/Target，以及 Weak Exocet 的 Y 格和 Weak Seat；格内候选不会再用同一种角色色重复涂抹。候选级颜色只用于附加证明规则和结论，例如锁定在 Q/R/T 邻中的非 Base 数、Mirror 支持、Senior Exocet 的 locked non-base、fins/guardians，以及最终删数或出数。没有实际参与结论的临时支持色会被回滚。</div>
 <h3>Guardian Force Chain</h3>
 <p>Dead pattern 的 guardian 不可能全部为假，因此至少一个为真。如果每个 guardian 为真都推出同一个结论，该结论成立。UR Guardian FC 与 Triplet Oddagon/Tridagon Guardian FC 使用相同的强制链原则，只是 deadly pattern 不同。</p>
 </div>
@@ -957,6 +958,7 @@
 <p>Technique settings are saved with the main session. Presets reset the Complex AIC/JE sub-options, so re-check them afterward.</p>
 <h3>Reading Highlights</h3>
 <p>Highlights may include placements, eliminations, structure cells, strong/weak links, ON/OFF nodes, ALS/AF regions, guardians, and branches. Open the top Technique Guide link for player-facing explanations in <code>techniques.html</code>.</p>
+<div class="note"><strong>Color roles in the Exocet family:</strong> whole-cell backgrounds express structural roles only, such as the primary Base and Target cells, Cross/S cells, the secondary Base/Target pair in Double JE, and the Y cell or Weak Seat in Weak Exocet. Candidates inside those cells are no longer redundantly painted with the same role color. Candidate-level colors are reserved for auxiliary proof rules and conclusions: locked non-base digits in Q/R/T neighborhoods, Mirror support, Senior Exocet locked non-base candidates, fins/guardians, and final eliminations or placements. Provisional support colors are rolled back when they do not contribute to a conclusion.</div>
 <h3>Guardian Force Chain</h3>
 <p>Guardians of a dead pattern cannot all be false, so at least one is true. If every possible true guardian produces the same conclusion, that conclusion is valid. UR and Triplet Oddagon/Tridagon Guardian FC use the same forcing principle with different deadly patterns.</p>
 </div>
@@ -1206,6 +1208,7 @@
 <li>选择“批量解题”。</li>
 <li>选择纯文本输入文件，一行一题；空行和以 <code>#</code> 开头的行会忽略。</li>
 <li>点击“开始”，输出每题的状态、步数、YZF 评分、最难技巧和错误信息。</li>
+<li><strong>最难技巧判定：</strong>先比较 YZF 分数；同分时按 FB 原版 <code>SolutionType</code> 的固定技巧顺序裁决；只有同一种技巧内部才继续比较 rank/长度。因此同为 400 分时，Cell/Region Forcing Chain 会覆盖先出现的 Complex AIC，不再受解题路径先后顺序影响。</li>
 </ol>
 <h3>文件与平台差异</h3>
 <p>支持 File System Access API 的桌面浏览器会先让你选择保存位置，并在运行中持续追加；其它浏览器（常见于手机和部分 Firefox/Safari）会在任务结束或停止时生成下载文件。</p>
@@ -1224,6 +1227,7 @@
 <li>Select Batch Solve.</li>
 <li>Choose a plain-text input file with one puzzle per line. Blank lines and lines beginning with <code>#</code> are ignored.</li>
 <li>Press Start. Output includes status, steps, YZF rating, hardest technique, and errors.</li>
+<li><strong>Hardest-technique tie-break:</strong> compare the YZF score first, then the fixed FB <code>SolutionType</code> order for equal scores; rank/length is compared only within the same technique. Thus, at score 400, Cell/Region Forcing Chain supersedes an earlier Complex AIC instead of depending on path order.</li>
 </ol>
 <h3>Files and Platform Differences</h3>
 <p>Desktop browsers with the File System Access API ask for a destination and append while running. Other browsers, commonly mobile and some Firefox/Safari versions, create a download when the task finishes or is stopped.</p>

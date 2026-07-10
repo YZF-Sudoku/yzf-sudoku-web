@@ -1,7 +1,7 @@
 // Frontend-only step localization.
 // It receives a final StepResult after solving; workers and solver hot paths do not import this file.
 
-export const STEP_LOCALIZATION_VERSION = "20260703-step-i18n-v3";
+export const STEP_LOCALIZATION_VERSION = "20260710-step-i18n-v5-title-proof";
 
 const TECHNIQUE_NAMES = Object.freeze({
   zh: Object.freeze({
@@ -149,6 +149,172 @@ const TECHNIQUE_NAMES = Object.freeze({
     BruteForce: "Brute Force",
   }),
 });
+
+
+// Title localization follows two rules:
+// 1) the backend title is authoritative whenever it carries a Type/Grouped/Dual/etc. qualifier;
+// 2) terms without a verified Chinese name stay in English, wrapped by the known family name.
+// The verified terms below follow Kazusa's Chinese tutorial terminology.
+const TRUSTED_TITLE_TRANSLATIONS_ZH = Object.freeze({
+  "Full House": "单元唯一",
+  "Hidden Single": "排除",
+  "Naked Single": "唯一余数",
+  "Locked Candidates": "区块",
+  "Gurth's symmetry placement": "宇宙法",
+  "Gurth's Symmetrical Placement": "宇宙法",
+  "Unique Rectangle": "唯一矩形",
+  "Hidden Rectangle": "隐性矩形",
+  "Avoidable Rectangle": "可规避矩形",
+  "Unique Loop": "唯一环",
+  "UL": "唯一环",
+  "Extended Rectangle": "拓展矩形",
+  "Bivalue Oddagon": "双值死环",
+  "Triplet Oddagon": "三值死环",
+  "Junior Exocet": "初级飞鱼",
+  "JE": "初级飞鱼",
+  "Senior Exocet": "高级飞鱼",
+  "Weak Exocet": "衰弱飞鱼",
+  "Double Exocet": "双飞鱼",
+  "Double Junior Exocet": "双飞鱼",
+  "Double JExocet": "双飞鱼",
+  "Double JE": "双飞鱼",
+  "Sue de Coq": "融合待定数组",
+  "Fireworks": "烟花数组",
+  "X-Chain": "同数链",
+  "XY-Chain": "双值格链",
+  "Grouped AIC": "区块 AIC",
+  "ALS Chain": "待定数组链",
+  "AHS Chain": "隐性待定数组链",
+  "Death Blossom": "死亡绽放",
+  "Blossom Loop": "绽放环",
+  "Dynamic Chain": "动态链",
+  "Grouped Dynamic Chain": "区块动态链",
+  "SK Loop": "多米诺环",
+  "MSLS": "网",
+  "Multifish": "复数鱼",
+  "Brute Force": "穷举求解",
+});
+
+const TITLE_VARIANT_MARKERS = /\b(?:type\s*\d+|grouped|dual|half|complete|almost|continuous|discontinuous|complex|external\s+test|cell\s+type|region\s+type|aals\s+type|force\s+chain|fireworks|exocet|oddagon|ring|wing|bug\s*\+\s*\d+)\b/i;
+const TITLE_PREFIX_FAMILIES = /(?:rectangle|uniqueness|loop|oddagon|fireworks|exocet|wing|chain|blossom|bug\s*\+|symmetry|gsp|ul\b)/i;
+
+function normalizeTitleKey(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function genericEnglishTechniqueName(kind) {
+  return TECHNIQUE_NAMES.en?.[kind] || String(kind || "");
+}
+
+function descriptionTitlePrefix(step) {
+  const description = String(step?.description || "").trim();
+  if (!description) return "";
+  const firstLine = description.split(/\r?\n/, 1)[0].trim();
+  const match = firstLine.match(/^([^:\n]{1,140}):/);
+  if (!match) return "";
+  const prefix = match[1].trim();
+  if (!prefix || /[=<>]/.test(prefix)) return "";
+  const title = String(step?.title || "").trim();
+  const generic = genericEnglishTechniqueName(step?.kind);
+  const prefixKey = normalizeTitleKey(prefix);
+  const familyMatches = [title, generic, step?.kind]
+    .map(normalizeTitleKey)
+    .filter(Boolean)
+    .some((value) => prefixKey.startsWith(value) || value.startsWith(prefixKey));
+  return (familyMatches || (TITLE_VARIANT_MARKERS.test(prefix) && TITLE_PREFIX_FAMILIES.test(prefix))) ? prefix : "";
+}
+
+function effectiveTechniqueTitle(step = {}) {
+  const title = String(step?.title || "").trim();
+  const prefix = descriptionTitlePrefix(step);
+  if (prefix && TITLE_VARIANT_MARKERS.test(prefix)) return prefix;
+  if (title) return title;
+  return genericEnglishTechniqueName(step?.kind) || String(step?.kind || "");
+}
+
+function titleIsGenericForKind(step, title = effectiveTechniqueTitle(step)) {
+  const key = normalizeTitleKey(title);
+  if (!key) return true;
+  const aliases = new Set([
+    normalizeTitleKey(step?.kind),
+    normalizeTitleKey(genericEnglishTechniqueName(step?.kind)),
+  ]);
+  if (step?.kind === "JE") aliases.add("junior exocet");
+  if (step?.kind === "UniqueLoop") aliases.add("ul");
+  if (step?.kind === "GSP") aliases.add("gurth's symmetry placement");
+  return aliases.has(key);
+}
+
+function translateTypeSuffixZh(value) {
+  return String(value || "")
+    .replace(/\(\s*Type\s*(\d+)\s*\)/gi, "（$1 型）")
+    .replace(/\bType\s*(\d+)\b/gi, "$1 型");
+}
+
+function localizeKnownFamilyVariantZh(step, title) {
+  let match;
+  if ((match = title.match(/^Unique Rectangle\s+Type\s*(\d+)$/i))) return `唯一矩形 ${match[1]} 型`;
+  if (/^Hidden Rectangle$/i.test(title)) return "隐性矩形";
+  if ((match = title.match(/^Avoidable Rectangle\s+Type\s*(\d+)$/i))) return `可规避矩形 ${match[1]} 型`;
+  if ((match = title.match(/^Uniqueness External Test\s+(.+)$/i))) return `唯一性技巧（${title}）`;
+  if ((match = title.match(/^(?:Extended Rectangle)\s+Type\s*(\d+)$/i))) return `拓展矩形 ${match[1]} 型`;
+  if ((match = title.match(/^(?:UL|Unique Loop)\s+Type\s*(\d+)$/i))) return `唯一环 ${match[1]} 型`;
+  if ((match = title.match(/^Bivalue Oddagon\s*\(\s*Type\s*(\d+)\s*\)$/i))) return `双值死环 ${match[1]} 型`;
+  if ((match = title.match(/^Bivalue Oddagon\s+Type\s*(\d+)$/i))) return `双值死环 ${match[1]} 型`;
+  if ((match = title.match(/^Triplet Oddagon\s+Type\s*(\d+)$/i))) return `三值死环 ${match[1]} 型`;
+  if (/^Dual Bivalue Oddagon$/i.test(title)) return "双值死环（Dual Bivalue Oddagon）";
+  if ((match = title.match(/^BUG\s*\+\s*(\d+)(.*)$/i))) {
+    const suffix = translateTypeSuffixZh(match[2]).trim();
+    return suffix ? `BUG + ${match[1]}（${suffix}）` : `BUG + ${match[1]}`;
+  }
+  if (/^Double (?:JExocet|Junior Exocet|JE|Exocet)$/i.test(title)) return "双飞鱼";
+  if (/^Almost JE4$/i.test(title)) return "Almost JE4";
+  if (/Nice Loop|Complex Grouped X-Chain/i.test(title)) {
+    const base = TECHNIQUE_NAMES.zh?.[step?.kind] || "链";
+    return `${base}（${title}）`;
+  }
+  if ((match = title.match(/^Grouped\s+(.+)$/i))) {
+    const inner = localizeTechniqueTitleZh({ ...step, title: match[1], description: "" }, match[1], true);
+    if (/^区块/.test(inner)) return inner;
+    const separator = /^[A-Za-z0-9]/.test(inner || match[1]) ? " " : "";
+    return `区块${separator}${inner || match[1]}`;
+  }
+  if (/^(?:Half|Complete) XYZ-Ring$/i.test(title)) return `XYZ-Ring（${title.startsWith("Half") ? "Half" : "Complete"}）`;
+  if (/^(?:Dual )?Fireworks\b/i.test(title)) return `烟花数组（${title}）`;
+  if (/^Cell Type Blossom Loop$/i.test(title)) return "单元格型绽放环";
+  if (/^Region Type Blossom Loop$/i.test(title)) return "区域型绽放环";
+  if (/^AALS Type Blossom Loop$/i.test(title)) return "绽放环（AALS Type Blossom Loop）";
+  if (/^Death Blossom\b/i.test(title)) return title === "Death Blossom" ? "死亡绽放" : `死亡绽放（${title}）`;
+  if (/^(?:Cell|Region|UR|Triplet Oddagon) Force Chain$/i.test(title)) {
+    return title
+      .replace(/^Cell Force Chain$/i, "单元格强制链")
+      .replace(/^Region Force Chain$/i, "区域强制链")
+      .replace(/^UR Force Chain$/i, "唯一矩形强制链")
+      .replace(/^Triplet Oddagon Force Chain$/i, "三值死环强制链");
+  }
+  if (/^AUR \+ /i.test(title)) return title;
+  return "";
+}
+
+function localizeTechniqueTitleZh(step, explicitTitle = "", nested = false) {
+  const title = String(explicitTitle || effectiveTechniqueTitle(step)).trim();
+  if (!title) return TECHNIQUE_NAMES.zh?.[step?.kind] || String(step?.kind || "");
+  if (TRUSTED_TITLE_TRANSLATIONS_ZH[title]) return TRUSTED_TITLE_TRANSLATIONS_ZH[title];
+  const variant = localizeKnownFamilyVariantZh(step, title);
+  if (variant) return variant;
+  const genericZh = TECHNIQUE_NAMES.zh?.[step?.kind] || "";
+  if (titleIsGenericForKind(step, title)) return genericZh || title;
+  // No verified Chinese term: preserve the exact backend title instead of inventing one.
+  if (nested) return title;
+  return genericZh ? `${genericZh}（${title}）` : title;
+}
+
+export function techniqueIdentityForStep(step = {}) {
+  const kind = String(step?.kind || "").trim();
+  const title = effectiveTechniqueTitle(step);
+  if (!kind) return normalizeTitleKey(title);
+  return titleIsGenericForKind(step, title) ? kind : `${kind}:${normalizeTitleKey(title)}`;
+}
 
 const CATEGORY_NAMES = Object.freeze({
   zh: Object.freeze({
@@ -812,24 +978,155 @@ function formatRankZh(step, name) {
   return `${name}：${reason}${rank ? `（秩${rank}）` : ""}${cells ? `，结构格为${cells}` : ""}。${conclusionTextZh(step)}`;
 }
 
+function localizeDescriptionTitlePrefixesZh(step, text) {
+  return String(text || "").split(/\r?\n/).map((line) => {
+    const match = line.match(/^(\s*)([^:\n]{1,140})(:)(.*)$/);
+    if (!match) return line;
+    const [, indent, prefix, , rest] = match;
+    const candidateStep = { ...step, title: prefix.trim(), description: "" };
+    const localized = localizeTechniqueTitleZh(candidateStep, prefix.trim());
+    const plausible = TITLE_PREFIX_FAMILIES.test(prefix) || TITLE_VARIANT_MARKERS.test(prefix) ||
+      normalizeTitleKey(prefix) === normalizeTitleKey(step?.title) ||
+      normalizeTitleKey(prefix) === normalizeTitleKey(genericEnglishTechniqueName(step?.kind));
+    return plausible && localized ? `${indent}${localized}：${rest}` : line;
+  }).join("\n");
+}
+
+function localizeAlmostJe4ProofZh(text) {
+  const translateAlmostProof = (_match, metDigits, missingDigit, contradictionCell = "") =>
+    `${metDigits}满足 S-cell 条件，但${missingDigit}不满足；若两组 JE 的基准单元格都含有${missingDigit}，将导致矛盾` +
+    `${contradictionCell ? `（经 Single + LC 推导，${contradictionCell.trim()} 为空）` : ""} =>`;
+  return String(text || "")
+    .replace(
+      /([1-9]+)\s+meet the S-cell requirements,\s*but\s+([1-9]+)\s+is not satisfied\.\s*If both JE bases have\s+\2,\s*this leads to a contradiction(?:\s*\(Single \+ LC -> Empty:\s*([^)]+)\))?\s*=>/gi,
+      translateAlmostProof,
+    )
+    .replace(
+      /([1-9]+)\s+Meet the requirements of\s+s\s*-\s*cells,\s*but\s+([1-9]+)\s+is not satisfied!\s*If both JE bases have\s+\2,\s*this will lead to a contradiction!(?:\s*\(Single \+ LC -> Empty:\s*([^)]+)\))?\s*=>/g,
+      translateAlmostProof,
+    );
+}
+
+function localizeBackendDescriptionZh(step) {
+  let text = String(step?.description || "").trim().replace(/\r\n/g, "\n");
+  if (!text) return "";
+
+  text = localizeAlmostJe4ProofZh(text);
+  text = localizeDescriptionTitlePrefixesZh(step, text);
+
+  // Only replace terms whose Chinese names are verified or whose meaning is
+  // structurally unambiguous. Unknown technique names remain in English.
+  const replacements = [
+    [/Double JE - second Junior Exocet:/gi, "双飞鱼－第二个初级飞鱼："],
+    [/Double JE - See all target\/base cells:/gi, "双飞鱼－同时看见全部目标单元格/基准单元格："],
+    [/Double JE - True Base Cands in non-'S' cells:/gi, "双飞鱼－非 S-cell 中基准单元格里的真数："],
+    [/Double JE - Three true base cands share cover house:/gi, "双飞鱼－三个基准真数共用同一覆盖区域："],
+    [/Double JE - /gi, "双飞鱼－"],
+    [/Base Cells-/gi, "基准单元格-"],
+    [/Base Cell-/gi, "基准单元格-"],
+    [/Target Cells-/gi, "目标单元格-"],
+    [/Target Cell-/gi, "目标单元格-"],
+    [/Crossline Cells-/gi, "交叉单元格-"],
+    [/Cross Cells-/gi, "交叉单元格-"],
+    [/Mirror Cells?/gi, "镜面单元格"],
+    [/Cover-line cleanup:/gi, "覆盖线清理："],
+    [/See all four base cells:/gi, "同时看见四个基准单元格："],
+    [/Target Cells Check:/gi, "目标单元格检查："],
+    [/Check X-Rule:/gi, "X 区域致命定理检查："],
+    [/Mirror Check:/gi, "镜面单元格检查："],
+    [/True Base digits in non-'S' cells:/gi, "非 S-cell 中基准单元格里的真数："],
+    [/True Base digits:/gi, "基准单元格中的真数："],
+    [/True Base Cands in non-'S' cells:/gi, "非 S-cell 中基准单元格里的真数："],
+    [/True Base Cands?/gi, "基准单元格中的真数"],
+    [/BaseCand only one cover house in cross-line:/gi, "基准候选数在交叉单元格中只落入一个覆盖区域："],
+    [/Locked Member In Target:/gi, "目标单元格中的锁定成员："],
+    [/Locked Member in T1:/gi, "T1 中的锁定成员："],
+    [/Locked Member in T2:/gi, "T2 中的锁定成员："],
+    [/Non BaseCands In Target Cells:/gi, "目标单元格中的非基准候选数："],
+    [/True BaseCands False In Another Target:/gi, "基准真数在另一目标单元格中为假："],
+    [/True BaseCands False In Base Cells Constraint:/gi, "受基准单元格约束而为假的基准真数："],
+    [/Non Compatible BaseCands Check:/gi, "不兼容的基准候选数检查："],
+    [/Potential Target seats in one cover house for cross-line:/gi, "交叉单元格在同一覆盖区域中的潜在目标位置："],
+    [/Digit ([1-9]+) In Target House Only Seat Either In Target Or Seen Both Base Cells:/gi, "数字 $1 在目标区域中的唯一位置只能位于目标单元格，或同时看见两个基准单元格："],
+    [/\bWith Naked Pair\b/gi, "结合显性数对"],
+    [/\bWith Naked Triple\b/gi, "结合显性三数组"],
+    [/\bWith Naked Quad(?:ruple)?\b/gi, "结合显性四数组"],
+    [/\bWith conjugate pair\b/gi, "结合共轭对"],
+    [/\bis fireworks\b/gi, "构成烟花数组"],
+    [/Need rearrange rows to\s*/gi, "需要将行重排为 "],
+    [/Need rearrange cols to\s*/gi, "需要将列重排为 "],
+    [/Axisymmetric Conjugate Pair:/gi, "轴对称共轭对："],
+    [/Candidate mapping:/gi, "数字映射："],
+    [/Burring Loop:/gi, "毛刺环（Burring Loop）："],
+    [/Burr Branch\s*(\d+):/gi, "毛刺分支 $1："],
+    [/Anti-phase AIC:/gi, "反相 AIC（Anti-phase AIC）："],
+    [/ON conclusion:/gi, "成立分支："],
+    [/OFF conclusion:/gi, "不成立分支："],
+    [/Chain\s*(\d+):/gi, "链 $1："],
+    [/JEPOM:/gi, "JEPOM："],
+  ];
+  for (const [pattern, replacement] of replacements) text = text.replace(pattern, replacement);
+
+  return text
+    .replace(/\bType\s*(\d+)\b/gi, "$1 型")
+    .replace(/：[ \t]+/g, "：")
+    .replace(/[ \t]+\n/g, "\n")
+    .trim();
+}
+
+function descriptionHasConclusion(step, text) {
+  const value = String(text || "");
+  if (/=>|<>|\br\d+c\d+\s*=/.test(value)) return true;
+  const { placements, eliminations } = collectConclusions(step);
+  return [...placements, ...eliminations].some((item) => value.includes(item));
+}
+
+function preserveBackendProofZh(step) {
+  const description = String(step?.description || "").trim();
+  if (!description) return "";
+  const title = effectiveTechniqueTitle(step);
+  const variant = !titleIsGenericForKind(step, title);
+  const alwaysPreserve = new Set([
+    "GSP", "AvoidableRectangle", "UniqueRectangle", "UniqueLoop", "ExtendedRectangle",
+    "BUGOne", "BUGPlusN", "BivalueOddagon", "TripletOddagon", "Fireworks",
+    "XChain", "XYChain", "AIC", "GroupedAIC", "ComplexAIC", "CellRegionFC",
+    "Whip", "GWhip", "DynamicChain", "Braid", "GBraid", "SKLoop", "MSLS",
+    "Multifish", "JE", "SeniorExocet", "WeakExocet", "DeathBlossom",
+    "ALSChain", "AHSChain", "BlossomLoop",
+  ]).has(String(step?.kind || ""));
+  if (!variant && !alwaysPreserve && !/\n|Base Cells|Target Cells|Cross(?:line)? Cells|Mirror Check|Burring Loop|Burr Branch/i.test(description)) return "";
+
+  let localized = localizeBackendDescriptionZh(step);
+  if (!localized) return "";
+  if (!descriptionHasConclusion(step, localized)) localized += `\n${conclusionTextZh(step)}`;
+  return localized;
+}
+
+function localizeExocetDescriptionZh(description, step = {}) {
+  return localizeBackendDescriptionZh({ ...step, description });
+}
+
 function formatExocetZh(step, name) {
-  const baseGroup = findGroup(step, /^base$/i);
-  const targetQ = findGroup(step, /^targetsq$/i);
-  const targetR = findGroup(step, /^targetsr$/i);
-  const targetGroups = findGroups(step, /^targets?$/i);
+  // Backend Exocet descriptions contain the authoritative structure and proof
+  // details. Chinese localization must translate in place, never regenerate a
+  // shorter generic paragraph that discards Almost/Double JE information.
+  const localizedBackendDescription = localizeExocetDescriptionZh(step?.description, step);
+  if (localizedBackendDescription) return localizedBackendDescription;
+
+  const baseGroups = findGroups(step, /^base(?:\s+[ab])?$/i);
+  const targetGroups = findGroups(step, /^targets?(?:\s+[qrab])?$/i);
   const cross = findGroup(step, /^cross$/i);
   const weakSeat = findGroup(step, /^weakseat$/i);
-  const bases = baseGroup?.cells || roleCells(step, /base|基/i);
-  const baseDigits = candidateDigitsForCells(step, bases);
+  const bases = uniqueCells(baseGroups.flatMap((group) => group.cells || []));
+  const fallbackBases = bases.length ? bases : roleCells(step, /base|基/i);
+  const baseDigits = candidateDigitsForCells(step, fallbackBases);
   const parts = [];
-  if (bases.length) parts.push(`基格为${cellList(bases)}`);
-  if (baseDigits.length) parts.push(`基格候选数为${slashDigits(baseDigits)}`);
-  if (targetQ) parts.push(`Q目标格为${groupCellsText(targetQ)}`);
-  if (targetR) parts.push(`R目标格为${groupCellsText(targetR)}`);
-  for (const target of targetGroups) parts.push(`目标格为${groupCellsText(target)}`);
-  if (cross) parts.push(`交叉带包含${uniqueCells(cross.cells).length}格`);
-  if (weakSeat) parts.push(`弱座为${groupCellsText(weakSeat)}`);
-  return `${name}：${parts.length ? parts.join("；") : "基格与目标格形成飞鱼结构"}。基格中的真数必须由目标区域承接，因此违反承接、交叉带或目标格检查的候选不能成立。${conclusionTextZh(step)}`;
+  if (fallbackBases.length) parts.push(`基准单元格为${cellList(fallbackBases)}`);
+  if (baseDigits.length) parts.push(`基准单元格中的候选数为${slashDigits(baseDigits)}`);
+  for (const target of targetGroups) parts.push(`${target.name || "目标单元格"}为${groupCellsText(target)}`);
+  if (cross) parts.push(`交叉单元格共${uniqueCells(cross.cells).length}格`);
+  if (weakSeat) parts.push(`弱位为${groupCellsText(weakSeat)}`);
+  return `${name}：${parts.length ? parts.join("；") : "基准单元格与目标单元格形成飞鱼结构"}。基准单元格中的真数必须由目标区域承接，因此违反承接、交叉单元格或目标单元格检查的候选不能成立。${conclusionTextZh(step)}`;
 }
 
 function formatZhStep(step) {
@@ -838,6 +1135,8 @@ function formatZhStep(step) {
   const name = rankedTechniqueName(step, "zh");
   const candidate = primaryDigits(step);
   const target = placement(step);
+  const backendProof = preserveBackendProofZh(step);
+  if (backendProof) return backendProof;
 
   if (kind === "NakedSingle" && target) {
     const digit = Number(target.value ?? actionCandidates(target)[0]);
@@ -887,8 +1186,11 @@ function formatZhStep(step) {
 
 export function techniqueNameForStep(step = {}, locale = "en") {
   const normalized = normalizeLocale(locale);
+  const effectiveTitle = effectiveTechniqueTitle(step);
+  if (normalized === "zh") return localizeTechniqueTitleZh(step, effectiveTitle);
+  if (effectiveTitle) return effectiveTitle;
   const table = TECHNIQUE_NAMES[normalized] || TECHNIQUE_NAMES.en;
-  return table?.[step?.kind] || TECHNIQUE_NAMES.en[step?.kind] || step?.title || step?.kind || "";
+  return table?.[step?.kind] || TECHNIQUE_NAMES.en[step?.kind] || step?.kind || "";
 }
 
 export function categoryNameForLocale(category, locale = "en") {

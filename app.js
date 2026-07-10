@@ -1,11 +1,12 @@
-import createModule from "./sudoku_wasm.js?v=wasm-6aa39cc1d081d5c5";
+import createModule from "./sudoku_wasm.js?v=wasm-35d525443820b7aa";
 import {
   categoryNameForLocale,
   localizedStepDescription,
+  techniqueIdentityForStep,
   techniqueNameForStep,
-} from "./step-localization.js?v=20260703-step-i18n-v3";
+} from "./step-localization.js?v=20260710-step-i18n-v5-title-proof";
 
-const APP_VERSION = "wasm-6aa39cc1d081d5c5";
+const APP_VERSION = "wasm-35d525443820b7aa";
 const MANUAL_VERSION = "20260709-manual-v2.5-tlg-input-guard";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
@@ -9858,44 +9859,99 @@ function stepExplainBuildLines(step = {}, snapshot = null) {
 
 function buildStepExplanationContent(step, snapshot = currentSnapshot) {
   const zh = lang.value === "zh";
-  const data = stepExplainBuildLines(step, snapshot);
-  const fragment = document.createDocumentFragment();
+  const backend = step?.explanation?.[zh ? "zh" : "en"];
 
+  // V486 explanation contract: current WASM provides the full bilingual model.
+  // The legacy formatter remains only as a compatibility fallback for old JSON;
+  // it is not used by the bundled WASM.
+  if (!backend || typeof backend !== "object") {
+    const data = stepExplainBuildLines(step, snapshot);
+    const fragment = document.createDocumentFragment();
+    const subtitle = document.createElement("div");
+    subtitle.className = "step-explain-subtitle";
+    subtitle.textContent = `${stepDisplayName(step)} · ${formatHintDesc(step)}`;
+    fragment.appendChild(subtitle);
+    const ol = document.createElement("ol");
+    data.lines.forEach((line) => {
+      const li = document.createElement("li");
+      li.textContent = line;
+      ol.appendChild(li);
+    });
+    fragment.appendChild(ol);
+    const proof = document.createElement("div");
+    proof.className = "step-explain-proof";
+    proof.textContent = data.proof;
+    fragment.appendChild(proof);
+    return fragment;
+  }
+
+  const labels = zh
+    ? { structure: "结构", principle: "依据", deduction: "推导", conclusion: "结论", eureka: "尤里卡／原始证明", checks: "核对", raw: "原始后端证明" }
+    : { structure: "Structure", principle: "Principle", deduction: "Deduction", conclusion: "Conclusion", eureka: "Eureka / formal proof", checks: "Checks", raw: "Raw backend proof" };
+
+  const fragment = document.createDocumentFragment();
   const subtitle = document.createElement("div");
   subtitle.className = "step-explain-subtitle";
   subtitle.textContent = `${stepDisplayName(step)} · ${formatHintDesc(step)}`;
   fragment.appendChild(subtitle);
 
-  const ol = document.createElement("ol");
-  data.lines.forEach((line) => {
-    const li = document.createElement("li");
-    li.textContent = line;
-    ol.appendChild(li);
-  });
-  fragment.appendChild(ol);
+  const sections = document.createElement("div");
+  sections.className = "step-explain-sections";
+  const appendSection = (key, text, extraClass = "") => {
+    if (!String(text || "").trim()) return;
+    const section = document.createElement("section");
+    section.className = `step-explain-section ${extraClass}`.trim();
+    const heading = document.createElement("div");
+    heading.className = "step-explain-section-heading";
+    heading.textContent = labels[key];
+    const body = document.createElement("div");
+    body.className = "step-explain-section-body";
+    body.textContent = String(text);
+    section.append(heading, body);
+    sections.appendChild(section);
+  };
 
-  const proof = document.createElement("div");
-  proof.className = "step-explain-proof";
-  proof.textContent = data.proof;
-  fragment.appendChild(proof);
+  appendSection("structure", backend.structure);
+  appendSection("principle", backend.principle);
+  appendSection("deduction", backend.deduction);
+  appendSection("conclusion", backend.conclusion, "step-explain-section-conclusion");
+  if (backend.eureka) {
+    const section = document.createElement("section");
+    section.className = "step-explain-section";
+    const heading = document.createElement("div");
+    heading.className = "step-explain-section-heading";
+    heading.textContent = labels.eureka;
+    const pre = document.createElement("pre");
+    pre.className = "step-explain-eureka";
+    pre.textContent = String(backend.eureka);
+    section.append(heading, pre);
+    sections.appendChild(section);
+  }
+  fragment.appendChild(sections);
 
-  if (data.checks.length > 0) {
+  if (Array.isArray(backend.checks) && backend.checks.length > 0) {
+    const section = document.createElement("section");
+    section.className = "step-explain-section";
+    const heading = document.createElement("div");
+    heading.className = "step-explain-section-heading";
+    heading.textContent = labels.checks;
     const ul = document.createElement("ul");
-    data.checks.forEach((line) => {
+    backend.checks.forEach((line) => {
       const li = document.createElement("li");
-      li.textContent = line;
+      li.textContent = String(line);
       ul.appendChild(li);
     });
-    fragment.appendChild(ul);
+    section.append(heading, ul);
+    fragment.appendChild(section);
   }
 
-  if (data.meta.length > 0) {
+  if (Array.isArray(backend.meta) && backend.meta.length > 0) {
     const meta = document.createElement("div");
     meta.className = "step-explain-meta";
-    data.meta.forEach((item) => {
+    backend.meta.forEach((item) => {
       const span = document.createElement("span");
       span.className = "step-explain-pill";
-      span.textContent = item;
+      span.textContent = String(item);
       meta.appendChild(span);
     });
     fragment.appendChild(meta);
@@ -10030,6 +10086,19 @@ const FB_BACK_COLORS = [
   "#FA8072",
 ];
 
+// Exact whole-cell colors used by the FB project's Exocet CellBack layer.
+// PatternGame.inc: PenA=#FFC059, PenB=#B1A5F3, PenC=#F7A5A7,
+// PenD=#86E8D0, PenE=#86F280.  Keep this separate from FB_BACK_COLORS:
+// the latter is the candidate-level bkclr palette shared by other techniques.
+const FB_EXOCET_CELL_COLORS = Object.freeze({
+  1: "#86E8D0", // PenD: Cross cells
+  4: "#FFC059", // PenA: first Base
+  5: "#B1A5F3", // PenB: first Targets
+  6: "#F7A5A7", // PenC: second Base / Weak Exocet Y-lock
+  7: "#86F280", // PenE: second Targets
+  8: "#86F280", // PenE: Weak Exocet weak seat
+});
+
 const FB_TEXT_COLORS = [
   null,
   "#053b18",
@@ -10048,12 +10117,17 @@ const FB_TEXT_COLORS = [
   "#7a0012",
 ];
 
-function colorCandidateMapForCell(hint, index) {
+function colorCandidateMapForCell(hint, index, suppressedStructuralColor = 0) {
   const result = new Map();
   for (const item of hint?.colorCands || []) {
     if (Number(item?.index) !== index) continue;
     const color = Number(item?.color || item?.colorIndex || 0);
     if (!Number.isInteger(color) || color < 1 || color > 14) continue;
+    // When a JE role is represented by an FB-style whole-cell background,
+    // suppress every role-level candidate fill in that cell.  This also
+    // neutralizes stale Double-JE payloads that used 4/5/6 for the second
+    // Base/Target/Cross instead of FB's 6/7/1 mapping.
+    if (suppressedStructuralColor && EXOCET_STRUCTURAL_CELL_COLORS.has(color)) continue;
     for (const digit of item?.candidates || []) {
       const parsed = Number(digit);
       if (parsed < 1 || parsed > 9) continue;
@@ -10081,6 +10155,162 @@ function colorCandidateMapForCell(hint, index) {
 
 function hasColorCandidateData(hint) {
   return Array.isArray(hint?.colorCands) && hint.colorCands.length > 0;
+}
+
+const EXOCET_STRUCTURAL_CELL_COLORS = new Set([1, 4, 5, 6, 7, 8]);
+
+function isExocetStructureHint(hint) {
+  if (!hint?.valid) return false;
+  const key = `${hint.kind || ""} ${hint.title || ""}`.toLowerCase();
+  return hint.kind === "JE"
+    || hint.kind === "WeakExocet"
+    || /(?:jexocet|exocet|almost\s+je4)/.test(key);
+}
+
+function groupCellIndexes(group) {
+  const result = [];
+  for (const cell of group?.cells || []) {
+    const index = Number(typeof cell === "number" ? cell : cell?.index);
+    if (Number.isInteger(index) && index >= 0 && index < 81) result.push(index);
+  }
+  return result;
+}
+
+function parseCellNotationSet(text) {
+  const result = new Set();
+  const source = String(text || "");
+  const pattern = /r([1-9]+)c([1-9]+)/gi;
+  let match;
+  while ((match = pattern.exec(source)) !== null) {
+    for (const rch of match[1]) {
+      for (const cch of match[2]) {
+        const row = Number(rch) - 1;
+        const col = Number(cch) - 1;
+        const index = row * 9 + col;
+        if (row >= 0 && row < 9 && col >= 0 && col < 9) result.add(index);
+      }
+    }
+  }
+  return result;
+}
+
+function describedJuniorExocetRoles(hint) {
+  const roles = [];
+  const description = String(hint?.description || "");
+  const pattern = /(?:Double JE\s*-\s*second\s+)?Junior Exocet\s*:\s*Base Cells-([^;\n]+);\s*Target Cells-([^;\n]+);\s*Cross Cells-([^\n]+)/gi;
+  let match;
+  while ((match = pattern.exec(description)) !== null) {
+    roles.push({
+      base: parseCellNotationSet(match[1]),
+      targets: parseCellNotationSet(match[2]),
+      cross: parseCellNotationSet(match[3].split(/\s*=>/)[0]),
+    });
+  }
+  return roles;
+}
+
+function colorCandidateRoleCells(hint) {
+  const byColor = new Map();
+  for (const item of hint?.colorCands || []) {
+    const color = Number(item?.color ?? item?.colorIndex ?? 0);
+    const index = Number(item?.index);
+    if (!EXOCET_STRUCTURAL_CELL_COLORS.has(color)) continue;
+    if (!Number.isInteger(index) || index < 0 || index >= 81) continue;
+    if (!byColor.has(color)) byColor.set(color, new Set());
+    byColor.get(color).add(index);
+  }
+  return byColor;
+}
+
+function exocetCellColorMap(hint) {
+  const result = new Map();
+  if (!isExocetStructureHint(hint)) return result;
+
+  const roleCells = colorCandidateRoleCells(hint);
+  const groups = Array.isArray(hint?.groups) ? hint.groups : [];
+  const hasBackendRoleColors = roleCells.size > 0;
+
+  const setGroupColor = (group, color, activeOnly = false) => {
+    const active = roleCells.get(color);
+    for (const index of groupCellIndexes(group)) {
+      if (activeOnly && hasBackendRoleColors && !active?.has(index)) continue;
+      result.set(index, color);
+    }
+  };
+
+  // FB Hint.CBK paints cross cells first, then role-specific cells.  Applying
+  // the same order lets targets/base cells override a cross background when a
+  // Senior/Mutant geometry overlaps the cross structure.
+  for (const group of groups) {
+    const label = String(group?.label || "").trim().toLowerCase();
+    if (/^cross(?:\b|\s|:)/.test(label)) setGroupColor(group, 1, false);
+  }
+  for (const group of groups) {
+    const label = String(group?.label || "").trim().toLowerCase();
+    if (/^targets?\s*b(?:\b|\s|:)/.test(label)) {
+      setGroupColor(group, 7, true);
+    } else if (/^targets?(?:\s+[aqr])?(?:\b|\s|:)/.test(label)) {
+      setGroupColor(group, 5, true);
+    }
+  }
+  for (const group of groups) {
+    const label = String(group?.label || "").trim().toLowerCase();
+    if (/^base\s*b(?:\b|\s|:)/.test(label)) {
+      setGroupColor(group, 6, false);
+    } else if (/^base(?:\s+a)?(?:\b|\s|:)/.test(label)) {
+      setGroupColor(group, 4, false);
+    }
+  }
+  for (const group of groups) {
+    const label = String(group?.label || "").trim().toLowerCase();
+    if (/weak\s*seat|weak\s*cell/.test(label)) setGroupColor(group, 8, false);
+  }
+
+  // Compatibility recovery for older Double-JE WASM payloads.  They returned
+  // only the primary StepGroups and encoded the second JE with the wrong
+  // candidate palette (Base/Target/Cross = 4/5/6).  The backend description is
+  // structured and stable, so recover both JE2 geometries here; a freshly
+  // rebuilt backend supplies equivalent groups directly.
+  const described = describedJuniorExocetRoles(hint);
+  const setDescribed = (cells, color, activeOnly = false) => {
+    for (const index of cells || []) {
+      if (activeOnly && hasBackendRoleColors) {
+        let active = false;
+        for (const roleColor of EXOCET_STRUCTURAL_CELL_COLORS) {
+          if (roleCells.get(roleColor)?.has(index)) { active = true; break; }
+        }
+        if (!active) continue;
+      }
+      result.set(index, color);
+    }
+  };
+  if (described.length > 0) {
+    setDescribed(described[0].cross, 1, false);
+    setDescribed(described[0].targets, 5, true);
+    setDescribed(described[0].base, 4, false);
+  }
+  if (described.length > 1) {
+    setDescribed(described[1].cross, 1, false);
+    setDescribed(described[1].targets, 7, true);
+    setDescribed(described[1].base, 6, false);
+  }
+
+  // Weak Exocet's two Y-lock cells are penc in FB but are not represented by a
+  // dedicated StepGroup.  Preserve them from backend color 6.
+  if (hint?.kind === "WeakExocet") {
+    for (const index of roleCells.get(6) || []) {
+      if (!result.has(index)) result.set(index, 6);
+    }
+  }
+
+  return result;
+}
+
+function applySolverCellColor(node, color) {
+  if (!node || !Number.isInteger(color) || color < 1 || color > 12) return;
+  node.classList.add("solver-cell-bkclr", `solver-cell-bkclr-${color}`);
+  node.dataset.solverCellColor = String(color);
+  node.style.setProperty("--solver-cell-bg", FB_EXOCET_CELL_COLORS[color] || FB_BACK_COLORS[color] || "#eef5ff");
 }
 
 function avoidableRectangleValueHighlightClass(hint, cell, value, structureCells = null) {
@@ -10196,6 +10426,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
   const eliminations = hintEliminationMap(hint);
   const isChainHint = stepResultHasRenderableChain(hint);
   const structure = hintStructureSet(hint);
+  const solverCellColors = exocetCellColorMap(hint);
   const cells = snapshot.cells || [];
   const filled = [...snapshot.board].filter((ch) => ch >= "1" && ch <= "9").length;
   const revision = snapshot.revision ?? snapshot.version ?? 0;
@@ -10207,6 +10438,9 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     const node = document.createElement("div");
     node.className = makeCellClass(index, hint);
     node.dataset.cellIndex = String(index);
+    const solverCellColor = Number(solverCellColors.get(index) || 0);
+    if (isExocetStructureHint(hint)) node.classList.remove("hint-structure");
+    applySolverCellColor(node, solverCellColor);
     // FB-aligned 17-track grid: odd tracks are equal cell content areas;
     // even tracks are independently sized normal/box lines.
     node.style.gridColumn = String((index % 9) * 2 + 1);
@@ -10287,7 +10521,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
       node.appendChild(renderValue(cell.value, valueClasses.join(" ")));
     } else {
       const colorMap = hasColorCandidateData(hint)
-        ? colorCandidateMapForCell(hint, index)
+        ? colorCandidateMapForCell(hint, index, solverCellColor)
         : null;
       node.appendChild(renderCandidates(
         cell.candidates,
@@ -11905,7 +12139,15 @@ function allStepsTechniqueLabel(record) {
 
 function allStepsTechniqueFilterInfo(record) {
   const step = record?.step || record || {};
+  const identity = techniqueIdentityForStep(step);
   const ref = referenceTechniqueForStep(step);
+  if (ref && identity && identity !== ref.kind) {
+    return {
+      key: identity,
+      label: techniqueName(step),
+      order: (ref.order ?? 9999) + 0.01,
+    };
+  }
   if (ref) {
     return {
       key: ref.kind,
@@ -11914,7 +12156,7 @@ function allStepsTechniqueFilterInfo(record) {
     };
   }
   const label = allStepsTechniqueLabel(record) || String(step.chainType || step.kind || "Other");
-  return { key: label, label, order: 9999 };
+  return { key: identity || label, label, order: 9999 };
 }
 
 function allStepsPlacementCount(step = {}) {
