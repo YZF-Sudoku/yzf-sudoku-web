@@ -2292,6 +2292,41 @@
       padding: 4px 8px;
       font-size: 13px;
     }
+    .training-select-line {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .training-text-filter-button {
+      position: relative;
+      height: 32px;
+      min-width: 72px;
+      margin: 0;
+      padding: 4px 9px;
+      border-radius: 8px;
+      white-space: nowrap;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .training-text-filter-button.active {
+      border-color: var(--accent);
+      background: #eff6ff;
+      color: var(--accent);
+      padding-right: 18px;
+    }
+    .training-text-filter-button.active::after {
+      content: "";
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #16a34a;
+      box-shadow: 0 0 0 2px #fff;
+    }
     .numpad {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -3480,6 +3515,100 @@
     }
     .step-explain-dialog-content li { margin: 5px 0; }
 
+    .training-text-filter-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: min(560px, calc(100vw - 24px));
+      max-height: min(82vh, 720px);
+      margin: 0;
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      border-radius: 15px;
+      padding: 0;
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.32);
+    }
+    .training-text-filter-dialog::backdrop {
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(2px);
+    }
+    .training-text-filter-panel {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0 16px 16px;
+      overflow: auto;
+      max-height: min(82vh, 720px);
+    }
+    .training-text-filter-header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 -16px;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.32);
+      background: var(--panel);
+    }
+    .training-text-filter-header strong { font-size: 15px; }
+    .training-text-filter-close {
+      width: 30px;
+      height: 30px;
+      margin: 0;
+      padding: 0;
+      border-radius: 999px;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .training-text-filter-intro {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .training-text-filter-field {
+      display: grid;
+      gap: 6px;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .training-text-filter-field textarea {
+      width: 100%;
+      min-height: 92px;
+      margin: 0;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .training-text-filter-field small {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .training-text-filter-case {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #475569;
+      font-size: 12px;
+    }
+    .training-text-filter-case input { margin: 0; }
+    .training-text-filter-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 2px;
+    }
+    .training-text-filter-actions button { margin: 0; }
+    .training-text-filter-spacer { flex: 1; }
+
 
     /* V436: visual and usability refresh. This block intentionally lives last so
        it can refine the long-lived responsive rules without changing JS behavior. */
@@ -3801,6 +3930,11 @@
       border-radius: 8px;
       background: #fff;
       font-size: 12px;
+    }
+    #tabControls > .training-options .training-text-filter-button {
+      height: 31px;
+      min-width: 70px;
+      font-size: 11px;
     }
     #tabControls > :is(#numpad, details, .yzf-debug-panel) {
       grid-column: 1 / -1;
@@ -5126,6 +5260,35 @@
           </div>
           <div id="stepExplainDialogContent" class="step-explain-dialog-content"></div>
         </dialog>
+        <dialog id="trainingTextFilterDialog" class="training-text-filter-dialog" aria-labelledby="trainingTextFilterDialogTitle">
+          <form method="dialog" class="training-text-filter-panel">
+            <div class="training-text-filter-header">
+              <strong id="trainingTextFilterDialogTitle">训练文字过滤</strong>
+              <button id="btnTrainingTextFilterClose" class="training-text-filter-close" type="submit" value="cancel" aria-label="关闭">×</button>
+            </div>
+            <p id="trainingTextFilterIntro" class="training-text-filter-intro">过滤由前端指定，后端在同一个目标技巧步骤内完成匹配。</p>
+            <label class="training-text-filter-field">
+              <span id="trainingTextFilterIncludeLabel">必须包含</span>
+              <textarea id="trainingTextFilterInclude" rows="5" spellcheck="false" placeholder="每行一个条件；全部条件都必须出现在同一步中"></textarea>
+              <small id="trainingTextFilterIncludeHint">每行一个条件，全部满足。</small>
+            </label>
+            <label class="training-text-filter-field">
+              <span id="trainingTextFilterExcludeLabel">不得包含</span>
+              <textarea id="trainingTextFilterExclude" rows="4" spellcheck="false" placeholder="每行一个条件；命中任意一项即排除"></textarea>
+              <small id="trainingTextFilterExcludeHint">每行一个条件，命中任意一项即排除。</small>
+            </label>
+            <label class="training-text-filter-case">
+              <input id="trainingTextFilterCaseSensitive" type="checkbox" />
+              <span id="trainingTextFilterCaseSensitiveLabel">区分英文字母大小写</span>
+            </label>
+            <div class="training-text-filter-actions">
+              <button id="btnTrainingTextFilterClear" type="button">清空</button>
+              <span class="training-text-filter-spacer"></span>
+              <button id="btnTrainingTextFilterCancel" type="submit" value="cancel">取消</button>
+              <button id="btnTrainingTextFilterApply" class="primary" type="button">应用</button>
+            </div>
+          </form>
+        </dialog>
         <div class="tab-shell">
           <div class="global-actions" aria-label="主要操作">
             <button id="btnGenerate" class="action-button compact primary" type="button" title="生成" aria-label="生成"><span class="action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img" aria-hidden="true"><rect x="3.5" y="3.5" width="13" height="13" rx="1.5"></rect><path d="M8 3.5v13M12.5 3.5v13M3.5 8h13M3.5 12.5h13"></path><circle cx="18.5" cy="18.5" r="4"></circle><path d="M18.5 16.7v3.6M16.7 18.5h3.6"></path></svg></span><span class="action-label">生成</span></button>
@@ -5159,10 +5322,15 @@
                 <option value="6">Insane (ER 9.3-12.0)</option>
               </select>
             </label>
-            <label class="generate-options">
+            <div class="generate-options training-options">
               <span>训练</span>
-              <select id="trainingTechniqueSelect" title="生成解题路径中包含指定技巧的题目"></select>
-            </label>
+              <div class="training-select-line">
+                <select id="trainingTechniqueSelect" title="生成解题路径中包含指定技巧的题目"></select>
+                <button id="btnTrainingTextFilter" class="training-text-filter-button" type="button" aria-pressed="false" title="文字过滤">
+                  <span id="trainingTextFilterButtonText">文字过滤</span>
+                </button>
+              </div>
+            </div>
 
             <div id="numpad" class="numpad" aria-label="number pad"></div>
 
@@ -5735,6 +5903,6 @@
       })();
     </script>
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=wasm-491c4f72f07dc27e"></script>
+    <script type="module" src="./app.js?v=wasm-e5e12ce89f5dba20"></script>
   </body>
 </html>

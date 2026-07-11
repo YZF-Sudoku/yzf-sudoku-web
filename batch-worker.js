@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-491c4f72f07dc27e";
+import createModule from "./sudoku_wasm.js?v=wasm-e5e12ce89f5dba20";
 
-const APP_VERSION = "wasm-491c4f72f07dc27e";
+const APP_VERSION = "wasm-e5e12ce89f5dba20";
 let enginePromise = null;
 let cancelRequested = false;
 
@@ -30,8 +30,16 @@ function maybeSetTechniques(engine, techniqueConfig) {
 function makeGeneratedItem(engine, config) {
   const trainingKind = config.trainingKind || "";
   const difficulty = Number(config.difficulty || 0);
+  const textFilter = config.trainingTextFilter && typeof config.trainingTextFilter === "object"
+    ? config.trainingTextFilter
+    : { includeText: "", excludeText: "", caseSensitive: false };
   const resultText = trainingKind
-    ? engine.generate_training_puzzle_summary_json(trainingKind, difficulty, Number(config.maxAttempts || 0))
+    ? engine.generate_training_puzzle_summary_filtered_json(
+        trainingKind,
+        difficulty,
+        Number(config.maxAttempts || 0),
+        JSON.stringify(textFilter)
+      )
     : engine.generate_puzzle_difficulty_json(difficulty, 0);
   const result = parseJson(resultText);
   if (!result?.ok) return { result, failed: true };

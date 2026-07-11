@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-491c4f72f07dc27e";
+import createModule from "./sudoku_wasm.js?v=wasm-e5e12ce89f5dba20";
 
-const APP_VERSION = "wasm-491c4f72f07dc27e";
+const APP_VERSION = "wasm-e5e12ce89f5dba20";
 
 let enginePromise = null;
 
@@ -21,14 +21,33 @@ self.addEventListener("message", async (event) => {
 
   try {
     const engine = await getEngine();
-    const method = message.summary
+    const textFilter = message.textFilter && typeof message.textFilter === "object"
+      ? message.textFilter
+      : { includeText: "", excludeText: "", caseSensitive: false };
+    const filteredMethod = message.summary
+      ? "generate_training_puzzle_summary_filtered_json"
+      : "generate_training_puzzle_filtered_json";
+    const legacyMethod = message.summary
       ? "generate_training_puzzle_summary_json"
       : "generate_training_puzzle_json";
-    const resultText = engine[method](
-      message.kind || "BruteForce",
-      Number(message.difficulty || 0),
-      Number(message.maxAttempts || 0)
-    );
+    const filterActive = Boolean(String(textFilter.includeText || "").trim() || String(textFilter.excludeText || "").trim());
+    let resultText = "";
+    if (typeof engine[filteredMethod] === "function") {
+      resultText = engine[filteredMethod](
+        message.kind || "BruteForce",
+        Number(message.difficulty || 0),
+        Number(message.maxAttempts || 0),
+        JSON.stringify(textFilter)
+      );
+    } else if (!filterActive && typeof engine[legacyMethod] === "function") {
+      resultText = engine[legacyMethod](
+        message.kind || "BruteForce",
+        Number(message.difficulty || 0),
+        Number(message.maxAttempts || 0)
+      );
+    } else {
+      throw new Error("Training text filtering is unavailable in this WASM build");
+    }
     self.postMessage({ type: "result", resultText });
   } catch (error) {
     self.postMessage({

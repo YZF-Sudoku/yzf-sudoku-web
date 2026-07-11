@@ -1,4 +1,4 @@
-import createModule from "./sudoku_wasm.js?v=wasm-491c4f72f07dc27e";
+import createModule from "./sudoku_wasm.js?v=wasm-e5e12ce89f5dba20";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -6,10 +6,11 @@ import {
   techniqueNameForStep,
 } from "./step-localization.js?v=20260710-step-i18n-v5-title-proof";
 
-const APP_VERSION = "wasm-491c4f72f07dc27e";
+const APP_VERSION = "wasm-e5e12ce89f5dba20";
 const MANUAL_VERSION = "20260709-manual-v2.5-tlg-input-guard";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
+const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
 const OCR_ASSET_VERSION = "20260630-role-glyph-core-v8";
 const OCR_CORRECTION_UI_VERSION = "20260629-ocr-correction-v7.1-gridfix";
 
@@ -283,6 +284,15 @@ const batchFilename = document.getElementById("batchFilename");
 const batchSolveFile = document.getElementById("batchSolveFile");
 const batchStatus = document.getElementById("batchStatus");
 const trainingTechniqueSelect = document.getElementById("trainingTechniqueSelect");
+const btnTrainingTextFilter = document.getElementById("btnTrainingTextFilter");
+const trainingTextFilterDialog = document.getElementById("trainingTextFilterDialog");
+const trainingTextFilterInclude = document.getElementById("trainingTextFilterInclude");
+const trainingTextFilterExclude = document.getElementById("trainingTextFilterExclude");
+const trainingTextFilterCaseSensitive = document.getElementById("trainingTextFilterCaseSensitive");
+const btnTrainingTextFilterClose = document.getElementById("btnTrainingTextFilterClose");
+const btnTrainingTextFilterClear = document.getElementById("btnTrainingTextFilterClear");
+const btnTrainingTextFilterCancel = document.getElementById("btnTrainingTextFilterCancel");
+const btnTrainingTextFilterApply = document.getElementById("btnTrainingTextFilterApply");
 const techniqueList = document.getElementById("techniqueList");
 const btnTechAllIn = document.getElementById("btnTechAllIn");
 const btnTechHighSpeed = document.getElementById("btnTechHighSpeed");
@@ -328,6 +338,7 @@ const btnMobileSolveSameDigit = document.getElementById("btnMobileSolveSameDigit
 const btnMobileSolveAnalysis = document.getElementById("btnMobileSolveAnalysis");
 
 let engine = null;
+let trainingTextFilter = { includeText: "", excludeText: "", caseSensitive: false };
 let solverWorker = null;
 let solverTaskSeq = 0;
 const solverWorkerRequests = new Map();
@@ -747,6 +758,21 @@ const uiText = {
     mobileNothingToClear: "当前单元格没有可清除的内容。",
     difficulty: "难度",
     training: "训练",
+    trainingTextFilterButton: "文字过滤",
+    trainingTextFilterTitle: "训练文字过滤",
+    trainingTextFilterIntro: "条件由前端指定，C++ 后端只在同一个目标技巧步骤内匹配，不会跨步骤拼接。",
+    trainingTextFilterIncludeLabel: "必须包含",
+    trainingTextFilterIncludeHint: "每行一个条件；同一步必须包含全部非空条件。",
+    trainingTextFilterIncludePlaceholder: "例如：\nUniqueness Test 7\ngrouped conjugate pair",
+    trainingTextFilterExcludeLabel: "不得包含",
+    trainingTextFilterExcludeHint: "每行一个条件；同一步命中任意一项即排除。",
+    trainingTextFilterExcludePlaceholder: "例如：\nS-Ring",
+    trainingTextFilterCaseSensitive: "区分英文字母大小写",
+    trainingTextFilterClear: "清空",
+    trainingTextFilterCancel: "取消",
+    trainingTextFilterApply: "应用",
+    trainingTextFilterInactiveTitle: "设置训练步骤文字过滤",
+    trainingTextFilterActiveTitle: "文字过滤已启用：包含 {include} 项，排除 {exclude} 项",
     tlgSolverTitle: "TLG Solver",
     tlgSolverEnable: "启用 TLG 编辑",
     tlgSolverModeLabel: "输入模式",
@@ -1403,6 +1429,21 @@ const uiText = {
     mobileNothingToClear: "There is nothing to clear in this cell.",
     difficulty: "Difficulty",
     training: "Training",
+    trainingTextFilterButton: "Text filter",
+    trainingTextFilterTitle: "Training text filter",
+    trainingTextFilterIntro: "The frontend supplies the conditions. The C++ backend matches them within one step of the selected technique; conditions are never combined across steps.",
+    trainingTextFilterIncludeLabel: "Must contain",
+    trainingTextFilterIncludeHint: "One condition per line; every non-empty condition must occur in the same step.",
+    trainingTextFilterIncludePlaceholder: "Example:\nUniqueness Test 7\ngrouped conjugate pair",
+    trainingTextFilterExcludeLabel: "Must not contain",
+    trainingTextFilterExcludeHint: "One condition per line; a step is rejected if any condition occurs.",
+    trainingTextFilterExcludePlaceholder: "Example:\nS-Ring",
+    trainingTextFilterCaseSensitive: "Case-sensitive English matching",
+    trainingTextFilterClear: "Clear",
+    trainingTextFilterCancel: "Cancel",
+    trainingTextFilterApply: "Apply",
+    trainingTextFilterInactiveTitle: "Configure training-step text filtering",
+    trainingTextFilterActiveTitle: "Text filter enabled: {include} include, {exclude} exclude",
     tlgSolverTitle: "TLG Solver",
     tlgSolverEnable: "Enable TLG editing",
     tlgSolverModeLabel: "Input Mode",
@@ -3686,8 +3727,8 @@ function setTitleAndAria(el, value) {
 
 function setInputLabelByControl(controlId, value) {
   const control = document.getElementById(controlId);
-  const label = control?.closest("label");
-  const span = label?.querySelector("span");
+  const label = control?.closest(".generate-options") || control?.closest("label");
+  const span = label?.querySelector(":scope > span");
   if (span) span.textContent = value;
 }
 
@@ -3739,6 +3780,21 @@ function applyStaticLanguage() {
   setInputLabelByControl("trainingTechniqueSelect", ui("training"));
   if (difficultySelect) difficultySelect.title = ui("difficultyTitle");
   if (trainingTechniqueSelect) trainingTechniqueSelect.title = ui("trainingTitle");
+  setTextById("trainingTextFilterButtonText", ui("trainingTextFilterButton"));
+  setTextById("trainingTextFilterDialogTitle", ui("trainingTextFilterTitle"));
+  setTextById("trainingTextFilterIntro", ui("trainingTextFilterIntro"));
+  setTextById("trainingTextFilterIncludeLabel", ui("trainingTextFilterIncludeLabel"));
+  setTextById("trainingTextFilterIncludeHint", ui("trainingTextFilterIncludeHint"));
+  setTextById("trainingTextFilterExcludeLabel", ui("trainingTextFilterExcludeLabel"));
+  setTextById("trainingTextFilterExcludeHint", ui("trainingTextFilterExcludeHint"));
+  setTextById("trainingTextFilterCaseSensitiveLabel", ui("trainingTextFilterCaseSensitive"));
+  setTextById("btnTrainingTextFilterClear", ui("trainingTextFilterClear"));
+  setTextById("btnTrainingTextFilterCancel", ui("trainingTextFilterCancel"));
+  setTextById("btnTrainingTextFilterApply", ui("trainingTextFilterApply"));
+  if (trainingTextFilterInclude) trainingTextFilterInclude.placeholder = ui("trainingTextFilterIncludePlaceholder");
+  if (trainingTextFilterExclude) trainingTextFilterExclude.placeholder = ui("trainingTextFilterExcludePlaceholder");
+  if (btnTrainingTextFilterClose) btnTrainingTextFilterClose.setAttribute("aria-label", ui("close"));
+  updateTrainingTextFilterButton();
   setTextById("tlgSolverTitle", ui("tlgSolverTitle"));
   setTextById("tlgSolverEnableLabel", ui("tlgSolverEnable"));
   setTextById("tlgSolverModeLabel", ui("tlgSolverModeLabel"));
@@ -11240,23 +11296,129 @@ function techniqueBackgroundColor(kind) {
   ][techniqueColorLevel(kind) - 1] || "rgb(255, 255, 255)";
 }
 
+function normalizeTrainingTextFilter(value) {
+  return {
+    includeText: String(value?.includeText || "").replace(/\r\n?/g, "\n").trim(),
+    excludeText: String(value?.excludeText || "").replace(/\r\n?/g, "\n").trim(),
+    caseSensitive: Boolean(value?.caseSensitive),
+  };
+}
+
+function trainingTextFilterLineCount(text) {
+  return String(text || "").split(/\n/).map((line) => line.trim()).filter(Boolean).length;
+}
+
+function isTrainingTextFilterActive(value = trainingTextFilter) {
+  const normalized = normalizeTrainingTextFilter(value);
+  return Boolean(normalized.includeText || normalized.excludeText);
+}
+
+function loadTrainingTextFilter() {
+  try {
+    return normalizeTrainingTextFilter(JSON.parse(localStorage.getItem(TRAINING_TEXT_FILTER_STORAGE_KEY) || "null"));
+  } catch {
+    return normalizeTrainingTextFilter(null);
+  }
+}
+
+function saveTrainingTextFilter() {
+  try {
+    localStorage.setItem(TRAINING_TEXT_FILTER_STORAGE_KEY, JSON.stringify(trainingTextFilter));
+  } catch {
+    // Optional persistence only.
+  }
+}
+
+function currentTrainingTextFilterPayload() {
+  return { ...normalizeTrainingTextFilter(trainingTextFilter) };
+}
+
+function updateTrainingTextFilterButton() {
+  if (!btnTrainingTextFilter) return;
+  const include = trainingTextFilterLineCount(trainingTextFilter.includeText);
+  const exclude = trainingTextFilterLineCount(trainingTextFilter.excludeText);
+  const active = include > 0 || exclude > 0;
+  btnTrainingTextFilter.classList.toggle("active", active);
+  btnTrainingTextFilter.setAttribute("aria-pressed", active ? "true" : "false");
+  const title = active
+    ? uif("trainingTextFilterActiveTitle", { include, exclude })
+    : ui("trainingTextFilterInactiveTitle");
+  btnTrainingTextFilter.title = title;
+  btnTrainingTextFilter.setAttribute("aria-label", title);
+}
+
+function openTrainingTextFilterDialog() {
+  if (!trainingTextFilterDialog) return;
+  if (trainingTextFilterInclude) trainingTextFilterInclude.value = trainingTextFilter.includeText;
+  if (trainingTextFilterExclude) trainingTextFilterExclude.value = trainingTextFilter.excludeText;
+  if (trainingTextFilterCaseSensitive) trainingTextFilterCaseSensitive.checked = trainingTextFilter.caseSensitive;
+  if (typeof trainingTextFilterDialog.showModal === "function") {
+    trainingTextFilterDialog.showModal();
+  } else {
+    trainingTextFilterDialog.setAttribute("open", "");
+  }
+  window.setTimeout(() => trainingTextFilterInclude?.focus(), 0);
+}
+
+function closeTrainingTextFilterDialog() {
+  if (!trainingTextFilterDialog) return;
+  if (typeof trainingTextFilterDialog.close === "function" && trainingTextFilterDialog.open) {
+    trainingTextFilterDialog.close();
+  } else {
+    trainingTextFilterDialog.removeAttribute("open");
+  }
+}
+
+function applyTrainingTextFilterDialog() {
+  trainingTextFilter = normalizeTrainingTextFilter({
+    includeText: trainingTextFilterInclude?.value || "",
+    excludeText: trainingTextFilterExclude?.value || "",
+    caseSensitive: trainingTextFilterCaseSensitive?.checked,
+  });
+  saveTrainingTextFilter();
+  updateTrainingTextFilterButton();
+  closeTrainingTextFilterDialog();
+}
+
+trainingTextFilter = loadTrainingTextFilter();
+
 function updateTrainingTechniqueSelectColor() {
   if (!trainingTechniqueSelect) return;
   trainingTechniqueSelect.style.backgroundColor = techniqueBackgroundColor(trainingTechniqueSelect.value);
 }
 
-function generateTrainingPuzzleInWorker(kind, difficulty, maxAttempts = 0, summary = false) {
+function generateTrainingPuzzleInWorker(
+  kind,
+  difficulty,
+  maxAttempts = 0,
+  summary = false,
+  textFilter = currentTrainingTextFilterPayload()
+) {
+  const normalizedFilter = normalizeTrainingTextFilter(textFilter);
+  const filterJson = JSON.stringify(normalizedFilter);
+  const filteredMethod = summary
+    ? "generate_training_puzzle_summary_filtered_json"
+    : "generate_training_puzzle_filtered_json";
+  const legacyMethod = summary
+    ? "generate_training_puzzle_summary_json"
+    : "generate_training_puzzle_json";
+
   if (window.YZF_STANDALONE || !window.Worker) {
     if (!engine) {
       throw new Error(ui("wasmLoadFailed"));
     }
-    const method = summary
-      ? "generate_training_puzzle_summary_json"
-      : "generate_training_puzzle_json";
-    if (typeof engine[method] !== "function") {
+    if (typeof engine[filteredMethod] === "function") {
+      return Promise.resolve(engine[filteredMethod](
+        kind || "BruteForce",
+        Number(difficulty || 0),
+        Number(maxAttempts || 0),
+        filterJson
+      ));
+    }
+    if (isTrainingTextFilterActive(normalizedFilter) || typeof engine[legacyMethod] !== "function") {
       throw new Error(ui("trainingWorkerFailed"));
     }
-    return Promise.resolve(engine[method](kind || "BruteForce", Number(difficulty || 0), Number(maxAttempts || 0)));
+    return Promise.resolve(engine[legacyMethod](kind || "BruteForce", Number(difficulty || 0), Number(maxAttempts || 0)));
   }
 
   return new Promise((resolve, reject) => {
@@ -11280,7 +11442,7 @@ function generateTrainingPuzzleInWorker(kind, difficulty, maxAttempts = 0, summa
     worker.addEventListener("error", (event) => {
       finish(reject, new Error(event.message || ui("trainingWorkerRuntimeFailed")));
     });
-    worker.postMessage({ type: "generate", kind, difficulty, maxAttempts, summary });
+    worker.postMessage({ type: "generate", kind, difficulty, maxAttempts, summary, textFilter: normalizedFilter });
   });
 }
 
@@ -11557,8 +11719,14 @@ async function runBatchTaskInMainEngine(config, handlers) {
       handlers.onItem?.(result);
     } else {
       const trainingKind = config.trainingKind || "";
+      const filterJson = JSON.stringify(normalizeTrainingTextFilter(config.trainingTextFilter));
       const text = trainingKind
-        ? engine.generate_training_puzzle_summary_json(trainingKind, Number(config.difficulty || 0), Number(config.maxAttempts || 0))
+        ? engine.generate_training_puzzle_summary_filtered_json(
+            trainingKind,
+            Number(config.difficulty || 0),
+            Number(config.maxAttempts || 0),
+            filterJson
+          )
         : engine.generate_puzzle_difficulty_json(Number(config.difficulty || 0), 0);
       result = parseJson(text);
       if (result?.ok) {
@@ -15732,6 +15900,17 @@ for (const button of tabButtons) {
 }
 
 trainingTechniqueSelect?.addEventListener("change", updateTrainingTechniqueSelectColor);
+btnTrainingTextFilter?.addEventListener("click", openTrainingTextFilterDialog);
+btnTrainingTextFilterApply?.addEventListener("click", applyTrainingTextFilterDialog);
+btnTrainingTextFilterClear?.addEventListener("click", () => {
+  if (trainingTextFilterInclude) trainingTextFilterInclude.value = "";
+  if (trainingTextFilterExclude) trainingTextFilterExclude.value = "";
+  if (trainingTextFilterCaseSensitive) trainingTextFilterCaseSensitive.checked = false;
+  trainingTextFilterInclude?.focus();
+});
+trainingTextFilterDialog?.addEventListener("click", (event) => {
+  if (event.target === trainingTextFilterDialog) closeTrainingTextFilterDialog();
+});
 batchMode?.addEventListener("change", updateBatchModeUi);
 
 async function readClipboardTextForLoad() {
@@ -16726,6 +16905,7 @@ btnBatchGenerate?.addEventListener("click", async () => {
       target: mode === "solve" ? puzzles.length : 0,
       difficulty,
       trainingKind,
+      trainingTextFilter: currentTrainingTextFilterPayload(),
       maxAttempts: 0,
       maxSteps: 500,
       puzzles,
