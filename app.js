@@ -43,20 +43,6 @@ const btnYzfDebugLoad = document.getElementById("btnYzfDebugLoad");
 const btnYzfDebugClear = document.getElementById("btnYzfDebugClear");
 const yzfOverlayStatus = document.getElementById("yzfOverlayStatus");
 const yzfOverlayModeNote = document.getElementById("yzfOverlayModeNote");
-const manualAdvancedTypSelect = document.getElementById("manualAdvancedTypSelect");
-const manualAdvancedInputFormatSelect = document.getElementById("manualAdvancedInputFormatSelect");
-const manualAllowGrouped = document.getElementById("manualAllowGrouped");
-const manualAllowGroupedLabel = document.getElementById("manualAllowGroupedLabel");
-const manualDebugMode = document.getElementById("manualDebugMode");
-const manualReturnDebugJson = document.getElementById("manualReturnDebugJson");
-const manualIncludeOverlayData = document.getElementById("manualIncludeOverlayData");
-const manualIncludeRawGraphStats = document.getElementById("manualIncludeRawGraphStats");
-const btnManualAdvancedRun = document.getElementById("btnManualAdvancedRun");
-const btnManualAdvancedClear = document.getElementById("btnManualAdvancedClear");
-const manualAdvancedStatus = document.getElementById("manualAdvancedStatus");
-const manualAdvancedJson = document.getElementById("manualAdvancedJson");
-const manualAdvancedSmokeOutput = document.getElementById("manualAdvancedSmokeOutput");
-
 const tlgSolverPanel = document.getElementById("tlgSolverPanel");
 const tlgSolverEnable = document.getElementById("tlgSolverEnable");
 const tlgSolverMode = document.getElementById("tlgSolverMode");
@@ -126,7 +112,6 @@ const imageOcrCameraInput = document.getElementById("imageOcrCameraInput");
 let localSudokuOcrModulePromise = null;
 let ortScriptPromise = null;
 let localSudokuOcrLoadAttempt = 0;
-let lastOcrDraftCoachJson = null;
 const APP_SESSION_STORAGE_KEY = "yzf_sudoku_session_v1";
 const EXPORT_FORMAT_STORAGE_KEY = "yzf_sudoku_export_format_v1";
 let appSessionSaveTimer = 0;
@@ -228,14 +213,14 @@ async function resetLocalSudokuOcrLoaderAfterFailure() {
     if (typeof mod?.resetLocalSudokuOcrRuntime === "function") {
       mod.resetLocalSudokuOcrRuntime();
     }
-  } catch (_) {}
+  } catch {}
 
   localSudokuOcrModulePromise = null;
   ortScriptPromise = null;
   document.querySelectorAll('script[data-yzf-src*="/ocr/ort/ort.min.js"]').forEach((script) => script.remove());
   try {
     delete globalThis.ort;
-  } catch (_) {
+  } catch {
     globalThis.ort = undefined;
   }
 }
@@ -244,14 +229,13 @@ async function localSudokuOcrAttributionSafe() {
   try {
     const mod = await loadLocalSudokuOcrModule();
     return typeof mod.localSudokuOcrAttribution === "function" ? mod.localSudokuOcrAttribution() : null;
-  } catch (_) {
+  } catch {
     return null;
   }
 }
 const btnExportPuzzle = document.getElementById("btnExportPuzzle");
 const exportFormatSelect = document.getElementById("exportFormatSelect");
 const btnRate = document.getElementById("btnRate");
-const btnCandidates = document.getElementById("btnCandidates");
 const btnStep = document.getElementById("btnStep");
 const btnApply = document.getElementById("btnApply");
 const btnAllSteps = document.getElementById("btnAllSteps");
@@ -291,7 +275,6 @@ const trainingTextFilterExclude = document.getElementById("trainingTextFilterExc
 const trainingTextFilterCaseSensitive = document.getElementById("trainingTextFilterCaseSensitive");
 const btnTrainingTextFilterClose = document.getElementById("btnTrainingTextFilterClose");
 const btnTrainingTextFilterClear = document.getElementById("btnTrainingTextFilterClear");
-const btnTrainingTextFilterCancel = document.getElementById("btnTrainingTextFilterCancel");
 const btnTrainingTextFilterApply = document.getElementById("btnTrainingTextFilterApply");
 const techniqueList = document.getElementById("techniqueList");
 const btnTechAllIn = document.getElementById("btnTechAllIn");
@@ -357,10 +340,6 @@ let originalBoard = "";
 let currentHint = null;
 let currentStepExplainContext = null;
 let currentSnapshot = null;
-let currentManualAdvancedInputString = "";
-let currentManualAdvancedInputFormat = "unknown";
-let currentManualAdvancedUsesCandidates = false;
-let currentManualAdvancedInputBoardKey = "";
 let previewSnapshotActive = false;
 let currentPreviewRecord = null;
 let selectedIndex = -1;
@@ -387,7 +366,6 @@ let ocrCorrectionSelectedIndex = 0;
 let ocrCorrectionMode = "given";
 let ocrCorrectionHistory = [];
 let ocrCorrectionHistoryIndex = -1;
-let ocrDraftValueRole = "given";
 let techniqueState = [];
 let whipMemoryMode = "auto";
 let whipCompareGWhip = false;
@@ -425,13 +403,7 @@ setBoardPointerMode(boardPointerMode);
 let yzfHintBaseText = "";
 
 const APP_URL_PARAMS = new URLSearchParams(window.location.search);
-const APP_DEBUG_MODE = (
-  APP_URL_PARAMS.get("dev") === "1" ||
-  APP_URL_PARAMS.get("debug") === "1" ||
-  APP_URL_PARAMS.get("manualAdvancedSmoke") === "1" ||
-  APP_URL_PARAMS.get("manualAdvancedBrowserE2E") === "1" ||
-  APP_URL_PARAMS.get("defaultYzfSmoke") === "1"
-);
+const APP_DEBUG_MODE = APP_URL_PARAMS.get("dev") === "1" || APP_URL_PARAMS.get("debug") === "1";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const YZF_DEBUG_SAMPLE_PATHS = new Map([
@@ -680,1350 +652,664 @@ const i18n = {
 };
 
 
-const uiText = {
-  zh: {
-    boardHeading: "盘面",
-    brandSubtitle: "移动优先逻辑训练器",
-    manualLink: "使用手册",
-    techniqueHelp: "技巧说明",
-    initialHint: "等待加载题面。",
-    branch: "分支",
-    allBranches: "全部分支",
-    expandBranches: "展开分支选择",
-    collapseBranches: "收起分支选择",
-    branchPickerLabel: "选择显示的分支",
-    branchShortcutHint: "快捷键：←/→ 或 [ / ] 顺序切换分支",
-    branchOverview: "全部分支",
-    mainActionsLabel: "主要操作",
-    numberPadLabel: "数字键盘",
-    manualMarkActionLabel: "手工标记操作",
-    manualMarkColorsLabel: "手工标记颜色",
-    allStepsFilterAria: "可选步骤过滤",
-    filterByTechnique: "按技巧过滤",
-    allStepsSortAria: "可选步骤排序",
-    controls: "操作",
-    techniques: "技巧",
-    path: "解题路径",
-    allSteps: "可选步骤",
-    generate: "生成",
-    generateTraining: "训练生成",
-    load: "加载",
-    undo: "撤销",
-    redo: "重做",
-    step: "提示一步",
-    solve: "自动解题",
-    apply: "应用提示",
-    stepExplain: "解释",
-    stepExplainTitle: "动态教程：为什么这一步成立",
-    stepExplainUnavailable: "当前没有可解释的步骤。",
-    close: "关闭",
-    fullscreen: "全屏",
-    exitFullscreen: "退出全屏",
-    mobileSolveEntry: "做题",
-    mobileSolveMode: "做题模式",
-    mobileSolveExit: "返回",
-    mobileSolveNewPuzzle: "新题",
-    mobileSolveNewPuzzleTitle: "生成新题",
-    mobileSolveNewPuzzleHint: "选择难度后生成，生成完成后继续留在做题模式。",
-    mobileSolveNewPuzzleWarning: "当前作答进度或标记将在生成新题后清除。",
-    mobileSolveNewPuzzleConfirm: "当前作答进度或标记将被清除，确定生成新题吗？",
-    mobileSolveNewPuzzleGenerate: "生成",
-    mobileSolveNewPuzzleGenerating: "生成中…",
-    mobileSolveNewPuzzleCancel: "取消",
-    mobileSolveNewPuzzleDifficulty: "难度",
-    mobileDifficultyRandom: "随机",
-    mobileDifficultyEasy: "入门",
-    mobileDifficultyMedium: "初级",
-    mobileDifficultyHard: "进阶",
-    mobileDifficultyUnfair: "棘手",
-    mobileDifficultyExtreme: "极限",
-    mobileDifficultyInsane: "骨灰",
-    mobileSolveMore: "更多",
-    mobileSolveMoreTitle: "更多功能",
-    mobileSolveClear: "清除",
-    mobileSolveInput: "题面输入",
-    mobileSolveAnalysis: "分析模式",
-    mobileSolveLanguage: "语言",
-    mobileSolveActions: "做题操作",
-    mobileSolveMarks: "标记",
-    mobileSolveMarksActive: "标记中",
-    mobileSolveHideMarks: "收起",
-    mobileSolveMarksTitle: "手工标记",
-    mobileSolveHideCandidates: "隐藏候选数",
-    mobileSolveShowCandidates: "显示候选数",
-    mobileSolveDisableSameDigit: "关闭同数字高亮",
-    mobileSolveEnableSameDigit: "开启同数字高亮",
-    mobileInputState: "{mode} · {digit}",
-    mobileSelectCellFirst: "请先选择一个单元格。",
-    mobileNothingToClear: "当前单元格没有可清除的内容。",
-    difficulty: "难度",
-    training: "训练",
-    trainingTextFilterButton: "文字过滤",
-    trainingTextFilterTitle: "训练文字过滤",
-    trainingTextFilterIntro: "条件由前端指定，C++ 后端只在同一个目标技巧步骤内匹配，不会跨步骤拼接。",
-    trainingTextFilterIncludeLabel: "必须包含",
-    trainingTextFilterIncludeHint: "每行一个条件；同一步必须包含全部非空条件。",
-    trainingTextFilterIncludePlaceholder: "例如：\nUniqueness Test 7\ngrouped conjugate pair",
-    trainingTextFilterExcludeLabel: "不得包含",
-    trainingTextFilterExcludeHint: "每行一个条件；同一步命中任意一项即排除。",
-    trainingTextFilterExcludePlaceholder: "例如：\nS-Ring",
-    trainingTextFilterCaseSensitive: "区分英文字母大小写",
-    trainingTextFilterClear: "清空",
-    trainingTextFilterCancel: "取消",
-    trainingTextFilterApply: "应用",
-    trainingTextFilterInactiveTitle: "设置训练步骤文字过滤",
-    trainingTextFilterActiveTitle: "文字过滤已启用：包含 {include} 项，排除 {exclude} 项",
-    tlgSolverTitle: "TLG Solver",
-    tlgSolverEnable: "启用 TLG 编辑",
-    tlgSolverModeLabel: "输入模式",
-    tlgModeTruths: "Truths",
-    tlgModeLinks: "Links",
-    tlgModeVirtualSet: "Virtual Set",
-    tlgModeAur: "AUR",
-    tlgModeDaur: "DAUR",
-    tlgModeGur: "GUR",
-    tlgAurGroupLabel: "AUR 分组",
-    tlgAurGroup1: "AUR 1",
-    tlgAurGroup2: "AUR 2",
-    tlgSolverLinkTypeLabel: "Link 类型",
-    tlgLinkAuto: "自动",
-    tlgLinkRowColumn: "行/列",
-    tlgLinkBox: "宫",
-    tlgLinkCell: "单元格",
-    tlgTruthsToApply: "应用 Truths 数",
-    tlgAurPremiseModeLabel: "唯一性门控",
-    tlgAurPremiseUnique: "唯一解：核验初始可交换局面",
-    tlgAurPremiseTraining: "训练盘：允许初始缺数",
-    tlgImportCandidates: "导入 TLG 候选盘面",
-    tlgFindEliminations: "查找删数",
-    tlgConvertTruths: "转换冗余 Truths",
-    tlgRemoveUnused: "移除未使用 Links",
-    tlgClearState: "清空 TLG 状态",
-    tlgLibraryButton: "TLG 题库",
-    tlgLibraryDialogTitle: "TLG 逻辑题库",
-    tlgLibraryReadAction: "读取",
-    tlgLibraryInsertAction: "插入",
-    tlgLibraryReplaceAction: "替换",
-    tlgLibraryAppendAction: "追加",
-    tlgLibraryDeleteAction: "删除",
-    tlgLibraryImportModeLabel: "导入方式",
-    tlgLibraryImportAppend: "追加到末尾",
-    tlgLibraryImportInsert: "插入到当前位置",
-    tlgLibraryImportReplaceAll: "替换整个题库",
-    tlgLibraryImportAction: "导入 .tlgdb",
-    tlgLibraryExportSelectedAction: "导出选中",
-    tlgLibraryExportAllAction: "导出题库",
-    tlgLibraryCopyTextAction: "复制样例",
-    tlgLibraryCopyCompactAction: "复制单行",
-    tlgLibraryPasteTextAction: "粘贴样例",
-    tlgLibraryImportTextAction: "导入文本",
-    tlgLibraryExportTextAction: "导出文本",
-    tlgLibraryShareToolbarAria: "TLG 文字样例操作",
-    tlgLibraryShareTextLabel: "文字样例",
-    tlgLibraryShareTextPlaceholder: "粘贴 YZF-TLG-CASE:1 多行样例，或 YZFTLG1 单行样例。",
-    tlgLibraryLoadTextAction: "载入样例",
-    tlgLibraryClearTextAction: "清空",
-    tlgLibraryCloseTextAction: "收起",
-    tlgLibraryShareEmptyHint: "可粘贴别人分享的 TLG 文字样例；解析成功后会先显示结构摘要。",
-    tlgLibrarySearchPlaceholder: "搜索标题、标签、来源或笔记",
-    tlgLibraryColumnIndex: "序号",
-    tlgLibraryColumnTitle: "标题",
-    tlgLibraryColumnType: "类型",
-    tlgLibraryColumnResult: "结构",
-    tlgLibraryEmpty: "题库尚无记录。",
-    tlgLibraryTitleLabel: "标题",
-    tlgLibraryTagsLabel: "标签",
-    tlgLibrarySourceLabel: "来源",
-    tlgLibraryNotesLabel: "学习笔记",
-    tlgLibraryTagsPlaceholder: "例如：AUR, Rank 0",
-    tlgLibraryEditorHint: "请选择一条记录，或填写资料后保存当前 TLG。",
-    tlgLibraryIdle: "本地题库使用固定 2048 字节记录；请定期导出 .tlgdb 备份。",
-    tlgLibraryRecordListAria: "TLG 题库记录",
-    tlgLibraryEditorAria: "TLG 记录资料",
-    tlgLibraryToolbarAria: "题库记录操作",
-    tlgLibraryDefaultTitle: "TLG 逻辑 {stamp}",
-    tlgLibraryUntitled: "未命名记录 {index}",
-    tlgLibraryUntitledPlain: "未命名记录",
-    tlgLibraryResultUnit: "结论",
-    tlgLibraryRecordSummary: "类型：{type}\nTruths：{truths}　Links：{links}\n活动候选：{candidates}　结论：{results}\n最后修改：{date}",
-    tlgLibraryLoadedToSolver: "已从题库恢复：{title}",
-    tlgLibraryNoGrid: "当前没有可保存的数独盘面或候选状态。",
-    tlgLibraryTextTooLong: "{field} 超过固定记录上限（最多 {limit} 个 UTF-8 字节）。",
-    tlgLibraryInvalidRecordSize: "TLG 记录长度不是固定的 2048 字节。",
-    tlgLibraryInvalidRecordMagic: "无法识别该 TLG 记录。",
-    tlgLibraryUnsupportedRecordVersion: "暂不支持 TLG 记录版本 {version}。",
-    tlgLibraryRecordCrcFailed: "TLG 记录校验失败，内容可能已损坏。",
-    tlgLibraryInvalidTextLength: "TLG 记录中的文本长度字段无效。",
-    tlgLibraryFileTooShort: "文件过短，不是有效的 TLG 题库。",
-    tlgLibraryInvalidFileMagic: "文件标识不正确；请选择 YZF TLG .tlgdb 题库。",
-    tlgLibraryUnsupportedFileVersion: "暂不支持 TLG 题库版本 {version}。",
-    tlgLibraryIncompatibleLayout: "该题库的记录布局与当前版本不兼容。",
-    tlgLibraryFileLengthMismatch: "题库长度不符：应为 {expected} 字节，实际为 {actual} 字节。",
-    tlgLibraryHeaderCrcFailed: "题库文件头校验失败。",
-    tlgLibraryDuplicateIdInFile: "题库文件含有重复记录 ID：{id}。",
-    tlgLibraryIndexedDbUnavailable: "当前浏览器不支持本地 TLG 题库存储。",
-    tlgLibraryOpenFailed: "无法打开本地 TLG 题库。",
-    tlgLibraryStorageFailed: "本地 TLG 题库写入失败。",
-    tlgLibraryStoredRecordDamaged: "本地题库第 {id} 条记录已损坏：{error}",
-    tlgLibrarySelectFirst: "请先选择一条题库记录。",
-    tlgLibrarySolverBusy: "TLG 正在计算；请等待当前操作完成后再读取或保存题库。",
-    tlgLibraryDuplicateConfirm: "题库中已有相同逻辑（{title}）。仍要保存一份吗？",
-    tlgLibraryReplaced: "已替换第 {index} 条：{title}",
-    tlgLibraryInserted: "已插入为第 {index} 条：{title}",
-    tlgLibraryAppended: "已追加为第 {index} 条：{title}",
-    tlgLibraryDeleteConfirm: "确定删除“{title}”吗？",
-    tlgLibraryDeleted: "已删除：{title}",
-    tlgLibraryRead: "已读取：{title}",
-    tlgLibraryNothingToExport: "题库中没有可导出的记录。",
-    tlgLibraryExportedSelected: "已导出选中记录：{count} 条，{bytes} 字节。",
-    tlgLibraryExportedAll: "已导出题库：{count} 条，{bytes} 字节。",
-    tlgLibraryEmptyImport: "导入文件不含任何 TLG 记录。",
-    tlgLibraryReplaceAllConfirm: "这会删除本地现有题库，并用文件中的 {count} 条记录替换。确定继续吗？",
-    tlgLibraryImported: "已导入 {count} 条 TLG 记录。",
-    tlgLibraryImportFailed: "TLG 题库导入失败：{error}",
-    tlgLibraryTextCopied: "TLG 文字样例已复制到剪贴板（{bytes} 字节）。",
-    tlgLibraryCompactCopied: "TLG 单行样例已复制到剪贴板（{bytes} 字节）。",
-    tlgLibraryClipboardReadFailed: "无法直接读取剪贴板；请在文字样例框中手动粘贴。",
-    tlgLibraryClipboardWriteFailed: "复制失败；请展开文字样例后手动复制。",
-    tlgLibraryTextExported: "已导出文字样例：{bytes} 字节。",
-    tlgLibraryTextFileReadFailed: "无法读取文字样例文件：{error}",
-    tlgLibraryTextEmpty: "请先粘贴或导入 TLG 文字样例。",
-    tlgLibraryTextInvalidHeader: "无法识别 TLG 文字样例格式。",
-    tlgLibraryTextUnsupportedVersion: "暂不支持 TLG 文字样例版本 {version}。",
-    tlgLibraryTextMissingField: "TLG 文字样例缺少必要字段：{field}。",
-    tlgLibraryTextInvalidField: "TLG 文字样例字段 {field} 无效。",
-    tlgLibraryTextInvalidCandidate: "无法识别候选：{value}。",
-    tlgLibraryTextInvalidDescriptor: "无法识别 Truth/Link 描述符：{value}。",
-    tlgLibraryTextInvalidBitmap: "字段 {field} 的候选位图无效。",
-    tlgLibraryTextCrcFailed: "文字样例校验失败，内容可能被截断或改动。",
-    tlgLibraryTextPreview: "标题：{title}\n类型：{type}\nTruths：{truths}　Links：{links}\n活动候选：{candidates}　结论：{results}\n文字大小：{bytes} 字节",
-    tlgLibraryTextLoadConfirm: "载入文字样例“{title}”？当前 TLG 临时状态将被替换。",
-    tlgLibraryTextLoaded: "已载入文字样例：{title}",
-    tlgLibraryTextParseFailed: "文字样例解析失败：{error}",
-    tlgLibraryTextReady: "文字样例解析成功，可以载入。",
-    tlgLibraryTextPanelOpened: "请粘贴文字样例，然后确认载入。",
-    tlgLibraryLoading: "正在读取本地 TLG 题库…",
-    tlgLibraryOpenError: "无法打开 TLG 题库：{error}",
-    tlgStatusOptional: "TLG Solver 是可选附加功能，放在操作区最下方；未启用 TLG 编辑时不会影响现有解题流程。",
-    tlgEditingEnabled: "TLG 编辑已启用",
-    tlgStateTitle: "当前 TLG 状态",
-    tlgSolutionTitle: "Truths/Links 结果",
-    tlgNoInput: "暂无 TLG 输入。",
-    tlgDebugImport: "调试 / 导入",
-    tlgDebugPlaceholder: "仅用于调试导入；TLG 主要通过盘面点击输入。",
-    tlgTruths: "Truths",
-    tlgLinks: "Links",
-    tlgUserLinks: "用户 Links",
-    tlgVirtualSet: "Virtual Set",
-    tlgAurCorners: "AUR Corners",
-    tlgDaurCandidates: "DAUR 候选池",
-    tlgDaurCandidateAdded: "已加入 DAUR 候选池：{value}",
-    tlgDaurCandidateRemoved: "已移除 DAUR 候选池：{value}",
-    tlgGurCandidates: "GUR 通用候选云",
-    tlgGurCandidateAdded: "已加入 GUR 通用候选云：{value}",
-    tlgGurCandidateRemoved: "已移除 GUR 通用候选云：{value}",
-    tlgAurCornerAddedGroup: "已加入 {group} 角候选：{value}",
-    tlgAurCornerRemovedGroup: "已移除 {group} 角候选：{value}",
-    tlgRemove: "删除",
-    tlgRemoved: "已移除 {category}: {value}",
-    tlgVirtualCandidateAdded: "已加入 Virtual Set 候选：{value}",
-    tlgVirtualCandidateRemoved: "已移除 Virtual Set 候选：{value}",
-    tlgAurCornerAdded: "已加入 AUR 角候选：{value}",
-    tlgAurCornerRemoved: "已移除 AUR 角候选：{value}",
-    tlgEndpointSelected: "已选端点：{value}。请选择第二个候选。",
-    tlgTruthAdded: "已添加 truth：{value}",
-    tlgTruthRemoved: "已移除 truth：{value}",
-    tlgLinkAdded: "已添加 link：{value}",
-    tlgLinkRemoved: "已移除 link：{value}",
-    tlgCellTruthAdded: "已添加 cell truth：{value}",
-    tlgCellTruthRemoved: "已移除 cell truth：{value}",
-    tlgTruthPairInvalid: "未添加 truth：Truth 模式只接受同一单元格的两个不同候选，或同一 house 中同数字的两个候选。",
-    tlgUnavailable: "tlgSolverFindEliminationsV440 不可用；应用 v440/v441 后需要重新编译 wasm。",
-    tlgResponse: "TLG Solver 响应",
-    tlgParseFailed: "TLG_SOLVER_RESPONSE_PARSE_FAILED",
-    tlgFailed: "TLG Solver 失败：{error}",
-    tlgFindRunning: "正在查找删数并规范化 Links…",
-    tlgConvertRunning: "正在按稳定顺序转换 Truths To Links…",
-    tlgRemoveRunning: "正在按稳定顺序移除未使用 Links…",
-    tlgConvertSummary: "转换完成：Truths={truths}，Links={links}，转换={moved}，删数={elims}",
-    tlgRemoveSummary: "清理完成：Truths={truths}，Links={links}，移除={removed}，删数={elims}",
-    tlgPhase1Summary: "查找完成：Truths={truths}，Links={links}，删数={elims}",
-    tlgNoConsequencesSummary: "计算完成，但没有找到 Links 或删数：Truths={truths}",
-    tlgParsedOnlySummary: "TLG 已解析，但尚未计算删数：Truths={truths}，Links={links}",
-    tlgCandidateGridImportedUnique: "TLG 候选盘面已导入：{candidates} 个候选。已保存为初始候选盘，并按唯一解模式核验 AUR/DUR 的初始交换前提。",
-    tlgCandidateGridImportedTraining: "TLG 训练候选盘已导入：{candidates} 个候选。训练模式允许初始缺数，只核验当前 deadly completion。",
-    tlgSummaryTruths: "Truths={count}",
-    tlgSummaryLinks: "Links={count}",
-    tlgSummaryUserLinks: "用户 Links={count}",
-    tlgSummaryResultLinks: "结果 Links={count}",
-    tlgSummaryVirtual: "Virtual={count}",
-    tlgSummaryAurs: "AUR={count}",
-    tlgSummaryAurCorners: "AUR 角候选={count}",
-    tlgSummaryDaurCandidates: "DAUR 候选={count}",
-    tlgSummaryGurCandidates: "GUR 候选={count}",
-    tlgSummaryGurAccepted: "GUR 约束={count}",
-    tlgSummaryPremiseUnique: "门控=唯一解",
-    tlgSummaryPremiseTraining: "门控=训练盘",
-    tlgSummaryDaurExpanded: "DAUR→AUR/DUR={count}",
-    tlgSummaryGrid: "候选盘={count} 个候选",
-    tlgSummarySelected: "已选={count}",
-    tlgSummaryEndpoint: "端点={value}",
-    tlgSolutionTruths: "{count} Truths = {{body}}",
-    tlgSolutionLinks: "{count} Links = {{body}}",
-    tlgSolutionAurs: "{count} 个定式 AUR = {body}",
-    tlgSolutionDaurPool: "DAUR 候选池 = {{body}}",
-    tlgSolutionDaurExpanded: "DAUR 展开 AUR/DUR 约束 = {count}",
-    tlgSolutionGurPool: "GUR 通用候选云 = {{body}}",
-    tlgSolutionGurAccepted: "GUR 枚举约束 = {count}",
-    tlgSolutionEliminations: "{count} 个删数 --> {body}",
-    tlgSolutionNoEliminations: "0 个删数",
-    tlgSolutionAssignments: "{count} 个出数 --> {body}",
-    tlgResultActionFailed: "TLG 操作失败",
-    tlgBackendSolutionBudget: "投影解数量超过预算",
-    tlgBackendSearchBudget: "投影搜索节点超过预算",
-    tlgBackendIncompleteSolutionBudget: "投影搜索未完成，无法生成删数：投影解数量超过预算",
-    tlgBackendIncompleteSearchBudget: "投影搜索未完成，无法生成删数：搜索节点超过预算",
-    tlgBackendInvalidPlan: "规范化方案无效，无法建立投影上下文",
-    tlgBackendNoProjection: "该结构没有合法投影解，无法生成结果",
-    tlgBackendNoDaurForms: "DAUR 候选池没有展开出有效的定式 AUR 或六格 DUR",
-    tlgBackendNoInitialSwap: "DAUR 候选池没有任何满足初始可交换前提的构型",
-    tlgBackendFixedAurInitialSwap: "初始盘面没有同时支持定式 AUR 的两个可交换完成",
-    tlgBackendSixCellInitialSwap: "初始盘面没有支持该六格 DUR 的可交换完成对：",
-    tlgBackendTrainingGrid: "使用了 TLG 训练候选盘；未核验唯一解前提",
-    tlgActionsAria: "TLG Solver 操作",
-    tlgCandidateGridEmpty: "输入框为空；请先粘贴 Sukaku 候选盘面。",
-    tlgCandidateGridInvalid: "无法识别 TLG 候选盘面：需要 729 字符 Sukaku，或 81 个候选单元格。",
-    tlgCandidateGridEmptyCell: "TLG 候选盘面包含无候选单元格：{cell}。",
-    tlgContextCandidate: "候选数 {value}",
-    tlgContextCandidates: "已选 {count} 个候选数",
-    tlgAddSubTruth: "添加/移除 Truth",
-    tlgAddSubLink: "添加/移除 Link",
-    tlgMenuRow: "行",
-    tlgMenuColumn: "列",
-    tlgMenuCell: "单元格",
-    tlgMenuBox: "宫",
-    tlgMenuClearAll: "全部清除",
-    tlgToggleVirtualBatch: "切换到 Virtual Set",
-    tlgClearVirtualBatch: "清空 Virtual Set",
-    tlgToggleAurBatch: "切换 AUR 角候选",
-    tlgToggleDaurBatch: "切换 DAUR 候选池",
-    tlgToggleGurBatch: "切换 GUR 通用候选云",
-    tlgClearAurBatch: "清空 AUR 角候选",
-    tlgClearAllLogic: "清空全部逻辑",
-    tlgCandidatesSelected: "已选择 {count} 个候选数；电脑右键或手机长按可打开 TLG 菜单。",
-    tlgClearCandidateSelection: "清空候选选择",
-    tlgBatchAdded: "已添加 {count} 个 {kind}。",
-    tlgBatchRemoved: "已移除 {count} 个 {kind}。",
-    tlgBatchToggledOn: "已加入 {count} 个候选数到 {kind}。",
-    tlgBatchToggledOff: "已从 {kind} 移除 {count} 个候选数。",
-    tlgTruthsCleared: "已清空全部 Truths。",
-    tlgLinksCleared: "已清空全部 Links。",
-    tlgVirtualCleared: "已清空 Virtual Set。",
-    tlgAurCleared: "已清空全部 AUR 角候选。",
-    tlgDaurCleared: "已清空 DAUR 候选池。",
-    tlgGurCleared: "已清空 GUR 通用候选云。",
-    tlgLogicCleared: "已清空全部 TLG 逻辑；候选盘面保持不变。",
-    batchGenerate: "批量任务",
-    batchMode: "模式",
-    batchModeGenerate: "批量出题",
-    batchModeSolve: "批量解题",
-    batchSolveFile: "解题输入文件",
-    batchSolveFileHint: "从文本文件载入，一行一题。",
-    filename: "输出文件名",
-    startBatch: "开始",
-    stop: "停止",
-    batchStatusIdle: "批量出题/批量解题共用面板。批量出题持续写入输出文件，批量解题从文本文件读取，一行一题。",
-    moreInput: "更多：题面输入与导出评分",
-    preferClipboardLoad: "剪贴板优先",
-    preferClipboardLoadTitle: "加载题目时优先使用剪贴板，失败后再用文本框",
-    exportPuzzle: "导出题串",
-    exportFormatLabel: "导出格式",
-    exportFormatOriginal: "原始题串",
-    exportFormatKnown: "已知数字串",
-    exportFormatCandidates: "候选数字串",
-    exportFormatSukaku: "Sukaku 字串",
-    exportFormatLibrary: "Library 题串",
-    exportFormatCoach: "To Coach",
-    clearSavedSession: "清除本地现场",
-    clearSavedSessionTitle: "清除浏览器中自动保存的上次盘面和技巧配置；不会清空当前盘面。",
-    sessionRestored: "已恢复上次关闭时的盘面和技巧配置。",
-    sessionRestoreFailed: "恢复上次现场失败：{message}",
-    sessionCleared: "已清除本地保存的盘面和技巧配置。",
-    ratePuzzle: "评分当前题目",
-    rateCancel: "取消评分",
-    rateStarting: "正在启动后台评分……再次点击可取消。",
-    rateRunning: "正在后台评分：已运行 {seconds} 秒。再次点击可取消。",
-    rateCancelled: "评分已取消。",
-    rateWorkerFailed: "后台评分失败：{error}",
-    rateForegroundFallback: "当前环境不支持后台 Worker，评分将在前台运行，期间界面可能暂时无响应。",
-    allStepsFilterPlaceholder: "过滤：技巧、删数或描述",
-    allTechniques: "全部技巧",
-    defaultSort: "默认排序",
-    conclusionSort: "出数/删数优先",
-    replaceable: "可替换",
-    clear: "清除",
-    noAllSteps: "暂无可选步骤。",
-    manualAdvancedTitle: "高级技巧",
-    runManualAdvanced: "运行高级技巧",
-    clearManualAdvanced: "清除高级技巧",
-    manualAdvancedNote: "不影响默认提示一步。",
-    overlayLegend: "图例",
-    onNode: "ON node：绿色小点",
-    offNode: "OFF node：橙色小点",
-    groupedSector: "GroupedSector：组合候选区域",
-    strongEdge: "Strong edge：实线",
-    weakEdge: "Weak edge：虚线",
-    groupEdge: "组合边：紫色",
-    afAux: "AF 辅助：cover row 水平，cover column 垂直",
-    debugCandidate: "Debug candidate：红叉，仅调试",
-    overlayDebugOnly: "仅调试，不作为正式删数",
-    chooseDigit: "选择数字",
-    candidateMode: "候选",
-    valueMode: "出数",
-    inputModeTitle: "触摸/触控笔：切换出数/候选模式，先选数字再点格。鼠标直接在盘面使用左/右键。",
-    currentInput: "当前",
-    techniquePresetApplied: "已应用技巧预设",
-    wasmLoadFailed: "wasm 加载失败",
-    scriptLoadFailed: "脚本加载失败：{src}",
-    unsupportedFullscreen: "当前浏览器不支持网页全屏，请尝试添加到主屏幕/PWA，或使用安卓 Chrome 测试。",
-    fullscreenFailed: "全屏失败",
-    optionsUpdated: "技巧配置已更新。",
-    operationFailed: "操作失败。",
-    fixedCell: "题目固定数不可修改。",
-    fixedCandidate: "题目固定数不可修改候选。",
-    solvedCandidate: "已出数格不可修改候选。",
-    importClipboardRetry: "输入区内容不是合法题串，已从剪贴板读取并尝试加载。",
-    loadFailedPrefix: "加载失败：",
-    importUnknownFormat: "未识别的题面格式",
-    importedPuzzle: "已导入：{format}{candidates}。",
-    importedWithCandidates: "，含候选数",
-    ocrDraftCandidateChanged: "已修改 OCR 候选草稿。请直接在盘面上继续校正；需要保存/分享时使用现有导出功能。",
-    ocrGivenInsufficient: "提示数不足，未进行唯一解校验。",
-    ocrGivenNotUnique: "黑色提示数组成的题串未通过唯一解校验。",
-    ocrGivenCheckFailed: "黑色提示数唯一解校验失败。",
-    ocrDoneLog: "本地图片识别完成。{attribution}",
-    ocrDoneLogNoAttribution: "本地图片识别完成。",
-    ocrGivenUniquePassed: "黑色提示数已通过唯一解校验。",
-    ocrGivenUniqueFailed: "黑色提示数暂未通过唯一解校验：{warning}。",
-    ocrManualCorrection: "请手动校正",
-    ocrImportedDraft: "已直接导入盘面草稿；请在盘面上校正。",
-    ocrDoneStatus: "本地图片识别完成：{clue} 个提示数，{userDigits} 个出数，{cand} 个候选格。{uniqueText} {draftText}",
-    ocrNoImageSelected: "未选择图片",
-    ocrInvalidImageFile: "请选择 PNG/JPG/WebP 等图片文件。",
-    ocrRecognizingLocal: "正在本地识别图片……首次加载模型可能稍慢。不会上传图片，也不会访问 sudoku-ocr.com。",
-    ocrResourceWasm: "运行库",
-    ocrResourceLocalizer: "定位模型",
-    ocrResourceClassifier: "识别模型",
-    ocrResourceModule: "模块",
-    ocrResourceProgress: "正在准备 OCR {asset}：{loaded}/{total} MB（{percent}%）",
-    ocrResourceResume: "正在续传 OCR {asset}：已保存 {loaded}/{total} MB（{percent}%）",
-    ocrResourceCache: "正在从本地缓存读取 OCR {asset}：{loaded}/{total} MB（{percent}%）",
-    ocrResourceRetry: "OCR {asset} 下载中断，正在第 {attempt} 次重试……",
-    ocrResourceProbe: "正在检测 OCR {asset} 是否支持断点续传……",
-    ocrResourceAssembling: "OCR {asset} 下载完成，正在组装并校验……",
-    ocrNoCoachJson: "OCR 未返回 Coach JSON",
-    ocrFailed: "本地图片识别失败：{message}",
-    ocrAttribution: "数独图片识别使用 Alex Kubiesa / Sudoku OCR 训练的本地模型；未使用在线 fallback。",
-    ocrPickImage: "选择图片识别",
-    ocrCameraImage: "拍照识别",
-    ocrClipboardImage: "从剪贴板识别",
-    ocrDraftRoleGiven: "提示",
-    ocrDraftRoleSolved: "出数",
-    ocrDraftRoleGivenTitle: "OCR 草稿：新输入的大数字将作为提示数；点同一个数字可切换身份或清空。",
-    ocrDraftRoleSolvedTitle: "OCR 草稿：新输入的大数字将作为出数；点同一个数字可切换身份或清空。",
-    ocrDraftRoleStatus: "OCR 草稿大数字身份：{role}。点盘面上的数字可修改提示数/出数身份。",
-    ocrDraftSelectCellFirst: "请先进入 OCR 草稿，并点击一个蓝色出数格。",
-    ocrDraftNoUserDigit: "当前格不是蓝色出数，无法转换为提示数。",
-    ocrDraftAlreadyGiven: "当前格已经是黑色提示数。",
-    ocrDraftMadeGiven: "已将当前格改为黑色提示数。",
-    ocrClipboardUnsupported: "当前浏览器不支持按钮读取剪贴板图片。桌面端可复制截图后按 Ctrl+V；手机端请用“选择图片识别”或“拍照识别”。",
-    ocrReadingClipboard: "正在读取剪贴板图片……",
-    ocrClipboardNoImage: "剪贴板中没有图片。请先截图/复制图片，或使用“选择图片识别”“拍照识别”。",
-    ocrClipboardReadFailed: "读取剪贴板图片失败：{message}。桌面端也可以直接按 Ctrl+V 粘贴截图。",
-    clipboardReadUnsupported: "当前浏览器不支持读取剪贴板",
-    clipboardEmpty: "剪贴板为空",
-    clipboardPreferredLoaded: "已优先从剪贴板读取并尝试加载。",
-    clipboardPreferredFailed: "剪贴板读取/导入失败，已改用输入框内容：{error}",
-    inputEmptyClipboardLoaded: "输入区为空，已从剪贴板读取并尝试加载。",
-    inputEmptyClipboardFailed: "输入区为空，且无法读取剪贴板：{error}",
-    workerTaskFailed: "后台任务失败",
-    solveBusy: "自动解题中...",
-    findAllBusy: "搜索中...",
-    wasmLoaded: "wasm 已加载。",
-    exportCopied: "题串已导出并复制到剪贴板。",
-    exportToInput: "题串已导出到输入框。",
-    rateNoPuzzle: "评分失败：当前没有有效题串。",
-    rateFailedSimple: "评分失败。",
-    rateInputSuffix: "。输入格式：{format}{mode}",
-    rateUseCandidateState: "，使用候选状态，SKFR=rateSukaku",
-    rateUsePuzzle: "，SKFR=ratePuzzle",
-    applyPreviewNoAfter: "应用预览步骤失败：无法由 before+step 生成 after。",
-    applyPreviewImportFailed: "应用预览步骤失败：{error}",
-    importFailedGeneric: "无法导入",
-    appliedPreviewStep: "已应用当前预览步骤。",
-    appliedHint: "已应用当前提示。",
-    allStepsCannotSerialize: "所有步骤搜索失败：当前盘面无法序列化为候选盘状态。",
-    allStepsFailed: "所有步骤搜索失败：{error}",
-    allStepsSourceStep: "，来源步骤 #{step}",
-    elapsedMs: "，用时 {elapsed} ms",
-    allStepsFound: "当前盘面共找到 {count} 个可用步骤{source}{time}。",
-    unknownError: "未知错误",
-    undoDone: "已撤销一步。",
-    undoNone: "没有可撤销的步骤。",
-    redoDone: "已重做一步。",
-    redoNone: "没有可重做的步骤。",
-    allStepsFilterShowing: "显示 {shown} / {total}",
-    allStepsFilterKeyword: "关键词：{query}",
-    allStepsFilterTechnique: "技巧：{technique}",
-    allStepsFilterConclusionSort: "排序：出数/删数优先",
-    allStepsFilterReplaceableOnly: "仅可替换",
-    listSeparator: "；",
-    solvePathCannotSerialize: "自动解题失败：当前盘面无法序列化为候选盘状态。",
-    solveCompleted: "自动解题完成：status={status}，步骤 {steps}，用时 {elapsed} ms。",
-    solvePathRenderFailed: "解题路径渲染失败：{error}",
-    solveFailed: "自动解题失败：{error}",
-    generatingPuzzle: "正在生成题目：{difficulty}...",
-    generateFailed: "{difficulty} 生成失败{last}。",
-    lastRating: "，最后评分 {rating}",
-    generatedPuzzle: "已生成 {difficulty}：{clues} 个已知数，{rating}。",
-    noTrainingTechnique: "未指定技巧",
-    difficultyTitle: "生成题目时使用参考项目的 ER 难度分档",
-    trainingTitle: "生成解题路径中包含指定技巧的题目",
-    unrated: "未评分",
-    ratingFailed: "评分未通过：{rating}",
-    seconds: "{seconds} 秒",
-    stoppingBatch: "正在停止批量出题...",
-    batchTrainingStart: "批量训练题库开始：技巧 {technique}，难度 {difficulty}。点击停止结束并写入文件。",
-    batchStart: "批量出题开始：难度 {difficulty}。点击停止结束并写入文件。",
-    batchSolveStart: "批量解题开始：目标 {target} 题。",
-    batchStoppingPrefix: "正在停止，",
-    batchLastPuzzle: "，上一题 {attempts}",
-    batchTrainingProgress: "{prefix}批量训练题库中：已生成 {generated} 题，批次 {attempts}，失败 {failed} 次{last}，已用时 {elapsed}。",
-    batchProgress: "{prefix}批量出题中：已生成 {generated} 题，批次 {attempts}，失败 {failed} 次{last}，已用时 {elapsed}。",
-    batchSolveProgress: "{prefix}批量解题中：{generated}/{target}，失败 {failed} 次{last}，已用时 {elapsed}。",
-    batchLatest: "{status} 最新 {rating}。",
-    batchSearchAttempts: "搜索 {attempts} 次",
-    batchGenerateAttempts: "生成 {attempts} 次",
-    batchWrittenDirect: "已写入磁盘文件",
-    batchDownloadReady: "已生成下载文件",
-    batchTrainingDone: "{mode}：{filename}，训练技巧 {technique}，成功 {generated} 题，批次 {attempts}，总用时 {elapsed}。",
-    batchDone: "{mode}：{filename}，成功 {generated} 题，尝试 {attempts} 次，总用时 {elapsed}。",
-    batchSolveDone: "{mode}：{filename}，解题 {generated}/{target}，失败 {failed} 次，总用时 {elapsed}。",
-    batchCancelled: "批量任务已停止。",
-    batchFailed: "批量任务失败：{error}",
-    batchSolveNoInput: "请先选择批量解题输入文件。文件需为纯文本，一行一题。",
-    batchInvalidStep: "批量出题发现技巧错误，已停止：{detail}",
-    invalidStep: "步骤无效",
-    trainingNeedTechnique: "请先在“训练”下拉框选择一个技巧。",
-    trainingSearching: "正在搜索包含 {technique} 的训练题，已用时 {elapsed}...",
-    trainingInvalidSyncFailed: "训练生成发现技巧错误，但失败谜题同步到主引擎失败。",
-    trainingInvalidFound: "训练生成中发现技巧错误{detail}{step}",
-    trainingStepTextPrefix: "；{step}",
-    trainingFailed: "训练题生成失败：{error}{last}。",
-    trainingSyncFailed: "训练题已生成，但主引擎同步失败。",
-    trainingGenerated: "已生成 {technique} 训练题：尝试 {attempts} 次，{rating}。",
-    exportUnavailable: "当前盘面无法导出：没有有效 81 位题面或候选盘状态。",
-    coachCompressUnsupported: "当前环境不支持 Coach 题串压缩",
-    coachDecompressUnsupported: "当前环境不支持 Coach 题串解压",
-    coachInvalidChar: "Coach 编码包含非法字符：{ch}",
-    manualAdvancedExportFailed: "当前盘面无法导出为手动高级技巧输入。",
-    currentStateSyncFailed: "当前盘面状态同步失败：{error}",
-    waitingWasm: "等待 wasm 加载。",
-    branchShorter: "路径缩短 {count} 步",
-    branchLonger: "路径增加 {count} 步",
-    branchStepsUnchanged: "步数未变",
-    branchScoreLower: "评分降低 {score}",
-    branchScoreHigher: "评分提高 {score}",
-    branchScoreUnchanged: "评分未变",
-    branchAppliedTitle: "分叉路径已应用",
-    branchStepLabel: "第 {index} 步",
-    branchSomeStep: "某一步",
-    branchPanelDetail: "{step} ← 可选 #{candidate}；步数 {oldSteps}→{newSteps}（{stepDelta}），评分 {oldScore}→{newScore}（{scoreDelta}），hash={hash}",
-    branchOldStep: "原步骤",
-    branchNewStep: "新步骤",
-    branchUnnamedStep: "未命名步骤",
-    branchTechniqueChanged: "技法变化：{oldTitle} → {newTitle}",
-    branchTechniqueKept: "技法保持：{title}",
-    branchUndoButton: "撤销分叉",
-    branchNoUndo: "没有可撤销的分叉路径。",
-    branchUndoDone: "已撤销最近一次分叉，恢复原解题路径。",
-    branchNotBound: "当前可选步骤没有绑定到解题路径中的 before 盘面，不能替换路径。",
-    branchMissingApi: "当前 wasm 尚未包含 solve_path_for_import_json，请重新编译并刷新页面。",
-    branchNoMatchingBefore: "替换失败：自动解题路径中没有找到相同 beforeHash 的步骤。",
-    branchSameStep: "可选步骤与当前路径第 {index} 步相同，未替换。",
-    branchApplyAfterFailed: "替换失败：无法由 before + 可选步骤推出后续盘面。",
-    branchSerializeFailed: "替换失败：替换后的盘面无法序列化为候选盘状态。",
-    branchTailFailed: "替换失败：后续路径重算失败：{error}",
-    branchReplaced: "已用可选步骤替换第 {index} 步，并从此处重算后续路径。新路径 {steps} 步。",
-    branchRowTitle: "单击预览；右键或长按：替换路径并从此处重算",
-    whipMemoryLabel: "Whip/gWhip 内存：",
-    whipMemoryAuto: "自动（普通求解关闭，Whip 评分开启）",
-    whipMemoryNormal: "普通（速度优先）",
-    whipMemoryLarge: "大内存（覆盖率优先）",
-    whipMemoryTitle: "影响 Whip/gWhip 队列上限：普通 Whip 19000、gWhip 50000；大内存 99000。",
-    whipCompareGWhipLabel: "gWhip 参与最短长度比较",
-    whipCompareGWhipTitle: "启用后，当 Whip 与 gWhip 同时开启时比较两者的全局最短长度；仅当 gWhip 更短时返回 gWhip，同长度仍优先 Whip。",
-    techniqueHeader: "技巧",
-    scoreHeader: "评分",
-    difficultyLevel: "难度 {level}",
-    manualMarksTitle: "手工标记",
-    manualMarkModeLabel: "模式",
-    manualMarkLineLabel: "链线",
-    manualMarkColorLabel: "颜色",
-    markAddColor: "添加自定义色",
-    markCustomColorTitle: "选择自定义标记颜色",
-    markColorAdded: "已添加自定义颜色。",
-    markColorSelected: "已选择颜色 {id}。",
-    markModeOff: "关闭标记",
-    markCellColor: "整格上色",
-    markCandidateColor: "候选上色",
-    markCircle: "候选画圈",
-    markPreElim: "预备删数",
-    markElim: "正式删数",
-    markChain: "手动画链",
-    markConstruction: "构造链",
-    markMiniRegion: "微型区域",
-    markBlock: "区块标记",
-    markPrimary: "添加",
-    markSecondary: "删除",
-    markPrimaryTitle: "添加当前模式标记；手机轻触目标，电脑左键目标。",
-    markSecondaryTitle: "删除当前模式标记；手机长按目标，电脑右键目标。",
-    markStrong: "强链（实线）",
-    markWeak: "弱链（虚线）",
-    markConstructionStrong: "构造强链",
-    markConstructionWeak: "构造弱链",
-    markStrongAction: "强链",
-    markWeakAction: "弱链",
-    markConstructionStrongAction: "构造强链",
-    markConstructionWeakAction: "构造弱链",
-    markMiniRegionGreenAction: "绿色区域",
-    markMiniRegionBlueAction: "蓝色区域",
-    markMiniRegionGreen: "绿色",
-    markMiniRegionBlue: "蓝色",
-    markApplyElims: "应用全部删数",
-    markCleanEasy: "清除简单步骤",
-    markCleanedEasy: "已清除 {count} 个简单步骤。",
-    markAppliedElimsWithClean: "已应用 {count} 个手工删数，并清除 {easy} 个简单步骤。",
-    markScreenshotButton: "截图",
-    markScreenshotTitle: "按屏幕当前显示原样截图盘面及全部手工标记。桌面端复制到剪贴板，手机端打开系统分享。",
-    markScreenshotShareTitle: "数独盘面截图",
-    markScreenshotPreparing: "正在生成盘面截图……",
-    markScreenshotCopied: "已复制截图到剪贴板。",
-    markScreenshotShared: "已打开系统分享。",
-    markScreenshotShareCancelled: "已取消分享。",
-    markScreenshotDownloaded: "浏览器不支持直接复制图片，已下载截图。",
-    markScreenshotShareUnavailableDownloaded: "当前手机浏览器不支持图片系统分享，已下载截图。",
-    markScreenshotShareFailedDownloaded: "系统分享失败，已下载截图：{error}",
-    markScreenshotNoBoard: "当前没有可截图的盘面。",
-    markScreenshotFailed: "截图失败：{error}",
-    markNoElimsButCleaned: "没有手工删数，已清除 {easy} 个简单步骤。",
-    markEasyCleanStopped: "简单步骤清除已停止：{reason}",
-    markClearAll: "清空标记",
-    markUndoLine: "撤销线/区域",
-    markCancelChain: "取消起点",
-    markFinishBlock: "完成区块",
-    markUndoBlock: "撤销区块",
-    markOffStatus: "关闭标记。",
-    markCellSelected: "已选 {cell}，请点数字选择候选。",
-    markAdded: "已标记 {target}。",
-    markRemoved: "已清除 {target} 的标记。",
-    markChainStart: "链起点：{target}。请选择终点。",
-    markChainAdded: "已添加链线：{from} -> {to}。",
-    markChainUpdated: "已将链线 {from} -> {to} 改为{type}。",
-    markChainRemoved: "已删除链线：{from} -> {to}。",
-    markMiniRegionStart: "微型区域起点：{target}。请选择第二个候选。",
-    markMiniRegionAdded: "已添加{type}微型区域：{from} -> {to}。",
-    markMiniRegionUpdated: "已将微型区域 {from} -> {to} 改为{type}。",
-    markMiniRegionRemoved: "已删除微型区域：{from} -> {to}。",
-    markExistingCandidateRequired: "{target} 当前不是有效候选，不能作为链、构造、微型区域或区块端点。",
-    mouseCandidateAbsent: "{target} 当前不存在；请先右键恢复该候选，再用左键出数。",
-    markBlockAdded: "已加入区块：{target}。",
-    markBlockRemoved: "已移除区块标记：{target}。",
-    markBlockFinished: "已完成区块标记。",
-    markBlockUndone: "已撤销上一个区块标记。",
-    markNoBlock: "没有可完成或撤销的区块。",
-    markChainCancelled: "已取消链起点。",
-    markLineUndone: "已撤销上一条链线或微型区域。",
-    markAllCleared: "已清空手工标记。",
-    markAppliedElims: "已应用 {count} 个手工删数。",
-    markNoElims: "没有可应用的手工删数。",
-    markModeHint: "鼠标：左键/右键按 FB 规则操作；触摸或触控笔：先选格，再用大数字键和面板按钮。链、构造链与微型区域的左右键分别表示两种关系。",
-    workerUnsupported: "当前浏览器不支持后台 Worker",
-    trainingWorkerFailed: "训练题生成失败",
-    trainingWorkerRuntimeFailed: "训练题 Worker 运行失败",
-  },
-  en: {
-    boardHeading: "Board",
-    brandSubtitle: "Mobile-first logic trainer",
-    manualLink: "Manual",
-    techniqueHelp: "Techniques",
-    initialHint: "Waiting for puzzle to load.",
-    branch: "Branch",
-    allBranches: "All branches",
-    expandBranches: "Expand branch selector",
-    collapseBranches: "Collapse branch selector",
-    branchPickerLabel: "Choose the branch to display",
-    branchShortcutHint: "Shortcut: ←/→ or [ / ] cycles branches",
-    branchOverview: "All branches",
-    mainActionsLabel: "Main actions",
-    numberPadLabel: "Number pad",
-    manualMarkActionLabel: "Manual mark actions",
-    manualMarkColorsLabel: "Manual mark colors",
-    allStepsFilterAria: "Available steps filter",
-    filterByTechnique: "Filter by technique",
-    allStepsSortAria: "Available step sort",
-    controls: "Controls",
-    techniques: "Techniques",
-    path: "Solution Path",
-    allSteps: "Available Steps",
-    generate: "Generate",
-    generateTraining: "Training puzzle",
-    load: "Load",
-    undo: "Undo",
-    redo: "Redo",
-    step: "Hint step",
-    solve: "Solve",
-    apply: "Apply hint",
-    stepExplain: "Explain",
-    stepExplainTitle: "Dynamic tutorial: why this step works",
-    stepExplainUnavailable: "No explainable step is selected.",
-    close: "Close",
-    fullscreen: "Fullscreen",
-    exitFullscreen: "Exit fullscreen",
-    mobileSolveEntry: "Solve",
-    mobileSolveMode: "Solve mode",
-    mobileSolveExit: "Back",
-    mobileSolveNewPuzzle: "New",
-    mobileSolveNewPuzzleTitle: "New puzzle",
-    mobileSolveNewPuzzleHint: "Choose a difficulty and generate without leaving solve mode.",
-    mobileSolveNewPuzzleWarning: "Your current progress or manual marks will be cleared when a new puzzle is generated.",
-    mobileSolveNewPuzzleConfirm: "Your current progress or manual marks will be cleared. Generate a new puzzle?",
-    mobileSolveNewPuzzleGenerate: "Generate",
-    mobileSolveNewPuzzleGenerating: "Generating…",
-    mobileSolveNewPuzzleCancel: "Cancel",
-    mobileSolveNewPuzzleDifficulty: "Difficulty",
-    mobileDifficultyRandom: "Random",
-    mobileDifficultyEasy: "Easy",
-    mobileDifficultyMedium: "Medium",
-    mobileDifficultyHard: "Hard",
-    mobileDifficultyUnfair: "Unfair",
-    mobileDifficultyExtreme: "Extreme",
-    mobileDifficultyInsane: "Insane",
-    mobileSolveMore: "More",
-    mobileSolveMoreTitle: "More tools",
-    mobileSolveClear: "Clear",
-    mobileSolveInput: "Puzzle input",
-    mobileSolveAnalysis: "Analysis mode",
-    mobileSolveLanguage: "Language",
-    mobileSolveActions: "Solve controls",
-    mobileSolveMarks: "Marks",
-    mobileSolveMarksActive: "Marking",
-    mobileSolveHideMarks: "Hide",
-    mobileSolveMarksTitle: "Manual marks",
-    mobileSolveHideCandidates: "Hide candidates",
-    mobileSolveShowCandidates: "Show candidates",
-    mobileSolveDisableSameDigit: "Disable same-digit highlight",
-    mobileSolveEnableSameDigit: "Enable same-digit highlight",
-    mobileInputState: "{mode} · {digit}",
-    mobileSelectCellFirst: "Select a cell first.",
-    mobileNothingToClear: "There is nothing to clear in this cell.",
-    difficulty: "Difficulty",
-    training: "Training",
-    trainingTextFilterButton: "Text filter",
-    trainingTextFilterTitle: "Training text filter",
-    trainingTextFilterIntro: "The frontend supplies the conditions. The C++ backend matches them within one step of the selected technique; conditions are never combined across steps.",
-    trainingTextFilterIncludeLabel: "Must contain",
-    trainingTextFilterIncludeHint: "One condition per line; every non-empty condition must occur in the same step.",
-    trainingTextFilterIncludePlaceholder: "Example:\nUniqueness Test 7\ngrouped conjugate pair",
-    trainingTextFilterExcludeLabel: "Must not contain",
-    trainingTextFilterExcludeHint: "One condition per line; a step is rejected if any condition occurs.",
-    trainingTextFilterExcludePlaceholder: "Example:\nS-Ring",
-    trainingTextFilterCaseSensitive: "Case-sensitive English matching",
-    trainingTextFilterClear: "Clear",
-    trainingTextFilterCancel: "Cancel",
-    trainingTextFilterApply: "Apply",
-    trainingTextFilterInactiveTitle: "Configure training-step text filtering",
-    trainingTextFilterActiveTitle: "Text filter enabled: {include} include, {exclude} exclude",
-    tlgSolverTitle: "TLG Solver",
-    tlgSolverEnable: "Enable TLG editing",
-    tlgSolverModeLabel: "Input Mode",
-    tlgModeTruths: "Truths",
-    tlgModeLinks: "Links",
-    tlgModeVirtualSet: "Virtual Set",
-    tlgModeAur: "AUR",
-    tlgModeDaur: "DAUR",
-    tlgModeGur: "GUR",
-    tlgAurGroupLabel: "AUR Group",
-    tlgAurGroup1: "AUR 1",
-    tlgAurGroup2: "AUR 2",
-    tlgSolverLinkTypeLabel: "Link Type",
-    tlgLinkAuto: "Auto",
-    tlgLinkRowColumn: "Row/Column",
-    tlgLinkBox: "Box",
-    tlgLinkCell: "Cell",
-    tlgTruthsToApply: "Truths to Apply",
-    tlgAurPremiseModeLabel: "Uniqueness Gate",
-    tlgAurPremiseUnique: "Unique puzzle: verify initial swap pair",
-    tlgAurPremiseTraining: "Training grid: allow missing initial candidates",
-    tlgImportCandidates: "Import TLG Candidate Grid",
-    tlgFindEliminations: "Find Eliminations",
-    tlgConvertTruths: "Convert Redundant Truths",
-    tlgRemoveUnused: "Remove Unused Links",
-    tlgClearState: "Clear TLG State",
-    tlgLibraryButton: "TLG Library",
-    tlgLibraryDialogTitle: "TLG Logic Library",
-    tlgLibraryReadAction: "Read",
-    tlgLibraryInsertAction: "Insert",
-    tlgLibraryReplaceAction: "Replace",
-    tlgLibraryAppendAction: "Append",
-    tlgLibraryDeleteAction: "Delete",
-    tlgLibraryImportModeLabel: "Import Mode",
-    tlgLibraryImportAppend: "Append to End",
-    tlgLibraryImportInsert: "Insert at Current Position",
-    tlgLibraryImportReplaceAll: "Replace Entire Library",
-    tlgLibraryImportAction: "Import .tlgdb",
-    tlgLibraryExportSelectedAction: "Export Selected",
-    tlgLibraryExportAllAction: "Export Library",
-    tlgLibraryCopyTextAction: "Copy Case",
-    tlgLibraryCopyCompactAction: "Copy One Line",
-    tlgLibraryPasteTextAction: "Paste Case",
-    tlgLibraryImportTextAction: "Import Text",
-    tlgLibraryExportTextAction: "Export Text",
-    tlgLibraryShareToolbarAria: "TLG text-case actions",
-    tlgLibraryShareTextLabel: "Text Case",
-    tlgLibraryShareTextPlaceholder: "Paste a multiline YZF-TLG-CASE:1 case or a one-line YZFTLG1 case.",
-    tlgLibraryLoadTextAction: "Load Case",
-    tlgLibraryClearTextAction: "Clear",
-    tlgLibraryCloseTextAction: "Collapse",
-    tlgLibraryShareEmptyHint: "Paste a shared TLG text case here. A structure summary is shown before it is loaded.",
-    tlgLibrarySearchPlaceholder: "Search title, tags, source, or notes",
-    tlgLibraryColumnIndex: "No.",
-    tlgLibraryColumnTitle: "Title",
-    tlgLibraryColumnType: "Type",
-    tlgLibraryColumnResult: "Structure",
-    tlgLibraryEmpty: "The library has no records yet.",
-    tlgLibraryTitleLabel: "Title",
-    tlgLibraryTagsLabel: "Tags",
-    tlgLibrarySourceLabel: "Source",
-    tlgLibraryNotesLabel: "Study Notes",
-    tlgLibraryTagsPlaceholder: "Example: AUR, Rank 0",
-    tlgLibraryEditorHint: "Select a record, or enter metadata and save the current TLG.",
-    tlgLibraryIdle: "The local library uses fixed 2048-byte records. Export a .tlgdb backup regularly.",
-    tlgLibraryRecordListAria: "TLG library records",
-    tlgLibraryEditorAria: "TLG record metadata",
-    tlgLibraryToolbarAria: "Library record actions",
-    tlgLibraryDefaultTitle: "TLG Logic {stamp}",
-    tlgLibraryUntitled: "Untitled Record {index}",
-    tlgLibraryUntitledPlain: "Untitled Record",
-    tlgLibraryResultUnit: " results",
-    tlgLibraryRecordSummary: "Type: {type}\nTruths: {truths}  Links: {links}\nActive candidates: {candidates}  Results: {results}\nLast modified: {date}",
-    tlgLibraryLoadedToSolver: "Restored from library: {title}",
-    tlgLibraryNoGrid: "There is no Sudoku grid or candidate state to save.",
-    tlgLibraryTextTooLong: "{field} exceeds the fixed-record limit ({limit} UTF-8 bytes maximum).",
-    tlgLibraryInvalidRecordSize: "The TLG record is not the fixed 2048-byte size.",
-    tlgLibraryInvalidRecordMagic: "This TLG record is not recognized.",
-    tlgLibraryUnsupportedRecordVersion: "TLG record version {version} is not supported.",
-    tlgLibraryRecordCrcFailed: "The TLG record checksum failed; the record may be damaged.",
-    tlgLibraryInvalidTextLength: "A text-length field in the TLG record is invalid.",
-    tlgLibraryFileTooShort: "The file is too short to be a valid TLG library.",
-    tlgLibraryInvalidFileMagic: "Invalid file signature. Select a YZF TLG .tlgdb library.",
-    tlgLibraryUnsupportedFileVersion: "TLG library version {version} is not supported.",
-    tlgLibraryIncompatibleLayout: "This library record layout is incompatible with the current version.",
-    tlgLibraryFileLengthMismatch: "Library length mismatch: expected {expected} bytes, got {actual} bytes.",
-    tlgLibraryHeaderCrcFailed: "The library header checksum failed.",
-    tlgLibraryDuplicateIdInFile: "The library file contains duplicate record ID {id}.",
-    tlgLibraryIndexedDbUnavailable: "This browser does not support local TLG library storage.",
-    tlgLibraryOpenFailed: "Could not open the local TLG library.",
-    tlgLibraryStorageFailed: "Could not write the local TLG library.",
-    tlgLibraryStoredRecordDamaged: "Local record {id} is damaged: {error}",
-    tlgLibrarySelectFirst: "Select a library record first.",
-    tlgLibrarySolverBusy: "TLG is still computing. Wait for the current operation before reading or saving the library.",
-    tlgLibraryDuplicateConfirm: "The library already contains the same logic ({title}). Save another copy?",
-    tlgLibraryReplaced: "Replaced record {index}: {title}",
-    tlgLibraryInserted: "Inserted as record {index}: {title}",
-    tlgLibraryAppended: "Appended as record {index}: {title}",
-    tlgLibraryDeleteConfirm: "Delete “{title}”?",
-    tlgLibraryDeleted: "Deleted: {title}",
-    tlgLibraryRead: "Read: {title}",
-    tlgLibraryNothingToExport: "There are no records to export.",
-    tlgLibraryExportedSelected: "Exported the selected record: {count} record, {bytes} bytes.",
-    tlgLibraryExportedAll: "Exported library: {count} records, {bytes} bytes.",
-    tlgLibraryEmptyImport: "The imported file contains no TLG records.",
-    tlgLibraryReplaceAllConfirm: "This will delete the current local library and replace it with {count} records from the file. Continue?",
-    tlgLibraryImported: "Imported {count} TLG records.",
-    tlgLibraryImportFailed: "TLG library import failed: {error}",
-    tlgLibraryTextCopied: "The TLG text case was copied to the clipboard ({bytes} bytes).",
-    tlgLibraryCompactCopied: "The one-line TLG case was copied to the clipboard ({bytes} bytes).",
-    tlgLibraryClipboardReadFailed: "The clipboard could not be read directly. Paste into the text-case box manually.",
-    tlgLibraryClipboardWriteFailed: "Copy failed. Expand the text-case box and copy it manually.",
-    tlgLibraryTextExported: "Exported the text case ({bytes} bytes).",
-    tlgLibraryTextFileReadFailed: "Could not read the text-case file: {error}",
-    tlgLibraryTextEmpty: "Paste or import a TLG text case first.",
-    tlgLibraryTextInvalidHeader: "The TLG text-case format is not recognized.",
-    tlgLibraryTextUnsupportedVersion: "TLG text-case version {version} is not supported.",
-    tlgLibraryTextMissingField: "The TLG text case is missing required field {field}.",
-    tlgLibraryTextInvalidField: "Field {field} in the TLG text case is invalid.",
-    tlgLibraryTextInvalidCandidate: "Unrecognized candidate: {value}.",
-    tlgLibraryTextInvalidDescriptor: "Unrecognized Truth/Link descriptor: {value}.",
-    tlgLibraryTextInvalidBitmap: "The candidate bitmap in field {field} is invalid.",
-    tlgLibraryTextCrcFailed: "The text-case checksum failed; the content may have been truncated or changed.",
-    tlgLibraryTextPreview: "Title: {title}\nType: {type}\nTruths: {truths}  Links: {links}\nActive candidates: {candidates}  Results: {results}\nText size: {bytes} bytes",
-    tlgLibraryTextLoadConfirm: "Load text case “{title}”? The current temporary TLG state will be replaced.",
-    tlgLibraryTextLoaded: "Loaded text case: {title}",
-    tlgLibraryTextParseFailed: "Text-case parse failed: {error}",
-    tlgLibraryTextReady: "The text case parsed successfully and is ready to load.",
-    tlgLibraryTextPanelOpened: "Paste a text case, then confirm to load it.",
-    tlgLibraryLoading: "Loading the local TLG library…",
-    tlgLibraryOpenError: "Could not open the TLG library: {error}",
-    tlgStatusOptional: "TLG Solver is optional and parked at the bottom of Controls. Existing solver behavior is unchanged unless TLG editing is enabled.",
-    tlgEditingEnabled: "TLG editing enabled",
-    tlgStateTitle: "Current TLG State",
-    tlgSolutionTitle: "Truths/Links Result",
-    tlgNoInput: "No TLG input yet.",
-    tlgDebugImport: "Debug / Import",
-    tlgDebugPlaceholder: "Debug import only. Board input is the primary TLG workflow.",
-    tlgTruths: "Truths",
-    tlgLinks: "Links",
-    tlgUserLinks: "User Links",
-    tlgVirtualSet: "Virtual Set",
-    tlgAurCorners: "AUR Corners",
-    tlgDaurCandidates: "DAUR Candidate Pool",
-    tlgDaurCandidateAdded: "Added to DAUR candidate pool: {value}",
-    tlgDaurCandidateRemoved: "Removed from DAUR candidate pool: {value}",
-    tlgGurCandidates: "GUR Generic Candidate Cloud",
-    tlgGurCandidateAdded: "Added to GUR candidate cloud: {value}",
-    tlgGurCandidateRemoved: "Removed from GUR candidate cloud: {value}",
-    tlgAurCornerAddedGroup: "Added {group} corner: {value}",
-    tlgAurCornerRemovedGroup: "Removed {group} corner: {value}",
-    tlgRemove: "Remove",
-    tlgRemoved: "Removed {category}: {value}",
-    tlgVirtualCandidateAdded: "Added virtual candidate: {value}",
-    tlgVirtualCandidateRemoved: "Removed virtual candidate: {value}",
-    tlgAurCornerAdded: "Added AUR corner: {value}",
-    tlgAurCornerRemoved: "Removed AUR corner: {value}",
-    tlgEndpointSelected: "Selected endpoint: {value}. Choose a second candidate.",
-    tlgTruthAdded: "Added truth: {value}",
-    tlgTruthRemoved: "Removed truth: {value}",
-    tlgLinkAdded: "Added link: {value}",
-    tlgLinkRemoved: "Removed link: {value}",
-    tlgCellTruthAdded: "Added cell truth: {value}",
-    tlgCellTruthRemoved: "Removed cell truth: {value}",
-    tlgTruthPairInvalid: "Truth not added: Truth mode only accepts two different candidates in one cell, or two same-digit candidates in one house.",
-    tlgUnavailable: "tlgSolverFindEliminationsV440 is not available; rebuild wasm after applying v440/v441.",
-    tlgResponse: "TLG Solver response",
-    tlgParseFailed: "TLG_SOLVER_RESPONSE_PARSE_FAILED",
-    tlgFailed: "TLG Solver failed: {error}",
-    tlgFindRunning: "Finding eliminations and normalizing links…",
-    tlgConvertRunning: "Converting Truths To Links in deterministic order…",
-    tlgRemoveRunning: "Removing unused Links in deterministic order…",
-    tlgConvertSummary: "Convert complete: Truths={truths}, Links={links}, Moved={moved}, Eliminations={elims}",
-    tlgRemoveSummary: "Cleanup complete: Truths={truths}, Links={links}, Removed={removed}, Eliminations={elims}",
-    tlgPhase1Summary: "Find completed: Truths={truths}, Links={links}, Eliminations={elims}",
-    tlgNoConsequencesSummary: "Computed, but no Links or eliminations were found: Truths={truths}",
-    tlgParsedOnlySummary: "TLG parsed, but eliminations were not computed: Truths={truths}, Links={links}",
-    tlgCandidateGridImportedUnique: "TLG candidate grid imported: {candidates} candidates. It is preserved as the initial candidate grid, and AUR/DUR swap premises will be verified in unique-puzzle mode.",
-    tlgCandidateGridImportedTraining: "TLG training grid imported: {candidates} candidates. Training mode allows missing initial candidates and checks only the current deadly completion.",
-    tlgSummaryTruths: "Truths={count}",
-    tlgSummaryLinks: "Links={count}",
-    tlgSummaryUserLinks: "User Links={count}",
-    tlgSummaryResultLinks: "Result Links={count}",
-    tlgSummaryVirtual: "Virtual={count}",
-    tlgSummaryAurs: "AURs={count}",
-    tlgSummaryAurCorners: "AUR Corners={count}",
-    tlgSummaryDaurCandidates: "DAUR Candidates={count}",
-    tlgSummaryGurCandidates: "GUR Candidates={count}",
-    tlgSummaryGurAccepted: "GUR Constraints={count}",
-    tlgSummaryPremiseUnique: "Gate=Unique",
-    tlgSummaryPremiseTraining: "Gate=Training",
-    tlgSummaryDaurExpanded: "DAUR→AUR/DUR={count}",
-    tlgSummaryGrid: "Grid={count} Candidates",
-    tlgSummarySelected: "Selected={count}",
-    tlgSummaryEndpoint: "Endpoint={value}",
-    tlgSolutionTruths: "{count} Truths = {{body}}",
-    tlgSolutionLinks: "{count} Links = {{body}}",
-    tlgSolutionAurs: "{count} Fixed AURs = {body}",
-    tlgSolutionDaurPool: "DAUR Pool = {{body}}",
-    tlgSolutionDaurExpanded: "DAUR Expanded AUR/DUR Constraints = {count}",
-    tlgSolutionGurPool: "GUR Candidate Cloud = {{body}}",
-    tlgSolutionGurAccepted: "GUR Enumerated Constraints = {count}",
-    tlgSolutionEliminations: "{count} Eliminations --> {body}",
-    tlgSolutionNoEliminations: "0 Eliminations",
-    tlgSolutionAssignments: "{count} Assignments --> {body}",
-    tlgResultActionFailed: "TLG action failed",
-    tlgBackendSolutionBudget: "solution budget exceeded",
-    tlgBackendSearchBudget: "search-node budget exceeded",
-    tlgBackendIncompleteSolutionBudget: "Cannot materialize eliminations because the projection search exceeded the solution budget.",
-    tlgBackendIncompleteSearchBudget: "Cannot materialize eliminations because the projection search exceeded the search-node budget.",
-    tlgBackendInvalidPlan: "Cannot build a projection context from an invalid normalized plan.",
-    tlgBackendNoProjection: "The structure has no valid projection solution to materialize.",
-    tlgBackendNoDaurForms: "The DAUR candidate pool did not expand to any valid fixed AUR or six-cell DUR form.",
-    tlgBackendNoInitialSwap: "The DAUR candidate pool has no form satisfying the initial swap premise.",
-    tlgBackendFixedAurInitialSwap: "The initial grid does not support both swappable completions of the fixed AUR.",
-    tlgBackendSixCellInitialSwap: "The initial grid has no swappable completion pair for this six-cell DUR: ",
-    tlgBackendTrainingGrid: "A TLG training candidate grid was used; the uniqueness premise was not verified.",
-    tlgActionsAria: "TLG Solver actions",
-    tlgCandidateGridEmpty: "The input box is empty. Paste a Sukaku candidate grid first.",
-    tlgCandidateGridInvalid: "Unrecognized TLG candidate grid. Use a 729-character Sukaku or 81 candidate-cell tokens.",
-    tlgCandidateGridEmptyCell: "The TLG candidate grid contains a cell with no candidates: {cell}.",
-    tlgContextCandidate: "Candidate {value}",
-    tlgContextCandidates: "{count} Candidates selected",
-    tlgAddSubTruth: "Add/Sub Truth",
-    tlgAddSubLink: "Add/Sub Link",
-    tlgMenuRow: "Row",
-    tlgMenuColumn: "Column",
-    tlgMenuCell: "Cell",
-    tlgMenuBox: "Box",
-    tlgMenuClearAll: "Clear All",
-    tlgToggleVirtualBatch: "Toggle in Virtual Set",
-    tlgClearVirtualBatch: "Clear the Virtual Set",
-    tlgToggleAurBatch: "Toggle AUR Corner",
-    tlgToggleDaurBatch: "Toggle DAUR Candidate Pool",
-    tlgToggleGurBatch: "Toggle GUR Candidate Cloud",
-    tlgClearAurBatch: "Clear AUR Corners",
-    tlgClearAllLogic: "Clear All Logic",
-    tlgCandidatesSelected: "{count} candidates selected; right-click on desktop or long-press on touch to open the TLG menu.",
-    tlgClearCandidateSelection: "Clear Candidate Selection",
-    tlgBatchAdded: "Added {count} {kind} descriptors.",
-    tlgBatchRemoved: "Removed {count} {kind} descriptors.",
-    tlgBatchToggledOn: "Added {count} candidates to {kind}.",
-    tlgBatchToggledOff: "Removed {count} candidates from {kind}.",
-    tlgTruthsCleared: "Cleared all Truths.",
-    tlgLinksCleared: "Cleared all Links.",
-    tlgVirtualCleared: "Cleared the Virtual Set.",
-    tlgAurCleared: "Cleared all AUR corners.",
-    tlgDaurCleared: "Cleared the DAUR candidate pool.",
-    tlgGurCleared: "Cleared the GUR candidate cloud.",
-    tlgLogicCleared: "Cleared all TLG logic; the candidate grid was preserved.",
-    batchGenerate: "Batch tasks",
-    batchMode: "Mode",
-    batchModeGenerate: "Batch generation",
-    batchModeSolve: "Batch solving",
-    batchSolveFile: "Solve input file",
-    batchSolveFileHint: "Load a text file; one puzzle per line.",
-    filename: "Output filename",
-    startBatch: "Start",
-    stop: "Stop",
-    batchStatusIdle: "Shared panel for batch generation and solving. Generation writes continuously; solving reads a text file, one puzzle per line.",
-    moreInput: "More: puzzle input, export, and rating",
-    preferClipboardLoad: "Clipboard first",
-    preferClipboardLoadTitle: "Prefer clipboard when loading puzzles, then fall back to the text box",
-    exportPuzzle: "Export puzzle",
-    exportFormatLabel: "Export format",
-    exportFormatOriginal: "Original puzzle",
-    exportFormatKnown: "Known digits",
-    exportFormatCandidates: "Candidates text",
-    exportFormatSukaku: "Sukaku string",
-    exportFormatLibrary: "Library string",
-    exportFormatCoach: "To Coach",
-    clearSavedSession: "Clear saved session",
-    clearSavedSessionTitle: "Clear the last board and technique settings saved in this browser; the current board is not cleared.",
-    sessionRestored: "Restored the board and technique settings from the last session.",
-    sessionRestoreFailed: "Failed to restore the last session: {message}",
-    sessionCleared: "Cleared the saved board and technique settings in this browser.",
-    ratePuzzle: "Rate puzzle",
-    rateCancel: "Cancel rating",
-    rateStarting: "Starting background rating... Click again to cancel.",
-    rateRunning: "Rating in the background: {seconds} seconds elapsed. Click again to cancel.",
-    rateCancelled: "Rating cancelled.",
-    rateWorkerFailed: "Background rating failed: {error}",
-    rateForegroundFallback: "Background Worker is unavailable in this environment. Rating will run on the main thread and the page may temporarily stop responding.",
-    allStepsFilterPlaceholder: "Filter: technique / action / description",
-    allTechniques: "All techniques",
-    defaultSort: "Default order",
-    conclusionSort: "Placements/eliminations first",
-    replaceable: "Replaceable",
-    clear: "Clear",
-    noAllSteps: "No available steps yet.",
-    manualAdvancedTitle: "Manual Advanced",
-    runManualAdvanced: "Run Manual Advanced",
-    clearManualAdvanced: "Clear Manual Advanced",
-    manualAdvancedNote: "not from default solver",
-    overlayLegend: "Overlay legend",
-    onNode: "ON node: green dot",
-    offNode: "OFF node: orange dot",
-    groupedSector: "GroupedSector: grouped candidate area",
-    strongEdge: "Strong edge: solid line",
-    weakEdge: "Weak edge: dashed line",
-    groupEdge: "Group edge: purple",
-    afAux: "AF auxiliary: cover row horizontal; cover column vertical",
-    debugCandidate: "Debug candidate: red cross, debug only",
-    overlayDebugOnly: "Debug only; not a formal elimination",
-    chooseDigit: "Choose digit",
-    candidateMode: "Candidates",
-    valueMode: "Values",
-    inputModeTitle: "Touch/pen: toggle Value/Candidate, choose a digit, then tap a cell. Mouse input uses direct left/right clicks on the board.",
-    currentInput: "Current",
-    techniquePresetApplied: "Applied technique preset",
-    wasmLoadFailed: "wasm load failed",
-    scriptLoadFailed: "Script load failed: {src}",
-    unsupportedFullscreen: "This browser does not support page fullscreen. Try adding it to the home screen/PWA, or use Chrome on Android.",
-    fullscreenFailed: "Fullscreen failed",
-    optionsUpdated: "Technique settings updated.",
-    operationFailed: "Operation failed.",
-    fixedCell: "Givens cannot be edited.",
-    fixedCandidate: "Candidates on givens cannot be edited.",
-    solvedCandidate: "Candidates on solved cells cannot be edited.",
-    importClipboardRetry: "The input is not a valid puzzle string; read from the clipboard and tried loading it.",
-    loadFailedPrefix: "Load failed: ",
-    importUnknownFormat: "Unrecognized puzzle format",
-    importedPuzzle: "Imported: {format}{candidates}.",
-    importedWithCandidates: ", with candidates",
-    ocrDraftCandidateChanged: "OCR candidate draft updated. Continue correcting directly on the board; use the existing export function when you need to save/share.",
-    ocrGivenInsufficient: "Not enough givens; uniqueness was not checked.",
-    ocrGivenNotUnique: "The puzzle formed by black givens did not pass the uniqueness check.",
-    ocrGivenCheckFailed: "Black-given uniqueness check failed.",
-    ocrDoneLog: "Local image recognition completed. {attribution}",
-    ocrDoneLogNoAttribution: "Local image recognition completed.",
-    ocrGivenUniquePassed: "Black givens passed the uniqueness check.",
-    ocrGivenUniqueFailed: "Black givens did not pass the uniqueness check: {warning}.",
-    ocrManualCorrection: "please correct manually",
-    ocrImportedDraft: "Imported directly as an editable board draft; please correct it on the board.",
-    ocrDoneStatus: "Local image recognition completed: {clue} givens, {userDigits} solved digits, {cand} candidate cells. {uniqueText} {draftText}",
-    ocrNoImageSelected: "No image selected",
-    ocrInvalidImageFile: "Please choose a PNG/JPG/WebP image file.",
-    ocrRecognizingLocal: "Recognizing the image locally... First model load may be slow. No image is uploaded and sudoku-ocr.com is not used.",
-    ocrResourceWasm: "runtime",
-    ocrResourceLocalizer: "localizer model",
-    ocrResourceClassifier: "classifier model",
-    ocrResourceModule: "module",
-    ocrResourceProgress: "Preparing OCR {asset}: {loaded}/{total} MB ({percent}%)",
-    ocrResourceResume: "Resuming OCR {asset}: {loaded}/{total} MB saved ({percent}%)",
-    ocrResourceCache: "Reading OCR {asset} from local cache: {loaded}/{total} MB ({percent}%)",
-    ocrResourceRetry: "OCR {asset} download was interrupted; retrying (attempt {attempt})...",
-    ocrResourceProbe: "Checking whether OCR {asset} supports resumable download...",
-    ocrResourceAssembling: "OCR {asset} download completed; assembling and validating...",
-    ocrNoCoachJson: "OCR did not return Coach JSON",
-    ocrFailed: "Local image recognition failed: {message}",
-    ocrAttribution: "Sudoku image recognition uses a local model trained by Alex Kubiesa / Sudoku OCR; no online fallback is used.",
-    ocrPickImage: "Recognize image",
-    ocrCameraImage: "Take photo",
-    ocrClipboardImage: "Recognize clipboard",
-    ocrDraftRoleGiven: "Clue",
-    ocrDraftRoleSolved: "Solved",
-    ocrDraftRoleGivenTitle: "OCR draft: newly entered large digits are treated as givens. Tap the same digit to switch role or clear it.",
-    ocrDraftRoleSolvedTitle: "OCR draft: newly entered large digits are treated as solved/user digits. Tap the same digit to switch role or clear it.",
-    ocrDraftRoleStatus: "OCR draft large-digit role: {role}. Tap board digits to correct clue/solved identity.",
-    ocrDraftSelectCellFirst: "Enter an OCR draft first, then click a blue user digit.",
-    ocrDraftNoUserDigit: "The selected cell is not a blue user digit, so it cannot be converted to a given.",
-    ocrDraftAlreadyGiven: "The selected cell is already a black given.",
-    ocrDraftMadeGiven: "Converted the selected cell to a black given.",
-    ocrClipboardUnsupported: "This browser does not support reading clipboard images from a button. On desktop, copy a screenshot and press Ctrl+V; on mobile, use Recognize image or Take photo.",
-    ocrReadingClipboard: "Reading clipboard image...",
-    ocrClipboardNoImage: "No image found in the clipboard. Copy a screenshot first, or use Recognize image / Take photo.",
-    ocrClipboardReadFailed: "Failed to read clipboard image: {message}. On desktop, you can also press Ctrl+V after copying a screenshot.",
-    clipboardReadUnsupported: "This browser does not support reading text from the clipboard",
-    clipboardEmpty: "Clipboard is empty",
-    clipboardPreferredLoaded: "Read the puzzle from the clipboard first and tried loading it.",
-    clipboardPreferredFailed: "Clipboard read/import failed, so the text box content was used instead: {error}",
-    inputEmptyClipboardLoaded: "Input was empty; read from the clipboard and tried loading it.",
-    inputEmptyClipboardFailed: "Input was empty and clipboard read failed: {error}",
-    workerTaskFailed: "Background task failed",
-    solveBusy: "Solving...",
-    findAllBusy: "Searching...",
-    wasmLoaded: "wasm loaded.",
-    exportCopied: "Puzzle string exported and copied to the clipboard.",
-    exportToInput: "Puzzle string exported to the input box.",
-    rateNoPuzzle: "Rating failed: no valid puzzle string is available.",
-    rateFailedSimple: "Rating failed.",
-    rateInputSuffix: ". Input format: {format}{mode}",
-    rateUseCandidateState: ", using candidate state, SKFR=rateSukaku",
-    rateUsePuzzle: ", SKFR=ratePuzzle",
-    applyPreviewNoAfter: "Failed to apply preview step: cannot produce after from before+step.",
-    applyPreviewImportFailed: "Failed to apply preview step: {error}",
-    importFailedGeneric: "cannot import",
-    appliedPreviewStep: "Applied the current preview step.",
-    appliedHint: "Applied the current hint.",
-    allStepsCannotSerialize: "All-steps search failed: the current board cannot be serialized with candidate state.",
-    allStepsFailed: "All-steps search failed: {error}",
-    allStepsSourceStep: ", source step #{step}",
-    elapsedMs: ", elapsed {elapsed} ms",
-    allStepsFound: "Found {count} available steps for the current board{source}{time}.",
-    unknownError: "unknown error",
-    undoDone: "Undid one step.",
-    undoNone: "No step to undo.",
-    redoDone: "Redid one step.",
-    redoNone: "No step to redo.",
-    allStepsFilterShowing: "Showing {shown} / {total}",
-    allStepsFilterKeyword: "Keyword: {query}",
-    allStepsFilterTechnique: "Technique: {technique}",
-    allStepsFilterConclusionSort: "Sort: placements/eliminations first",
-    allStepsFilterReplaceableOnly: "Replaceable only",
-    listSeparator: "; ",
-    solvePathCannotSerialize: "Auto solve failed: the current board cannot be serialized with candidate state.",
-    solveCompleted: "Auto solve completed: status={status}, steps {steps}, elapsed {elapsed} ms.",
-    solvePathRenderFailed: "Failed to render solve path: {error}",
-    solveFailed: "Auto solve failed: {error}",
-    generatingPuzzle: "Generating puzzle: {difficulty}...",
-    generateFailed: "{difficulty} generation failed{last}.",
-    lastRating: ", last rating {rating}",
-    generatedPuzzle: "Generated {difficulty}: {clues} givens, {rating}.",
-    noTrainingTechnique: "No specific technique",
-    difficultyTitle: "Use the reference ER difficulty bands when generating puzzles",
-    trainingTitle: "Generate a puzzle whose solve path contains the selected technique",
-    unrated: "Unrated",
-    ratingFailed: "Rating failed: {rating}",
-    seconds: "{seconds}s",
-    stoppingBatch: "Stopping batch generation...",
-    batchTrainingStart: "Training batch started: technique {technique}, difficulty {difficulty}. Click Stop to finish and write the file.",
-    batchStart: "Batch generation started: difficulty {difficulty}. Click Stop to finish and write the file.",
-    batchSolveStart: "Batch solving started: target {target} puzzles.",
-    batchStoppingPrefix: "Stopping, ",
-    batchLastPuzzle: ", previous puzzle {attempts}",
-    batchTrainingProgress: "{prefix}Training batch: generated {generated}, batches {attempts}, failures {failed}{last}, elapsed {elapsed}.",
-    batchProgress: "{prefix}Batch generation: generated {generated}, attempts {attempts}, failures {failed}{last}, elapsed {elapsed}.",
-    batchSolveProgress: "{prefix}Batch solving: {generated}/{target}, failures {failed}{last}, elapsed {elapsed}.",
-    batchLatest: "{status} Latest {rating}.",
-    batchSearchAttempts: "searched {attempts} times",
-    batchGenerateAttempts: "generated {attempts} times",
-    batchWrittenDirect: "Written to disk file",
-    batchDownloadReady: "Download file generated",
-    batchTrainingDone: "{mode}: {filename}, technique {technique}, success {generated}, batches {attempts}, total time {elapsed}.",
-    batchDone: "{mode}: {filename}, success {generated}, attempts {attempts}, total time {elapsed}.",
-    batchSolveDone: "{mode}: {filename}, solved {generated}/{target}, failures {failed}, total time {elapsed}.",
-    batchCancelled: "Batch task stopped.",
-    batchFailed: "Batch task failed: {error}",
-    batchSolveNoInput: "Choose a batch solving input file first. It must be plain text, one puzzle per line.",
-    batchInvalidStep: "Batch stopped on an invalid step: {detail}",
-    invalidStep: "Invalid step",
-    trainingNeedTechnique: "Choose a technique in the Training dropdown first.",
-    trainingSearching: "Searching for a training puzzle containing {technique}; elapsed {elapsed}...",
-    trainingInvalidSyncFailed: "Training generation found an invalid technique, but syncing the failed puzzle to the main engine failed.",
-    trainingInvalidFound: "Training generation found an invalid technique{detail}{step}",
-    trainingStepTextPrefix: "; {step}",
-    trainingFailed: "Training puzzle generation failed: {error}{last}.",
-    trainingSyncFailed: "Training puzzle was generated, but syncing it to the main engine failed.",
-    trainingGenerated: "Generated {technique} training puzzle: {attempts} attempts, {rating}.",
-    exportUnavailable: "Cannot export the current board: no valid 81-char puzzle or candidate state.",
-    coachCompressUnsupported: "This environment does not support Coach string compression",
-    coachDecompressUnsupported: "This environment does not support Coach string decompression",
-    coachInvalidChar: "Coach encoding contains an invalid character: {ch}",
-    manualAdvancedExportFailed: "The current board cannot be exported as manual advanced input.",
-    currentStateSyncFailed: "Failed to sync the current board state: {error}",
-    waitingWasm: "Waiting for wasm to load.",
-    branchShorter: "Path shortened by {count} step(s)",
-    branchLonger: "Path lengthened by {count} step(s)",
-    branchStepsUnchanged: "Step count unchanged",
-    branchScoreLower: "Rating decreased by {score}",
-    branchScoreHigher: "Rating increased by {score}",
-    branchScoreUnchanged: "Rating unchanged",
-    branchAppliedTitle: "Branched path applied",
-    branchStepLabel: "Step {index}",
-    branchSomeStep: "one step",
-    branchPanelDetail: "{step} ← option #{candidate}; steps {oldSteps}→{newSteps} ({stepDelta}), rating {oldScore}→{newScore} ({scoreDelta}), hash={hash}",
-    branchOldStep: "old step",
-    branchNewStep: "new step",
-    branchUnnamedStep: "unnamed step",
-    branchTechniqueChanged: "Technique changed: {oldTitle} → {newTitle}",
-    branchTechniqueKept: "Technique unchanged: {title}",
-    branchUndoButton: "Undo branch",
-    branchNoUndo: "No branched path to undo.",
-    branchUndoDone: "Undid the latest branch and restored the original solve path.",
-    branchNotBound: "This optional step is not bound to a before-board in the solve path, so it cannot replace the path.",
-    branchMissingApi: "The current wasm build does not include solve_path_for_import_json; rebuild and refresh.",
-    branchNoMatchingBefore: "Replacement failed: no step with the same beforeHash was found in the auto-solve path.",
-    branchSameStep: "The optional step is the same as path step {index}; nothing was replaced.",
-    branchApplyAfterFailed: "Replacement failed: could not produce the after-board from before + optional step.",
-    branchSerializeFailed: "Replacement failed: the board after replacement cannot be serialized with candidate state.",
-    branchTailFailed: "Replacement failed: recomputing the tail path failed: {error}",
-    branchReplaced: "Replaced path step {index} with the optional step and recomputed the tail. New path has {steps} step(s).",
-    branchRowTitle: "Click to preview; right-click or long-press to replace the path from here",
-    whipMemoryLabel: "Whip/gWhip memory:",
-    whipMemoryAuto: "Auto (off for normal solving, on for Whip rating)",
-    whipMemoryNormal: "Normal (speed first)",
-    whipMemoryLarge: "Large memory (coverage first)",
-    whipMemoryTitle: "Controls Whip/gWhip queue limits: normal Whip 19000, gWhip 50000; large memory 99000.",
-    whipCompareGWhipLabel: "Compare shortest length with gWhip",
-    whipCompareGWhipTitle: "When both Whip and gWhip are enabled, compare their globally shortest lengths. gWhip is returned only when strictly shorter; Whip wins ties.",
-    techniqueHeader: "Technique",
-    scoreHeader: "Score",
-    difficultyLevel: "Difficulty {level}",
-    manualMarksTitle: "Manual Marks",
-    manualMarkModeLabel: "Mode",
-    manualMarkLineLabel: "Line",
-    manualMarkColorLabel: "Color",
-    markAddColor: "Add custom color",
-    markCustomColorTitle: "Choose custom mark color",
-    markColorAdded: "Added custom color.",
-    markColorSelected: "Selected color {id}.",
-    markModeOff: "Marks off",
-    markCellColor: "Color cells",
-    markCandidateColor: "Color candidates",
-    markCircle: "Circle candidates",
-    markPreElim: "Pre-eliminations",
-    markElim: "Eliminations",
-    markChain: "Draw chain",
-    markConstruction: "Construction",
-    markMiniRegion: "Mini-Region",
-    markBlock: "Block mark",
-    markPrimary: "Add",
-    markSecondary: "Erase",
-    markPrimaryTitle: "Add the current mark: tap on touch devices or left-click on desktop.",
-    markSecondaryTitle: "Erase the current mark: long-press on touch devices or right-click on desktop.",
-    markStrong: "Strong / solid",
-    markWeak: "Weak / dashed",
-    markConstructionStrong: "Construction strong",
-    markConstructionWeak: "Construction weak",
-    markStrongAction: "Strong",
-    markWeakAction: "Weak",
-    markConstructionStrongAction: "Construction strong",
-    markConstructionWeakAction: "Construction weak",
-    markMiniRegionGreenAction: "Green region",
-    markMiniRegionBlueAction: "Blue region",
-    markMiniRegionGreen: "green",
-    markMiniRegionBlue: "blue",
-    markApplyElims: "Apply all eliminations",
-    markCleanEasy: "With cleaning easy steps",
-    markCleanedEasy: "Cleaned {count} easy steps.",
-    markAppliedElimsWithClean: "Applied {count} manual eliminations and cleaned {easy} easy steps.",
-    markScreenshotButton: "Screenshot",
-    markScreenshotTitle: "Capture the board exactly as currently displayed, including all manual marks. Copies to the clipboard on desktop and opens system share on mobile.",
-    markScreenshotShareTitle: "Sudoku board screenshot",
-    markScreenshotPreparing: "Generating board screenshot...",
-    markScreenshotCopied: "Screenshot copied to clipboard.",
-    markScreenshotShared: "System share opened.",
-    markScreenshotShareCancelled: "Sharing cancelled.",
-    markScreenshotDownloaded: "This browser cannot copy images directly; screenshot downloaded instead.",
-    markScreenshotShareUnavailableDownloaded: "This mobile browser cannot share image files through the system share sheet; the screenshot was downloaded instead.",
-    markScreenshotShareFailedDownloaded: "System sharing failed; the screenshot was downloaded instead: {error}",
-    markScreenshotNoBoard: "There is no board to capture.",
-    markScreenshotFailed: "Screenshot failed: {error}",
-    markNoElimsButCleaned: "No manual eliminations; cleaned {easy} easy steps.",
-    markEasyCleanStopped: "Easy-step cleaning stopped: {reason}",
-    markClearAll: "Clear marks",
-    markUndoLine: "Undo line/region",
-    markCancelChain: "Cancel start",
-    markFinishBlock: "Finish block",
-    markUndoBlock: "Undo block",
-    markOffStatus: "Marks are off.",
-    markCellSelected: "Selected {cell}; choose a digit on the keypad.",
-    markAdded: "Marked {target}.",
-    markRemoved: "Cleared marks on {target}.",
-    markChainStart: "Chain start: {target}. Choose the endpoint.",
-    markChainAdded: "Added chain line: {from} -> {to}.",
-    markChainUpdated: "Changed chain line {from} -> {to} to {type}.",
-    markChainRemoved: "Removed chain line: {from} -> {to}.",
-    markMiniRegionStart: "Mini-Region start: {target}. Choose the second candidate.",
-    markMiniRegionAdded: "Added a {type} Mini-Region: {from} -> {to}.",
-    markMiniRegionUpdated: "Changed Mini-Region {from} -> {to} to {type}.",
-    markMiniRegionRemoved: "Removed Mini-Region: {from} -> {to}.",
-    markExistingCandidateRequired: "{target} is not an active candidate and cannot be used as a chain, construction, Mini-Region, or block endpoint.",
-    mouseCandidateAbsent: "{target} is absent. Restore the candidate with right-click before setting it with left-click.",
-    markBlockAdded: "Added to block: {target}.",
-    markBlockRemoved: "Removed block mark on {target}.",
-    markBlockFinished: "Finished block mark.",
-    markBlockUndone: "Undid the last block mark.",
-    markNoBlock: "No block mark to finish or undo.",
-    markChainCancelled: "Cancelled chain start.",
-    markLineUndone: "Undid the latest chain line or Mini-Region.",
-    markAllCleared: "Cleared all manual marks.",
-    markAppliedElims: "Applied {count} manual eliminations.",
-    markNoElims: "No manual eliminations to apply.",
-    markModeHint: "Mouse: left/right click follows the FB rules. Touch or pen: select a cell, then use the large digit keys and panel buttons. For chains, construction, and Mini-Regions, left/right represent the two relation types.",
-    workerUnsupported: "This browser does not support background Workers",
-    trainingWorkerFailed: "Training puzzle generation failed",
-    trainingWorkerRuntimeFailed: "Training worker failed",
-  },
-};
+const uiText = { zh: {}, en: {} };
+for (const [key, zh, en] of [
+  ["boardHeading", "盘面", "Board"],
+  ["brandSubtitle", "移动优先逻辑训练器", "Mobile-first logic trainer"],
+  ["manualLink", "使用手册", "Manual"],
+  ["techniqueHelp", "技巧说明", "Techniques"],
+  ["initialHint", "等待加载题面。", "Waiting for puzzle to load."],
+  ["branch", "分支", "Branch"],
+  ["allBranches", "全部分支", "All branches"],
+  ["expandBranches", "展开分支选择", "Expand branch selector"],
+  ["collapseBranches", "收起分支选择", "Collapse branch selector"],
+  ["branchPickerLabel", "选择显示的分支", "Choose the branch to display"],
+  ["branchShortcutHint", "快捷键：←/→ 或 [ / ] 顺序切换分支", "Shortcut: ←/→ or [ / ] cycles branches"],
+  ["branchOverview", "全部分支", "All branches"],
+  ["mainActionsLabel", "主要操作", "Main actions"],
+  ["numberPadLabel", "数字键盘", "Number pad"],
+  ["manualMarkActionLabel", "手工标记操作", "Manual mark actions"],
+  ["manualMarkColorsLabel", "手工标记颜色", "Manual mark colors"],
+  ["allStepsFilterAria", "可选步骤过滤", "Available steps filter"],
+  ["filterByTechnique", "按技巧过滤", "Filter by technique"],
+  ["allStepsSortAria", "可选步骤排序", "Available step sort"],
+  ["controls", "操作", "Controls"],
+  ["techniques", "技巧", "Techniques"],
+  ["path", "解题路径", "Solution Path"],
+  ["allSteps", "可选步骤", "Available Steps"],
+  ["generate", "生成", "Generate"],
+  ["generateTraining", "训练生成", "Training puzzle"],
+  ["load", "加载", "Load"],
+  ["undo", "撤销", "Undo"],
+  ["redo", "重做", "Redo"],
+  ["step", "提示一步", "Hint step"],
+  ["solve", "自动解题", "Solve"],
+  ["apply", "应用提示", "Apply hint"],
+  ["stepExplain", "解释", "Explain"],
+  ["stepExplainTitle", "动态教程：为什么这一步成立", "Dynamic tutorial: why this step works"],
+  ["stepExplainUnavailable", "当前没有可解释的步骤。", "No explainable step is selected."],
+  ["close", "关闭", "Close"],
+  ["fullscreen", "全屏", "Fullscreen"],
+  ["exitFullscreen", "退出全屏", "Exit fullscreen"],
+  ["mobileSolveEntry", "做题", "Solve"],
+  ["mobileSolveMode", "做题模式", "Solve mode"],
+  ["mobileSolveExit", "返回", "Back"],
+  ["mobileSolveNewPuzzle", "新题", "New"],
+  ["mobileSolveNewPuzzleTitle", "生成新题", "New puzzle"],
+  ["mobileSolveNewPuzzleHint", "选择难度后生成，生成完成后继续留在做题模式。", "Choose a difficulty and generate without leaving solve mode."],
+  ["mobileSolveNewPuzzleWarning", "当前作答进度或标记将在生成新题后清除。", "Your current progress or manual marks will be cleared when a new puzzle is generated."],
+  ["mobileSolveNewPuzzleConfirm", "当前作答进度或标记将被清除，确定生成新题吗？", "Your current progress or manual marks will be cleared. Generate a new puzzle?"],
+  ["mobileSolveNewPuzzleGenerate", "生成", "Generate"],
+  ["mobileSolveNewPuzzleGenerating", "生成中…", "Generating…"],
+  ["mobileSolveNewPuzzleCancel", "取消", "Cancel"],
+  ["mobileSolveNewPuzzleDifficulty", "难度", "Difficulty"],
+  ["mobileDifficultyRandom", "随机", "Random"],
+  ["mobileDifficultyEasy", "入门", "Easy"],
+  ["mobileDifficultyMedium", "初级", "Medium"],
+  ["mobileDifficultyHard", "进阶", "Hard"],
+  ["mobileDifficultyUnfair", "棘手", "Unfair"],
+  ["mobileDifficultyExtreme", "极限", "Extreme"],
+  ["mobileDifficultyInsane", "骨灰", "Insane"],
+  ["mobileSolveMore", "更多", "More"],
+  ["mobileSolveMoreTitle", "更多功能", "More tools"],
+  ["mobileSolveClear", "清除", "Clear"],
+  ["mobileSolveInput", "题面输入", "Puzzle input"],
+  ["mobileSolveAnalysis", "分析模式", "Analysis mode"],
+  ["mobileSolveLanguage", "语言", "Language"],
+  ["mobileSolveActions", "做题操作", "Solve controls"],
+  ["mobileSolveMarks", "标记", "Marks"],
+  ["mobileSolveMarksActive", "标记中", "Marking"],
+  ["mobileSolveHideMarks", "收起", "Hide"],
+  ["mobileSolveMarksTitle", "手工标记", "Manual marks"],
+  ["mobileSolveHideCandidates", "隐藏候选数", "Hide candidates"],
+  ["mobileSolveShowCandidates", "显示候选数", "Show candidates"],
+  ["mobileSolveDisableSameDigit", "关闭同数字高亮", "Disable same-digit highlight"],
+  ["mobileSolveEnableSameDigit", "开启同数字高亮", "Enable same-digit highlight"],
+  ["mobileInputState", "{mode} · {digit}", "{mode} · {digit}"],
+  ["mobileSelectCellFirst", "请先选择一个单元格。", "Select a cell first."],
+  ["mobileNothingToClear", "当前单元格没有可清除的内容。", "There is nothing to clear in this cell."],
+  ["difficulty", "难度", "Difficulty"],
+  ["training", "训练", "Training"],
+  ["trainingTextFilterButton", "文字过滤", "Text filter"],
+  ["trainingTextFilterTitle", "训练文字过滤", "Training text filter"],
+  ["trainingTextFilterIntro", "条件由前端指定，C++ 后端只在同一个目标技巧步骤内匹配，不会跨步骤拼接。", "The frontend supplies the conditions. The C++ backend matches them within one step of the selected technique; conditions are never combined across steps."],
+  ["trainingTextFilterIncludeLabel", "必须包含", "Must contain"],
+  ["trainingTextFilterIncludeHint", "每行一个条件；同一步必须包含全部非空条件。", "One condition per line; every non-empty condition must occur in the same step."],
+  ["trainingTextFilterIncludePlaceholder", "例如：\nUniqueness Test 7\ngrouped conjugate pair", "Example:\nUniqueness Test 7\ngrouped conjugate pair"],
+  ["trainingTextFilterExcludeLabel", "不得包含", "Must not contain"],
+  ["trainingTextFilterExcludeHint", "每行一个条件；同一步命中任意一项即排除。", "One condition per line; a step is rejected if any condition occurs."],
+  ["trainingTextFilterExcludePlaceholder", "例如：\nS-Ring", "Example:\nS-Ring"],
+  ["trainingTextFilterCaseSensitive", "区分英文字母大小写", "Case-sensitive English matching"],
+  ["trainingTextFilterClear", "清空", "Clear"],
+  ["trainingTextFilterCancel", "取消", "Cancel"],
+  ["trainingTextFilterApply", "应用", "Apply"],
+  ["trainingTextFilterInactiveTitle", "设置训练步骤文字过滤", "Configure training-step text filtering"],
+  ["trainingTextFilterActiveTitle", "文字过滤已启用：包含 {include} 项，排除 {exclude} 项", "Text filter enabled: {include} include, {exclude} exclude"],
+  ["tlgSolverTitle", "TLG Solver", "TLG Solver"],
+  ["tlgSolverEnable", "启用 TLG 编辑", "Enable TLG editing"],
+  ["tlgSolverModeLabel", "输入模式", "Input Mode"],
+  ["tlgModeTruths", "Truths", "Truths"],
+  ["tlgModeLinks", "Links", "Links"],
+  ["tlgModeVirtualSet", "Virtual Set", "Virtual Set"],
+  ["tlgModeAur", "AUR", "AUR"],
+  ["tlgModeDaur", "DAUR", "DAUR"],
+  ["tlgModeGur", "GUR", "GUR"],
+  ["tlgAurGroupLabel", "AUR 分组", "AUR Group"],
+  ["tlgAurGroup1", "AUR 1", "AUR 1"],
+  ["tlgAurGroup2", "AUR 2", "AUR 2"],
+  ["tlgSolverLinkTypeLabel", "Link 类型", "Link Type"],
+  ["tlgLinkAuto", "自动", "Auto"],
+  ["tlgLinkRowColumn", "行/列", "Row/Column"],
+  ["tlgLinkBox", "宫", "Box"],
+  ["tlgLinkCell", "单元格", "Cell"],
+  ["tlgTruthsToApply", "应用 Truths 数", "Truths to Apply"],
+  ["tlgAurPremiseModeLabel", "唯一性门控", "Uniqueness Gate"],
+  ["tlgAurPremiseUnique", "唯一解：核验初始可交换局面", "Unique puzzle: verify initial swap pair"],
+  ["tlgAurPremiseTraining", "训练盘：允许初始缺数", "Training grid: allow missing initial candidates"],
+  ["tlgImportCandidates", "导入 TLG 候选盘面", "Import TLG Candidate Grid"],
+  ["tlgFindEliminations", "查找删数", "Find Eliminations"],
+  ["tlgConvertTruths", "转换冗余 Truths", "Convert Redundant Truths"],
+  ["tlgRemoveUnused", "移除未使用 Links", "Remove Unused Links"],
+  ["tlgClearState", "清空 TLG 状态", "Clear TLG State"],
+  ["tlgLibraryButton", "TLG 题库", "TLG Library"],
+  ["tlgLibraryDialogTitle", "TLG 逻辑题库", "TLG Logic Library"],
+  ["tlgLibraryReadAction", "读取", "Read"],
+  ["tlgLibraryInsertAction", "插入", "Insert"],
+  ["tlgLibraryReplaceAction", "替换", "Replace"],
+  ["tlgLibraryAppendAction", "追加", "Append"],
+  ["tlgLibraryDeleteAction", "删除", "Delete"],
+  ["tlgLibraryImportModeLabel", "导入方式", "Import Mode"],
+  ["tlgLibraryImportAppend", "追加到末尾", "Append to End"],
+  ["tlgLibraryImportInsert", "插入到当前位置", "Insert at Current Position"],
+  ["tlgLibraryImportReplaceAll", "替换整个题库", "Replace Entire Library"],
+  ["tlgLibraryImportAction", "导入 .tlgdb", "Import .tlgdb"],
+  ["tlgLibraryExportSelectedAction", "导出选中", "Export Selected"],
+  ["tlgLibraryExportAllAction", "导出题库", "Export Library"],
+  ["tlgLibraryCopyTextAction", "复制样例", "Copy Case"],
+  ["tlgLibraryCopyCompactAction", "复制单行", "Copy One Line"],
+  ["tlgLibraryPasteTextAction", "粘贴样例", "Paste Case"],
+  ["tlgLibraryImportTextAction", "导入文本", "Import Text"],
+  ["tlgLibraryExportTextAction", "导出文本", "Export Text"],
+  ["tlgLibraryShareToolbarAria", "TLG 文字样例操作", "TLG text-case actions"],
+  ["tlgLibraryShareTextLabel", "文字样例", "Text Case"],
+  ["tlgLibraryShareTextPlaceholder", "粘贴 YZF-TLG-CASE:1 多行样例，或 YZFTLG1 单行样例。", "Paste a multiline YZF-TLG-CASE:1 case or a one-line YZFTLG1 case."],
+  ["tlgLibraryLoadTextAction", "载入样例", "Load Case"],
+  ["tlgLibraryClearTextAction", "清空", "Clear"],
+  ["tlgLibraryCloseTextAction", "收起", "Collapse"],
+  ["tlgLibraryShareEmptyHint", "可粘贴别人分享的 TLG 文字样例；解析成功后会先显示结构摘要。", "Paste a shared TLG text case here. A structure summary is shown before it is loaded."],
+  ["tlgLibrarySearchPlaceholder", "搜索标题、标签、来源或笔记", "Search title, tags, source, or notes"],
+  ["tlgLibraryColumnIndex", "序号", "No."],
+  ["tlgLibraryColumnTitle", "标题", "Title"],
+  ["tlgLibraryColumnType", "类型", "Type"],
+  ["tlgLibraryColumnResult", "结构", "Structure"],
+  ["tlgLibraryEmpty", "题库尚无记录。", "The library has no records yet."],
+  ["tlgLibraryTitleLabel", "标题", "Title"],
+  ["tlgLibraryTagsLabel", "标签", "Tags"],
+  ["tlgLibrarySourceLabel", "来源", "Source"],
+  ["tlgLibraryNotesLabel", "学习笔记", "Study Notes"],
+  ["tlgLibraryTagsPlaceholder", "例如：AUR, Rank 0", "Example: AUR, Rank 0"],
+  ["tlgLibraryEditorHint", "请选择一条记录，或填写资料后保存当前 TLG。", "Select a record, or enter metadata and save the current TLG."],
+  ["tlgLibraryIdle", "本地题库使用固定 2048 字节记录；请定期导出 .tlgdb 备份。", "The local library uses fixed 2048-byte records. Export a .tlgdb backup regularly."],
+  ["tlgLibraryRecordListAria", "TLG 题库记录", "TLG library records"],
+  ["tlgLibraryEditorAria", "TLG 记录资料", "TLG record metadata"],
+  ["tlgLibraryToolbarAria", "题库记录操作", "Library record actions"],
+  ["tlgLibraryDefaultTitle", "TLG 逻辑 {stamp}", "TLG Logic {stamp}"],
+  ["tlgLibraryUntitled", "未命名记录 {index}", "Untitled Record {index}"],
+  ["tlgLibraryUntitledPlain", "未命名记录", "Untitled Record"],
+  ["tlgLibraryResultUnit", "结论", " results"],
+  ["tlgLibraryRecordSummary", "类型：{type}\nTruths：{truths}　Links：{links}\n活动候选：{candidates}　结论：{results}\n最后修改：{date}", "Type: {type}\nTruths: {truths}  Links: {links}\nActive candidates: {candidates}  Results: {results}\nLast modified: {date}"],
+  ["tlgLibraryLoadedToSolver", "已从题库恢复：{title}", "Restored from library: {title}"],
+  ["tlgLibraryNoGrid", "当前没有可保存的数独盘面或候选状态。", "There is no Sudoku grid or candidate state to save."],
+  ["tlgLibraryTextTooLong", "{field} 超过固定记录上限（最多 {limit} 个 UTF-8 字节）。", "{field} exceeds the fixed-record limit ({limit} UTF-8 bytes maximum)."],
+  ["tlgLibraryInvalidRecordSize", "TLG 记录长度不是固定的 2048 字节。", "The TLG record is not the fixed 2048-byte size."],
+  ["tlgLibraryInvalidRecordMagic", "无法识别该 TLG 记录。", "This TLG record is not recognized."],
+  ["tlgLibraryUnsupportedRecordVersion", "暂不支持 TLG 记录版本 {version}。", "TLG record version {version} is not supported."],
+  ["tlgLibraryRecordCrcFailed", "TLG 记录校验失败，内容可能已损坏。", "The TLG record checksum failed; the record may be damaged."],
+  ["tlgLibraryInvalidTextLength", "TLG 记录中的文本长度字段无效。", "A text-length field in the TLG record is invalid."],
+  ["tlgLibraryFileTooShort", "文件过短，不是有效的 TLG 题库。", "The file is too short to be a valid TLG library."],
+  ["tlgLibraryInvalidFileMagic", "文件标识不正确；请选择 YZF TLG .tlgdb 题库。", "Invalid file signature. Select a YZF TLG .tlgdb library."],
+  ["tlgLibraryUnsupportedFileVersion", "暂不支持 TLG 题库版本 {version}。", "TLG library version {version} is not supported."],
+  ["tlgLibraryIncompatibleLayout", "该题库的记录布局与当前版本不兼容。", "This library record layout is incompatible with the current version."],
+  ["tlgLibraryFileLengthMismatch", "题库长度不符：应为 {expected} 字节，实际为 {actual} 字节。", "Library length mismatch: expected {expected} bytes, got {actual} bytes."],
+  ["tlgLibraryHeaderCrcFailed", "题库文件头校验失败。", "The library header checksum failed."],
+  ["tlgLibraryDuplicateIdInFile", "题库文件含有重复记录 ID：{id}。", "The library file contains duplicate record ID {id}."],
+  ["tlgLibraryIndexedDbUnavailable", "当前浏览器不支持本地 TLG 题库存储。", "This browser does not support local TLG library storage."],
+  ["tlgLibraryOpenFailed", "无法打开本地 TLG 题库。", "Could not open the local TLG library."],
+  ["tlgLibraryStorageFailed", "本地 TLG 题库写入失败。", "Could not write the local TLG library."],
+  ["tlgLibraryStoredRecordDamaged", "本地题库第 {id} 条记录已损坏：{error}", "Local record {id} is damaged: {error}"],
+  ["tlgLibrarySelectFirst", "请先选择一条题库记录。", "Select a library record first."],
+  ["tlgLibrarySolverBusy", "TLG 正在计算；请等待当前操作完成后再读取或保存题库。", "TLG is still computing. Wait for the current operation before reading or saving the library."],
+  ["tlgLibraryDuplicateConfirm", "题库中已有相同逻辑（{title}）。仍要保存一份吗？", "The library already contains the same logic ({title}). Save another copy?"],
+  ["tlgLibraryReplaced", "已替换第 {index} 条：{title}", "Replaced record {index}: {title}"],
+  ["tlgLibraryInserted", "已插入为第 {index} 条：{title}", "Inserted as record {index}: {title}"],
+  ["tlgLibraryAppended", "已追加为第 {index} 条：{title}", "Appended as record {index}: {title}"],
+  ["tlgLibraryDeleteConfirm", "确定删除“{title}”吗？", "Delete “{title}”?"],
+  ["tlgLibraryDeleted", "已删除：{title}", "Deleted: {title}"],
+  ["tlgLibraryRead", "已读取：{title}", "Read: {title}"],
+  ["tlgLibraryNothingToExport", "题库中没有可导出的记录。", "There are no records to export."],
+  ["tlgLibraryExportedSelected", "已导出选中记录：{count} 条，{bytes} 字节。", "Exported the selected record: {count} record, {bytes} bytes."],
+  ["tlgLibraryExportedAll", "已导出题库：{count} 条，{bytes} 字节。", "Exported library: {count} records, {bytes} bytes."],
+  ["tlgLibraryEmptyImport", "导入文件不含任何 TLG 记录。", "The imported file contains no TLG records."],
+  ["tlgLibraryReplaceAllConfirm", "这会删除本地现有题库，并用文件中的 {count} 条记录替换。确定继续吗？", "This will delete the current local library and replace it with {count} records from the file. Continue?"],
+  ["tlgLibraryImported", "已导入 {count} 条 TLG 记录。", "Imported {count} TLG records."],
+  ["tlgLibraryImportFailed", "TLG 题库导入失败：{error}", "TLG library import failed: {error}"],
+  ["tlgLibraryTextCopied", "TLG 文字样例已复制到剪贴板（{bytes} 字节）。", "The TLG text case was copied to the clipboard ({bytes} bytes)."],
+  ["tlgLibraryCompactCopied", "TLG 单行样例已复制到剪贴板（{bytes} 字节）。", "The one-line TLG case was copied to the clipboard ({bytes} bytes)."],
+  ["tlgLibraryClipboardReadFailed", "无法直接读取剪贴板；请在文字样例框中手动粘贴。", "The clipboard could not be read directly. Paste into the text-case box manually."],
+  ["tlgLibraryClipboardWriteFailed", "复制失败；请展开文字样例后手动复制。", "Copy failed. Expand the text-case box and copy it manually."],
+  ["tlgLibraryTextExported", "已导出文字样例：{bytes} 字节。", "Exported the text case ({bytes} bytes)."],
+  ["tlgLibraryTextFileReadFailed", "无法读取文字样例文件：{error}", "Could not read the text-case file: {error}"],
+  ["tlgLibraryTextEmpty", "请先粘贴或导入 TLG 文字样例。", "Paste or import a TLG text case first."],
+  ["tlgLibraryTextInvalidHeader", "无法识别 TLG 文字样例格式。", "The TLG text-case format is not recognized."],
+  ["tlgLibraryTextUnsupportedVersion", "暂不支持 TLG 文字样例版本 {version}。", "TLG text-case version {version} is not supported."],
+  ["tlgLibraryTextMissingField", "TLG 文字样例缺少必要字段：{field}。", "The TLG text case is missing required field {field}."],
+  ["tlgLibraryTextInvalidField", "TLG 文字样例字段 {field} 无效。", "Field {field} in the TLG text case is invalid."],
+  ["tlgLibraryTextInvalidCandidate", "无法识别候选：{value}。", "Unrecognized candidate: {value}."],
+  ["tlgLibraryTextInvalidDescriptor", "无法识别 Truth/Link 描述符：{value}。", "Unrecognized Truth/Link descriptor: {value}."],
+  ["tlgLibraryTextInvalidBitmap", "字段 {field} 的候选位图无效。", "The candidate bitmap in field {field} is invalid."],
+  ["tlgLibraryTextCrcFailed", "文字样例校验失败，内容可能被截断或改动。", "The text-case checksum failed; the content may have been truncated or changed."],
+  ["tlgLibraryTextPreview", "标题：{title}\n类型：{type}\nTruths：{truths}　Links：{links}\n活动候选：{candidates}　结论：{results}\n文字大小：{bytes} 字节", "Title: {title}\nType: {type}\nTruths: {truths}  Links: {links}\nActive candidates: {candidates}  Results: {results}\nText size: {bytes} bytes"],
+  ["tlgLibraryTextLoadConfirm", "载入文字样例“{title}”？当前 TLG 临时状态将被替换。", "Load text case “{title}”? The current temporary TLG state will be replaced."],
+  ["tlgLibraryTextLoaded", "已载入文字样例：{title}", "Loaded text case: {title}"],
+  ["tlgLibraryTextParseFailed", "文字样例解析失败：{error}", "Text-case parse failed: {error}"],
+  ["tlgLibraryTextReady", "文字样例解析成功，可以载入。", "The text case parsed successfully and is ready to load."],
+  ["tlgLibraryTextPanelOpened", "请粘贴文字样例，然后确认载入。", "Paste a text case, then confirm to load it."],
+  ["tlgLibraryLoading", "正在读取本地 TLG 题库…", "Loading the local TLG library…"],
+  ["tlgLibraryOpenError", "无法打开 TLG 题库：{error}", "Could not open the TLG library: {error}"],
+  ["tlgStatusOptional", "TLG Solver 是可选附加功能，放在操作区最下方；未启用 TLG 编辑时不会影响现有解题流程。", "TLG Solver is optional and parked at the bottom of Controls. Existing solver behavior is unchanged unless TLG editing is enabled."],
+  ["tlgEditingEnabled", "TLG 编辑已启用", "TLG editing enabled"],
+  ["tlgStateTitle", "当前 TLG 状态", "Current TLG State"],
+  ["tlgSolutionTitle", "Truths/Links 结果", "Truths/Links Result"],
+  ["tlgNoInput", "暂无 TLG 输入。", "No TLG input yet."],
+  ["tlgDebugImport", "调试 / 导入", "Debug / Import"],
+  ["tlgDebugPlaceholder", "仅用于调试导入；TLG 主要通过盘面点击输入。", "Debug import only. Board input is the primary TLG workflow."],
+  ["tlgTruths", "Truths", "Truths"],
+  ["tlgLinks", "Links", "Links"],
+  ["tlgUserLinks", "用户 Links", "User Links"],
+  ["tlgVirtualSet", "Virtual Set", "Virtual Set"],
+  ["tlgAurCorners", "AUR Corners", "AUR Corners"],
+  ["tlgDaurCandidates", "DAUR 候选池", "DAUR Candidate Pool"],
+  ["tlgDaurCandidateAdded", "已加入 DAUR 候选池：{value}", "Added to DAUR candidate pool: {value}"],
+  ["tlgDaurCandidateRemoved", "已移除 DAUR 候选池：{value}", "Removed from DAUR candidate pool: {value}"],
+  ["tlgGurCandidates", "GUR 通用候选云", "GUR Generic Candidate Cloud"],
+  ["tlgGurCandidateAdded", "已加入 GUR 通用候选云：{value}", "Added to GUR candidate cloud: {value}"],
+  ["tlgGurCandidateRemoved", "已移除 GUR 通用候选云：{value}", "Removed from GUR candidate cloud: {value}"],
+  ["tlgAurCornerAddedGroup", "已加入 {group} 角候选：{value}", "Added {group} corner: {value}"],
+  ["tlgAurCornerRemovedGroup", "已移除 {group} 角候选：{value}", "Removed {group} corner: {value}"],
+  ["tlgRemove", "删除", "Remove"],
+  ["tlgRemoved", "已移除 {category}: {value}", "Removed {category}: {value}"],
+  ["tlgVirtualCandidateAdded", "已加入 Virtual Set 候选：{value}", "Added virtual candidate: {value}"],
+  ["tlgVirtualCandidateRemoved", "已移除 Virtual Set 候选：{value}", "Removed virtual candidate: {value}"],
+  ["tlgAurCornerAdded", "已加入 AUR 角候选：{value}", "Added AUR corner: {value}"],
+  ["tlgAurCornerRemoved", "已移除 AUR 角候选：{value}", "Removed AUR corner: {value}"],
+  ["tlgEndpointSelected", "已选端点：{value}。请选择第二个候选。", "Selected endpoint: {value}. Choose a second candidate."],
+  ["tlgTruthAdded", "已添加 truth：{value}", "Added truth: {value}"],
+  ["tlgTruthRemoved", "已移除 truth：{value}", "Removed truth: {value}"],
+  ["tlgLinkAdded", "已添加 link：{value}", "Added link: {value}"],
+  ["tlgLinkRemoved", "已移除 link：{value}", "Removed link: {value}"],
+  ["tlgCellTruthAdded", "已添加 cell truth：{value}", "Added cell truth: {value}"],
+  ["tlgCellTruthRemoved", "已移除 cell truth：{value}", "Removed cell truth: {value}"],
+  ["tlgTruthPairInvalid", "未添加 truth：Truth 模式只接受同一单元格的两个不同候选，或同一 house 中同数字的两个候选。", "Truth not added: Truth mode only accepts two different candidates in one cell, or two same-digit candidates in one house."],
+  ["tlgUnavailable", "tlgSolverFindEliminationsV440 不可用；应用 v440/v441 后需要重新编译 wasm。", "tlgSolverFindEliminationsV440 is not available; rebuild wasm after applying v440/v441."],
+  ["tlgResponse", "TLG Solver 响应", "TLG Solver response"],
+  ["tlgParseFailed", "TLG_SOLVER_RESPONSE_PARSE_FAILED", "TLG_SOLVER_RESPONSE_PARSE_FAILED"],
+  ["tlgFailed", "TLG Solver 失败：{error}", "TLG Solver failed: {error}"],
+  ["tlgFindRunning", "正在查找删数并规范化 Links…", "Finding eliminations and normalizing links…"],
+  ["tlgConvertRunning", "正在按稳定顺序转换 Truths To Links…", "Converting Truths To Links in deterministic order…"],
+  ["tlgRemoveRunning", "正在按稳定顺序移除未使用 Links…", "Removing unused Links in deterministic order…"],
+  ["tlgConvertSummary", "转换完成：Truths={truths}，Links={links}，转换={moved}，删数={elims}", "Convert complete: Truths={truths}, Links={links}, Moved={moved}, Eliminations={elims}"],
+  ["tlgRemoveSummary", "清理完成：Truths={truths}，Links={links}，移除={removed}，删数={elims}", "Cleanup complete: Truths={truths}, Links={links}, Removed={removed}, Eliminations={elims}"],
+  ["tlgPhase1Summary", "查找完成：Truths={truths}，Links={links}，删数={elims}", "Find completed: Truths={truths}, Links={links}, Eliminations={elims}"],
+  ["tlgNoConsequencesSummary", "计算完成，但没有找到 Links 或删数：Truths={truths}", "Computed, but no Links or eliminations were found: Truths={truths}"],
+  ["tlgParsedOnlySummary", "TLG 已解析，但尚未计算删数：Truths={truths}，Links={links}", "TLG parsed, but eliminations were not computed: Truths={truths}, Links={links}"],
+  ["tlgCandidateGridImportedUnique", "TLG 候选盘面已导入：{candidates} 个候选。已保存为初始候选盘，并按唯一解模式核验 AUR/DUR 的初始交换前提。", "TLG candidate grid imported: {candidates} candidates. It is preserved as the initial candidate grid, and AUR/DUR swap premises will be verified in unique-puzzle mode."],
+  ["tlgCandidateGridImportedTraining", "TLG 训练候选盘已导入：{candidates} 个候选。训练模式允许初始缺数，只核验当前 deadly completion。", "TLG training grid imported: {candidates} candidates. Training mode allows missing initial candidates and checks only the current deadly completion."],
+  ["tlgSummaryTruths", "Truths={count}", "Truths={count}"],
+  ["tlgSummaryLinks", "Links={count}", "Links={count}"],
+  ["tlgSummaryUserLinks", "用户 Links={count}", "User Links={count}"],
+  ["tlgSummaryResultLinks", "结果 Links={count}", "Result Links={count}"],
+  ["tlgSummaryVirtual", "Virtual={count}", "Virtual={count}"],
+  ["tlgSummaryAurs", "AUR={count}", "AURs={count}"],
+  ["tlgSummaryAurCorners", "AUR 角候选={count}", "AUR Corners={count}"],
+  ["tlgSummaryDaurCandidates", "DAUR 候选={count}", "DAUR Candidates={count}"],
+  ["tlgSummaryGurCandidates", "GUR 候选={count}", "GUR Candidates={count}"],
+  ["tlgSummaryGurAccepted", "GUR 约束={count}", "GUR Constraints={count}"],
+  ["tlgSummaryPremiseUnique", "门控=唯一解", "Gate=Unique"],
+  ["tlgSummaryPremiseTraining", "门控=训练盘", "Gate=Training"],
+  ["tlgSummaryDaurExpanded", "DAUR→AUR/DUR={count}", "DAUR→AUR/DUR={count}"],
+  ["tlgSummaryGrid", "候选盘={count} 个候选", "Grid={count} Candidates"],
+  ["tlgSummarySelected", "已选={count}", "Selected={count}"],
+  ["tlgSummaryEndpoint", "端点={value}", "Endpoint={value}"],
+  ["tlgSolutionTruths", "{count} Truths = {{body}}", "{count} Truths = {{body}}"],
+  ["tlgSolutionLinks", "{count} Links = {{body}}", "{count} Links = {{body}}"],
+  ["tlgSolutionAurs", "{count} 个定式 AUR = {body}", "{count} Fixed AURs = {body}"],
+  ["tlgSolutionDaurPool", "DAUR 候选池 = {{body}}", "DAUR Pool = {{body}}"],
+  ["tlgSolutionDaurExpanded", "DAUR 展开 AUR/DUR 约束 = {count}", "DAUR Expanded AUR/DUR Constraints = {count}"],
+  ["tlgSolutionGurPool", "GUR 通用候选云 = {{body}}", "GUR Candidate Cloud = {{body}}"],
+  ["tlgSolutionGurAccepted", "GUR 枚举约束 = {count}", "GUR Enumerated Constraints = {count}"],
+  ["tlgSolutionEliminations", "{count} 个删数 --> {body}", "{count} Eliminations --> {body}"],
+  ["tlgSolutionNoEliminations", "0 个删数", "0 Eliminations"],
+  ["tlgSolutionAssignments", "{count} 个出数 --> {body}", "{count} Assignments --> {body}"],
+  ["tlgResultActionFailed", "TLG 操作失败", "TLG action failed"],
+  ["tlgBackendSolutionBudget", "投影解数量超过预算", "solution budget exceeded"],
+  ["tlgBackendSearchBudget", "投影搜索节点超过预算", "search-node budget exceeded"],
+  ["tlgBackendIncompleteSolutionBudget", "投影搜索未完成，无法生成删数：投影解数量超过预算", "Cannot materialize eliminations because the projection search exceeded the solution budget."],
+  ["tlgBackendIncompleteSearchBudget", "投影搜索未完成，无法生成删数：搜索节点超过预算", "Cannot materialize eliminations because the projection search exceeded the search-node budget."],
+  ["tlgBackendInvalidPlan", "规范化方案无效，无法建立投影上下文", "Cannot build a projection context from an invalid normalized plan."],
+  ["tlgBackendNoProjection", "该结构没有合法投影解，无法生成结果", "The structure has no valid projection solution to materialize."],
+  ["tlgBackendNoDaurForms", "DAUR 候选池没有展开出有效的定式 AUR 或六格 DUR", "The DAUR candidate pool did not expand to any valid fixed AUR or six-cell DUR form."],
+  ["tlgBackendNoInitialSwap", "DAUR 候选池没有任何满足初始可交换前提的构型", "The DAUR candidate pool has no form satisfying the initial swap premise."],
+  ["tlgBackendFixedAurInitialSwap", "初始盘面没有同时支持定式 AUR 的两个可交换完成", "The initial grid does not support both swappable completions of the fixed AUR."],
+  ["tlgBackendSixCellInitialSwap", "初始盘面没有支持该六格 DUR 的可交换完成对：", "The initial grid has no swappable completion pair for this six-cell DUR: "],
+  ["tlgBackendTrainingGrid", "使用了 TLG 训练候选盘；未核验唯一解前提", "A TLG training candidate grid was used; the uniqueness premise was not verified."],
+  ["tlgActionsAria", "TLG Solver 操作", "TLG Solver actions"],
+  ["tlgCandidateGridEmpty", "输入框为空；请先粘贴 Sukaku 候选盘面。", "The input box is empty. Paste a Sukaku candidate grid first."],
+  ["tlgCandidateGridInvalid", "无法识别 TLG 候选盘面：需要 729 字符 Sukaku，或 81 个候选单元格。", "Unrecognized TLG candidate grid. Use a 729-character Sukaku or 81 candidate-cell tokens."],
+  ["tlgCandidateGridEmptyCell", "TLG 候选盘面包含无候选单元格：{cell}。", "The TLG candidate grid contains a cell with no candidates: {cell}."],
+  ["tlgContextCandidate", "候选数 {value}", "Candidate {value}"],
+  ["tlgContextCandidates", "已选 {count} 个候选数", "{count} Candidates selected"],
+  ["tlgAddSubTruth", "添加/移除 Truth", "Add/Sub Truth"],
+  ["tlgAddSubLink", "添加/移除 Link", "Add/Sub Link"],
+  ["tlgMenuRow", "行", "Row"],
+  ["tlgMenuColumn", "列", "Column"],
+  ["tlgMenuCell", "单元格", "Cell"],
+  ["tlgMenuBox", "宫", "Box"],
+  ["tlgMenuClearAll", "全部清除", "Clear All"],
+  ["tlgToggleVirtualBatch", "切换到 Virtual Set", "Toggle in Virtual Set"],
+  ["tlgClearVirtualBatch", "清空 Virtual Set", "Clear the Virtual Set"],
+  ["tlgToggleAurBatch", "切换 AUR 角候选", "Toggle AUR Corner"],
+  ["tlgToggleDaurBatch", "切换 DAUR 候选池", "Toggle DAUR Candidate Pool"],
+  ["tlgToggleGurBatch", "切换 GUR 通用候选云", "Toggle GUR Candidate Cloud"],
+  ["tlgClearAurBatch", "清空 AUR 角候选", "Clear AUR Corners"],
+  ["tlgClearAllLogic", "清空全部逻辑", "Clear All Logic"],
+  ["tlgCandidatesSelected", "已选择 {count} 个候选数；电脑右键或手机长按可打开 TLG 菜单。", "{count} candidates selected; right-click on desktop or long-press on touch to open the TLG menu."],
+  ["tlgClearCandidateSelection", "清空候选选择", "Clear Candidate Selection"],
+  ["tlgBatchAdded", "已添加 {count} 个 {kind}。", "Added {count} {kind} descriptors."],
+  ["tlgBatchRemoved", "已移除 {count} 个 {kind}。", "Removed {count} {kind} descriptors."],
+  ["tlgBatchToggledOn", "已加入 {count} 个候选数到 {kind}。", "Added {count} candidates to {kind}."],
+  ["tlgBatchToggledOff", "已从 {kind} 移除 {count} 个候选数。", "Removed {count} candidates from {kind}."],
+  ["tlgTruthsCleared", "已清空全部 Truths。", "Cleared all Truths."],
+  ["tlgLinksCleared", "已清空全部 Links。", "Cleared all Links."],
+  ["tlgVirtualCleared", "已清空 Virtual Set。", "Cleared the Virtual Set."],
+  ["tlgAurCleared", "已清空全部 AUR 角候选。", "Cleared all AUR corners."],
+  ["tlgDaurCleared", "已清空 DAUR 候选池。", "Cleared the DAUR candidate pool."],
+  ["tlgGurCleared", "已清空 GUR 通用候选云。", "Cleared the GUR candidate cloud."],
+  ["tlgLogicCleared", "已清空全部 TLG 逻辑；候选盘面保持不变。", "Cleared all TLG logic; the candidate grid was preserved."],
+  ["batchGenerate", "批量任务", "Batch tasks"],
+  ["batchMode", "模式", "Mode"],
+  ["batchModeGenerate", "批量出题", "Batch generation"],
+  ["batchModeSolve", "批量解题", "Batch solving"],
+  ["batchSolveFile", "解题输入文件", "Solve input file"],
+  ["batchSolveFileHint", "从文本文件载入，一行一题。", "Load a text file; one puzzle per line."],
+  ["filename", "输出文件名", "Output filename"],
+  ["startBatch", "开始", "Start"],
+  ["stop", "停止", "Stop"],
+  ["batchStatusIdle", "批量出题/批量解题共用面板。批量出题持续写入输出文件，批量解题从文本文件读取，一行一题。", "Shared panel for batch generation and solving. Generation writes continuously; solving reads a text file, one puzzle per line."],
+  ["moreInput", "更多：题面输入与导出评分", "More: puzzle input, export, and rating"],
+  ["preferClipboardLoad", "剪贴板优先", "Clipboard first"],
+  ["preferClipboardLoadTitle", "加载题目时优先使用剪贴板，失败后再用文本框", "Prefer clipboard when loading puzzles, then fall back to the text box"],
+  ["exportPuzzle", "导出题串", "Export puzzle"],
+  ["exportFormatLabel", "导出格式", "Export format"],
+  ["exportFormatOriginal", "原始题串", "Original puzzle"],
+  ["exportFormatKnown", "已知数字串", "Known digits"],
+  ["exportFormatCandidates", "候选数字串", "Candidates text"],
+  ["exportFormatSukaku", "Sukaku 字串", "Sukaku string"],
+  ["exportFormatLibrary", "Library 题串", "Library string"],
+  ["exportFormatCoach", "To Coach", "To Coach"],
+  ["clearSavedSession", "清除本地现场", "Clear saved session"],
+  ["clearSavedSessionTitle", "清除浏览器中自动保存的上次盘面和技巧配置；不会清空当前盘面。", "Clear the last board and technique settings saved in this browser; the current board is not cleared."],
+  ["sessionRestored", "已恢复上次关闭时的盘面和技巧配置。", "Restored the board and technique settings from the last session."],
+  ["sessionRestoreFailed", "恢复上次现场失败：{message}", "Failed to restore the last session: {message}"],
+  ["sessionCleared", "已清除本地保存的盘面和技巧配置。", "Cleared the saved board and technique settings in this browser."],
+  ["ratePuzzle", "评分当前题目", "Rate puzzle"],
+  ["rateCancel", "取消评分", "Cancel rating"],
+  ["rateStarting", "正在启动后台评分……再次点击可取消。", "Starting background rating... Click again to cancel."],
+  ["rateRunning", "正在后台评分：已运行 {seconds} 秒。再次点击可取消。", "Rating in the background: {seconds} seconds elapsed. Click again to cancel."],
+  ["rateCancelled", "评分已取消。", "Rating cancelled."],
+  ["rateWorkerFailed", "后台评分失败：{error}", "Background rating failed: {error}"],
+  ["rateForegroundFallback", "当前环境不支持后台 Worker，评分将在前台运行，期间界面可能暂时无响应。", "Background Worker is unavailable in this environment. Rating will run on the main thread and the page may temporarily stop responding."],
+  ["allStepsFilterPlaceholder", "过滤：技巧、删数或描述", "Filter: technique / action / description"],
+  ["allTechniques", "全部技巧", "All techniques"],
+  ["defaultSort", "默认排序", "Default order"],
+  ["conclusionSort", "出数/删数优先", "Placements/eliminations first"],
+  ["replaceable", "可替换", "Replaceable"],
+  ["clear", "清除", "Clear"],
+  ["noAllSteps", "暂无可选步骤。", "No available steps yet."],
+  ["overlayLegend", "图例", "Overlay legend"],
+  ["onNode", "ON node：绿色小点", "ON node: green dot"],
+  ["offNode", "OFF node：橙色小点", "OFF node: orange dot"],
+  ["groupedSector", "GroupedSector：组合候选区域", "GroupedSector: grouped candidate area"],
+  ["strongEdge", "Strong edge：实线", "Strong edge: solid line"],
+  ["weakEdge", "Weak edge：虚线", "Weak edge: dashed line"],
+  ["groupEdge", "组合边：紫色", "Group edge: purple"],
+  ["afAux", "AF 辅助：cover row 水平，cover column 垂直", "AF auxiliary: cover row horizontal; cover column vertical"],
+  ["debugCandidate", "Debug candidate：红叉，仅调试", "Debug candidate: red cross, debug only"],
+  ["overlayDebugOnly", "仅调试，不作为正式删数", "Debug only; not a formal elimination"],
+  ["chooseDigit", "选择数字", "Choose digit"],
+  ["candidateMode", "候选", "Candidates"],
+  ["valueMode", "出数", "Values"],
+  ["inputModeTitle", "触摸/触控笔：切换出数/候选模式，先选数字再点格。鼠标直接在盘面使用左/右键。", "Touch/pen: toggle Value/Candidate, choose a digit, then tap a cell. Mouse input uses direct left/right clicks on the board."],
+  ["currentInput", "当前", "Current"],
+  ["techPresetAll", "全选", "All In"],
+  ["techPresetHighSpeed", "高速", "High Speed"],
+  ["techPresetExtremeSpeed", "极速", "Extreme Speed"],
+  ["techPresetWhipRating", "whip评分", "Whip Rating"],
+  ["techPresetBraidRating", "braid评分", "Braid Rating"],
+  ["techniquePresetApplied", "已应用技巧预设：{preset}。", "Applied technique preset: {preset}."],
+  ["wasmLoadFailed", "wasm 加载失败", "wasm load failed"],
+  ["scriptLoadFailed", "脚本加载失败：{src}", "Script load failed: {src}"],
+  ["unsupportedFullscreen", "当前浏览器不支持网页全屏，请尝试添加到主屏幕/PWA，或使用安卓 Chrome 测试。", "This browser does not support page fullscreen. Try adding it to the home screen/PWA, or use Chrome on Android."],
+  ["fullscreenFailed", "全屏失败", "Fullscreen failed"],
+  ["optionsUpdated", "技巧配置已更新。", "Technique settings updated."],
+  ["operationFailed", "操作失败。", "Operation failed."],
+  ["fixedCell", "题目固定数不可修改。", "Givens cannot be edited."],
+  ["fixedCandidate", "题目固定数不可修改候选。", "Candidates on givens cannot be edited."],
+  ["solvedCandidate", "已出数格不可修改候选。", "Candidates on solved cells cannot be edited."],
+  ["importClipboardRetry", "输入区内容不是合法题串，已从剪贴板读取并尝试加载。", "The input is not a valid puzzle string; read from the clipboard and tried loading it."],
+  ["loadFailedPrefix", "加载失败：", "Load failed: "],
+  ["importUnknownFormat", "未识别的题面格式", "Unrecognized puzzle format"],
+  ["importedPuzzle", "已导入：{format}{candidates}。", "Imported: {format}{candidates}."],
+  ["importedWithCandidates", "，含候选数", ", with candidates"],
+  ["ocrDoneLog", "本地图片识别完成。{attribution}", "Local image recognition completed. {attribution}"],
+  ["ocrDoneLogNoAttribution", "本地图片识别完成。", "Local image recognition completed."],
+  ["ocrDoneStatus", "本地图片识别完成：{clue} 个提示数，{userDigits} 个出数，{cand} 个候选格。{uniqueText} {draftText}", "Local image recognition completed: {clue} givens, {userDigits} solved digits, {cand} candidate cells. {uniqueText} {draftText}"],
+  ["ocrNoImageSelected", "未选择图片", "No image selected"],
+  ["ocrInvalidImageFile", "请选择 PNG/JPG/WebP 等图片文件。", "Please choose a PNG/JPG/WebP image file."],
+  ["ocrRecognizingLocal", "正在本地识别图片……首次加载模型可能稍慢。不会上传图片，也不会访问 sudoku-ocr.com。", "Recognizing the image locally... First model load may be slow. No image is uploaded and sudoku-ocr.com is not used."],
+  ["ocrResourceWasm", "运行库", "runtime"],
+  ["ocrResourceLocalizer", "定位模型", "localizer model"],
+  ["ocrResourceClassifier", "识别模型", "classifier model"],
+  ["ocrResourceModule", "模块", "module"],
+  ["ocrResourceProgress", "正在准备 OCR {asset}：{loaded}/{total} MB（{percent}%）", "Preparing OCR {asset}: {loaded}/{total} MB ({percent}%)"],
+  ["ocrResourceResume", "正在续传 OCR {asset}：已保存 {loaded}/{total} MB（{percent}%）", "Resuming OCR {asset}: {loaded}/{total} MB saved ({percent}%)"],
+  ["ocrResourceCache", "正在从本地缓存读取 OCR {asset}：{loaded}/{total} MB（{percent}%）", "Reading OCR {asset} from local cache: {loaded}/{total} MB ({percent}%)"],
+  ["ocrResourceRetry", "OCR {asset} 下载中断，正在第 {attempt} 次重试……", "OCR {asset} download was interrupted; retrying (attempt {attempt})..."],
+  ["ocrResourceProbe", "正在检测 OCR {asset} 是否支持断点续传……", "Checking whether OCR {asset} supports resumable download..."],
+  ["ocrResourceAssembling", "OCR {asset} 下载完成，正在组装并校验……", "OCR {asset} download completed; assembling and validating..."],
+  ["ocrNoCoachJson", "OCR 未返回 Coach JSON", "OCR did not return Coach JSON"],
+  ["ocrFailed", "本地图片识别失败：{message}", "Local image recognition failed: {message}"],
+  ["ocrAttribution", "数独图片识别使用 Alex Kubiesa / Sudoku OCR 训练的本地模型；未使用在线 fallback。", "Sudoku image recognition uses a local model trained by Alex Kubiesa / Sudoku OCR; no online fallback is used."],
+  ["ocrPickImage", "选择图片识别", "Recognize image"],
+  ["ocrCameraImage", "拍照识别", "Take photo"],
+  ["ocrClipboardImage", "从剪贴板识别", "Recognize clipboard"],
+  ["ocrClipboardUnsupported", "当前浏览器不支持按钮读取剪贴板图片。桌面端可复制截图后按 Ctrl+V；手机端请用“选择图片识别”或“拍照识别”。", "This browser does not support reading clipboard images from a button. On desktop, copy a screenshot and press Ctrl+V; on mobile, use Recognize image or Take photo."],
+  ["ocrReadingClipboard", "正在读取剪贴板图片……", "Reading clipboard image..."],
+  ["ocrClipboardNoImage", "剪贴板中没有图片。请先截图/复制图片，或使用“选择图片识别”“拍照识别”。", "No image found in the clipboard. Copy a screenshot first, or use Recognize image / Take photo."],
+  ["ocrClipboardReadFailed", "读取剪贴板图片失败：{message}。桌面端也可以直接按 Ctrl+V 粘贴截图。", "Failed to read clipboard image: {message}. On desktop, you can also press Ctrl+V after copying a screenshot."],
+  ["clipboardReadUnsupported", "当前浏览器不支持读取剪贴板", "This browser does not support reading text from the clipboard"],
+  ["clipboardEmpty", "剪贴板为空", "Clipboard is empty"],
+  ["clipboardPreferredLoaded", "已优先从剪贴板读取并尝试加载。", "Read the puzzle from the clipboard first and tried loading it."],
+  ["clipboardPreferredFailed", "剪贴板读取/导入失败，已改用输入框内容：{error}", "Clipboard read/import failed, so the text box content was used instead: {error}"],
+  ["inputEmptyClipboardLoaded", "输入区为空，已从剪贴板读取并尝试加载。", "Input was empty; read from the clipboard and tried loading it."],
+  ["inputEmptyClipboardFailed", "输入区为空，且无法读取剪贴板：{error}", "Input was empty and clipboard read failed: {error}"],
+  ["workerTaskFailed", "后台任务失败", "Background task failed"],
+  ["solveBusy", "自动解题中...", "Solving..."],
+  ["findAllBusy", "搜索中...", "Searching..."],
+  ["wasmLoaded", "wasm 已加载。", "wasm loaded."],
+  ["exportCopied", "题串已导出并复制到剪贴板。", "Puzzle string exported and copied to the clipboard."],
+  ["exportToInput", "题串已导出到输入框。", "Puzzle string exported to the input box."],
+  ["rateNoPuzzle", "评分失败：当前没有有效题串。", "Rating failed: no valid puzzle string is available."],
+  ["rateFailedSimple", "评分失败。", "Rating failed."],
+  ["rateInputSuffix", "。输入格式：{format}{mode}", ". Input format: {format}{mode}"],
+  ["rateUseCandidateState", "，使用候选状态，SKFR=rateSukaku", ", using candidate state, SKFR=rateSukaku"],
+  ["rateUsePuzzle", "，SKFR=ratePuzzle", ", SKFR=ratePuzzle"],
+  ["applyPreviewNoAfter", "应用预览步骤失败：无法由 before+step 生成 after。", "Failed to apply preview step: cannot produce after from before+step."],
+  ["applyPreviewImportFailed", "应用预览步骤失败：{error}", "Failed to apply preview step: {error}"],
+  ["importFailedGeneric", "无法导入", "cannot import"],
+  ["appliedPreviewStep", "已应用当前预览步骤。", "Applied the current preview step."],
+  ["appliedHint", "已应用当前提示。", "Applied the current hint."],
+  ["allStepsCannotSerialize", "所有步骤搜索失败：当前盘面无法序列化为候选盘状态。", "All-steps search failed: the current board cannot be serialized with candidate state."],
+  ["allStepsFailed", "所有步骤搜索失败：{error}", "All-steps search failed: {error}"],
+  ["allStepsSourceStep", "，来源步骤 #{step}", ", source step #{step}"],
+  ["elapsedMs", "，用时 {elapsed} ms", ", elapsed {elapsed} ms"],
+  ["allStepsFound", "当前盘面共找到 {count} 个可用步骤{source}{time}。", "Found {count} available steps for the current board{source}{time}."],
+  ["unknownError", "未知错误", "unknown error"],
+  ["undoDone", "已撤销一步。", "Undid one step."],
+  ["undoNone", "没有可撤销的步骤。", "No step to undo."],
+  ["redoDone", "已重做一步。", "Redid one step."],
+  ["redoNone", "没有可重做的步骤。", "No step to redo."],
+  ["allStepsFilterShowing", "显示 {shown} / {total}", "Showing {shown} / {total}"],
+  ["allStepsFilterKeyword", "关键词：{query}", "Keyword: {query}"],
+  ["allStepsFilterTechnique", "技巧：{technique}", "Technique: {technique}"],
+  ["allStepsFilterConclusionSort", "排序：出数/删数优先", "Sort: placements/eliminations first"],
+  ["allStepsFilterReplaceableOnly", "仅可替换", "Replaceable only"],
+  ["listSeparator", "；", "; "],
+  ["solvePathCannotSerialize", "自动解题失败：当前盘面无法序列化为候选盘状态。", "Auto solve failed: the current board cannot be serialized with candidate state."],
+  ["solveCompleted", "自动解题完成：status={status}，步骤 {steps}，用时 {elapsed} ms。", "Auto solve completed: status={status}, steps {steps}, elapsed {elapsed} ms."],
+  ["solvePathRenderFailed", "解题路径渲染失败：{error}", "Failed to render solve path: {error}"],
+  ["solveFailed", "自动解题失败：{error}", "Auto solve failed: {error}"],
+  ["generatingPuzzle", "正在生成题目：{difficulty}...", "Generating puzzle: {difficulty}..."],
+  ["generateFailed", "{difficulty} 生成失败{last}。", "{difficulty} generation failed{last}."],
+  ["lastRating", "，最后评分 {rating}", ", last rating {rating}"],
+  ["generatedPuzzle", "已生成 {difficulty}：{clues} 个已知数，{rating}。", "Generated {difficulty}: {clues} givens, {rating}."],
+  ["noTrainingTechnique", "未指定技巧", "No specific technique"],
+  ["difficultyTitle", "生成题目时使用参考项目的 ER 难度分档", "Use the reference ER difficulty bands when generating puzzles"],
+  ["trainingTitle", "生成解题路径中包含指定技巧的题目", "Generate a puzzle whose solve path contains the selected technique"],
+  ["unrated", "未评分", "Unrated"],
+  ["ratingFailed", "评分未通过：{rating}", "Rating failed: {rating}"],
+  ["seconds", "{seconds} 秒", "{seconds}s"],
+  ["stoppingBatch", "正在停止批量出题...", "Stopping batch generation..."],
+  ["batchTrainingStart", "批量训练题库开始：技巧 {technique}，难度 {difficulty}。点击停止结束并写入文件。", "Training batch started: technique {technique}, difficulty {difficulty}. Click Stop to finish and write the file."],
+  ["batchStart", "批量出题开始：难度 {difficulty}。点击停止结束并写入文件。", "Batch generation started: difficulty {difficulty}. Click Stop to finish and write the file."],
+  ["batchSolveStart", "批量解题开始：目标 {target} 题。", "Batch solving started: target {target} puzzles."],
+  ["batchStoppingPrefix", "正在停止，", "Stopping, "],
+  ["batchLastPuzzle", "，上一题 {attempts}", ", previous puzzle {attempts}"],
+  ["batchTrainingProgress", "{prefix}批量训练题库中：已生成 {generated} 题，批次 {attempts}，失败 {failed} 次{last}，已用时 {elapsed}。", "{prefix}Training batch: generated {generated}, batches {attempts}, failures {failed}{last}, elapsed {elapsed}."],
+  ["batchProgress", "{prefix}批量出题中：已生成 {generated} 题，批次 {attempts}，失败 {failed} 次{last}，已用时 {elapsed}。", "{prefix}Batch generation: generated {generated}, attempts {attempts}, failures {failed}{last}, elapsed {elapsed}."],
+  ["batchSolveProgress", "{prefix}批量解题中：{generated}/{target}，失败 {failed} 次{last}，已用时 {elapsed}。", "{prefix}Batch solving: {generated}/{target}, failures {failed}{last}, elapsed {elapsed}."],
+  ["batchLatest", "{status} 最新 {rating}。", "{status} Latest {rating}."],
+  ["batchSearchAttempts", "搜索 {attempts} 次", "searched {attempts} times"],
+  ["batchGenerateAttempts", "生成 {attempts} 次", "generated {attempts} times"],
+  ["batchWrittenDirect", "已写入磁盘文件", "Written to disk file"],
+  ["batchDownloadReady", "已生成下载文件", "Download file generated"],
+  ["batchTrainingDone", "{mode}：{filename}，训练技巧 {technique}，成功 {generated} 题，批次 {attempts}，总用时 {elapsed}。", "{mode}: {filename}, technique {technique}, success {generated}, batches {attempts}, total time {elapsed}."],
+  ["batchDone", "{mode}：{filename}，成功 {generated} 题，尝试 {attempts} 次，总用时 {elapsed}。", "{mode}: {filename}, success {generated}, attempts {attempts}, total time {elapsed}."],
+  ["batchSolveDone", "{mode}：{filename}，解题 {generated}/{target}，失败 {failed} 次，总用时 {elapsed}。", "{mode}: {filename}, solved {generated}/{target}, failures {failed}, total time {elapsed}."],
+  ["batchCancelled", "批量任务已停止。", "Batch task stopped."],
+  ["batchFailed", "批量任务失败：{error}", "Batch task failed: {error}"],
+  ["batchSolveNoInput", "请先选择批量解题输入文件。文件需为纯文本，一行一题。", "Choose a batch solving input file first. It must be plain text, one puzzle per line."],
+  ["batchInvalidStep", "批量出题发现技巧错误，已停止：{detail}", "Batch stopped on an invalid step: {detail}"],
+  ["invalidStep", "步骤无效", "Invalid step"],
+  ["trainingNeedTechnique", "请先在“训练”下拉框选择一个技巧。", "Choose a technique in the Training dropdown first."],
+  ["trainingSearching", "正在搜索包含 {technique} 的训练题，已用时 {elapsed}...", "Searching for a training puzzle containing {technique}; elapsed {elapsed}..."],
+  ["trainingInvalidSyncFailed", "训练生成发现技巧错误，但失败谜题同步到主引擎失败。", "Training generation found an invalid technique, but syncing the failed puzzle to the main engine failed."],
+  ["trainingInvalidFound", "训练生成中发现技巧错误{detail}{step}", "Training generation found an invalid technique{detail}{step}"],
+  ["trainingStepTextPrefix", "；{step}", "; {step}"],
+  ["trainingFailed", "训练题生成失败：{error}{last}。", "Training puzzle generation failed: {error}{last}."],
+  ["trainingSyncFailed", "训练题已生成，但主引擎同步失败。", "Training puzzle was generated, but syncing it to the main engine failed."],
+  ["trainingGenerated", "已生成 {technique} 训练题：尝试 {attempts} 次，{rating}。", "Generated {technique} training puzzle: {attempts} attempts, {rating}."],
+  ["exportUnavailable", "当前盘面无法导出：没有有效 81 位题面或候选盘状态。", "Cannot export the current board: no valid 81-char puzzle or candidate state."],
+  ["coachCompressUnsupported", "当前环境不支持 Coach 题串压缩", "This environment does not support Coach string compression"],
+  ["coachDecompressUnsupported", "当前环境不支持 Coach 题串解压", "This environment does not support Coach string decompression"],
+  ["coachInvalidChar", "Coach 编码包含非法字符：{ch}", "Coach encoding contains an invalid character: {ch}"],
+  ["currentStateSyncFailed", "当前盘面状态同步失败：{error}", "Failed to sync the current board state: {error}"],
+  ["waitingWasm", "等待 wasm 加载。", "Waiting for wasm to load."],
+  ["branchShorter", "路径缩短 {count} 步", "Path shortened by {count} step(s)"],
+  ["branchLonger", "路径增加 {count} 步", "Path lengthened by {count} step(s)"],
+  ["branchStepsUnchanged", "步数未变", "Step count unchanged"],
+  ["branchScoreLower", "评分降低 {score}", "Rating decreased by {score}"],
+  ["branchScoreHigher", "评分提高 {score}", "Rating increased by {score}"],
+  ["branchScoreUnchanged", "评分未变", "Rating unchanged"],
+  ["branchAppliedTitle", "分叉路径已应用", "Branched path applied"],
+  ["branchStepLabel", "第 {index} 步", "Step {index}"],
+  ["branchSomeStep", "某一步", "one step"],
+  ["branchPanelDetail", "{step} ← 可选 #{candidate}；步数 {oldSteps}→{newSteps}（{stepDelta}），评分 {oldScore}→{newScore}（{scoreDelta}），hash={hash}", "{step} ← option #{candidate}; steps {oldSteps}→{newSteps} ({stepDelta}), rating {oldScore}→{newScore} ({scoreDelta}), hash={hash}"],
+  ["branchOldStep", "原步骤", "old step"],
+  ["branchNewStep", "新步骤", "new step"],
+  ["branchUnnamedStep", "未命名步骤", "unnamed step"],
+  ["branchTechniqueChanged", "技法变化：{oldTitle} → {newTitle}", "Technique changed: {oldTitle} → {newTitle}"],
+  ["branchTechniqueKept", "技法保持：{title}", "Technique unchanged: {title}"],
+  ["branchUndoButton", "撤销分叉", "Undo branch"],
+  ["branchNoUndo", "没有可撤销的分叉路径。", "No branched path to undo."],
+  ["branchUndoDone", "已撤销最近一次分叉，恢复原解题路径。", "Undid the latest branch and restored the original solve path."],
+  ["branchNotBound", "当前可选步骤没有绑定到解题路径中的 before 盘面，不能替换路径。", "This optional step is not bound to a before-board in the solve path, so it cannot replace the path."],
+  ["branchMissingApi", "当前 wasm 尚未包含 solve_path_for_import_json，请重新编译并刷新页面。", "The current wasm build does not include solve_path_for_import_json; rebuild and refresh."],
+  ["branchNoMatchingBefore", "替换失败：自动解题路径中没有找到相同 beforeHash 的步骤。", "Replacement failed: no step with the same beforeHash was found in the auto-solve path."],
+  ["branchSameStep", "可选步骤与当前路径第 {index} 步相同，未替换。", "The optional step is the same as path step {index}; nothing was replaced."],
+  ["branchApplyAfterFailed", "替换失败：无法由 before + 可选步骤推出后续盘面。", "Replacement failed: could not produce the after-board from before + optional step."],
+  ["branchSerializeFailed", "替换失败：替换后的盘面无法序列化为候选盘状态。", "Replacement failed: the board after replacement cannot be serialized with candidate state."],
+  ["branchTailFailed", "替换失败：后续路径重算失败：{error}", "Replacement failed: recomputing the tail path failed: {error}"],
+  ["branchReplaced", "已用可选步骤替换第 {index} 步，并从此处重算后续路径。新路径 {steps} 步。", "Replaced path step {index} with the optional step and recomputed the tail. New path has {steps} step(s)."],
+  ["branchRowTitle", "单击预览；右键或长按：替换路径并从此处重算", "Click to preview; right-click or long-press to replace the path from here"],
+  ["whipMemoryLabel", "Whip/gWhip 内存：", "Whip/gWhip memory:"],
+  ["whipMemoryAuto", "自动（普通求解关闭，Whip 评分开启）", "Auto (off for normal solving, on for Whip rating)"],
+  ["whipMemoryNormal", "普通（速度优先）", "Normal (speed first)"],
+  ["whipMemoryLarge", "大内存（覆盖率优先）", "Large memory (coverage first)"],
+  ["whipMemoryTitle", "影响 Whip/gWhip 队列上限：普通 Whip 19000、gWhip 50000；大内存 99000。", "Controls Whip/gWhip queue limits: normal Whip 19000, gWhip 50000; large memory 99000."],
+  ["whipCompareGWhipLabel", "gWhip 参与最短长度比较", "Compare shortest length with gWhip"],
+  ["whipCompareGWhipTitle", "启用后，当 Whip 与 gWhip 同时开启时比较两者的全局最短长度；仅当 gWhip 更短时返回 gWhip，同长度仍优先 Whip。", "When both Whip and gWhip are enabled, compare their globally shortest lengths. gWhip is returned only when strictly shorter; Whip wins ties."],
+  ["techniqueHeader", "技巧", "Technique"],
+  ["scoreHeader", "评分", "Score"],
+  ["difficultyLevel", "难度 {level}", "Difficulty {level}"],
+  ["manualMarksTitle", "手工标记", "Manual Marks"],
+  ["manualMarkModeLabel", "模式", "Mode"],
+  ["manualMarkLineLabel", "链线", "Line"],
+  ["manualMarkColorLabel", "颜色", "Color"],
+  ["markAddColor", "添加自定义色", "Add custom color"],
+  ["markCustomColorTitle", "选择自定义标记颜色", "Choose custom mark color"],
+  ["markColorAdded", "已添加自定义颜色。", "Added custom color."],
+  ["markColorSelected", "已选择颜色 {id}。", "Selected color {id}."],
+  ["markModeOff", "关闭标记", "Marks off"],
+  ["markCellColor", "整格上色", "Color cells"],
+  ["markCandidateColor", "候选上色", "Color candidates"],
+  ["markCircle", "候选画圈", "Circle candidates"],
+  ["markPreElim", "预备删数", "Pre-eliminations"],
+  ["markElim", "正式删数", "Eliminations"],
+  ["markChain", "手动画链", "Draw chain"],
+  ["markConstruction", "构造链", "Construction"],
+  ["markMiniRegion", "微型区域", "Mini-Region"],
+  ["markBlock", "区块标记", "Block mark"],
+  ["markPrimary", "添加", "Add"],
+  ["markSecondary", "删除", "Erase"],
+  ["markPrimaryTitle", "添加当前模式标记；手机轻触目标，电脑左键目标。", "Add the current mark: tap on touch devices or left-click on desktop."],
+  ["markSecondaryTitle", "删除当前模式标记；手机长按目标，电脑右键目标。", "Erase the current mark: long-press on touch devices or right-click on desktop."],
+  ["markStrong", "强链（实线）", "Strong / solid"],
+  ["markWeak", "弱链（虚线）", "Weak / dashed"],
+  ["markConstructionStrong", "构造强链", "Construction strong"],
+  ["markConstructionWeak", "构造弱链", "Construction weak"],
+  ["markStrongAction", "强链", "Strong"],
+  ["markWeakAction", "弱链", "Weak"],
+  ["markConstructionStrongAction", "构造强链", "Construction strong"],
+  ["markConstructionWeakAction", "构造弱链", "Construction weak"],
+  ["markMiniRegionGreenAction", "绿色区域", "Green region"],
+  ["markMiniRegionBlueAction", "蓝色区域", "Blue region"],
+  ["markMiniRegionGreen", "绿色", "green"],
+  ["markMiniRegionBlue", "蓝色", "blue"],
+  ["markApplyElims", "应用全部删数", "Apply all eliminations"],
+  ["markCleanEasy", "清除简单步骤", "With cleaning easy steps"],
+  ["markCleanedEasy", "已清除 {count} 个简单步骤。", "Cleaned {count} easy steps."],
+  ["markAppliedElimsWithClean", "已应用 {count} 个手工删数，并清除 {easy} 个简单步骤。", "Applied {count} manual eliminations and cleaned {easy} easy steps."],
+  ["markScreenshotButton", "截图", "Screenshot"],
+  ["markScreenshotTitle", "按屏幕当前显示原样截图盘面及全部手工标记。桌面端复制到剪贴板，手机端打开系统分享。", "Capture the board exactly as currently displayed, including all manual marks. Copies to the clipboard on desktop and opens system share on mobile."],
+  ["markScreenshotShareTitle", "数独盘面截图", "Sudoku board screenshot"],
+  ["markScreenshotPreparing", "正在生成盘面截图……", "Generating board screenshot..."],
+  ["markScreenshotCopied", "已复制截图到剪贴板。", "Screenshot copied to clipboard."],
+  ["markScreenshotShared", "已打开系统分享。", "System share opened."],
+  ["markScreenshotShareCancelled", "已取消分享。", "Sharing cancelled."],
+  ["markScreenshotDownloaded", "浏览器不支持直接复制图片，已下载截图。", "This browser cannot copy images directly; screenshot downloaded instead."],
+  ["markScreenshotShareUnavailableDownloaded", "当前手机浏览器不支持图片系统分享，已下载截图。", "This mobile browser cannot share image files through the system share sheet; the screenshot was downloaded instead."],
+  ["markScreenshotShareFailedDownloaded", "系统分享失败，已下载截图：{error}", "System sharing failed; the screenshot was downloaded instead: {error}"],
+  ["markScreenshotNoBoard", "当前没有可截图的盘面。", "There is no board to capture."],
+  ["markScreenshotFailed", "截图失败：{error}", "Screenshot failed: {error}"],
+  ["markNoElimsButCleaned", "没有手工删数，已清除 {easy} 个简单步骤。", "No manual eliminations; cleaned {easy} easy steps."],
+  ["markEasyCleanStopped", "简单步骤清除已停止：{reason}", "Easy-step cleaning stopped: {reason}"],
+  ["markClearAll", "清空标记", "Clear marks"],
+  ["markUndoLine", "撤销线/区域", "Undo line/region"],
+  ["markCancelChain", "取消起点", "Cancel start"],
+  ["markFinishBlock", "完成区块", "Finish block"],
+  ["markUndoBlock", "撤销区块", "Undo block"],
+  ["markOffStatus", "关闭标记。", "Marks are off."],
+  ["markCellSelected", "已选 {cell}，请点数字选择候选。", "Selected {cell}; choose a digit on the keypad."],
+  ["markAdded", "已标记 {target}。", "Marked {target}."],
+  ["markRemoved", "已清除 {target} 的标记。", "Cleared marks on {target}."],
+  ["markChainStart", "链起点：{target}。请选择终点。", "Chain start: {target}. Choose the endpoint."],
+  ["markChainAdded", "已添加链线：{from} -> {to}。", "Added chain line: {from} -> {to}."],
+  ["markChainUpdated", "已将链线 {from} -> {to} 改为{type}。", "Changed chain line {from} -> {to} to {type}."],
+  ["markChainRemoved", "已删除链线：{from} -> {to}。", "Removed chain line: {from} -> {to}."],
+  ["markMiniRegionStart", "微型区域起点：{target}。请选择第二个候选。", "Mini-Region start: {target}. Choose the second candidate."],
+  ["markMiniRegionAdded", "已添加{type}微型区域：{from} -> {to}。", "Added a {type} Mini-Region: {from} -> {to}."],
+  ["markMiniRegionUpdated", "已将微型区域 {from} -> {to} 改为{type}。", "Changed Mini-Region {from} -> {to} to {type}."],
+  ["markMiniRegionRemoved", "已删除微型区域：{from} -> {to}。", "Removed Mini-Region: {from} -> {to}."],
+  ["markExistingCandidateRequired", "{target} 当前不是有效候选，不能作为链、构造、微型区域或区块端点。", "{target} is not an active candidate and cannot be used as a chain, construction, Mini-Region, or block endpoint."],
+  ["mouseCandidateAbsent", "{target} 当前不存在；请先右键恢复该候选，再用左键出数。", "{target} is absent. Restore the candidate with right-click before setting it with left-click."],
+  ["markBlockAdded", "已加入区块：{target}。", "Added to block: {target}."],
+  ["markBlockRemoved", "已移除区块标记：{target}。", "Removed block mark on {target}."],
+  ["markBlockFinished", "已完成区块标记。", "Finished block mark."],
+  ["markBlockUndone", "已撤销上一个区块标记。", "Undid the last block mark."],
+  ["markNoBlock", "没有可完成或撤销的区块。", "No block mark to finish or undo."],
+  ["markChainCancelled", "已取消链起点。", "Cancelled chain start."],
+  ["markLineUndone", "已撤销上一条链线或微型区域。", "Undid the latest chain line or Mini-Region."],
+  ["markAllCleared", "已清空手工标记。", "Cleared all manual marks."],
+  ["markAppliedElims", "已应用 {count} 个手工删数。", "Applied {count} manual eliminations."],
+  ["markNoElims", "没有可应用的手工删数。", "No manual eliminations to apply."],
+  ["markModeHint", "鼠标：左键/右键按 FB 规则操作；触摸或触控笔：先选格，再用大数字键和面板按钮。链、构造链与微型区域的左右键分别表示两种关系。", "Mouse: left/right click follows the FB rules. Touch or pen: select a cell, then use the large digit keys and panel buttons. For chains, construction, and Mini-Regions, left/right represent the two relation types."],
+  ["workerUnsupported", "当前浏览器不支持后台 Worker", "This browser does not support background Workers"],
+  ["trainingWorkerFailed", "训练题生成失败", "Training puzzle generation failed"],
+  ["trainingWorkerRuntimeFailed", "训练题 Worker 运行失败", "Training worker failed"],
+]) {
+  uiText.zh[key] = zh;
+  uiText.en[key] = en;
+}
 
 function ui(key) {
   return uiText[lang.value]?.[key] ?? uiText.zh[key] ?? key;
@@ -2083,14 +1369,14 @@ function loadManualCustomColors() {
       const id = `custom-${bg.slice(1)}`;
       MANUAL_MARK_COLORS.push({ id, bg, text: item?.text || manualColorTextFor(bg), custom: true });
     }
-  } catch (_) {}
+  } catch {}
 }
 
 function saveManualCustomColors() {
   try {
     const custom = MANUAL_MARK_COLORS.filter((color) => color.custom).map((color) => ({ bg: color.bg, text: color.text }));
     localStorage.setItem(MANUAL_MARK_CUSTOM_COLORS_KEY, JSON.stringify(custom));
-  } catch (_) {}
+  } catch {}
 }
 
 loadManualCustomColors();
@@ -2136,6 +1422,25 @@ function manualMarkTouchEraseCandidateMode(mode = manualMarkModeValue()) {
   return ["candidateColor", "circle", "preElim", "elim", "block"].includes(mode);
 }
 
+function manualMarkSuppressionKeyResolver(suppressionKey) {
+  return () => String(typeof suppressionKey === "function" ? suppressionKey() : suppressionKey || "");
+}
+
+function manualMarkFollowupSuppressor(target, resolvedSuppressionKey) {
+  return (event) => {
+    // Hybrid tablets may emit a synthetic mouse action immediately after touch.
+    if (boardEventUsesMouse(event, target)) return;
+    if (Date.now() > manualMarkSuppressTouchClickUntil) return;
+    if (manualMarkSuppressTouchClickKey !== resolvedSuppressionKey()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.type === "click") {
+      manualMarkSuppressTouchClickUntil = 0;
+      manualMarkSuppressTouchClickKey = "";
+    }
+  };
+}
+
 function installManualMarkLongPress(target, enabled, onLongPress, suppressionKey = "") {
   if (!target || typeof enabled !== "function" || typeof onLongPress !== "function") return;
   let timer = 0;
@@ -2150,22 +1455,8 @@ function installManualMarkLongPress(target, enabled, onLongPress, suppressionKey
     }
     pointerId = null;
   };
-  const resolvedSuppressionKey = () => String(
-    typeof suppressionKey === "function" ? suppressionKey() : suppressionKey || ""
-  );
-  const suppressFollowup = (event) => {
-    // A hybrid tablet may receive a real mouse action immediately after a touch.
-    // Suppress only the browser-generated touch follow-up, never a genuine mouse click.
-    if (boardEventUsesMouse(event, target)) return;
-    if (Date.now() > manualMarkSuppressTouchClickUntil) return;
-    if (manualMarkSuppressTouchClickKey !== resolvedSuppressionKey()) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    if (event.type === "click") {
-      manualMarkSuppressTouchClickUntil = 0;
-      manualMarkSuppressTouchClickKey = "";
-    }
-  };
+  const resolvedSuppressionKey = manualMarkSuppressionKeyResolver(suppressionKey);
+  const suppressFollowup = manualMarkFollowupSuppressor(target, resolvedSuppressionKey);
 
   target.style.touchAction = "manipulation";
   target.addEventListener("click", suppressFollowup, true);
@@ -2189,7 +1480,7 @@ function installManualMarkLongPress(target, enabled, onLongPress, suppressionKey
       manualMarkSuppressTouchClickUntil = Date.now() + 1000;
       manualMarkSuppressTouchClickKey = resolvedSuppressionKey();
       pointerId = null;
-      try { navigator.vibrate?.(12); } catch (_) {}
+      try { navigator.vibrate?.(12); } catch {}
       onLongPress();
     }, MANUAL_MARK_LONG_PRESS_MS);
   }, { passive: true });
@@ -2213,9 +1504,7 @@ function installManualMarkProtectedTouch(target, enabled, onShortTouch, onLongPr
   let startY = 0;
   let longPressFired = false;
 
-  const resolvedSuppressionKey = () => String(
-    typeof suppressionKey === "function" ? suppressionKey() : suppressionKey || ""
-  );
+  const resolvedSuppressionKey = manualMarkSuppressionKeyResolver(suppressionKey);
   const armFollowupSuppression = () => {
     manualMarkSuppressTouchClickUntil = Date.now() + 1000;
     manualMarkSuppressTouchClickKey = resolvedSuppressionKey();
@@ -2238,19 +1527,7 @@ function installManualMarkProtectedTouch(target, enabled, onShortTouch, onLongPr
     }
     return null;
   };
-  const suppressFollowup = (event) => {
-    // A hybrid tablet may receive a real mouse action immediately after a touch.
-    // Suppress only the browser-generated touch follow-up, never a genuine mouse click.
-    if (boardEventUsesMouse(event, target)) return;
-    if (Date.now() > manualMarkSuppressTouchClickUntil) return;
-    if (manualMarkSuppressTouchClickKey !== resolvedSuppressionKey()) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    if (event.type === "click") {
-      manualMarkSuppressTouchClickUntil = 0;
-      manualMarkSuppressTouchClickKey = "";
-    }
-  };
+  const suppressFollowup = manualMarkFollowupSuppressor(target, resolvedSuppressionKey);
 
   // Candidate glyphs and numpad buttons may be claimed by the browser's native
   // text-selection/callout gesture before a pointer-based long press fires.
@@ -2283,7 +1560,7 @@ function installManualMarkProtectedTouch(target, enabled, onShortTouch, onLongPr
       if (!enabled() || touchId == null) return;
       longPressFired = true;
       armFollowupSuppression();
-      try { navigator.vibrate?.(12); } catch (_) {}
+      try { navigator.vibrate?.(12); } catch {}
       onLongPress();
     }, MANUAL_MARK_PROTECTED_HOLD_MS);
   }, { passive: false });
@@ -2541,6 +1818,13 @@ function applyManualMarksToCellElement(cellNode, cellIndex) {
   applyTlgSolverMarksToCellElement(cellNode, cellIndex);
 }
 
+function manualMarkCandidateTargetAvailable(mode, cellIndex, digit) {
+  if (!manualMarkRequiresExistingCandidate(mode) || boardCandidateExists(cellIndex, digit)) return true;
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  setManualMarkStatus(uif("markExistingCandidateRequired", { target: manualMarkTargetText(cellIndex, digit) }));
+  return false;
+}
+
 function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
   cellNode.querySelectorAll(".candidate[data-digit]").forEach((candidate) => {
     candidate.addEventListener("pointerdown", (event) => {
@@ -2557,15 +1841,11 @@ function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
         event.stopPropagation();
         selectedIndex = cellIndex;
         const mode = manualMarkModeValue();
-        if (manualMarkRequiresExistingCandidate(mode) && !boardCandidateExists(cellIndex, digit)) {
-          renderBoardSnapshot(currentSnapshot, currentHint);
-          setManualMarkStatus(uif("markExistingCandidateRequired", { target: manualMarkTargetText(cellIndex, digit) }));
-          return;
-        }
+        if (!manualMarkCandidateTargetAvailable(mode, cellIndex, digit)) return;
         applyManualMarkTarget(cellIndex, digit, "mousePrimary");
         return;
       }
-      if (!mouseInput || !digit || isOcrDraftSnapshot(currentSnapshot)) return;
+      if (!mouseInput || !digit) return;
       event.preventDefault();
       event.stopPropagation();
       selectedIndex = cellIndex;
@@ -2595,15 +1875,11 @@ function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
         event.stopPropagation();
         selectedIndex = cellIndex;
         const mode = manualMarkModeValue();
-        if (manualMarkRequiresExistingCandidate(mode) && !boardCandidateExists(cellIndex, digit)) {
-          renderBoardSnapshot(currentSnapshot, currentHint);
-          setManualMarkStatus(uif("markExistingCandidateRequired", { target: manualMarkTargetText(cellIndex, digit) }));
-          return;
-        }
+        if (!manualMarkCandidateTargetAvailable(mode, cellIndex, digit)) return;
         applyManualMarkTarget(cellIndex, digit, "mouseSecondary");
         return;
       }
-      if (!mouseInput || !digit || isOcrDraftSnapshot(currentSnapshot)) return;
+      if (!mouseInput || !digit) return;
       event.preventDefault();
       event.stopPropagation();
       selectedIndex = cellIndex;
@@ -3247,7 +2523,7 @@ function manualScreenshotCssText() {
   for (const sheet of Array.from(document.styleSheets || [])) {
     try {
       for (const rule of Array.from(sheet.cssRules || [])) chunks.push(rule.cssText);
-    } catch (_) {
+    } catch {
       const owner = sheet.ownerNode;
       if (owner?.tagName === "STYLE" && owner.textContent) chunks.push(owner.textContent);
     }
@@ -3393,7 +2669,7 @@ async function refreshManualScreenshotDomCache() {
         };
       }
       return version === manualScreenshotDomCacheVersion ? manualScreenshotDomCache : null;
-    } catch (_) {
+    } catch {
       if (version === manualScreenshotDomCacheVersion) manualScreenshotDomCache = null;
       return null;
     } finally {
@@ -3461,7 +2737,7 @@ function shareManualBoardScreenshot() {
         canShareFile = typeof navigator.canShare === "function"
           ? navigator.canShare({ files: [file] })
           : false;
-      } catch (_) {
+      } catch {
         canShareFile = false;
       }
     }
@@ -3536,7 +2812,7 @@ function shareManualBoardScreenshot() {
           await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
           setManualMarkStatus(ui("markScreenshotCopied"));
           return true;
-        } catch (_) {
+        } catch {
           // Preserve the existing desktop fallback when image clipboard access is denied.
         }
       }
@@ -3732,6 +3008,25 @@ function setInputLabelByControl(controlId, value) {
   if (span) span.textContent = value;
 }
 
+function setLocalizedTexts(bindings) {
+  for (const binding of bindings) {
+    const [id, key] = typeof binding === "string" ? [binding, binding] : binding;
+    setTextById(id, ui(key));
+  }
+}
+
+function setLocalizedButtons(bindings) {
+  for (const [button, key] of bindings) setButtonText(button, ui(key));
+}
+
+function setLocalizedSelectOptions(select, labels) {
+  if (!select) return;
+  for (const option of select.options) {
+    const key = labels[option.value];
+    if (key) option.textContent = ui(key);
+  }
+}
+
 function applyStaticLanguage() {
   document.documentElement.lang = lang.value === "en" ? "en" : "zh-CN";
   const linkLangSuffix = `?lang=${encodeURIComponent(lang.value || "zh")}`;
@@ -3739,10 +3034,9 @@ function applyStaticLanguage() {
   if (manualLinkEl) manualLinkEl.href = `./user_manual.html${linkLangSuffix}&v=${encodeURIComponent(MANUAL_VERSION)}`;
   const techniquesLinkEl = document.getElementById("techniquesLink");
   if (techniquesLinkEl) techniquesLinkEl.href = `./techniques.html${linkLangSuffix}`;
-  setTextById("brandSubtitle", ui("brandSubtitle"));
-  setTextById("manualLink", ui("manualLink"));
-  setTextById("techniquesLink", ui("techniqueHelp"));
-  setTextById("boardHeading", ui("boardHeading"));
+  setLocalizedTexts([
+    "brandSubtitle", "manualLink", ["techniquesLink", "techniqueHelp"], "boardHeading",
+  ]);
   if (yzfHintBaseText === (lang.value === "en" ? uiText.zh.initialHint : uiText.en.initialHint)) {
     yzfHintBaseText = ui("initialHint");
   }
@@ -3752,90 +3046,65 @@ function applyStaticLanguage() {
   renderYzfBranchHintPanel();
   document.querySelector(".global-actions")?.setAttribute("aria-label", ui("mainActionsLabel"));
   if (numpad) numpad.setAttribute("aria-label", ui("numberPadLabel"));
-  setButtonText(btnGenerate, ui("generate"));
-  setButtonText(btnGenerateTraining, ui("generateTraining"));
-  setButtonText(btnLoad, ui("load"));
-  setButtonText(btnUndo, ui("undo"));
-  setButtonText(btnRedo, ui("redo"));
-  setButtonText(btnStep, ui("step"));
-  setButtonText(btnAllSteps, ui("allSteps"));
-  setButtonText(btnSolve, ui("solve"));
-  setButtonText(btnApply, ui("apply"));
-  setButtonText(btnStepExplain, ui("stepExplain"));
-  setTextById("stepExplainDialogTitle", ui("stepExplainTitle"));
-  setTextById("stepExplainDialogClose", ui("close"));
+  setLocalizedButtons([
+    [btnGenerate, "generate"], [btnGenerateTraining, "generateTraining"], [btnLoad, "load"],
+    [btnUndo, "undo"], [btnRedo, "redo"], [btnStep, "step"], [btnAllSteps, "allSteps"],
+    [btnSolve, "solve"], [btnApply, "apply"], [btnStepExplain, "stepExplain"],
+    [btnTechAllIn, "techPresetAll"], [btnTechHighSpeed, "techPresetHighSpeed"],
+    [btnTechExtremeSpeed, "techPresetExtremeSpeed"], [btnTechWhipRating, "techPresetWhipRating"],
+    [btnTechBraidRating, "techPresetBraidRating"],
+  ]);
+  setLocalizedTexts([
+    ["stepExplainDialogTitle", "stepExplainTitle"], ["stepExplainDialogClose", "close"],
+  ]);
   updateStepExplainButtonState();
   updateFullscreenButton();
   updateMobileSolveLanguage();
-  setTextById("tabBtnControls", ui("controls"));
-  setTextById("tabBtnTechniques", ui("techniques"));
-  setTextById("tabBtnPath", ui("path"));
-  setTextById("tabBtnAllSteps", ui("allSteps"));
-  setTextById("manualAdvancedTitle", ui("manualAdvancedTitle"));
-  setTextById("btnManualAdvancedRun", ui("runManualAdvanced"));
-  setTextById("btnManualAdvancedClear", ui("clearManualAdvanced"));
-  const manualNote = document.querySelector(".manual-advanced-note");
-  if (manualNote) manualNote.textContent = ui("manualAdvancedNote");
+  setLocalizedTexts([
+    ["tabBtnControls", "controls"], ["tabBtnTechniques", "techniques"],
+    ["tabBtnPath", "path"], ["tabBtnAllSteps", "allSteps"],
+  ]);
   setInputLabelByControl("difficultySelect", ui("difficulty"));
   setInputLabelByControl("trainingTechniqueSelect", ui("training"));
   if (difficultySelect) difficultySelect.title = ui("difficultyTitle");
   if (trainingTechniqueSelect) trainingTechniqueSelect.title = ui("trainingTitle");
-  setTextById("trainingTextFilterButtonText", ui("trainingTextFilterButton"));
-  setTextById("trainingTextFilterDialogTitle", ui("trainingTextFilterTitle"));
-  setTextById("trainingTextFilterIntro", ui("trainingTextFilterIntro"));
-  setTextById("trainingTextFilterIncludeLabel", ui("trainingTextFilterIncludeLabel"));
-  setTextById("trainingTextFilterIncludeHint", ui("trainingTextFilterIncludeHint"));
-  setTextById("trainingTextFilterExcludeLabel", ui("trainingTextFilterExcludeLabel"));
-  setTextById("trainingTextFilterExcludeHint", ui("trainingTextFilterExcludeHint"));
-  setTextById("trainingTextFilterCaseSensitiveLabel", ui("trainingTextFilterCaseSensitive"));
-  setTextById("btnTrainingTextFilterClear", ui("trainingTextFilterClear"));
-  setTextById("btnTrainingTextFilterCancel", ui("trainingTextFilterCancel"));
-  setTextById("btnTrainingTextFilterApply", ui("trainingTextFilterApply"));
+  setLocalizedTexts([
+    ["trainingTextFilterButtonText", "trainingTextFilterButton"],
+    ["trainingTextFilterDialogTitle", "trainingTextFilterTitle"],
+    "trainingTextFilterIntro", "trainingTextFilterIncludeLabel", "trainingTextFilterIncludeHint",
+    "trainingTextFilterExcludeLabel", "trainingTextFilterExcludeHint", ["trainingTextFilterCaseSensitiveLabel", "trainingTextFilterCaseSensitive"],
+    ["btnTrainingTextFilterClear", "trainingTextFilterClear"],
+    ["btnTrainingTextFilterCancel", "trainingTextFilterCancel"],
+    ["btnTrainingTextFilterApply", "trainingTextFilterApply"],
+  ]);
   if (trainingTextFilterInclude) trainingTextFilterInclude.placeholder = ui("trainingTextFilterIncludePlaceholder");
   if (trainingTextFilterExclude) trainingTextFilterExclude.placeholder = ui("trainingTextFilterExcludePlaceholder");
   if (btnTrainingTextFilterClose) btnTrainingTextFilterClose.setAttribute("aria-label", ui("close"));
   updateTrainingTextFilterButton();
-  setTextById("tlgSolverTitle", ui("tlgSolverTitle"));
-  setTextById("tlgSolverEnableLabel", ui("tlgSolverEnable"));
-  setTextById("tlgSolverModeLabel", ui("tlgSolverModeLabel"));
-  setTextById("tlgSolverAurGroupLabel", ui("tlgAurGroupLabel"));
-  setTextById("tlgSolverLinkTypeLabel", ui("tlgSolverLinkTypeLabel"));
-  setTextById("tlgSolverTruthsToApplyLabel", ui("tlgTruthsToApply"));
-  setTextById("tlgSolverAurPremiseModeLabel", ui("tlgAurPremiseModeLabel"));
-  setTextById("btnTlgImportCandidates", ui("tlgImportCandidates"));
-  setTextById("btnTlgFindEliminations", ui("tlgFindEliminations"));
-  setTextById("btnTlgConvertTruths", ui("tlgConvertTruths"));
-  setTextById("btnTlgRemoveUnused", ui("tlgRemoveUnused"));
-  setTextById("btnTlgClear", ui("tlgClearState"));
-  setTextById("btnTlgLibrary", ui("tlgLibraryButton"));
-  setTextById("tlgLibraryDialogTitle", ui("tlgLibraryDialogTitle"));
-  setTextById("btnTlgLibraryRead", ui("tlgLibraryReadAction"));
-  setTextById("btnTlgLibraryInsert", ui("tlgLibraryInsertAction"));
-  setTextById("btnTlgLibraryReplace", ui("tlgLibraryReplaceAction"));
-  setTextById("btnTlgLibraryAppend", ui("tlgLibraryAppendAction"));
-  setTextById("btnTlgLibraryDelete", ui("tlgLibraryDeleteAction"));
-  setTextById("tlgLibraryImportModeLabel", ui("tlgLibraryImportModeLabel"));
-  setTextById("btnTlgLibraryImport", ui("tlgLibraryImportAction"));
-  setTextById("btnTlgLibraryExportSelected", ui("tlgLibraryExportSelectedAction"));
-  setTextById("btnTlgLibraryExportAll", ui("tlgLibraryExportAllAction"));
-  setTextById("btnTlgLibraryCopyText", ui("tlgLibraryCopyTextAction"));
-  setTextById("btnTlgLibraryCopyCompact", ui("tlgLibraryCopyCompactAction"));
-  setTextById("btnTlgLibraryPasteText", ui("tlgLibraryPasteTextAction"));
-  setTextById("btnTlgLibraryImportText", ui("tlgLibraryImportTextAction"));
-  setTextById("btnTlgLibraryExportText", ui("tlgLibraryExportTextAction"));
-  setTextById("tlgLibraryShareTextLabel", ui("tlgLibraryShareTextLabel"));
-  setTextById("btnTlgLibraryLoadText", ui("tlgLibraryLoadTextAction"));
-  setTextById("btnTlgLibraryClearText", ui("tlgLibraryClearTextAction"));
-  setTextById("btnTlgLibraryCloseText", ui("tlgLibraryCloseTextAction"));
-  setTextById("tlgLibraryColumnIndex", ui("tlgLibraryColumnIndex"));
-  setTextById("tlgLibraryColumnTitle", ui("tlgLibraryColumnTitle"));
-  setTextById("tlgLibraryColumnType", ui("tlgLibraryColumnType"));
-  setTextById("tlgLibraryColumnResult", ui("tlgLibraryColumnResult"));
-  setTextById("tlgLibraryEmpty", ui("tlgLibraryEmpty"));
-  setTextById("tlgLibraryTitleLabel", ui("tlgLibraryTitleLabel"));
-  setTextById("tlgLibraryTagsLabel", ui("tlgLibraryTagsLabel"));
-  setTextById("tlgLibrarySourceLabel", ui("tlgLibrarySourceLabel"));
-  setTextById("tlgLibraryNotesLabel", ui("tlgLibraryNotesLabel"));
+  setLocalizedTexts([
+    "tlgSolverTitle", ["tlgSolverEnableLabel", "tlgSolverEnable"], "tlgSolverModeLabel",
+    ["tlgSolverAurGroupLabel", "tlgAurGroupLabel"], "tlgSolverLinkTypeLabel",
+    ["tlgSolverTruthsToApplyLabel", "tlgTruthsToApply"], ["tlgSolverAurPremiseModeLabel", "tlgAurPremiseModeLabel"],
+    ["btnTlgImportCandidates", "tlgImportCandidates"], ["btnTlgFindEliminations", "tlgFindEliminations"],
+    ["btnTlgConvertTruths", "tlgConvertTruths"], ["btnTlgRemoveUnused", "tlgRemoveUnused"],
+    ["btnTlgClear", "tlgClearState"], ["btnTlgLibrary", "tlgLibraryButton"], "tlgLibraryDialogTitle",
+    ["btnTlgLibraryRead", "tlgLibraryReadAction"], ["btnTlgLibraryInsert", "tlgLibraryInsertAction"],
+    ["btnTlgLibraryReplace", "tlgLibraryReplaceAction"], ["btnTlgLibraryAppend", "tlgLibraryAppendAction"],
+    ["btnTlgLibraryDelete", "tlgLibraryDeleteAction"], "tlgLibraryImportModeLabel",
+    ["btnTlgLibraryImport", "tlgLibraryImportAction"],
+    ["btnTlgLibraryExportSelected", "tlgLibraryExportSelectedAction"],
+    ["btnTlgLibraryExportAll", "tlgLibraryExportAllAction"],
+    ["btnTlgLibraryCopyText", "tlgLibraryCopyTextAction"],
+    ["btnTlgLibraryCopyCompact", "tlgLibraryCopyCompactAction"],
+    ["btnTlgLibraryPasteText", "tlgLibraryPasteTextAction"],
+    ["btnTlgLibraryImportText", "tlgLibraryImportTextAction"],
+    ["btnTlgLibraryExportText", "tlgLibraryExportTextAction"], "tlgLibraryShareTextLabel",
+    ["btnTlgLibraryLoadText", "tlgLibraryLoadTextAction"],
+    ["btnTlgLibraryClearText", "tlgLibraryClearTextAction"],
+    ["btnTlgLibraryCloseText", "tlgLibraryCloseTextAction"],
+    "tlgLibraryColumnIndex", "tlgLibraryColumnTitle", "tlgLibraryColumnType", "tlgLibraryColumnResult",
+    "tlgLibraryEmpty", "tlgLibraryTitleLabel", "tlgLibraryTagsLabel", "tlgLibrarySourceLabel", "tlgLibraryNotesLabel",
+  ]);
   setTitleAndAria(btnTlgLibraryClose, ui("close"));
   if (tlgLibrarySearch) {
     tlgLibrarySearch.placeholder = ui("tlgLibrarySearchPlaceholder");
@@ -3850,45 +3119,32 @@ function applyStaticLanguage() {
     if (String(tlgLibraryShareText?.value || "").trim()) tlgLibraryPreviewShareText();
     else tlgLibraryShareSummary.textContent = ui("tlgLibraryShareEmptyHint");
   }
-  if (tlgLibraryImportMode) {
-    const importLabels = { append: "tlgLibraryImportAppend", insert: "tlgLibraryImportInsert", replaceAll: "tlgLibraryImportReplaceAll" };
-    [...tlgLibraryImportMode.options].forEach((option) => {
-      const key = importLabels[option.value];
-      if (key) option.textContent = ui(key);
-    });
-  }
+  setLocalizedSelectOptions(tlgLibraryImportMode, {
+    append: "tlgLibraryImportAppend", insert: "tlgLibraryImportInsert", replaceAll: "tlgLibraryImportReplaceAll",
+  });
   document.querySelector(".tlg-library-toolbar")?.setAttribute("aria-label", ui("tlgLibraryToolbarAria"));
   document.querySelector(".tlg-library-sharebar")?.setAttribute("aria-label", ui("tlgLibraryShareToolbarAria"));
   document.querySelector(".tlg-library-list-panel")?.setAttribute("aria-label", ui("tlgLibraryRecordListAria"));
   document.querySelector(".tlg-library-editor")?.setAttribute("aria-label", ui("tlgLibraryEditorAria"));
   if (tlgLibraryDialog?.open) renderTlgLibrary();
-  setTextById("tlgSolverStateTitle", ui("tlgStateTitle"));
-  setTextById("tlgSolverSolutionTitle", ui("tlgSolutionTitle"));
-  setTextById("tlgSolverDebugSummary", ui("tlgDebugImport"));
+  setLocalizedTexts([
+    ["tlgSolverStateTitle", "tlgStateTitle"], ["tlgSolverSolutionTitle", "tlgSolutionTitle"],
+    ["tlgSolverDebugSummary", "tlgDebugImport"],
+  ]);
   document.querySelector(".tlg-solver-controls")?.setAttribute("aria-label", ui("tlgActionsAria"));
   if (tlgSolverImportText) tlgSolverImportText.placeholder = ui("tlgDebugPlaceholder");
-  if (tlgSolverMode) {
-    const modeLabels = { truths: "tlgModeTruths", links: "tlgModeLinks", virtualSet: "tlgModeVirtualSet", aur: "tlgModeAur", daur: "tlgModeDaur", gur: "tlgModeGur" };
-    [...tlgSolverMode.options].forEach((option) => { const key = modeLabels[option.value]; if (key) option.textContent = ui(key); });
-  }
-  if (tlgSolverAurGroup) {
-    const aurGroupLabels = { "0": "tlgAurGroup1", "1": "tlgAurGroup2" };
-    [...tlgSolverAurGroup.options].forEach((option) => { const key = aurGroupLabels[option.value]; if (key) option.textContent = ui(key); });
-  }
-  if (tlgSolverLinkType) {
-    const typeLabels = { auto: "tlgLinkAuto", rowColumn: "tlgLinkRowColumn", box: "tlgLinkBox", cell: "tlgLinkCell" };
-    [...tlgSolverLinkType.options].forEach((option) => { const key = typeLabels[option.value]; if (key) option.textContent = ui(key); });
-  }
-  if (tlgSolverAurPremiseMode) {
-    const premiseLabels = {
-      "unique-puzzle-derived": "tlgAurPremiseUnique",
-      "candidate-grid-asserted": "tlgAurPremiseTraining",
-    };
-    [...tlgSolverAurPremiseMode.options].forEach((option) => {
-      const key = premiseLabels[option.value];
-      if (key) option.textContent = ui(key);
-    });
-  }
+  setLocalizedSelectOptions(tlgSolverMode, {
+    truths: "tlgModeTruths", links: "tlgModeLinks", virtualSet: "tlgModeVirtualSet",
+    aur: "tlgModeAur", daur: "tlgModeDaur", gur: "tlgModeGur",
+  });
+  setLocalizedSelectOptions(tlgSolverAurGroup, { "0": "tlgAurGroup1", "1": "tlgAurGroup2" });
+  setLocalizedSelectOptions(tlgSolverLinkType, {
+    auto: "tlgLinkAuto", rowColumn: "tlgLinkRowColumn", box: "tlgLinkBox", cell: "tlgLinkCell",
+  });
+  setLocalizedSelectOptions(tlgSolverAurPremiseMode, {
+    "unique-puzzle-derived": "tlgAurPremiseUnique",
+    "candidate-grid-asserted": "tlgAurPremiseTraining",
+  });
   if (tlgSolverStatus && (tlgSolverStatus.textContent === uiText.zh.tlgStatusOptional || tlgSolverStatus.textContent === uiText.en.tlgStatusOptional || /TLG Solver/.test(tlgSolverStatus.textContent))) {
     updateTlgSolverUi();
   }
@@ -3898,23 +3154,21 @@ function applyStaticLanguage() {
   setInputLabelByControl("batchFilename", ui("filename"));
   setInputLabelByControl("batchSolveFile", ui("batchSolveFile"));
   updateBatchModeLabels();
-  setTextById("btnBatchGenerate", ui("startBatch"));
-  setTextById("btnBatchStop", ui("stop"));
+  setLocalizedTexts([["btnBatchGenerate", "startBatch"], ["btnBatchStop", "stop"]]);
   if (batchStatus && (batchStatus.textContent === uiText.zh.batchStatusIdle || batchStatus.textContent === uiText.en.batchStatusIdle)) {
     batchStatus.textContent = ui("batchStatusIdle");
   }
   const moreSummary = [...document.querySelectorAll(".input-panel summary")].find((el) => /更多|More/i.test(el.textContent));
   if (moreSummary) moreSummary.textContent = ui("moreInput");
-  setTextById("preferClipboardLoadLabel", ui("preferClipboardLoad"));
+  setLocalizedTexts([
+    ["preferClipboardLoadLabel", "preferClipboardLoad"], ["btnExportPuzzle", "exportPuzzle"],
+    ["btnClearSavedSession", "clearSavedSession"], ["btnImageOcrPickText", "ocrPickImage"],
+    ["btnImageOcrCameraText", "ocrCameraImage"], ["btnImageOcrClipboard", "ocrClipboardImage"],
+  ]);
   setTitleAndAria(document.getElementById("preferClipboardLoadChip"), ui("preferClipboardLoadTitle"));
-  setTextById("btnExportPuzzle", ui("exportPuzzle"));
   updateExportFormatLabels();
-  setTextById("btnClearSavedSession", ui("clearSavedSession"));
   setTitleAndAria(btnClearSavedSession, ui("clearSavedSessionTitle"));
   setTextById("btnRate", ratingTask ? ui("rateCancel") : ui("ratePuzzle"));
-  setTextById("btnImageOcrPickText", ui("ocrPickImage"));
-  setTextById("btnImageOcrCameraText", ui("ocrCameraImage"));
-  setTextById("btnImageOcrClipboard", ui("ocrClipboardImage"));
   document.querySelector(".all-steps-filter")?.setAttribute("aria-label", ui("allStepsFilterAria"));
   if (allStepsFilterText) {
     allStepsFilterText.placeholder = ui("allStepsFilterPlaceholder");
@@ -3930,11 +3184,11 @@ function applyStaticLanguage() {
     const input = allStepsFilterReplaceable;
     replaceableLabel.replaceChildren(input, document.createTextNode(` ${ui("replaceable")}`));
   }
-  setTextById("allStepsFilterClear", ui("clear"));
+  setLocalizedTexts([["allStepsFilterClear", "clear"]]);
   if (allStepsFilterStatus && (allStepsFilterStatus.textContent === uiText.zh.noAllSteps || allStepsFilterStatus.textContent === uiText.en.noAllSteps)) {
     allStepsFilterStatus.textContent = ui("noAllSteps");
   }
-  setTextById("yzfOverlayModeNote", ui("overlayDebugOnly"));
+  setLocalizedTexts([["yzfOverlayModeNote", "overlayDebugOnly"]]);
   const legendSummary = document.querySelector(".yzf-debug-legend summary");
   if (legendSummary) legendSummary.textContent = ui("overlayLegend");
   const legendItems = [...document.querySelectorAll(".yzf-debug-legend .yzf-legend-item span:last-child")];
@@ -3942,57 +3196,32 @@ function applyStaticLanguage() {
     if (legendItems[idx]) legendItems[idx].textContent = ui(key);
   });
 
-  setTextById("manualMarksTitle", ui("manualMarksTitle"));
+  setLocalizedTexts([
+    "manualMarksTitle", "manualMarkModeLabel", "manualMarkLineLabel", "manualMarkColorLabel",
+    ["manualMarkAddColorText", "markAddColor"],
+  ]);
   document.querySelector(".manual-mark-actions")?.setAttribute("aria-label", ui("manualMarkActionLabel"));
   if (manualMarkSwatches) manualMarkSwatches.setAttribute("aria-label", ui("manualMarkColorsLabel"));
-  setTextById("manualMarkModeLabel", ui("manualMarkModeLabel"));
-  setTextById("manualMarkLineLabel", ui("manualMarkLineLabel"));
-  setTextById("manualMarkColorLabel", ui("manualMarkColorLabel"));
-  setTextById("manualMarkAddColorText", ui("markAddColor"));
   if (manualMarkCustomColor) manualMarkCustomColor.title = ui("markCustomColorTitle");
-  if (manualMarkMode) {
-    const modeLabels = {
-      off: "markModeOff",
-      cellColor: "markCellColor",
-      candidateColor: "markCandidateColor",
-      circle: "markCircle",
-      preElim: "markPreElim",
-      elim: "markElim",
-      chain: "markChain",
-      construction: "markConstruction",
-      miniRegion: "markMiniRegion",
-      block: "markBlock",
-    };
-    [...manualMarkMode.options].forEach((option) => {
-      const key = modeLabels[option.value];
-      if (key) option.textContent = ui(key);
-    });
-  }
-  if (manualMarkLineType) {
-    const lineLabels = {
-      strong: "markStrong",
-      weak: "markWeak",
-      constructionStrong: "markConstructionStrong",
-      constructionWeak: "markConstructionWeak",
-    };
-    [...manualMarkLineType.options].forEach((option) => {
-      const key = lineLabels[option.value];
-      if (key) option.textContent = ui(key);
-    });
-  }
-  setTextById("manualMarkPrimary", ui("markPrimary"));
-  setTextById("manualMarkSecondary", ui("markSecondary"));
+  setLocalizedSelectOptions(manualMarkMode, {
+    off: "markModeOff", cellColor: "markCellColor", candidateColor: "markCandidateColor",
+    circle: "markCircle", preElim: "markPreElim", elim: "markElim", chain: "markChain",
+    construction: "markConstruction", miniRegion: "markMiniRegion", block: "markBlock",
+  });
+  setLocalizedSelectOptions(manualMarkLineType, {
+    strong: "markStrong", weak: "markWeak",
+    constructionStrong: "markConstructionStrong", constructionWeak: "markConstructionWeak",
+  });
+  setLocalizedTexts([
+    ["manualMarkPrimary", "markPrimary"], ["manualMarkSecondary", "markSecondary"],
+    ["manualMarkApplyElims", "markApplyElims"], ["manualMarkScreenshot", "markScreenshotButton"],
+    ["manualMarkCleanEasyLabel", "markCleanEasy"], ["manualMarkClear", "markClearAll"],
+    ["manualMarkUndoLine", "markUndoLine"], ["manualMarkCancelChain", "markCancelChain"],
+    ["manualMarkFinishBlock", "markFinishBlock"], ["manualMarkUndoBlock", "markUndoBlock"],
+  ]);
   setTitleAndAria(manualMarkPrimary, ui("markPrimaryTitle"));
   setTitleAndAria(manualMarkSecondary, ui("markSecondaryTitle"));
-  setTextById("manualMarkApplyElims", ui("markApplyElims"));
-  setTextById("manualMarkScreenshot", ui("markScreenshotButton"));
   setTitleAndAria(manualMarkScreenshot, ui("markScreenshotTitle"));
-  setTextById("manualMarkCleanEasyLabel", ui("markCleanEasy"));
-  setTextById("manualMarkClear", ui("markClearAll"));
-  setTextById("manualMarkUndoLine", ui("markUndoLine"));
-  setTextById("manualMarkCancelChain", ui("markCancelChain"));
-  setTextById("manualMarkFinishBlock", ui("markFinishBlock"));
-  setTextById("manualMarkUndoBlock", ui("markUndoBlock"));
   if (manualMarkStatus && (manualMarkStatus.textContent === uiText.zh.markOffStatus || manualMarkStatus.textContent === uiText.en.markOffStatus || manualMarkStatus.textContent === "关闭标记。")) {
     manualMarkStatus.textContent = manualMarksActive() ? ui("markModeHint") : ui("markOffStatus");
   }
@@ -4459,14 +3688,14 @@ function loadExportFormatSetting() {
     if (saved && [...exportFormatSelect.options].some((option) => option.value === saved)) {
       exportFormatSelect.value = saved;
     }
-  } catch (_) {}
+  } catch {}
 }
 
 function saveExportFormatSetting() {
   if (!exportFormatSelect) return;
   try {
     localStorage.setItem(EXPORT_FORMAT_STORAGE_KEY, getExportFormat());
-  } catch (_) {}
+  } catch {}
 }
 
 function updateExportFormatLabels() {
@@ -4486,10 +3715,6 @@ function updateExportFormatLabels() {
   exportFormatSelect.setAttribute("aria-label", ui("exportFormatLabel"));
 }
 
-function isOcrDraftSnapshot(snapshot = currentSnapshot) {
-  return Boolean(snapshot?.ocrDraft || snapshot?.source === "local-image-ocr-draft");
-}
-
 function normalizeCoachDigitString(value) {
   const chars = [...String(value || "")].filter((ch) => /[0-9.]/.test(ch));
   while (chars.length < 81) chars.push(".");
@@ -4507,21 +3732,10 @@ function parseCoachCandidateMasks(value) {
   return masks;
 }
 
-function candidatesFromMask(mask) {
-  const result = [];
-  for (let digit = 1; digit <= 9; digit += 1) {
-    if ((mask & (1 << digit)) !== 0) result.push(digit);
-  }
-  return result;
-}
-
-function snapshotToCoachJson(snapshot = currentSnapshot, options = {}) {
+function snapshotToCoachJson(snapshot = currentSnapshot) {
   const boardText = snapshotBoardString(snapshot);
   if (boardText.length !== 81 || !Array.isArray(snapshot?.cells)) return null;
-  const editableDraft = options.editableDraft ?? isOcrDraftSnapshot(snapshot);
-  const givenSource = editableDraft
-    ? normalizeCoachDigitString(snapshot?.ocrGivenDigits || snapshot?.givens || "")
-    : snapshotGivensString(snapshot);
+  const givenSource = snapshotGivensString(snapshot);
   let givenDigits = "";
   let userDigits = "";
   const masks = [];
@@ -4547,191 +3761,6 @@ function snapshotToCoachJson(snapshot = currentSnapshot, options = {}) {
     userDigits,
     userCellCandidates: masks.join("-"),
   };
-}
-
-function makeOcrDraftSnapshot(coachJson, summary = {}) {
-  const givenDigits = normalizeCoachDigitString(coachJson?.givenDigits || "");
-  const userDigits = normalizeCoachDigitString(coachJson?.userDigits || "");
-  const candidateMasks = parseCoachCandidateMasks(coachJson?.userCellCandidates || "");
-  const boardChars = [];
-  const cells = [];
-  for (let index = 0; index < 81; index += 1) {
-    const givenCh = givenDigits[index] || ".";
-    const userCh = userDigits[index] || ".";
-    const isGiven = givenCh >= "1" && givenCh <= "9";
-    const valueCh = isGiven ? givenCh : userCh;
-    const value = valueCh >= "1" && valueCh <= "9" ? Number(valueCh) : 0;
-    boardChars.push(value > 0 ? String(value) : ".");
-    cells.push({
-      index,
-      row: Math.floor(index / 9),
-      col: index % 9,
-      value,
-      given: isGiven,
-      count: value > 0 ? 0 : candidatesFromMask(candidateMasks[index]).length,
-      candidates: value > 0 ? [] : candidatesFromMask(candidateMasks[index]),
-    });
-  }
-  return {
-    board: boardChars.join(""),
-    givens: givenDigits,
-    ocrGivenDigits: givenDigits,
-    cells,
-    version: 0,
-    revision: 0,
-    stateHash: "",
-    ocrDraft: true,
-    source: "local-image-ocr-draft",
-    ocrSummary: {
-      clueCount: Number(summary?.clueCount || [...givenDigits].filter((ch) => ch >= "1" && ch <= "9").length),
-      userDigitCount: Number(summary?.userDigitCount || [...userDigits].filter((ch) => ch >= "1" && ch <= "9").length),
-      candidateCells: Number(summary?.candidateCells || candidateMasks.filter((mask) => mask !== 0).length),
-      givensUnique: summary?.givensUnique === true,
-      givensUniqueWarning: summary?.givensUniqueWarning || "",
-    },
-  };
-}
-
-function updateOcrDraftInputFromSnapshot(snapshot = currentSnapshot) {
-  if (!isOcrDraftSnapshot(snapshot)) return;
-  // OCR 的 Coach JSON 是内部中间格式，不再写入用户可见的题串输入框。
-  // 用户校正都在盘面上完成；需要导出时继续使用现有“导出题串”。
-  lastOcrDraftCoachJson = snapshotToCoachJson(snapshot, { editableDraft: true });
-}
-
-
-function toggleOcrDraftValue(index, digit) {
-  const snapshot = cloneSnapshot(currentSnapshot);
-  if (!snapshot) return false;
-  snapshot.ocrDraft = true;
-  snapshot.source = "local-image-ocr-draft";
-  const boardChars = [...snapshotBoardString(snapshot)];
-  const cell = snapshot.cells[index];
-  if (!cell) return false;
-
-  const currentValue = Number(cell.value || 0);
-  const targetGiven = ocrDraftValueRole === "given";
-  const sameDigit = currentValue === digit;
-  const sameRole = Boolean(cell.given) === targetGiven;
-  const nextValue = sameDigit && sameRole ? 0 : digit;
-
-  boardChars[index] = nextValue > 0 ? String(nextValue) : ".";
-  cell.value = nextValue;
-  cell.given = nextValue > 0 ? targetGiven : false;
-
-  const givenChars = [...normalizeCoachDigitString(snapshot.ocrGivenDigits || snapshot.givens || "")];
-  givenChars[index] = cell.given && nextValue > 0 ? String(nextValue) : ".";
-  snapshot.ocrGivenDigits = givenChars.join("");
-  snapshot.givens = snapshot.ocrGivenDigits;
-
-  cell.candidates = [];
-  cell.count = 0;
-  if (nextValue > 0) {
-    const removedMask = 1 << nextValue;
-    for (const peer of peerIndexes(index)) {
-      const peerCell = snapshot.cells[peer];
-      if (!peerCell || peerCell.value > 0) continue;
-      peerCell.candidates = (peerCell.candidates || []).filter((candidate) => (removedMask & (1 << candidate)) === 0);
-      peerCell.count = peerCell.candidates.length;
-    }
-  }
-  snapshot.board = boardChars.join("");
-  normalizeSnapshotCells(snapshot);
-  currentSnapshot = snapshot;
-  updateOcrDraftInputFromSnapshot(snapshot);
-  renderBoardSnapshot(snapshot, null);
-  updateInputControls();
-  setStatus(ui("ocrDraftValueChanged"));
-  scheduleAppSessionSave();
-  return true;
-}
-
-function toggleOcrDraftCandidate(index, digit) {
-  const snapshot = cloneSnapshot(currentSnapshot);
-  if (!snapshot) return false;
-  snapshot.ocrDraft = true;
-  snapshot.source = "local-image-ocr-draft";
-  const cell = snapshot.cells[index];
-  if (!cell || cell.value > 0) return false;
-  const set = new Set(cell.candidates || []);
-  if (set.has(digit)) set.delete(digit);
-  else set.add(digit);
-  cell.candidates = [...set].filter((value) => value >= 1 && value <= 9).sort((a, b) => a - b);
-  cell.count = cell.candidates.length;
-  normalizeSnapshotCells(snapshot);
-  currentSnapshot = snapshot;
-  updateOcrDraftInputFromSnapshot(snapshot);
-  renderBoardSnapshot(snapshot, null);
-  updateInputControls();
-  setStatus(ui("ocrDraftCandidateChanged"));
-  scheduleAppSessionSave();
-  return true;
-}
-
-
-function evaluateOcrGivenDigitsUniqueness(givenDigits) {
-  const text = normalizeCoachDigitString(givenDigits || "");
-  const clueCount = [...text].filter((ch) => ch >= "1" && ch <= "9").length;
-  if (!engine || clueCount === 0) {
-    return { unique: false, warning: ui("ocrGivenInsufficient") };
-  }
-  try {
-    const result = parseJson(engine.import_puzzle_json(text));
-    if (result?.ok) {
-      return { unique: true, warning: "" };
-    }
-    return { unique: false, warning: result?.error || ui("ocrGivenNotUnique") };
-  } catch (error) {
-    return { unique: false, warning: error?.message || ui("ocrGivenCheckFailed") };
-  }
-}
-
-async function importPuzzleFromOcrResult(coachJson, summary = {}) {
-  const givenCheck = evaluateOcrGivenDigitsUniqueness(coachJson?.givenDigits || "");
-  const snapshot = makeOcrDraftSnapshot(coachJson, {
-    ...summary,
-    givensUnique: givenCheck.unique,
-    givensUniqueWarning: givenCheck.warning,
-  });
-  currentSnapshot = snapshot;
-  originalBoard = snapshot.givens;
-  currentHint = null;
-  lastSolveData = null;
-  lastAllStepsData = null;
-  previewSnapshotActive = false;
-  currentPreviewRecord = null;
-  selectedIndex = -1;
-  tree.replaceChildren();
-  allStepsTree?.replaceChildren();
-  updateOcrDraftInputFromSnapshot(snapshot);
-  renderBoardSnapshot(snapshot, null);
-  updateInputControls();
-  const clue = Number(snapshot.ocrSummary?.clueCount || 0);
-  const userDigits = Number(snapshot.ocrSummary?.userDigitCount || 0);
-  const cand = Number(snapshot.ocrSummary?.candidateCells || 0);
-  const result = {
-    ok: true,
-    draft: true,
-    format: "coach-json-ocr-draft",
-    source: "local-image-ocr",
-    state: snapshot,
-    clueCount: clue,
-    userDigitCount: userDigits,
-    candidateCells: cand,
-    givensUnique: snapshot.ocrSummary?.givensUnique === true,
-    warning: snapshot.ocrSummary?.givensUniqueWarning || "",
-  };
-  const attribution = await localSudokuOcrAttributionSafe();
-  if (attribution) {
-    log(uif("ocrDoneLog", { attribution }));
-  } else {
-    log(ui("ocrDoneLogNoAttribution"));
-  }
-  const uniqueText = snapshot.ocrSummary?.givensUnique
-    ? ui("ocrGivenUniquePassed")
-    : uif("ocrGivenUniqueFailed", { warning: snapshot.ocrSummary?.givensUniqueWarning || ui("ocrManualCorrection") });
-  setStatus(uif("ocrDoneStatus", { clue, userDigits, cand, uniqueText, draftText: ui("ocrImportedDraft") }));
-  return result;
 }
 
 function exportedPuzzleString() {
@@ -4760,7 +3789,7 @@ function currentSessionTechniqueConfig() {
   if (!engine) return null;
   try {
     return getTechniqueConfigPayload(techniqueState.length ? techniqueState : loadTechniqueState());
-  } catch (_) {
+  } catch {
     return null;
   }
 }
@@ -4849,167 +3878,6 @@ function clearSavedAppSession() {
   setStatus(ui("sessionCleared"));
 }
 
-function inferManualAdvancedStoredFormat(result, sourceText = "") {
-  if (result?.hasCandidates || result?.format === "library" || result?.format === "coach") {
-    return "library";
-  }
-  const trimmed = String(sourceText || "").trim();
-  if (/^[0-9.]{81}$/.test(trimmed)) {
-    return "puzzle81";
-  }
-  if (trimmed.includes(":")) {
-    return "library";
-  }
-  return "unknown";
-}
-
-function setManualAdvancedInputState(text, format = "unknown", usesCandidates = false) {
-  currentManualAdvancedInputString = typeof text === "string" ? text.trim() : "";
-  currentManualAdvancedInputFormat = format || "unknown";
-  currentManualAdvancedUsesCandidates = !!usesCandidates;
-  currentManualAdvancedInputBoardKey = "";
-  if (manualAdvancedInputFormatSelect) {
-    if (currentManualAdvancedInputFormat === "library" || currentManualAdvancedInputFormat === "snapshotCandidates") {
-      manualAdvancedInputFormatSelect.value = "library";
-    } else if (currentManualAdvancedInputFormat === "puzzle81") {
-      manualAdvancedInputFormatSelect.value = "auto";
-    }
-  }
-}
-
-function getSnapshotManualAdvancedBoardKey(snapshot = currentSnapshot) {
-  const boardText = snapshotBoardString(snapshot);
-  if (boardText.length !== 81) return "";
-  const snapshotLibrary = snapshotToLibraryString(snapshot)?.trim() || "";
-  if (snapshotLibrary.includes(":")) {
-    return `library:${snapshotLibrary}`;
-  }
-  return `puzzle81:${boardText}`;
-}
-
-function setManualAdvancedInputStateWithBoardKey(text, format = "unknown", usesCandidates = false, boardKey = "") {
-  setManualAdvancedInputState(text, format, usesCandidates);
-  currentManualAdvancedInputBoardKey = boardKey || "";
-}
-
-function syncManualAdvancedInputStateFromSnapshot(snapshot = currentSnapshot) {
-  const liveSnapshot = snapshot || getCurrentSnapshot();
-  const boardText = snapshotBoardString(liveSnapshot);
-  if (boardText.length !== 81) {
-    setManualAdvancedInputStateWithBoardKey("", "unknown", false, "");
-    return false;
-  }
-  const snapshotLibrary = snapshotToLibraryString(liveSnapshot)?.trim() || "";
-  const boardChanged = !snapshotMatchesOriginal(liveSnapshot) || previewSnapshotActive;
-  if (snapshotLibrary.includes(":") && (boardChanged || currentManualAdvancedUsesCandidates || currentManualAdvancedInputFormat === "library" || currentManualAdvancedInputFormat === "snapshotCandidates")) {
-    setManualAdvancedInputStateWithBoardKey(
-      snapshotLibrary,
-      "snapshotCandidates",
-      true,
-      `library:${snapshotLibrary}`
-    );
-    return true;
-  }
-  setManualAdvancedInputStateWithBoardKey(boardText, "puzzle81", false, `puzzle81:${boardText}`);
-  return true;
-}
-
-function getManualAdvancedInputPreview(text) {
-  const value = String(text || "").replace(/\s+/g, " ").trim();
-  if (!value) return "-";
-  return value.length > 48 ? `${value.slice(0, 48)}...` : value;
-}
-
-function getCurrentManualAdvancedInputInfo() {
-  const liveSnapshot = currentSnapshot || getCurrentSnapshot();
-  const liveBoardKey = getSnapshotManualAdvancedBoardKey(liveSnapshot);
-  const storedIsCurrent = !!currentManualAdvancedInputBoardKey && currentManualAdvancedInputBoardKey === liveBoardKey;
-  if (currentManualAdvancedInputString && currentManualAdvancedInputFormat === "library" && currentManualAdvancedUsesCandidates) {
-    if (!storedIsCurrent) {
-      currentManualAdvancedInputString = "";
-      currentManualAdvancedInputFormat = "unknown";
-      currentManualAdvancedUsesCandidates = false;
-      currentManualAdvancedInputBoardKey = "";
-    } else {
-      return {
-        ok: true,
-        input: currentManualAdvancedInputString,
-        inputFormat: "library",
-        inputSource: "importedLibrary",
-        inputPreview: getManualAdvancedInputPreview(currentManualAdvancedInputString),
-        usesCandidates: true,
-      };
-    }
-  }
-  if (liveSnapshot) {
-    const boardText = snapshotBoardString(liveSnapshot);
-    if (boardText.length === 81) {
-      const snapshotLibrary = snapshotToLibraryString(liveSnapshot)?.trim() || "";
-      const exportedAsLibrary = typeof snapshotLibrary === "string" && snapshotLibrary.includes(":");
-      if (exportedAsLibrary && (currentManualAdvancedUsesCandidates || currentManualAdvancedInputFormat === "library" || currentManualAdvancedInputFormat === "snapshotCandidates" || !snapshotMatchesOriginal(liveSnapshot) || previewSnapshotActive)) {
-        return {
-          ok: true,
-          input: snapshotLibrary,
-          inputFormat: currentManualAdvancedInputFormat === "library" && storedIsCurrent ? "library" : "snapshotCandidates",
-          inputSource: currentManualAdvancedInputFormat === "library" && storedIsCurrent ? "importedLibrary" : "currentSnapshotLibrary",
-          inputPreview: getManualAdvancedInputPreview(snapshotLibrary),
-          usesCandidates: true,
-        };
-      }
-      if (snapshotMatchesOriginal(liveSnapshot) && !previewSnapshotActive) {
-        return {
-          ok: true,
-          input: boardText,
-          inputFormat: "puzzle81",
-          inputSource: "currentBoardPuzzle81",
-          inputPreview: getManualAdvancedInputPreview(boardText),
-          usesCandidates: false,
-        };
-      }
-      if (exportedAsLibrary) {
-        return {
-          ok: true,
-          input: snapshotLibrary,
-          inputFormat: "snapshotCandidates",
-          inputSource: "currentSnapshotLibrary",
-          inputPreview: getManualAdvancedInputPreview(snapshotLibrary),
-          usesCandidates: true,
-        };
-      }
-      return {
-        ok: true,
-        input: boardText,
-        inputFormat: "puzzle81",
-        inputSource: "currentBoardPuzzle81",
-        inputPreview: getManualAdvancedInputPreview(boardText),
-        usesCandidates: false,
-      };
-    }
-  }
-  if (currentManualAdvancedInputString && currentManualAdvancedInputFormat === "puzzle81" && /^[0-9.]{81}$/.test(currentManualAdvancedInputString)) {
-    return {
-      ok: true,
-      input: currentManualAdvancedInputString,
-      inputFormat: currentManualAdvancedInputFormat,
-      inputSource: "storedImportedInput",
-      inputPreview: getManualAdvancedInputPreview(currentManualAdvancedInputString),
-      usesCandidates: currentManualAdvancedUsesCandidates,
-    };
-  }
-  const rawPuzzle = String(givens.value || "").trim();
-  if (/^[0-9.]{81}$/.test(rawPuzzle)) {
-    return {
-      ok: true,
-      input: rawPuzzle,
-      inputFormat: "puzzle81",
-      inputSource: "currentBoardPuzzle81",
-      inputPreview: getManualAdvancedInputPreview(rawPuzzle),
-      usesCandidates: false,
-    };
-  }
-  return { ok: false, error: ui("manualAdvancedExportFailed") };
-}
-
 function syncEngineToCurrentSnapshot() {
   if (!engine || !currentSnapshot || (snapshotMatchesOriginal() && !previewSnapshotActive)) {
     return true;
@@ -5025,8 +3893,7 @@ function syncEngineToCurrentSnapshot() {
   currentSnapshot = result.state || currentSnapshot;
   previewSnapshotActive = false;
   currentPreviewRecord = null;
-  syncManualAdvancedInputStateFromSnapshot(currentSnapshot);
-  return true;
+    return true;
 }
 
 async function copyText(text) {
@@ -5236,13 +4103,6 @@ function setStatusElementState(element, message, tone = "info") {
   }
 }
 
-function setOptionalTextBlock(element, value) {
-  if (!element) return;
-  const visible = Boolean(value);
-  element.textContent = value || "";
-  element.classList.toggle("hidden", !visible);
-}
-
 function buildStaticSnapshotFromPuzzle(puzzle) {
   const boardText = String(puzzle || "").trim();
   const cells = Array.from({ length: 81 }, (_, index) => {
@@ -5426,6 +4286,18 @@ function alsHouseKeysForCells(cells) {
   return common.length > 0 ? common : touchedHouseKeysForCells(cells);
 }
 
+function buildAlsMeta(cells, digits, fallbackKey) {
+  const normalizedCells = [...new Set(cells)].filter(Number.isInteger).sort((a, b) => a - b);
+  const normalizedDigits = [...new Set(digits)].filter((digit) => digit >= 1 && digit <= 9).sort((a, b) => a - b);
+  return {
+    key: makeAlsMetaKey(normalizedCells, normalizedDigits, fallbackKey),
+    fallbackKey,
+    cells: normalizedCells,
+    digits: normalizedDigits,
+    houseKeys: alsHouseKeysForCells(normalizedCells),
+  };
+}
+
 function parseAlsNodeMeta(node) {
   const nodeKind = node?.nodeKind || node?.kind || "";
   if (nodeKind !== "AlsCandidateSector") return null;
@@ -5459,16 +4331,7 @@ function parseAlsNodeMeta(node) {
     fallbackKey = alsCells.join(",") || String(node?.originalNodeId ?? node?.nodeId ?? "als");
   }
 
-  const normalizedCells = [...new Set(alsCells)].filter(Number.isInteger).sort((a, b) => a - b);
-  const normalizedDigits = [...digits].filter((digit) => digit >= 1 && digit <= 9).sort((a, b) => a - b);
-
-  return {
-    key: makeAlsMetaKey(normalizedCells, normalizedDigits, fallbackKey),
-    fallbackKey,
-    cells: normalizedCells,
-    digits: normalizedDigits,
-    houseKeys: alsHouseKeysForCells(normalizedCells),
-  };
+  return buildAlsMeta(alsCells, digits, fallbackKey);
 }
 
 function parseAlsEdgeMeta(edge) {
@@ -5485,19 +4348,8 @@ function parseAlsEdgeMeta(edge) {
     if (digit >= 1 && digit <= 9) digits.add(digit);
   }
 
-  const alsCells = parseSudokuCellsDisplay(match[4]);
-  const normalizedCells = [...new Set(alsCells)].filter(Number.isInteger).sort((a, b) => a - b);
-  const normalizedDigits = [...digits].filter((digit) => digit >= 1 && digit <= 9).sort((a, b) => a - b);
-  if (normalizedCells.length === 0 || normalizedDigits.length === 0) return null;
-
-  const fallbackKey = match[4] || label;
-  return {
-    key: makeAlsMetaKey(normalizedCells, normalizedDigits, fallbackKey),
-    fallbackKey,
-    cells: normalizedCells,
-    digits: normalizedDigits,
-    houseKeys: alsHouseKeysForCells(normalizedCells),
-  };
+  const meta = buildAlsMeta(parseSudokuCellsDisplay(match[4]), digits, match[4] || label);
+  return meta.cells.length > 0 && meta.digits.length > 0 ? meta : null;
 }
 
 function mergeAlsMeta(target, source) {
@@ -6061,7 +4913,7 @@ function normalizePromotedGroupedAicStepResult(sampleJson) {
       nodes: pathNodes,
       edges: pathEdges,
     },
-    branches,
+    branches: [],
     endpoints: {
       startNodeId: firstNode?.nodeId ?? null,
       endNodeId: lastNode?.nodeId ?? null,
@@ -7250,7 +6102,6 @@ function applyBoardChainHighlights(overlaySample, startNodeId) {
   const pathEdges = overlaySample?.path?.edges || [];
   const forceRender = isForceChainRenderOverlay(overlaySample);
   const usesBackendCandidateColors = overlaySample?.hasBackendColorCands === true;
-  const forceUsesBackendCandidateColors = forceRender && usesBackendCandidateColors;
   const alsClassByKey = buildAlsHighlightClassMap(pathNodes, pathEdges);
 
   if (!usesBackendCandidateColors) {
@@ -7471,7 +6322,7 @@ function renderCandidateMarks(layer, overlaySample) {
   }
 }
 
-function renderOverlayBanner(layer) {
+function renderOverlayBanner() {
   // Keep the debug-only notice in the side control panel/status area
   // so the SVG overlay does not cover cells or candidate digits.
 }
@@ -7676,97 +6527,6 @@ if (APP_DEBUG_MODE) {
 }
 
 
-function updateManualAdvancedTypUi() {
-  const typ = Number(manualAdvancedTypSelect?.value || 0);
-  const legacyAllowLabel = manualAllowGroupedLabel || manualAllowGrouped?.closest?.("label") || null;
-  const hideLegacyAllow = typ === 4;
-
-  // typ=4 外部 allow 守门已经撤掉。这里用 hidden + class + inline style 三重处理，
-  // 避免旧 index.html 没有 label id、或旧 CSS 缓存时仍露出 legacy checkbox。
-  if (legacyAllowLabel) {
-    legacyAllowLabel.classList.toggle("hidden", hideLegacyAllow);
-    legacyAllowLabel.hidden = hideLegacyAllow;
-    legacyAllowLabel.style.display = hideLegacyAllow ? "none" : "";
-    legacyAllowLabel.title = hideLegacyAllow
-      ? "typ=4 外部 allowPromotedGroupedAic 守门已撤，此旧开关不再控制 Grouped AIC 是否运行。"
-      : "兼容旧 manual advanced 请求字段；typ=4 已不再依赖它。";
-  }
-  if (manualAllowGrouped) {
-    manualAllowGrouped.disabled = hideLegacyAllow;
-    if (hideLegacyAllow) manualAllowGrouped.checked = false;
-  }
-
-  const note = document.querySelector(".manual-advanced-note");
-  if (note) {
-    if (typ === 4) {
-      note.textContent = "typ=4 Grouped AIC：外部 allow 守门已撤；能否正式出 StepResult 由内部 DCL/CNL/validator 决定。";
-    } else if (typ === 5) {
-      note.textContent = "typ=5 ALS graph/debug：当前只建图与统计，formal search 默认关闭。";
-    } else if (typ === 6) {
-      note.textContent = "typ=6 Complex AIC：FW/Fire、AF 与 UR Guardian 强边已接入；UR Guardian 链可在 FindAll 中通过 strong:urguardian / {UR:ab r..c..} 标识确认。";
-    } else {
-      note.textContent = ui("manualAdvancedNote");
-    }
-  }
-}
-
-function manualAdvancedStat(statsMap, key, fallback = "-") {
-  const value = statsMap?.[key];
-  return value == null || value === "" ? fallback : value;
-}
-
-function getManualAdvancedTyp4AuditLines(response, statsMap) {
-  const typ = Number(response?.typ || 0);
-  if (typ !== 4 && String(statsMap?.typ || "") !== "4") return [];
-  if (manualAdvancedStat(statsMap, "typ4FinalAuditV1") !== "true") {
-    return ["typ4 audit: unavailable"];
-  }
-
-  return [
-    "typ4 final audit:",
-    `  externalGuardRemoved=${manualAdvancedStat(statsMap, "typ4ExternalGuardRemoved")}`,
-    `  endpoint=${manualAdvancedStat(statsMap, "typ4AuditEndpointRelation")} / ${manualAdvancedStat(statsMap, "typ4AuditEndpointInference")}`,
-    `  conclusion=${manualAdvancedStat(statsMap, "typ4AuditConclusionKind")}; ready=${manualAdvancedStat(statsMap, "typ4AuditConclusionReady")}; valid=${manualAdvancedStat(statsMap, "typ4AuditValidConclusionFound")}`,
-    `  nodes=${manualAdvancedStat(statsMap, "typ4AuditStartNodeKind")} -> ${manualAdvancedStat(statsMap, "typ4AuditEndNodeKind")}; sectors=${manualAdvancedStat(statsMap, "typ4AuditStartSectorCount")}/${manualAdvancedStat(statsMap, "typ4AuditEndSectorCount")}; overlap=${manualAdvancedStat(statsMap, "typ4AuditEndpointSectorsOverlap")}`,
-    `  grouped=${manualAdvancedStat(statsMap, "typ4AuditGroupedEndpointAnalysis")}; mixedOrGroupedDebugOnly=${manualAdvancedStat(statsMap, "typ4MixedGroupedStillDebugOnly")}`,
-    `  pathOk=${manualAdvancedStat(statsMap, "typ4AuditPathValidationPassed")}; endpointSectorOk=${manualAdvancedStat(statsMap, "typ4AuditEndpointSectorValidationPassed")}; selectedRank=${manualAdvancedStat(statsMap, "typ4AuditSelectedPathRank")}`,
-    `  candidates raw/unique/final=${manualAdvancedStat(statsMap, "typ4AuditRawCandidateCount")}/${manualAdvancedStat(statsMap, "typ4AuditUniqueCandidateCount")}/${manualAdvancedStat(statsMap, "typ4AuditCandidateCount")}`,
-    `  grouped raw/unique=${manualAdvancedStat(statsMap, "typ4AuditRawGroupedCandidateCount")}/${manualAdvancedStat(statsMap, "typ4AuditUniqueGroupedCandidateCount")}`,
-    `  rejects endpoint=${manualAdvancedStat(statsMap, "typ4AuditRejectedInEndpointSector")}; missing=${manualAdvancedStat(statsMap, "typ4AuditRejectedCandidateMissing")}; start=${manualAdvancedStat(statsMap, "typ4AuditRejectedNotSeeingStart")}; end=${manualAdvancedStat(statsMap, "typ4AuditRejectedNotSeeingEnd")}; inPath=${manualAdvancedStat(statsMap, "typ4AuditRejectedInPath")}`,
-    `  reasons path=${manualAdvancedStat(statsMap, "typ4AuditPathRejectReason")}; endpointSector=${manualAdvancedStat(statsMap, "typ4AuditEndpointSectorRejectReason")}; unsupported=${manualAdvancedStat(statsMap, "typ4AuditUnsupportedReason")}; selected=${manualAdvancedStat(statsMap, "typ4AuditSelectedPathReason")}`,
-  ];
-}
-
-function buildManualAdvancedRequest() {
-  return {
-    techniqueFamily: "YZFChaining",
-    typ: Number(manualAdvancedTypSelect?.value || 0),
-    inputFormat: String(manualAdvancedInputFormatSelect?.value || "auto"),
-    debugMode: !!manualDebugMode?.checked,
-    allowPromotedGroupedAic: !!manualAllowGrouped?.checked,
-    returnStepResult: true,
-    returnDebugJson: !!manualReturnDebugJson?.checked,
-    includeOverlayData: !!manualIncludeOverlayData?.checked,
-    includeRawGraphStats: !!manualIncludeRawGraphStats?.checked,
-  };
-}
-
-function getCurrentPuzzleStringForManualAdvanced() {
-  const inputInfo = getCurrentManualAdvancedInputInfo();
-  if (!inputInfo.ok) {
-    return inputInfo;
-  }
-  return {
-    ok: true,
-    puzzle: inputInfo.input,
-    inputFormat: inputInfo.inputFormat,
-    inputSource: inputInfo.inputSource || "unknown",
-    inputLength: inputInfo.input.length,
-    inputPreview: inputInfo.inputPreview,
-    usesCandidates: !!inputInfo.usesCandidates,
-  };
-}
-
 function normalizeStepResultChainBranches(branches = []) {
   return (Array.isArray(branches) ? branches : []).map((branch, branchIndex) => {
     const nodes = normalizeStepResultPathNodes(branch?.nodes || []);
@@ -7779,15 +6539,6 @@ function normalizeStepResultChainBranches(branches = []) {
     };
   }).filter((branch) => branch.path.nodes.length > 0 && branch.path.edges.length > 0);
 }
-function hasRenderableOverlayPath(overlaySample) {
-  if (overlaySample?.path?.nodes?.length > 0 && overlaySample?.path?.edges?.length > 0) {
-    return true;
-  }
-  return Array.isArray(overlaySample?.branches) && overlaySample.branches.some((branch) => (
-    branch?.path?.nodes?.length > 0 && branch?.path?.edges?.length > 0
-  ));
-}
-
 function stepResultHasRenderableChain(stepResult) {
   const hasPath = Array.isArray(stepResult?.nodes) && stepResult.nodes.length > 0 &&
     Array.isArray(stepResult?.edges) && stepResult.edges.length > 0;
@@ -8222,195 +6973,6 @@ function normalizeDefaultSolverStepResult(stepResult, puzzle, responseMeta = {})
   };
 }
 
-function compressGroupedSectorText(cells) {
-  const validCells = Array.isArray(cells) ? cells.filter(Number.isInteger) : [];
-  if (!validCells.length) return "";
-  const groups = new Map();
-  for (const cell of validCells) {
-    const row = Math.floor(cell / 9) + 1;
-    const col = (cell % 9) + 1;
-    if (!groups.has(row)) groups.set(row, []);
-    groups.get(row).push(col);
-  }
-  const parts = [];
-  for (const [row, cols] of groups.entries()) {
-    const sortedCols = [...cols].sort((a, b) => a - b).join("");
-    parts.push(`r${row}c${sortedCols}`);
-  }
-  return parts.join("/");
-}
-
-function compactAlsLabel(label) {
-  const text = String(label || "").trim();
-  if (!text) return "ALS";
-  return text
-    .replace(/\s*\[[^\]]+\]\s*/g, " ")
-    .replace(/\s+(?:OFF|ON)\s*$/i, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function formatManualChainNodeCompact(node) {
-  if (node?.nodeKind === "AlsCandidateSector" || node?.kind === "AlsCandidateSector") {
-    return compactAlsLabel(node?.label);
-  }
-  if (node?.nodeKind === "GroupedSector" || node?.kind === "GroupedSector") {
-    const digit = Number(node?.digitDisplay || node?.digit || 0);
-    const cells = Array.isArray(node?.sectorCells) ? node.sectorCells : [];
-    const cellText = compressGroupedSectorText(cells);
-    return digit >= 1 && digit <= 9 ? `${digit}${cellText}` : (node?.label || "group");
-  }
-  const cell = Number.isInteger(node?.cell) ? node.cell : null;
-  const digit = Number(node?.digitDisplay || 0);
-  if (cell == null || digit < 1 || digit > 9) {
-    return compactAlsLabel(node?.label || "node");
-  }
-  return `${digit}r${Math.floor(cell / 9) + 1}c${(cell % 9) + 1}`;
-}
-
-function formatManualChainNodeDetailed(node) {
-  if (node?.nodeKind === "GroupedSector" || node?.kind === "GroupedSector") {
-    const digit = Number(node?.digitDisplay || node?.digit || 0);
-    const cells = Array.isArray(node?.sectorCells) ? node.sectorCells : [];
-    const cellText = compressGroupedSectorText(cells);
-    return digit >= 1 && digit <= 9 ? `${cellText}#${digit}` : (node?.label || "group");
-  }
-  const cell = Number.isInteger(node?.cell) ? node.cell : null;
-  const digit = Number(node?.digitDisplay || 0);
-  if (cell == null || digit < 1 || digit > 9) {
-    return node?.label || "node";
-  }
-  return `r${Math.floor(cell / 9) + 1}c${(cell % 9) + 1}#${digit}`;
-}
-
-function formatManualElimination(candidate) {
-  if (!candidate || !Number.isInteger(candidate.cell) || !Number.isInteger(candidate.digitDisplay)) {
-    return candidate?.label || "elimination";
-  }
-  return `r${Math.floor(candidate.cell / 9) + 1}c${(candidate.cell % 9) + 1}<>${candidate.digitDisplay}`;
-}
-
-function formatManualPlacement(action) {
-  if (!action || !Number.isInteger(action.index) || !Number.isInteger(action.value)) {
-    return action?.label || "placement";
-  }
-  return `r${Math.floor(action.index / 9) + 1}c${(action.index % 9) + 1}=${action.value}`;
-}
-
-function extractManualChainModel(source) {
-  if (!source || typeof source !== "object") {
-    return { nodes: [], edges: [], eliminations: [], placements: [] };
-  }
-
-  if (Array.isArray(source.nodes) && Array.isArray(source.edges)) {
-    const nodes = normalizeStepResultPathNodes(source.nodes);
-    const edges = normalizeStepResultPathEdges(source.edges, nodes);
-    applyTransitionStatesToPathNodes(nodes, edges);
-
-    const eliminations = Array.isArray(source.eliminations) ? source.eliminations.flatMap((candidate) => {
-      const digits = Array.isArray(candidate.candidates)
-        ? candidate.candidates.map(Number).filter((digit) => digit >= 1 && digit <= 9)
-        : [];
-      return digits.map((digit) => ({
-        cell: candidate.index,
-        digitDisplay: digit,
-        row: candidate.row,
-        col: candidate.col,
-      }));
-    }) : [];
-
-    const placements = Array.isArray(source.placements)
-      ? source.placements.map((action) => ({
-        index: action.index,
-        value: action.value,
-        row: action.row,
-        col: action.col,
-      }))
-      : (Array.isArray(source.actions)
-        ? source.actions
-          .filter((action) => action.type === "place")
-          .map((action) => ({
-            index: action.index,
-            value: action.value,
-            row: action.row,
-            col: action.col,
-          }))
-        : []);
-
-    return { nodes, edges, eliminations, placements };
-  }
-
-  if (source.path && Array.isArray(source.path.nodes) && Array.isArray(source.path.edges)) {
-    const nodes = source.path.nodes.map((node, pathIndex) => {
-      const cell = Number.isInteger(node.cell) ? node.cell : null;
-      const nodeKind = node.nodeKind || node.kind || "SingleCandidate";
-      return {
-        nodeId: Number.isInteger(node.nodeId) ? node.nodeId : pathIndex,
-        originalNodeId: Number.isInteger(node.originalNodeId) ? node.originalNodeId : (Number.isInteger(node.nodeId) ? node.nodeId : pathIndex),
-        pathIndex: Number.isInteger(node.pathIndex) ? node.pathIndex : pathIndex,
-        label: node.label || "",
-        digitDisplay: Number(node.digitDisplay || node.digit || 0),
-        state: node.state || extractStateFromLabel(node.label),
-        cell,
-        kind: nodeKind,
-        nodeKind,
-        sectorCells: normalizeSectorCells(node.sectorCells, cell),
-      };
-    });
-
-    const edges = source.path.edges.map((edge, index) => {
-      const parsed = edge.strength
-        ? {
-          strength: edge.strength === "weak" ? "weak" : "strong",
-          reason: edge.reason || "unknown",
-          transition: edge.transition || "",
-        }
-        : parseYzfEdgeType(edge.type);
-
-      return {
-        edgeId: Number.isInteger(edge.edgeId) ? edge.edgeId : index,
-        fromNodeId: Number.isInteger(edge.fromNodeId) ? edge.fromNodeId : index,
-        toNodeId: Number.isInteger(edge.toNodeId) ? edge.toNodeId : index + 1,
-        fromPathIndex: Number.isInteger(edge.fromPathIndex) ? edge.fromPathIndex : index,
-        toPathIndex: Number.isInteger(edge.toPathIndex) ? edge.toPathIndex : index + 1,
-        originalFromNodeId: edge.originalFromNodeId ?? edge.from,
-        originalToNodeId: edge.originalToNodeId ?? edge.to,
-        strength: parsed.strength,
-        reason: parsed.reason,
-        transition: parsed.transition,
-        rawType: edge.rawType || edge.type || "",
-        role: edge.role || parsed.role || "",
-        alsLabel: parsed.alsLabel || edge.alsLabel || "",
-        afLabel: parsed.afLabel || edge.afLabel || "",
-        urLabel: parsed.urLabel || edge.urLabel || "",
-        amslsLabel: parsed.amslsLabel || edge.amslsLabel || "",
-      };
-    });
-
-    applyTransitionStatesToPathNodes(nodes, edges);
-
-    const eliminations = Array.isArray(source.debugCandidates)
-      ? source.debugCandidates.map((candidate) => ({
-        cell: candidate.cell,
-        digitDisplay: Number(candidate.digitDisplay || 0),
-        row: candidate.row,
-        col: candidate.col,
-      }))
-      : (Array.isArray(source.candidateMarks)
-        ? source.candidateMarks.map((candidate) => ({
-          cell: candidate.cell,
-          digitDisplay: Number(candidate.digitDisplay || 0),
-          row: candidate.row,
-          col: candidate.col,
-        }))
-        : []);
-
-    return { nodes, edges, eliminations, placements: [] };
-  }
-
-  return { nodes: [], edges: [], eliminations: [], placements: [] };
-}
-
 function extractStepDescriptionChainText(stepResult) {
   const description = String(stepResult?.description || "").trim();
   if (!description) return "";
@@ -8422,21 +6984,10 @@ function extractStepDescriptionChainText(stepResult) {
   return text.replace(/\.$/, "");
 }
 
-function isGenericAicConclusionDescription(text) {
-  return /^Strong endpoint inference on /i.test(String(text || "").trim());
-}
-
 function isForceChainStepResult(stepResult) {
   const text = [stepResult?.kind, stepResult?.title, stepResult?.chainType].map((value) => String(value || "")).join(" ");
   return !/\b(?:g-?Braid|Braid)\b/i.test(text) &&
     /(?:\bForce(?:ing)? Chain\b|Cell\s*\/?\s*Region\s*FC|CellRegionFC|Dynamic\s+(?:Forcing\s+)?Chain)/i.test(text);
-}
-
-function isBraidStepResult(stepResult) {
-  const kind = String(stepResult?.kind || "");
-  const title = String(stepResult?.title || "");
-  const chainType = String(stepResult?.chainType || "");
-  return /^(Braid|GBraid)$/i.test(kind) || /\bg-?Braid\b/i.test(title) || /\bg-?Braid\b/i.test(chainType);
 }
 
 function forceChainDescriptionDetails(stepResult) {
@@ -8456,967 +7007,12 @@ function forceChainDescriptionDetails(stepResult) {
   return lines;
 }
 
-function fireworkSectorText(cells) {
-  return (Array.isArray(cells) ? cells : [])
-    .filter(Number.isInteger)
-    .sort((a, b) => a - b)
-    .map((cell) => `r${Math.floor(cell / 9) + 1}c${(cell % 9) + 1}`)
-    .join(",");
-}
-
 function nodeTouchesReasonEdge(node, edges = [], reason = "") {
   const nodeId = Number(node?.nodeId);
   const normalizedReason = String(reason || "").toLowerCase();
   if (!Number.isInteger(nodeId) || !normalizedReason) return false;
   return edges.some((edge) => String(edge?.reason || "").toLowerCase() === normalizedReason &&
     (edge.fromNodeId === nodeId || edge.toNodeId === nodeId));
-}
-
-function nodeTouchesFireEdge(node, edges = []) {
-  return nodeTouchesReasonEdge(node, edges, "fire");
-}
-
-function edgeForNodeByReason(node, edges = [], reason = "") {
-  const nodeId = Number(node?.nodeId);
-  const normalizedReason = String(reason || "").toLowerCase();
-  if (!Number.isInteger(nodeId) || !normalizedReason) return null;
-  return (edges || []).find((edge) => String(edge?.reason || "").toLowerCase() === normalizedReason &&
-    (edge.fromNodeId === nodeId || edge.toNodeId === nodeId)) || null;
-}
-
-function formatAfNodeFromEdgeLabel(node, edges = []) {
-  const edge = edgeForNodeByReason(node, edges, "af");
-  const label = String(edge?.afLabel || "").trim();
-  if (label) return label;
-  const digit = Number(node?.digitDisplay || node?.digit || 0);
-  const cells = Array.isArray(node?.sectorCells) ? node.sectorCells : [];
-  const cellText = compressGroupedSectorText(cells);
-  return digit >= 1 && digit <= 9 && cellText ? `${digit}${cellText}{AF}` : "";
-}
-
-function formatUrGuardianNodeWithEdges(node, edges = []) {
-  const edge = edgeForNodeByReason(node, edges, "urguardian");
-  if (!edge) return "";
-  const digit = Number(node?.digitDisplay || node?.digit || 0);
-  const cells = Array.isArray(node?.sectorCells) ? node.sectorCells : [];
-  const cellText = compressGroupedSectorText(cells);
-  const urSuffix = edge.urLabel ? `{UR:${edge.urLabel}}` : "{UR}";
-  return digit >= 1 && digit <= 9 && cellText ? `${digit}${cellText}${urSuffix}` : "";
-}
-
-function formatAmslsNodeFromEdgeLabel(node, edges = []) {
-  const edge = edgeForNodeByReason(node, edges, "amsls");
-  const label = String(edge?.amslsLabel || "").trim();
-  if (label) return label;
-  const cells = Array.isArray(node?.sectorCells) ? node.sectorCells : [];
-  const cellText = compressGroupedSectorText(cells);
-  return cellText ? `{AMSLS:${cellText}}` : "{AMSLS}";
-}
-
-function formatManualChainNodeCompactWithEdges(node, edges = []) {
-  const nodeKind = node?.nodeKind || node?.kind || "";
-  const afText = formatAfNodeFromEdgeLabel(node, edges);
-  if (afText) return afText;
-  const urText = formatUrGuardianNodeWithEdges(node, edges);
-  if (urText) return urText;
-  const amslsText = formatAmslsNodeFromEdgeLabel(node, edges);
-  if (amslsText && nodeTouchesReasonEdge(node, edges, "amsls")) return amslsText;
-  if (nodeKind === "GroupedSector" && nodeTouchesFireEdge(node, edges)) {
-    const digit = Number(node?.digitDisplay || node?.digit || 0);
-    const cellText = fireworkSectorText(node?.sectorCells);
-    if (digit >= 1 && digit <= 9 && cellText) {
-      return `${digit}${cellText}{FW}`;
-    }
-  }
-  return formatManualChainNodeCompact(node);
-}
-
-function formatManualChainNodeDetailedWithEdge(node, edge, edges = []) {
-  const nodeKind = node?.nodeKind || node?.kind || "";
-  const edgeReason = String(edge?.reason || "").toLowerCase();
-  if (edgeReason === "af") {
-    const afText = formatAfNodeFromEdgeLabel(node, [edge]);
-    if (afText) return afText;
-  }
-  if (edgeReason === "urguardian") {
-    const urText = formatUrGuardianNodeWithEdges(node, [edge]);
-    if (urText) return urText;
-  }
-  if (edgeReason === "amsls") {
-    const amslsText = formatAmslsNodeFromEdgeLabel(node, [edge]);
-    if (amslsText) return amslsText;
-  }
-  if (nodeKind === "GroupedSector" &&
-      edgeReason === "fire" &&
-      nodeTouchesFireEdge(node, edges)) {
-    const digit = Number(node?.digitDisplay || node?.digit || 0);
-    const cellText = fireworkSectorText(node?.sectorCells);
-    if (digit >= 1 && digit <= 9 && cellText) {
-      return `${cellText}#${digit}{FW}`;
-    }
-  }
-  return formatManualChainNodeDetailed(node);
-}
-
-
-function buildManualAdvancedChainTexts(stepResult) {
-  const rawDescriptionChainText = extractStepDescriptionChainText(stepResult);
-  const descriptionChainText = isGenericAicConclusionDescription(rawDescriptionChainText) ? "" : rawDescriptionChainText;
-  const { nodes, edges, eliminations, placements } = extractManualChainModel(stepResult);
-
-  const backendOwnedBraid = isBraidStepResult(stepResult);
-  const fallbackNodeList = backendOwnedBraid ? [] : nodes.map((node) => formatManualChainNodeDetailed(node));
-  const fallbackEdgeList = backendOwnedBraid ? [] : edges.map((edge) => `${edge.fromNodeId} -> ${edge.toNodeId}, ${edge.strength}:${edge.reason}:${edge.transition || "-"}`);
-  const conclusionText = placements.length
-    ? `place ${placements.map((action) => formatManualPlacement(action)).join(", ")}`
-    : (eliminations.length
-      ? `delete ${eliminations.map((candidate) => formatManualElimination(candidate)).join(", ")}`
-      : "delete -");
-
-  const forceBranchDetails = forceChainDescriptionDetails(stepResult);
-  if (descriptionChainText && forceBranchDetails.length > 1) {
-    return {
-      ok: true,
-      chainText: descriptionChainText,
-      detailedLines: forceBranchDetails,
-      conclusionText,
-      fallbackNodeList,
-      fallbackEdgeList,
-    };
-  }
-
-  if (!nodes.length || !edges.length) {
-    return {
-      ok: false,
-      chainText: "",
-      detailedLines: [],
-      conclusionText,
-      fallbackNodeList,
-      fallbackEdgeList,
-    };
-  }
-
-  const nodeById = new Map(nodes.map((node) => [node.nodeId, node]));
-  let directed = buildDirectedChainOrder(nodes, edges);
-  if (!directed.ok) {
-    directed = buildUndirectedChainOrder(nodes, edges);
-  }
-  if (!directed.ok) {
-    directed = buildCycleChainOrder(nodes, edges);
-  }
-  if (!directed.ok) {
-    return {
-      ok: false,
-      chainText: "",
-      detailedLines: [],
-      conclusionText,
-      fallbackNodeList,
-      fallbackEdgeList,
-    };
-  }
-  const orderedNodes = directed.orderedNodeIds.map((nodeId) => nodeById.get(nodeId)).filter(Boolean);
-  const orderedEdges = directed.orderedEdges;
-  const isCycle = directed.isCycle === true;
-
-  if (!orderedNodes.length || !orderedEdges.length) {
-    return {
-      ok: false,
-      chainText: "",
-      detailedLines: [],
-      conclusionText,
-      fallbackNodeList,
-      fallbackEdgeList,
-    };
-  }
-
-  let chainText = formatManualChainNodeCompactWithEdges(orderedNodes[0], orderedEdges);
-  for (let index = 0; index < orderedEdges.length; index += 1) {
-    const edge = orderedEdges[index];
-    const nextNode = isCycle && index === orderedEdges.length - 1
-      ? orderedNodes[0]
-      : orderedNodes[index + 1];
-    if (!nextNode) {
-      return {
-        ok: false,
-        chainText: "",
-        detailedLines: [],
-        conclusionText,
-        fallbackNodeList,
-        fallbackEdgeList,
-      };
-    }
-    chainText += edge.strength === "strong" ? " = " : " - ";
-    chainText += formatManualChainNodeCompactWithEdges(nextNode, orderedEdges);
-  }
-  if (placements.length) {
-    chainText += ` => ${placements.map((action) => formatManualPlacement(action)).join(", ")}`;
-  } else if (eliminations.length) {
-    chainText += ` => ${eliminations.map((candidate) => formatManualElimination(candidate)).join(", ")}`;
-  }
-
-  const detailedLines = [];
-  for (let index = 0; index < orderedEdges.length; index += 1) {
-    const edge = orderedEdges[index];
-    const nextNode = isCycle && index === orderedEdges.length - 1
-      ? orderedNodes[0]
-      : orderedNodes[index + 1];
-    if (!orderedNodes[index] || !nextNode) continue;
-    const alsDetail = edge.alsLabel ? ` ${edge.alsLabel}` : "";
-    const afDetail = edge.afLabel ? ` ${edge.afLabel}` : "";
-    const urDetail = edge.urLabel ? ` ${edge.urLabel}` : "";
-    const amslsDetail = edge.amslsLabel ? ` ${edge.amslsLabel}` : "";
-    detailedLines.push(
-      `${formatManualChainNodeDetailedWithEdge(orderedNodes[index], edge, orderedEdges)} --${edge.strength} ${edge.reason}${alsDetail}${afDetail}${urDetail}${amslsDetail}-- ${formatManualChainNodeDetailedWithEdge(nextNode, edge, orderedEdges)}`
-    );
-  }
-
-  return {
-    ok: true,
-    // Braid/g-Braid graph ownership is backend-only. Do not let the frontend
-    // replace the structured node/edge chain with description text; otherwise a
-    // broken StepResult can still look partially drawn and hide backend bugs.
-    chainText: backendOwnedBraid ? chainText : (descriptionChainText || chainText),
-    detailedLines,
-    conclusionText,
-    fallbackNodeList,
-    fallbackEdgeList,
-  };
-}
-
-function clearManualAdvancedResult(message = "") {
-  clearChainOverlay();
-  setStatusElementState(manualAdvancedStatus, "");
-  setOptionalTextBlock(manualAdvancedJson, "");
-  if (message) {
-    setStatusElementState(manualAdvancedStatus, message, "info");
-  }
-}
-
-function parseManualAdvancedStats(statsText) {
-  const values = {};
-  if (typeof statsText !== "string" || !statsText) {
-    return values;
-  }
-  for (const part of statsText.split(";")) {
-    const index = part.indexOf("=");
-    if (index <= 0) continue;
-    values[part.slice(0, index)] = part.slice(index + 1);
-  }
-  return values;
-}
-
-function getManualAdvancedStatValue(statsMap, debugStats, key, fallback = "-") {
-  if (statsMap && statsMap[key] != null && statsMap[key] !== "") {
-    return statsMap[key];
-  }
-  if (debugStats && debugStats[key] != null && debugStats[key] !== "") {
-    return debugStats[key];
-  }
-  return fallback;
-}
-
-function hasManualAdvancedWarning(response, name) {
-  return Array.isArray(response?.warnings) && response.warnings.includes(name);
-}
-
-function isManualAdvancedSummaryOnlyDebugResponse(response, request, statsMap = {}) {
-  if (response?.stepResult) return false;
-  const debugJson = response?.debugJson;
-  if (!debugJson || typeof debugJson !== "object") return false;
-
-  const typ = Number(response?.typ || request?.typ || 0);
-  const pathNodes = Array.isArray(debugJson?.path?.nodes) ? debugJson.path.nodes : null;
-  const pathEdges = Array.isArray(debugJson?.path?.edges) ? debugJson.path.edges : null;
-  const emptyPath = !!pathNodes && !!pathEdges && pathNodes.length === 0 && pathEdges.length === 0;
-
-  // typ=5 ALS graph/debug 目前是 graph-stats 阶段，不跑 formal search，不提供可画链路。
-  // 后端会通过 overlay_data_summary_only / typ5_als_graph_debug_only_search_gate 明确表达这一点。
-  // 前端必须把它当作 summary-only，而不是 overlay normalization failure。
-  if (hasManualAdvancedWarning(response, "overlay_data_summary_only")) return true;
-  if (hasManualAdvancedWarning(response, "debug_json_is_summary_only")) return true;
-  if (debugJson.unsupportedReason === "typ5_als_graph_debug_only_search_gate") return true;
-  if (typ === 5 && emptyPath) return true;
-
-  // 其它 NoResult / GuardRejected 的空 debug path 也不要当成错误 overlay。
-  return emptyPath && (response?.status === "NoResult" || response?.status === "GuardRejected" || response?.status === "Unsupported");
-}
-
-function buildManualAdvancedSummaryOnlyPreview({
-  response,
-  request,
-  puzzleInfo,
-  statsMap,
-  summary,
-  rawResponseText,
-  inputFormatRequested,
-  inputFormatResolved,
-  inputLength,
-  usedCandidateState,
-  parserName,
-  parseWarning,
-  inputPreview,
-  inputSource,
-}) {
-  const debugStats = response?.debugJson?.stats || {};
-  const warnings = Array.isArray(response?.warnings) ? response.warnings : [];
-  const graphKeys = [
-    "graphNodeCount",
-    "graphStrongEdgeCount",
-    "graphWeakEdgeCount",
-    "visitedStates",
-    "pathLength",
-  ];
-  const buildKeys = [
-    "buildSessionEnsureCalls",
-    "buildSessionBuiltStages",
-    "buildSessionReusedStages",
-    "buildSessionTotalMicros",
-    "baseNodeDelta",
-    "xStrongEdgeDelta",
-    "xWeakEdgeDelta",
-    "xyStrongEdgeDelta",
-    "xyWeakEdgeDelta",
-    "groupNodeDelta",
-    "groupStrongEdgeDelta",
-    "groupWeakEdgeDelta",
-    "fireNodeDelta",
-    "fireStrongEdgeDelta",
-    "fireWeakEdgeDelta",
-    "afNodeDelta",
-    "afStrongEdgeDelta",
-    "afWeakEdgeDelta",
-    "urGuardianNodeDelta",
-    "urGuardianStrongEdgeDelta",
-    "urGuardianWeakEdgeDelta",
-  ];
-  const alsKeys = [
-    "alsBuiltCount",
-    "alsBuildMicros",
-    "alsNodeDelta",
-    "alsStrongEdgeDelta",
-    "alsWeakEdgeDelta",
-    "fireEnsureCalls",
-    "fireBuiltCount",
-    "fireReusedCount",
-    "fireBuildMicros",
-    "fireNodeDelta",
-    "fireStrongEdgeDelta",
-    "fireWeakEdgeDelta",
-    "afEnsureCalls",
-    "afBuiltCount",
-    "afReusedCount",
-    "afBuildMicros",
-    "afNodeDelta",
-    "afStrongEdgeDelta",
-    "afWeakEdgeDelta",
-    "urGuardianEnsureCalls",
-    "urGuardianBuiltCount",
-    "urGuardianReusedCount",
-    "urGuardianBuildMicros",
-    "urGuardianNodeDelta",
-    "urGuardianStrongEdgeDelta",
-    "urGuardianWeakEdgeDelta",
-    "alsMetaCount",
-    "alsStrongEdges",
-    "alsWeakEdges",
-    "alsDuplicateStrongRejected",
-    "alsDuplicateWeakRejected",
-    "alsDuplicateSkipped",
-    "alsRowColumnBoxSkipped",
-    "alsSectorNodesCreated",
-    "alsSectorNodesReused",
-    "sameCandHouseWeakClosureV23",
-    "sameCandHouseWeakRegistered",
-    "sameCandHouseWeakProbes",
-    "sameCandHouseWeakAccepted",
-    "sameCandHouseWeakDuplicate",
-    "sameCandHouseWeakSkippedOverlap",
-    "sameCandHouseWeakSingleAccepted",
-    "sameCandHouseWeakGroupAccepted",
-    "sameCandHouseWeakAlsAccepted",
-    "alsBuildBreakdownEnabled",
-    "alsFreeCellCollectMicros",
-    "alsComboEnumMicros",
-    "alsComboValidateMicros",
-    "alsMetaStoreMicros",
-    "alsNodeBuildMicros",
-    "alsStrongEdgeBuildMicros",
-    "alsWeakSingleBuildMicros",
-    "alsWeakPairBuildMicros",
-    "alsVisibilityCheckMicros",
-    "alsSortUniqueMicros",
-    "alsFreeCellTotalCount",
-    "alsComboVisited",
-    "alsComboAccepted",
-    "alsHouseScanned",
-    "alsHouseWithFreeCells",
-    "alsComboRejectedInvalidCell",
-    "alsComboRejectedNotAls",
-    "alsComboRejectedLockedSet",
-    "alsComboRejectedAllBivalue",
-    "alsComboRejectedRowColumnBox",
-    "alsComboRejectedDuplicate",
-    "alsItemLimitHit",
-    "alsDigitNodeLimitHit",
-    "alsStrongEdgeProbes",
-    "alsStrongEdgeAccepted",
-    "alsWeakSingleProbes",
-    "alsWeakSingleAccepted",
-    "alsWeakSingleCandidatePairs",
-    "alsWeakSinglePreFilterRejected",
-    "alsWeakSingleVisibilityChecked",
-    "alsWeakSingleVisibilitySkipped",
-    "alsWeakSingleCacheBuilds",
-    "alsWeakSingleCacheBuildMicros",
-    "alsWeakSinglePreFilterMicros",
-    "alsWeakPairProbes",
-    "alsWeakPairAccepted",
-    "alsWeakPairCandidatePairs",
-    "alsWeakPairPreFilterRejected",
-    "alsWeakPairFastHouseAccepted",
-    "alsWeakPairCommonPeerAccepted",
-    "alsWeakPairVisibilityChecked",
-    "alsWeakPairVisibilitySkipped",
-    "alsWeakPairPreFilterMicros",
-    "alsComboEarlyPruneCandidateMask",
-    "alsComboEarlyPruneBranches",
-    "alsComboCompleteAfterPrune",
-    "alsComboEarlyPruneMicros",
-    "typ5FormalDryRunEnabled",
-    "typ5FormalDryRunPathFound",
-    "typ5FormalDryRunDcl1Found",
-    "typ5FormalDryRunDcl2Found",
-    "typ5FormalDryRunQueryShortRejected",
-    "typ5FormalDryRunKind",
-    "typ5FormalDryRunExit",
-    "typ5FormalDryRunVisitedStates",
-    "typ5FormalDryRunDcl1VisitedStates",
-    "typ5FormalDryRunDcl2VisitedStates",
-    "typ5FormalDryRunTotalVisitedStates",
-    "typ5FormalDryRunSelectedVisitedStates",
-    "typ5FormalDryRunDcl1MaxDepthReached",
-    "typ5FormalDryRunDcl2MaxDepthReached",
-    "typ5FormalDryRunSelectedWithinVisitedLimit",
-    "typ5FormalDryRunMaxDepthReached",
-    "typ5FormalDryRunMaxDepthLimit",
-    "typ5FormalDryRunMaxVisitedLimit",
-    "typ5FormalDryRunPathLength",
-    "typ5FormalDryRunPathNodes",
-    "typ5FormalDryRunStartNodeId",
-    "typ5FormalDryRunEndNodeId",
-    "typ5FormalDryRunStartState",
-    "typ5FormalDryRunEndState",
-    "typ5FormalDryRunPathDirectionNormalized",
-    "typ5FormalDryRunEndpointAuditV19",
-    "typ5FormalDryRunDcl1SecondExitFound",
-    "typ5FormalDryRunDcl1SecondExitCover",
-    "typ5FormalDryRunPreferredDcl1SecondExit",
-    "typ5FormalDryRunDcl1SecondExitStartNodeId",
-    "typ5FormalDryRunDcl1SecondExitEndNodeId",
-    "typ5FormalDryRunDcl1SecondExitStartSectorCount",
-    "typ5FormalDryRunDcl1SecondExitEndSectorCount",
-    "typ5FormalDryRunProspectiveEliminationCount",
-    "typ5FormalDryRunProspectiveEliminationCell",
-    "typ5FormalDryRunProspectiveEliminationDigit",
-    "typ5FormalDryRunProspectivePlacementCount",
-    "typ5FormalDryRunProspectivePlacementCell",
-    "typ5FormalDryRunProspectivePlacementDigit",
-    "typ5FormalDryRunV20",
-    "typ5FormalDryRunV21",
-    "typ5FormalDryRunV22",
-    "typ5UnifiedDclRunnerV22",
-    "typ5SameCandHouseWeakClosureV23",
-    "typ5DefaultSolvePathV26",
-    "typ5AlsCompactChainTextV26",
-    "typ5FrontendSummaryCleanupV26",
-    "typ5FrontendDuplicateTitleFixV27",
-    "typ5AlsSummaryTextV27",
-    "typ5AlsLargeAlsEnumeratorV21",
-    "typ5AlsMaxSizeLimitV21",
-    "typ5FormalDryRunSingleNodes",
-    "typ5FormalDryRunGroupedNodes",
-    "typ5FormalDryRunAlsNodes",
-    "typ5FormalDryRunStrongEdges",
-    "typ5FormalDryRunWeakEdges",
-    "typ5FormalDryRunRowEdges",
-    "typ5FormalDryRunColumnEdges",
-    "typ5FormalDryRunBoxEdges",
-    "typ5FormalDryRunCellEdges",
-    "typ5FormalDryRunGroupEdges",
-    "typ5FormalDryRunAlsEdges",
-    "typ5FormalDryRunOtherEdges",
-  ];
-  const gateKeys = [
-    "typ5AlsGraphStage0",
-    "typ5SearchGateV1",
-    "typ5AlsGraphStatsV1",
-    "typ5AlsBuildBreakdownV14",
-    "typ5AlsWeakPairPrefilterV15",
-    "typ5AlsComboEarlyPruneV16",
-    "typ5AlsWeakSingleCacheV17",
-    "typ5FormalDryRunV18",
-    "typ5FormalDryRunV19",
-    "typ5FormalDryRunV20",
-    "typ5FormalDryRunV21",
-    "typ5FormalDryRunV22",
-    "typ5UnifiedDclRunnerV22",
-    "typ5SameCandHouseWeakClosureV23",
-    "typ5DefaultSolvePathV26",
-    "typ5AlsCompactChainTextV26",
-    "typ5FrontendSummaryCleanupV26",
-    "typ5FrontendDuplicateTitleFixV27",
-    "typ5AlsSummaryTextV27",
-    "typ5AlsLargeAlsEnumeratorV21",
-    "typ5FormalSearchAllowed",
-    "typ5FullBfsEnabled",
-    "typ5FormalStepEnabled",
-    "typ5DynamicRank0ProviderEnabled",
-  ];
-
-  const statLines = (keys) => keys
-    .map((key) => `${key}=${getManualAdvancedStatValue(statsMap, debugStats, key)}`)
-    .filter((line) => !line.endsWith("=-"));
-
-  return [
-    "typ5 ALS debug summary-only / no formal StepResult",
-    "overlay skipped: 当前响应没有正式 StepResult；status=Ok 且 stepResultPresent=true 时会走正式结果渲染路径",
-    "",
-    `status=${response?.status || "-"}`,
-    `techniqueFamily=${response?.techniqueFamily || request?.techniqueFamily || "YZFChaining"}`,
-    `typ=${Number(response?.typ || request?.typ || 0)}`,
-    `debugJsonPresent=${response?.debugJson != null}`,
-    `debugUnsupportedReason=${response?.debugJson?.unsupportedReason || "-"}`,
-    warnings.length ? `warnings=${warnings.join(",")}` : "warnings=-",
-    "",
-    "input:",
-    `inputSource=${inputSource}`,
-    `inputFormatRequested=${inputFormatRequested}`,
-    `inputFormatResolved=${inputFormatResolved}`,
-    `inputLength=${inputLength}`,
-    `usedCandidateState=${usedCandidateState}`,
-    `parserName=${parserName}`,
-    parseWarning && parseWarning !== "-" ? `parseWarning=${parseWarning}` : "parseWarning=-",
-    `inputPreview=${inputPreview}`,
-    "",
-    "graph/search stats:",
-    ...statLines(graphKeys),
-    "",
-    "build stats:",
-    ...statLines(buildKeys),
-    "",
-    "ALS stats:",
-    ...statLines(alsKeys),
-    "",
-    "typ5 gates:",
-    ...statLines(gateKeys),
-    "",
-    "summary:",
-    summary,
-    "",
-    "raw response JSON:",
-    rawResponseText || JSON.stringify(response, null, 2),
-  ].join("\n");
-}
-
-
-function renderManualAdvancedResponse(response, puzzleInfo, request, rawResponseText = "") {
-  const warnings = Array.isArray(response?.warnings) ? response.warnings : [];
-  const stepResult = response?.stepResult || null;
-  const status = response?.status || "InvalidResponse";
-  const title = stepResult?.title || "";
-  const chainType = stepResult?.chainType || "";
-  const eliminationsCount = Array.isArray(stepResult?.eliminations) ? stepResult.eliminations.length : 0;
-  const nodesCount = Array.isArray(stepResult?.nodes) ? stepResult.nodes.length : 0;
-  const edgesCount = Array.isArray(stepResult?.edges) ? stepResult.edges.length : 0;
-  const debugJsonPresent = response?.debugJson != null;
-  const statsText = typeof response?.stats === "string" ? response.stats : "";
-  const statsMap = parseManualAdvancedStats(statsText);
-  const unsupportedReason = response?.unsupportedReason || "";
-  const guardRejectReason = response?.guardRejectReason || "";
-  const typ = Number(response?.typ || request?.typ || 0);
-  const inputFormatResolved = response?.inputFormatResolved || statsMap.inputFormatResolved || request?.inputFormat || "auto";
-  const inputFormatRequested = response?.inputFormatRequested || statsMap.inputFormatRequested || request?.inputFormat || "auto";
-  const inputLength = Number(response?.inputLength || statsMap.inputLength || puzzleInfo?.inputLength || 0);
-  const usedCandidateState = String(response?.usedCandidateState ?? statsMap.usedCandidateState ?? puzzleInfo?.usesCandidates ?? false) === "true";
-  const parserName = response?.parserName || statsMap.parserName || "-";
-  const parseWarning = response?.parseWarning || statsMap.parseWarning || "";
-  const inputPreview = puzzleInfo?.inputPreview || getManualAdvancedInputPreview(puzzleInfo?.puzzle || "");
-  const inputSource = puzzleInfo?.inputSource || "unknown";
-  const graphNodeCount = statsMap.graphNodeCount || "unavailable";
-  const graphStrongEdgeCount = statsMap.graphStrongEdgeCount || "unavailable";
-  const graphWeakEdgeCount = statsMap.graphWeakEdgeCount || "unavailable";
-  const visitedStates = statsMap.visitedStates || "unavailable";
-  const pathLength = statsMap.pathLength || "unavailable";
-  const debugOverlaySource = (!stepResult && response?.debugJson && typeof response.debugJson === "object")
-    ? response.debugJson
-    : null;
-  const chainTexts = stepResult
-    ? buildManualAdvancedChainTexts(stepResult)
-    : (debugOverlaySource ? buildManualAdvancedChainTexts(debugOverlaySource) : null);
-
-  const typ4AuditLines = getManualAdvancedTyp4AuditLines(response, statsMap);
-
-  const summary = [
-    `status=${status}`,
-    `techniqueFamily=${response?.techniqueFamily || request?.techniqueFamily || "YZFChaining"}`,
-    `typ=${typ}`,
-    `inputSource=${inputSource}`,
-    `inputFormat=${inputFormatRequested}`,
-    `resolved=${inputFormatResolved}`,
-    `inputLength=${inputLength}`,
-    `usesCandidates=${usedCandidateState}`,
-    `inputPreview=${inputPreview}`,
-    title ? `title=${title}` : "",
-    chainType ? `chainType=${chainType}` : "",
-    stepResult ? `eliminations=${eliminationsCount}; nodes=${nodesCount}; edges=${edgesCount}` : "",
-    parserName && parserName !== "-" ? `parser=${parserName}` : "",
-    parseWarning && parseWarning !== "-" ? `parseWarning=${parseWarning}` : "",
-    unsupportedReason ? `unsupportedReason=${unsupportedReason}` : "",
-    guardRejectReason ? `guardRejectReason=${guardRejectReason}` : "",
-    `debugJsonPresent=${debugJsonPresent}`,
-    warnings.length ? `warnings=${warnings.join(",")}` : "warnings=-",
-    stepResult ? lang.value === "en" ? "Manual advanced result; also available in default solving when enabled" : "高级技巧结果；启用后也可由默认求解使用" : "",
-    status === "NoResult" ? `graphNodeCount=${graphNodeCount}; graphStrongEdgeCount=${graphStrongEdgeCount}; graphWeakEdgeCount=${graphWeakEdgeCount}; visitedStates=${visitedStates}; pathLength=${pathLength}` : "",
-  ].filter(Boolean).join(" | ");
-
-  setOptionalTextBlock(manualAdvancedJson, JSON.stringify({
-    inputSource,
-    inputPreview,
-    inputLength,
-    usesCandidates: puzzleInfo?.usesCandidates ?? false,
-    requestJson: request,
-    rawResponseJson: response,
-    status,
-    techniqueFamily: response?.techniqueFamily || request?.techniqueFamily || "YZFChaining",
-    typ,
-    title,
-    chainType,
-    rank: stepResult?.rank ?? null,
-    inputFormatRequested,
-    inputFormatResolved,
-    usedCandidateState,
-    parserName,
-    parseWarning,
-    graphNodeCount,
-    graphStrongEdgeCount,
-    graphWeakEdgeCount,
-    visitedStates,
-    pathLength,
-    chainText: chainTexts?.chainText || "",
-    detailedChainText: chainTexts?.detailedLines || [],
-    conclusionText: chainTexts?.conclusionText || "",
-    fallbackNodeList: chainTexts?.fallbackNodeList || [],
-    fallbackEdgeList: chainTexts?.fallbackEdgeList || [],
-    eliminationsCount,
-    nodesCount,
-    edgesCount,
-    unsupportedReason,
-    guardRejectReason,
-    stats: statsText,
-    warnings,
-    debugJsonPresent,
-    rawResponseText,
-    typ4Audit: typ4AuditLines,
-    manualAdvanced: true,
-    notFromDefaultSolver: true,
-  }, null, 2));
-
-  console.debug("Manual Advanced request/response", {
-    actualInputLength: inputLength,
-    actualInputPreview: inputPreview,
-    inputSource,
-    requestTyp: typ,
-    requestInputFormat: request?.inputFormat || "auto",
-    responseStatus: status,
-    responseTitle: title,
-    responseChainType: chainType,
-    responseEliminationsCount: eliminationsCount,
-    responseNodesCount: nodesCount,
-    responseEdgesCount: edgesCount,
-    responseInputFormatResolved: inputFormatResolved,
-    responseUsedCandidateState: usedCandidateState,
-  });
-
-  if (!stepResult && debugOverlaySource && isManualAdvancedSummaryOnlyDebugResponse(response, request, statsMap)) {
-    clearChainOverlay();
-    setYzfOverlayModeNote("summary-only / 仅显示图统计，不画链路");
-  setStatusElementState(yzfOverlayStatus,
-      `typ=${typ}; status=${status}; summary-only debugJson; overlay skipped; graph=${graphNodeCount}/${graphStrongEdgeCount}/${graphWeakEdgeCount}; visitedStates=${visitedStates}; pathLength=${pathLength}`,
-      "debug");
-    setOptionalTextBlock(manualAdvancedJson, buildManualAdvancedSummaryOnlyPreview({
-      response,
-      request,
-      puzzleInfo,
-      statsMap,
-      summary,
-      rawResponseText,
-      inputFormatRequested,
-      inputFormatResolved,
-      inputLength,
-      usedCandidateState,
-      parserName,
-      parseWarning,
-      inputPreview,
-      inputSource,
-    }));
-    const warnAboutInput = inputFormatResolved !== "library" || !usedCandidateState;
-    const suffix = warnAboutInput ? " | 当前没有使用 Library 候选状态，链类技巧测试可能不真实" : "";
-    setStatusElementState(manualAdvancedStatus, `${summary} | summary-only debugJson，已跳过 overlay${suffix}`, warnAboutInput ? "warn" : "info");
-    return;
-  }
-
-  if (!stepResult && !debugOverlaySource) {
-    clearChainOverlay();
-    setYzfOverlayModeNote(ui("overlayDebugOnly"));
-    const warnAboutInput = inputFormatResolved !== "library" || !usedCandidateState;
-    const suffix = warnAboutInput ? " | 当前没有使用 Library 候选状态，链类技巧测试可能不真实" : "";
-    setStatusElementState(manualAdvancedStatus, summary + (status === "NoResult" ? " | NoResult" : "") + suffix, status === "GuardRejected" ? "warn" : (status === "Unsupported" || status === "InvalidRequest" || status === "InternalError" ? "error" : (warnAboutInput ? "warn" : "info")));
-    return;
-  }
-
-  const overlaySample = stepResult
-    ? normalizeManualAdvancedStepResult(stepResult, puzzleInfo?.puzzle || "", response)
-    : normalizeYzfOverlaySample(debugOverlaySource);
-  if (!hasRenderableOverlayPath(overlaySample)) {
-    clearChainOverlay();
-    const isDebugOnlyNoPath = !stepResult && debugOverlaySource;
-    setYzfOverlayModeNote(isDebugOnlyNoPath ? (lang.value === "en" ? "Debug only; no renderable chain path" : "仅调试：无可画链路") : (lang.value === "en" ? "Manual advanced result; overlay unavailable" : "高级技巧结果：无法显示链路"));
-    setStatusElementState(yzfOverlayStatus,
-      isDebugOnlyNoPath
-        ? `typ=${typ}; status=${status}; debugJson present but no renderable path; overlay skipped`
-        : `title=${title || ""}; chainType=${chainType || ""}; stepResult present but no renderable path`,
-      isDebugOnlyNoPath ? "debug" : "error");
-    setStatusElementState(manualAdvancedStatus, `${summary} | ${stepResult ? "stepResult present but no renderable overlay path" : "debugJson has no renderable overlay path，已跳过 overlay"}`, stepResult ? "error" : "info");
-    setOptionalTextBlock(manualAdvancedJson, [
-      `title=${title || debugOverlaySource?.technique || "-"}`,
-      `chainType=${chainType || debugOverlaySource?.chainType || "-"}`,
-      `difficulty=${stepResult?.difficulty ?? debugOverlaySource?.difficulty ?? "-"}`,
-      `nodes=${nodesCount || overlaySample?.path?.nodes?.length || 0}`,
-      `edges=${edgesCount || overlaySample?.path?.edges?.length || 0}`,
-      `eliminations=${eliminationsCount || overlaySample?.candidateMarks?.length || 0}`,
-      stepResult ? (stepResult.description || title || "-") : "overlay skipped: debugJson has no renderable path",
-      "",
-      `conclusion: ${chainTexts?.conclusionText || actionText(stepResult) || "-"}`,
-      ...(typ4AuditLines.length ? ["", ...typ4AuditLines] : []),
-      "",
-      "raw response JSON:",
-      rawResponseText || JSON.stringify(response, null, 2),
-    ].join("\n"));
-    return;
-  }
-  renderChainOverlay(overlaySample);
-  setYzfOverlayModeNote(stepResult ? (lang.value === "en" ? "Manual advanced result; also available in default solving when enabled" : "高级技巧结果；启用后也可由默认求解使用") : ui("overlayDebugOnly"));
-  const warnAboutInput = inputFormatResolved !== "library" || !usedCandidateState;
-  const resultLines = [
-    `title=${title || "-"}`,
-    `chainType=${chainType || "-"}`,
-    `difficulty=${stepResult?.difficulty ?? debugOverlaySource?.difficulty ?? "-"}`,
-    `nodes=${nodesCount || overlaySample?.path?.nodes?.length || 0}`,
-    `edges=${edgesCount || overlaySample?.path?.edges?.length || 0}`,
-    `eliminations=${eliminationsCount || overlaySample?.candidateMarks?.length || 0}`,
-    "",
-    "backend description:",
-    stepResult?.description || title || "-",
-    "",
-    `conclusion: ${chainTexts?.conclusionText || actionText(stepResult) || "-"}`,
-  ];
-  if (typ4AuditLines.length) {
-    resultLines.push("", ...typ4AuditLines);
-  }
-  resultLines.push(
-    "",
-    `inputSource=${inputSource}`,
-    `inputFormatRequested=${inputFormatRequested}`,
-    `inputFormatResolved=${inputFormatResolved}`,
-    `inputLength=${inputLength}`,
-    `usedCandidateState=${usedCandidateState}`,
-    `parserName=${parserName}`,
-    `inputPreview=${inputPreview}`,
-    "",
-    "requestJson:",
-    JSON.stringify(request, null, 2),
-    "",
-    "raw response JSON:",
-    rawResponseText || JSON.stringify(response, null, 2),
-  );
-  setOptionalTextBlock(manualAdvancedJson, resultLines.join("\n"));
-  setStatusElementState(manualAdvancedStatus, summary + (warnAboutInput ? " | 当前没有使用 Library 候选状态，链类技巧测试可能不真实" : ""), warnAboutInput ? "warn" : "ok");
-}
-
-async function runManualAdvancedTechnique() {
-  if (!engine || typeof engine.manual_advanced_step_json !== "function") {
-    setStatusElementState(manualAdvancedStatus, "manual_advanced_step_json is not available", "error");
-    return null;
-  }
-  const puzzleInfo = getCurrentPuzzleStringForManualAdvanced();
-  if (!puzzleInfo.ok) {
-    clearManualAdvancedResult(puzzleInfo.error);
-    setStatusElementState(manualAdvancedStatus, puzzleInfo.error, "error");
-    return null;
-  }
-  const request = buildManualAdvancedRequest();
-  try {
-    const raw = engine.manual_advanced_step_json(puzzleInfo.puzzle, JSON.stringify(request));
-    const response = parseJson(raw);
-    if (!response) {
-      clearManualAdvancedResult("manual advanced 返回了不可解析 JSON");
-      setStatusElementState(manualAdvancedStatus, "manual advanced 返回了不可解析 JSON", "error");
-      return null;
-    }
-    renderManualAdvancedResponse(response, puzzleInfo, request, raw);
-    return response;
-  } catch (error) {
-    console.error(error);
-    clearManualAdvancedResult("manual advanced 调用失败");
-    setStatusElementState(manualAdvancedStatus, `manual advanced 调用失败: ${error?.message || error}`, "error");
-    return null;
-  }
-}
-
-function clearManualAdvancedUiOnly() {
-  clearManualAdvancedResult();
-  setOptionalTextBlock(manualAdvancedSmokeOutput, "");
-  setYzfOverlayModeNote(ui("overlayDebugOnly"));
-}
-
-function initManualAdvancedControls() {
-  if (!btnManualAdvancedRun || !btnManualAdvancedClear) return;
-  manualAdvancedTypSelect?.addEventListener("change", updateManualAdvancedTypUi);
-  updateManualAdvancedTypUi();
-  btnManualAdvancedRun.addEventListener("click", async () => {
-    await runManualAdvancedTechnique();
-  });
-  btnManualAdvancedClear.addEventListener("click", () => {
-    clearManualAdvancedUiOnly();
-  });
-}
-
-async function runManualAdvancedBrowserSmoke() {
-  const cases = [
-    { name: "typ1", typ: "1", allow: false },
-    { name: "typ2", typ: "2", allow: false },
-    { name: "typ3", typ: "3", allow: false },
-    { name: "typ4_allow_false", typ: "4", allow: false },
-    { name: "typ4_allow_true", typ: "4", allow: true },
-  ];
-  const lines = [];
-  for (const item of cases) {
-    if (manualAdvancedTypSelect) manualAdvancedTypSelect.value = item.typ;
-    if (manualAllowGrouped) manualAllowGrouped.checked = item.allow;
-    if (manualReturnDebugJson) manualReturnDebugJson.checked = true;
-    const response = await runManualAdvancedTechnique();
-    const status = response?.status || "null";
-    const title = response?.stepResult?.title || "";
-    const chainType = response?.stepResult?.chainType || "";
-    const guard = response?.guardRejectReason || "";
-    lines.push(`${item.name}: status=${status}; title=${title}; chainType=${chainType}; guard=${guard}`);
-  }
-  const next = parseJson(engine.next_step_json());
-  lines.push(`defaultNextStep: kind=${next?.kind || ""}; title=${next?.title || ""}`);
-  setOptionalTextBlock(manualAdvancedSmokeOutput, lines.join("\n"));
-}
-
-async function runManualAdvancedBrowserE2E(params = new URLSearchParams(window.location.search)) {
-  const importText = params.get("manualAdvancedImport") || "";
-  const typ = params.get("manualAdvancedTyp") || "1";
-  const inputFormat = params.get("manualAdvancedInputFormat") || "auto";
-  const allow = params.get("manualAdvancedAllowGrouped") === "1";
-  const debugMode = params.get("manualAdvancedDebugMode") === "1";
-  const includeOverlay = params.get("manualAdvancedIncludeOverlayData") === "1";
-  const includeRawGraphStats = params.get("manualAdvancedIncludeRawGraphStats") === "1";
-  const returnDebugJson = params.get("manualAdvancedReturnDebugJson") !== "0";
-  if (!importText) {
-    setOptionalTextBlock(manualAdvancedSmokeOutput, "manualAdvancedBrowserE2E missing manualAdvancedImport");
-    return null;
-  }
-  givens.value = importText;
-  const importResult = await importPuzzleFromCurrentInput();
-  if (!importResult?.ok) {
-    setOptionalTextBlock(manualAdvancedSmokeOutput, `manualAdvancedBrowserE2E import failed: ${importResult?.error || "unknown"}`);
-    return null;
-  }
-  if (manualAdvancedTypSelect) manualAdvancedTypSelect.value = typ;
-  if (manualAdvancedInputFormatSelect) manualAdvancedInputFormatSelect.value = inputFormat;
-  if (manualAllowGrouped) manualAllowGrouped.checked = allow;
-  if (manualDebugMode) manualDebugMode.checked = debugMode;
-  if (manualIncludeOverlayData) manualIncludeOverlayData.checked = includeOverlay;
-  if (manualIncludeRawGraphStats) manualIncludeRawGraphStats.checked = includeRawGraphStats;
-  if (manualReturnDebugJson) manualReturnDebugJson.checked = returnDebugJson;
-  const inputInfo = getCurrentPuzzleStringForManualAdvanced();
-  const response = await runManualAdvancedTechnique();
-  const next = parseJson(engine.next_step_json());
-  const lines = [
-    `browserImportOk=${importResult?.ok ? 1 : 0}`,
-    `inputSource=${inputInfo?.inputSource || ""}`,
-    `inputFormat=${inputInfo?.inputFormat || ""}`,
-    `inputLength=${inputInfo?.inputLength || 0}`,
-    `inputPreview=${inputInfo?.inputPreview || ""}`,
-    `usesCandidates=${inputInfo?.usesCandidates ? "true" : "false"}`,
-    `responseStatus=${response?.status || ""}`,
-    `responseTitle=${response?.stepResult?.title || ""}`,
-    `responseChainType=${response?.stepResult?.chainType || ""}`,
-    `responseEliminations=${Array.isArray(response?.stepResult?.eliminations) ? response.stepResult.eliminations.length : 0}`,
-    `responseNodes=${Array.isArray(response?.stepResult?.nodes) ? response.stepResult.nodes.length : 0}`,
-    `responseEdges=${Array.isArray(response?.stepResult?.edges) ? response.stepResult.edges.length : 0}`,
-    `responseInputFormatResolved=${response?.inputFormatResolved || ""}`,
-    `responseUsedCandidateState=${response?.usedCandidateState === true ? "true" : "false"}`,
-    `nextStepTitle=${next?.title || ""}`,
-  ];
-  setOptionalTextBlock(manualAdvancedSmokeOutput, lines.join("\n"));
-  return { importResult, inputInfo, response };
-}
-
-function candidatesJsonHasDigit(candidatesJson, index, digit) {
-  const cells = candidatesJson?.cells || [];
-  const cell = cells.find((item) => Number(item?.index) === Number(index));
-  return Array.isArray(cell?.candidates) && cell.candidates.includes(digit);
-}
-
-async function runDefaultYzfBrowserE2E(params = new URLSearchParams(window.location.search)) {
-  const importText = params.get("defaultYzfImport") || "";
-  if (!importText) {
-    setOptionalTextBlock(manualAdvancedSmokeOutput, "defaultYzfBrowserE2E missing defaultYzfImport");
-    return null;
-  }
-  givens.value = importText;
-  const importResult = await importPuzzleFromCurrentInput();
-  if (!importResult?.ok) {
-    setOptionalTextBlock(manualAdvancedSmokeOutput, `defaultYzfBrowserE2E import failed: ${importResult?.error || "unknown"}`);
-    return null;
-  }
-  const inputInfo = getCurrentManualAdvancedInputInfo();
-  const nextText = engine.next_step_json();
-  currentHint = parseJson(nextText);
-  renderBoard(currentHint);
-  const beforeApplyCandidates = parseJson(engine.get_candidates_json());
-  const applyText = engine.apply_hint_json();
-  const applyResult = parseJson(applyText);
-  const afterApplyCandidates = parseJson(engine.get_candidates_json());
-  const postApplyInputInfo = getCurrentManualAdvancedInputInfo();
-  const lines = [
-    `browserImportOk=${importResult?.ok ? 1 : 0}`,
-    `inputSource=${inputInfo?.inputSource || ""}`,
-    `inputFormat=${inputInfo?.inputFormat || ""}`,
-    `inputLength=${inputInfo?.inputLength || 0}`,
-    `inputPreview=${inputInfo?.inputPreview || ""}`,
-    `usesCandidates=${inputInfo?.usesCandidates ? "true" : "false"}`,
-    `nextStepKind=${currentHint?.kind || ""}`,
-    `nextStepTitle=${currentHint?.title || ""}`,
-    `nextStepChainType=${currentHint?.chainType || ""}`,
-    `nextStepEliminations=${Array.isArray(currentHint?.eliminations) ? currentHint.eliminations.length : 0}`,
-    `nextStepNodes=${Array.isArray(currentHint?.nodes) ? currentHint.nodes.length : 0}`,
-    `nextStepEdges=${Array.isArray(currentHint?.edges) ? currentHint.edges.length : 0}`,
-    `inputFormatResolved=${currentHint?.inputFormatResolved || ""}`,
-    `usedCandidateState=${currentHint?.usedCandidateState === true ? "true" : "false"}`,
-    `hintPanel=${(hintPanel?.textContent || "").replace(/\s+/g, " ").trim().slice(0, 240)}`,
-    `beforeApplyHasR9C8Digit3=${candidatesJsonHasDigit(beforeApplyCandidates, 79, 3) ? "true" : "false"}`,
-    `applyOk=${applyResult?.ok ? 1 : 0}`,
-    `afterApplyHasR9C8Digit3=${candidatesJsonHasDigit(afterApplyCandidates, 79, 3) ? "true" : "false"}`,
-    `postApplyInputSource=${postApplyInputInfo?.inputSource || ""}`,
-    `postApplyUsesCandidates=${postApplyInputInfo?.usesCandidates ? "true" : "false"}`,
-  ];
-  setOptionalTextBlock(manualAdvancedSmokeOutput, lines.join("\n"));
-  return { importResult, inputInfo, currentHint, applyResult };
 }
 
 function candidatesText(candidates) {
@@ -9569,22 +7165,6 @@ function formatLegacyHintDesc(step) {
     return descriptionWithTechniqueName(step, name);
   }
 
-  if (lang.value === "zh") {
-    if (step.kind === "NakedSingle" && placement) {
-      return `${name}: ${placementText(placement)}`;
-    }
-    if (step.kind === "HiddenSingle" && placement) {
-      return `${name}: ${candidate} ${locale.inHouse} ${house} ${locale.onlyCell} ${cellName(placement)} => ${placementText(placement)}`;
-    }
-    if (step.kind === "FullHouse" && placement) {
-      return `${name}: ${house} ${locale.onlyEmpty} ${cellName(placement)} => ${placementText(placement)}`;
-    }
-    if (step.eliminations && step.eliminations.length > 0) {
-      return `${name}: ${candidate || step.title} ${house ? `${locale.inHouse} ${house} ` : ""}=> ${locale.remove} ${action}`;
-    }
-    return descriptionWithTechniqueName(step, name, locale.noAction) || `${name}: ${locale.noAction}`;
-  }
-
   if (step.kind === "NakedSingle" && placement) {
     return `${name}: ${placementText(placement)}`;
   }
@@ -9680,7 +7260,7 @@ function stepExplainTemplateType(step = {}) {
   return "generic";
 }
 
-function stepExplainBuildLines(step = {}, snapshot = null) {
+function stepExplainBuildLines(step = {}) {
   const zh = lang.value === "zh";
   const type = stepExplainTemplateType(step);
   const cellsText = stepExplainCellList(step.cells || []);
@@ -9716,7 +7296,6 @@ function stepExplainBuildLines(step = {}, snapshot = null) {
     checks.push(zh ? "数清楚：参与格数与锁定数字数相同。" : "Count carefully: the number of involved cells must match the number of locked digits.");
   } else if (type === "turbot") {
     const isKite = /kite|twostringkite|2-string|two string/i.test(stepExplainKindKey(step));
-    const isSky = /skyscraper/i.test(stepExplainKindKey(step));
     lines.push(zh
       ? `只观察候选 ${cand || "目标数字"}，把这个结构按两条强链来读，而不是按普通 base-cover 鱼来读。`
       : `Look only at candidate ${cand || "the target digit"}; read this pattern as two strong links, not as an ordinary base-cover fish.`);
@@ -9755,7 +7334,6 @@ function stepExplainBuildLines(step = {}, snapshot = null) {
   } else if (type === "blossom") {
     const key = stepExplainKindKey(step);
     const isLoop = /blossom\s*loop|blossomloop|burring\s*loop|burringloop|burred\s*loop/.test(key);
-    const isDeath = /death\s*blossom|deathblossom/.test(key);
     lines.push(zh
       ? (isLoop
         ? `本步按“绽放环”来读：它介于标准连续环和网之间，是带动态/强制分支的 Rank 0 环状结构，不按普通 AIC Loop 或普通 ALS Blossom 读。`
@@ -10518,7 +8096,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     node.addEventListener("click", (event) => {
       if (handleTlgSolverCellClick(index, event)) return;
       selectedIndex = index;
-      if (boardEventUsesMouse(event, node) && !isOcrDraftSnapshot(currentSnapshot)) {
+      if (boardEventUsesMouse(event, node)) {
         if (manualMarksActive()) {
           if (manualMarkModeValue() === "cellColor") {
             applyManualMarkTarget(index, 0, "mousePrimary");
@@ -10561,7 +8139,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
         }
         return;
       }
-      if (!isOcrDraftSnapshot(currentSnapshot)) event.preventDefault();
+      event.preventDefault();
     });
 
     if (placements.has(index)) {
@@ -10657,8 +8235,7 @@ function clearStepViewState(options = {}) {
 function applySnapshotRefreshState(nextSnapshot = null) {
   currentSnapshot = nextSnapshot || getCurrentSnapshot();
   clearStepViewState();
-  syncManualAdvancedInputStateFromSnapshot(currentSnapshot);
-  renderBoardSnapshot(currentSnapshot, null);
+    renderBoardSnapshot(currentSnapshot, null);
   updateInputControls();
   scheduleAppSessionSave();
 }
@@ -10700,10 +8277,6 @@ function refreshAfterHistory(responseText, changedText, emptyText) {
 
 function handleValueTap(index) {
   if (tlgSolverEditingActive()) return;
-  if (isOcrDraftSnapshot(currentSnapshot)) {
-    toggleOcrDraftValue(index, selectedDigit);
-    return;
-  }
   if (isFixedCell(index)) {
     renderBoardSnapshot(currentSnapshot, currentHint);
     setStatus(ui("fixedCell"));
@@ -10719,10 +8292,6 @@ function handleValueTap(index) {
 
 function handleCandidateTap(index) {
   if (tlgSolverEditingActive()) return;
-  if (isOcrDraftSnapshot(currentSnapshot)) {
-    toggleOcrDraftCandidate(index, selectedDigit);
-    return;
-  }
   if (isFixedCell(index)) {
     renderBoardSnapshot(currentSnapshot, currentHint);
     setStatus(ui("fixedCandidate"));
@@ -10800,15 +8369,6 @@ function buildNumpad() {
   });
   numpad.appendChild(mode);
 
-  const ocrRole = document.createElement("button");
-  ocrRole.type = "button";
-  ocrRole.className = "ocr-role-toggle";
-  ocrRole.addEventListener("click", () => {
-    ocrDraftValueRole = ocrDraftValueRole === "given" ? "solved" : "given";
-    updateInputControls();
-    setStatus(uif("ocrDraftRoleStatus", { role: ui(ocrDraftValueRole === "given" ? "ocrDraftRoleGiven" : "ocrDraftRoleSolved") }));
-  });
-  numpad.appendChild(ocrRole);
   updateInputControls();
 }
 
@@ -10826,18 +8386,7 @@ function updateInputControls() {
     modeButton.classList.toggle("active", inputMode === "candidate");
     modeButton.title = ui("inputModeTitle");
   }
-  const ocrRoleButton = numpad.querySelector(".ocr-role-toggle");
-  if (ocrRoleButton) {
-    const showOcrRole = isOcrDraftSnapshot(currentSnapshot);
-    ocrRoleButton.hidden = !showOcrRole;
-    ocrRoleButton.textContent = ocrDraftValueRole === "given" ? ui("ocrDraftRoleGiven") : ui("ocrDraftRoleSolved");
-    ocrRoleButton.classList.toggle("active", ocrDraftValueRole === "given");
-    ocrRoleButton.title = ui(ocrDraftValueRole === "given" ? "ocrDraftRoleGivenTitle" : "ocrDraftRoleSolvedTitle");
-  }
-  const roleText = isOcrDraftSnapshot(currentSnapshot) && inputMode !== "candidate"
-    ? `, ${ui(ocrDraftValueRole === "given" ? "ocrDraftRoleGiven" : "ocrDraftRoleSolved")}`
-    : "";
-  numpad.title = `${ui("currentInput")}: ${inputMode === "candidate" ? ui("candidateMode") : ui("valueMode")} ${selectedDigit}${roleText}. ${ui("inputModeTitle")}`;
+  numpad.title = `${ui("currentInput")}: ${inputMode === "candidate" ? ui("candidateMode") : ui("valueMode")} ${selectedDigit}. ${ui("inputModeTitle")}`;
   updateMobileSolveInputState();
   syncMobileSolveDigitHighlights();
   syncMobileSolveCompletedDigitButtons();
@@ -11249,8 +8798,7 @@ function renderBoard(hint = currentHint) {
   previewSnapshotActive = false;
   currentPreviewRecord = null;
   if (!hint) {
-    syncManualAdvancedInputStateFromSnapshot(currentSnapshot);
-  }
+      }
   renderBoardSnapshot(currentSnapshot, hint);
 }
 
@@ -11842,7 +9390,7 @@ function cloneJsonSafe(value) {
   if (value === undefined || value === null) return value;
   try {
     return JSON.parse(JSON.stringify(value));
-  } catch (_error) {
+  } catch {
     return value;
   }
 }
@@ -12389,7 +9937,6 @@ function allStepsRecordSearchText(record) {
 }
 
 function allStepsRecordMatchesFilter(record) {
-  const step = record?.step || record || {};
   const query = normalizedFilterText(allStepsFilterState.query);
   if (query) {
     const haystack = allStepsRecordSearchText(record);
@@ -13343,7 +10890,7 @@ function installTlgCandidateProtectedTouch(candidate, cellIndex) {
       if (!enabled() || touchId == null) return;
       longPressFired = true;
       armSuppression();
-      try { navigator.vibrate?.(12); } catch (_) {}
+      try { navigator.vibrate?.(12); } catch {}
       const digit = Number(candidate.dataset.digit || 0);
       // Touch long-press is additive so users can close the menu, long-press
       // more candidates, then execute one batch operation.
@@ -13917,34 +11464,14 @@ function tlgSolverInitialCandidatePayload() {
 }
 
 function buildTlgSolverRequestV440(action = "findAllEliminations") {
-  const virtualCandidates = [...tlgSolverState.virtualCandidates].map((key) => {
-    const [cellText, digitText] = key.split(":");
-    const cellIndex = Number(cellText);
-    const digit = Number(digitText);
-    return { digit, cellIndex, row: Math.floor(cellIndex / 9) + 1, column: (cellIndex % 9) + 1, source: tlgSolverNrc(cellIndex, digit) };
-  });
+  const virtualCandidates = tlgCandidateKeysToPayload(tlgSolverState.virtualCandidates);
   const aurGroups = tlgSolverState.aurGroups
-    .map((group) => [...group].map((key) => {
-      const [cellText, digitText] = key.split(":");
-      const cellIndex = Number(cellText);
-      const digit = Number(digitText);
-      return { digit, cellIndex, row: Math.floor(cellIndex / 9) + 1, column: (cellIndex % 9) + 1, source: tlgSolverNrc(cellIndex, digit) };
-    }))
+    .map((group) => tlgCandidateKeysToPayload(group))
     .filter((corners) => corners.length > 0)
     .map((corners) => ({ corners }));
   const legacyAur = aurGroups.length === 1 ? { corners: aurGroups[0].corners } : undefined;
-  const dynamicAurCandidates = [...tlgSolverState.dynamicAurCandidates].map((key) => {
-    const [cellText, digitText] = key.split(":");
-    const cellIndex = Number(cellText);
-    const digit = Number(digitText);
-    return { digit, cellIndex, row: Math.floor(cellIndex / 9) + 1, column: (cellIndex % 9) + 1, source: tlgSolverNrc(cellIndex, digit) };
-  });
-  const genericAurCandidates = [...tlgSolverState.genericAurCandidates].map((key) => {
-    const [cellText, digitText] = key.split(":");
-    const cellIndex = Number(cellText);
-    const digit = Number(digitText);
-    return { digit, cellIndex, row: Math.floor(cellIndex / 9) + 1, column: (cellIndex % 9) + 1, source: tlgSolverNrc(cellIndex, digit) };
-  });
+  const dynamicAurCandidates = tlgCandidateKeysToPayload(tlgSolverState.dynamicAurCandidates);
+  const genericAurCandidates = tlgCandidateKeysToPayload(tlgSolverState.genericAurCandidates);
   const activeCandidates = tlgSolverActiveCandidatePayload();
   const aurPremiseMode = tlgSolverAurPremiseMode?.value || "unique-puzzle-derived";
   const initialCandidates = aurPremiseMode === "unique-puzzle-derived"
@@ -14728,7 +12255,7 @@ function tlgTextBase64UrlDecodeBytes(value, field = "") {
     const bytes = new Uint8Array(binary.length);
     for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
     return bytes;
-  } catch (_) {
+  } catch {
     throw new Error(uif("tlgLibraryTextInvalidBitmap", { field }));
   }
 }
@@ -14856,7 +12383,7 @@ function tlgTextRecordFromFields(fields) {
     try {
       const parsed = JSON.parse(value);
       return typeof parsed === "string" ? parsed : String(parsed ?? "");
-    } catch (_) {
+    } catch {
       throw new Error(uif("tlgLibraryTextInvalidField", { field: key }));
     }
   };
@@ -15030,7 +12557,7 @@ function tlgLibraryParseCompactTextCase(text) {
   let meta;
   try {
     meta = JSON.parse(tlgTextBase64UrlDecodeUtf8(fields.get("M"), "M"));
-  } catch (_) {
+  } catch {
     throw new Error(uif("tlgLibraryTextInvalidField", { field: "M" }));
   }
   const options = String(fields.get("O") || "").split(",");
@@ -15197,7 +12724,7 @@ function tlgLibraryFormatTime(seconds) {
   if (!seconds) return "";
   try {
     return new Intl.DateTimeFormat(lang.value === "en" ? "en" : "zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(seconds * 1000));
-  } catch (_) {
+  } catch {
     return "";
   }
 }
@@ -15658,7 +13185,7 @@ async function tlgLibraryCopyCurrentText(compact = false) {
     try {
       const record = tlgLibraryShareRecord();
       tlgLibrarySetShareText(tlgLibrarySerializeTextCase(record, { compact }));
-    } catch (_) {
+    } catch {
       // Preserve the original error below.
     }
     tlgLibrarySetStatus(error?.message || ui("tlgLibraryClipboardWriteFailed"), "error");
@@ -15695,7 +13222,7 @@ async function tlgLibraryOpenPastePanel() {
     const text = await navigator.clipboard.readText();
     if (String(text || "").trim()) tlgLibrarySetShareText(text);
     else tlgLibrarySetShareSummary(ui("tlgLibraryShareEmptyHint"));
-  } catch (_) {
+  } catch {
     tlgLibrarySetShareSummary(ui("tlgLibraryShareEmptyHint"));
     tlgLibrarySetStatus(ui("tlgLibraryClipboardReadFailed"), "error");
   }
@@ -15845,7 +13372,6 @@ async function init() {
   engine = new mod.Engine();
   if (APP_DEBUG_MODE) {
     window.manualAdvancedStepTest = manualAdvancedStepTest;
-    window.runManualAdvancedTechnique = runManualAdvancedTechnique;
     window.tlgSolverRequestV440 = buildTlgSolverRequestV440;
     window.tlgSolverFindEliminationsV440 = callTlgSolverFindEliminationsV440;
   }
@@ -15860,37 +13386,10 @@ async function init() {
   }
   if (!APP_DEBUG_MODE) {
     document.querySelector(".yzf-debug-panel")?.classList.add("hidden");
-    manualAdvancedSmokeOutput?.classList.add("hidden");
   }
   initYzfTyp4DebugOverlayControls();
-  initManualAdvancedControls();
   initTlgSolverControls();
   initManualMarksControls();
-  const params = APP_URL_PARAMS;
-  if (params.get("manualAdvancedSmoke") === "1") {
-    setTimeout(() => {
-      runManualAdvancedBrowserSmoke().catch((error) => {
-        console.error(error);
-        setOptionalTextBlock(manualAdvancedSmokeOutput, `manualAdvancedSmoke failed: ${error?.message || error}`);
-      });
-    }, 300);
-  }
-  if (params.get("manualAdvancedBrowserE2E") === "1") {
-    setTimeout(() => {
-      runManualAdvancedBrowserE2E(params).catch((error) => {
-        console.error(error);
-        setOptionalTextBlock(manualAdvancedSmokeOutput, `manualAdvancedBrowserE2E failed: ${error?.message || error}`);
-      });
-    }, 500);
-  }
-  if (params.get("defaultYzfSmoke") === "1") {
-    setTimeout(() => {
-      runDefaultYzfBrowserE2E(params).catch((error) => {
-        console.error(error);
-        setOptionalTextBlock(manualAdvancedSmokeOutput, `defaultYzfBrowserE2E failed: ${error?.message || error}`);
-      });
-    }, 500);
-  }
 }
 
 for (const button of tabButtons) {
@@ -15930,6 +13429,15 @@ async function readClipboardTextForLoad() {
 
 function loadPuzzleFromClipboardFirstEnabled() {
   return preferClipboardLoad?.checked !== false;
+}
+
+async function retryPuzzleImportFromClipboard(options, rawInput) {
+  if (!options.clipboardFallback || options.clipboardAlreadyTried) return null;
+  const clipboard = await readClipboardTextForLoad();
+  if (!clipboard.ok || clipboard.text === rawInput) return null;
+  givens.value = clipboard.text;
+  setStatus(ui("importClipboardRetry"));
+  return importPuzzleFromCurrentInput({ ...options, clipboardAlreadyTried: true });
 }
 
 async function importPuzzleFromCurrentInput(options = {}) {
@@ -15988,14 +13496,8 @@ async function importPuzzleFromCurrentInput(options = {}) {
   try {
     importText = await preprocessImportText(rawInput);
   } catch (error) {
-    if (options.clipboardFallback && !options.clipboardAlreadyTried) {
-      const clipboard = await readClipboardTextForLoad();
-      if (clipboard.ok && clipboard.text !== rawInput) {
-        givens.value = clipboard.text;
-        setStatus(ui("importClipboardRetry"));
-        return importPuzzleFromCurrentInput({ ...options, clipboardAlreadyTried: true });
-      }
-    }
+    const clipboardRetry = await retryPuzzleImportFromClipboard(options, rawInput);
+    if (clipboardRetry) return clipboardRetry;
     const message = error instanceof Error ? error.message : "Coach puzzle string decode failed";
     log(ui("loadFailedPrefix") + message);
     setStatus(ui("loadFailedPrefix") + message);
@@ -16006,29 +13508,16 @@ async function importPuzzleFromCurrentInput(options = {}) {
     originalBoard = result.state?.givens || result.givens || result.puzzle;
     givens.value = result.givens === result.puzzle && !result.hasCandidates ? result.puzzle : rawInput;
     resetBoardContextForSnapshot(result.state, { resetSelectedIndex: true });
-    setManualAdvancedInputStateWithBoardKey(
-      importText,
-      inferManualAdvancedStoredFormat(result, importText),
-      !!result.hasCandidates,
-      getSnapshotManualAdvancedBoardKey(currentSnapshot),
-    );
-    log(JSON.stringify(result, null, 2));
+        log(JSON.stringify(result, null, 2));
     setStatus(uif("importedPuzzle", { format: result.format, candidates: result.hasCandidates ? ui("importedWithCandidates") : "" }));
     updateInputControls();
     scheduleAppSessionSave();
     return result;
   } else {
     clearStepViewState({ resetSelectedIndex: true });
-    if (options.clipboardFallback && !options.clipboardAlreadyTried) {
-      const clipboard = await readClipboardTextForLoad();
-      if (clipboard.ok && clipboard.text !== rawInput) {
-        givens.value = clipboard.text;
-        setStatus(ui("importClipboardRetry"));
-        return importPuzzleFromCurrentInput({ ...options, clipboardAlreadyTried: true });
-      }
-    }
-    setManualAdvancedInputStateWithBoardKey("", "unknown", false, "");
-    const error = result?.error || ui("importUnknownFormat");
+    const clipboardRetry = await retryPuzzleImportFromClipboard(options, rawInput);
+    if (clipboardRetry) return clipboardRetry;
+        const error = result?.error || ui("importUnknownFormat");
     log(ui("loadFailedPrefix") + error);
     setStatus(ui("loadFailedPrefix") + error);
     return { ok: false, error };
@@ -16188,28 +13677,6 @@ function ocrCorrectionCellsFromResult(ocr) {
       originalConfidence: null,
     };
   });
-}
-
-function ocrCorrectionCoachJson() {
-  let givenDigits = "";
-  let userDigits = "";
-  const masks = [];
-  for (const cell of ocrCorrectionState?.cells || []) {
-    if (cell.value >= 1 && cell.value <= 9 && cell.role === "given") {
-      givenDigits += String(cell.value);
-      userDigits += ".";
-      masks.push("0");
-    } else if (cell.value >= 1 && cell.value <= 9 && cell.role === "solved") {
-      givenDigits += ".";
-      userDigits += String(cell.value);
-      masks.push("0");
-    } else {
-      givenDigits += ".";
-      userDigits += ".";
-      masks.push(String(Number(cell.candidateMask || 0) & 0x3fe));
-    }
-  }
-  return { givenDigits, userDigits, userCellCandidates: masks.join("-") };
 }
 
 function ocrCorrectionAllCandidateMasks(cells = ocrCorrectionState?.cells) {
@@ -16840,8 +14307,7 @@ function generatePuzzleAtDifficulty(difficulty) {
   originalBoard = result.state?.givens || result.puzzle;
   givens.value = result.puzzle;
   resetBoardContextForSnapshot(result.state, { resetSelectedIndex: true });
-  setManualAdvancedInputStateWithBoardKey(result.puzzle, "puzzle81", false, `puzzle81:${result.puzzle}`);
-  setStatus(uif("generatedPuzzle", { difficulty: result.difficultyName, clues: result.clues, rating: formatRating(result.rating) }));
+    setStatus(uif("generatedPuzzle", { difficulty: result.difficultyName, clues: result.clues, rating: formatRating(result.rating) }));
   updateInputControls();
   return result;
 }
@@ -17015,14 +14481,7 @@ btnGenerateTraining?.addEventListener("click", async () => {
         allStepsTree?.replaceChildren();
         clearBranchState();
 
-        setManualAdvancedInputStateWithBoardKey(
-          puzzle || snapshotBoardString(currentSnapshot),
-          "puzzle81",
-          false,
-          `puzzle81:${puzzle || snapshotBoardString(currentSnapshot)}`
-        );
-
-        renderBoardSnapshot(currentSnapshot, null);
+                renderBoardSnapshot(currentSnapshot, null);
         updateInputControls();
 
         if (result.solve) {
@@ -17060,8 +14519,7 @@ btnGenerateTraining?.addEventListener("click", async () => {
     currentHint = null;
     selectedIndex = -1;
     currentSnapshot = result.state || getCurrentSnapshot();
-    setManualAdvancedInputStateWithBoardKey(result.puzzle, "puzzle81", false, `puzzle81:${result.puzzle}`);
-    previewSnapshotActive = false;
+        previewSnapshotActive = false;
     currentPreviewRecord = null;
     lastAllStepsData = null;
     allStepsTree?.replaceChildren();
@@ -17153,13 +14611,6 @@ btnRate.addEventListener("click", async () => {
   }
 });
 
-if (btnCandidates) {
-  btnCandidates.addEventListener("click", () => {
-    if (!engine) return;
-    renderBoard(currentHint);
-    log(engine.get_candidates_json());
-  });
-}
 
 btnStep.addEventListener("click", () => {
   if (!engine) return;
@@ -17195,8 +14646,7 @@ btnApply.addEventListener("click", () => {
     currentPreviewRecord = null;
     givens.value = nextText;
     originalBoard = result.state?.givens || result.givens || result.puzzle || snapshotGivensString(currentSnapshot);
-    setManualAdvancedInputStateWithBoardKey(nextText, "snapshotCandidates", true, `library:${nextText}`);
-    renderBoardSnapshot(currentSnapshot, null);
+        renderBoardSnapshot(currentSnapshot, null);
     log(JSON.stringify(result, null, 2));
     updateInputControls();
     setStatus(ui("appliedPreviewStep"));
@@ -17408,7 +14858,7 @@ function loadMobileSolvePreferences() {
     if (typeof saved?.sameDigitHighlight === "boolean") {
       mobileSolveSameDigitHighlight = saved.sameDigitHighlight;
     }
-  } catch (_) {
+  } catch {
     // Keep defaults when storage is unavailable or an old value is malformed.
   }
 }
@@ -17419,7 +14869,7 @@ function saveMobileSolvePreferences() {
       candidatesVisible: mobileSolveCandidatesVisible,
       sameDigitHighlight: mobileSolveSameDigitHighlight,
     }));
-  } catch (_) {
+  } catch {
     // The mode remains fully usable when persistent storage is blocked.
   }
 }
@@ -17807,7 +15257,7 @@ function loadMobileNewPuzzleDifficulty() {
   try {
     const stored = localStorage.getItem(MOBILE_NEW_PUZZLE_DIFFICULTY_KEY);
     if (stored != null) difficulty = normalizeMobileNewPuzzleDifficulty(stored);
-  } catch (_) {
+  } catch {
     // Keep the currently selected difficulty when storage is unavailable.
   }
   if (difficultySelect) difficultySelect.value = String(difficulty);
@@ -17817,7 +15267,7 @@ function loadMobileNewPuzzleDifficulty() {
 function saveMobileNewPuzzleDifficulty(difficulty) {
   const normalized = normalizeMobileNewPuzzleDifficulty(difficulty);
   if (difficultySelect) difficultySelect.value = String(normalized);
-  try { localStorage.setItem(MOBILE_NEW_PUZZLE_DIFFICULTY_KEY, String(normalized)); } catch (_) { /* optional */ }
+  try { localStorage.setItem(MOBILE_NEW_PUZZLE_DIFFICULTY_KEY, String(normalized)); } catch { /* optional */ }
   return normalized;
 }
 
@@ -17946,7 +15396,7 @@ async function exitMobileSolveMode(options = {}) {
   window.scrollTo({ top: mobileSolveScrollY, left: 0, behavior: "auto" });
   window.dispatchEvent(new Event("yzf-layout-modechange"));
   if (exitFullscreen && isFullscreen()) {
-    try { await exitFullscreenSafe(); } catch (_) { /* keep analysis mode usable */ }
+    try { await exitFullscreenSafe(); } catch { /* keep analysis mode usable */ }
   }
 }
 
@@ -18191,21 +15641,187 @@ function applyTechniquePreset(mode) {
     .sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
   const nextWhipMemoryMode = mode === "whipRating" ? "large" : (whipMemoryMode === "large" ? "large" : "auto");
   applyTechniqueState(next, nextWhipMemoryMode);
-  const label = {
-    allIn: "All In",
-    highSpeed: "High Speed",
-    extremeSpeed: "Extreme Speed",
-    whipRating: "Whip Rating",
-    braidRating: "Braid Rating",
-  }[mode] || mode;
-  setStatus(`${ui("techniquePresetApplied")}: ${label}.`);
+  const labelKey = {
+    allIn: "techPresetAll",
+    highSpeed: "techPresetHighSpeed",
+    extremeSpeed: "techPresetExtremeSpeed",
+    whipRating: "techPresetWhipRating",
+    braidRating: "techPresetBraidRating",
+  }[mode];
+  setStatus(uif("techniquePresetApplied", { preset: labelKey ? ui(labelKey) : mode }));
 }
 
-btnTechAllIn?.addEventListener("click", () => applyTechniquePreset("allIn"));
-btnTechHighSpeed?.addEventListener("click", () => applyTechniquePreset("highSpeed"));
-btnTechExtremeSpeed?.addEventListener("click", () => applyTechniquePreset("extremeSpeed"));
-btnTechWhipRating?.addEventListener("click", () => applyTechniquePreset("whipRating"));
-btnTechBraidRating?.addEventListener("click", () => applyTechniquePreset("braidRating"));
+
+function installDynamicBoardSizing() {
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+  const CELL_SIZE_QUANTUM = 3; // FB geometry: each real cell stays divisible by the 3x3 candidate grid.
+
+  const getPx = (style, prop) => Number.parseFloat(style.getPropertyValue(prop)) || 0;
+
+  const readBoardLineMetrics = (wrapStyle) => {
+    const gridLine = Math.max(0.25, getPx(wrapStyle, '--yzf-grid-line-width') || 1);
+    const factorRaw = Number.parseFloat(wrapStyle.getPropertyValue('--yzf-box-line-factor'));
+    const boxFactor = Number.isFinite(factorRaw) && factorRaw > 0 ? factorRaw : 2;
+    const boxLine = gridLine * boxFactor;
+    return {
+      gridLine,
+      boxFactor,
+      boxLine,
+      totalLineWidth: 6 * gridLine + 4 * boxLine,
+    };
+  };
+
+  const quantizeBoardGeometry = (rawSize, minSize, maxSize, lineMetrics) => {
+    const { totalLineWidth } = lineMetrics;
+    const toCellFloor = (boardSize) => Math.max(0, Math.floor((boardSize - totalLineWidth) / (9 * CELL_SIZE_QUANTUM)) * CELL_SIZE_QUANTUM);
+    const toCellCeil = (boardSize) => Math.max(CELL_SIZE_QUANTUM, Math.ceil((boardSize - totalLineWidth) / (9 * CELL_SIZE_QUANTUM)) * CELL_SIZE_QUANTUM);
+    const maxCell = Math.max(CELL_SIZE_QUANTUM, toCellFloor(maxSize));
+    const minCell = Math.min(maxCell, toCellCeil(Math.min(minSize, maxSize)));
+    const rawCell = toCellFloor(Math.max(0, rawSize));
+    const cellSize = clamp(rawCell, minCell, maxCell);
+    return {
+      cellSize,
+      boardSize: 9 * cellSize + totalLineWidth,
+    };
+  };
+
+  const applyBoardGeometryVariables = (wrap, geometry, lineMetrics) => {
+    const { cellSize, boardSize } = geometry;
+    const { gridLine, boxFactor, boxLine } = lineMetrics;
+    // The unified line layer is measured from the board's outer edge.
+    // Outer frame padding therefore participates in the same offset model
+    // as FB's offsetLine/ofst coordinates.
+    const boxLinePos1 = boxLine + 3 * cellSize + 2 * gridLine;
+    const boxLinePos2 = 2 * boxLine + 6 * cellSize + 4 * gridLine;
+    const valueFontSize = Math.max(22, Math.min(72, Math.round(cellSize * 0.62)));
+    const candidateFontSize = Math.max(8, Math.min(24, Math.round(cellSize * 0.22)));
+
+    wrap.style.setProperty('--yzf-board-size', `${boardSize}px`);
+    wrap.style.setProperty('--yzf-cell-size', `${cellSize}px`);
+    wrap.style.setProperty('--yzf-grid-line-width', `${gridLine}px`);
+    wrap.style.setProperty('--yzf-box-line-factor', String(boxFactor));
+    wrap.style.setProperty('--yzf-box-line-width', `${boxLine}px`);
+    wrap.style.setProperty('--yzf-box-line-pos-1', `${boxLinePos1}px`);
+    wrap.style.setProperty('--yzf-box-line-pos-2', `${boxLinePos2}px`);
+    wrap.style.setProperty('--yzf-value-font-size', `${valueFontSize}px`);
+    wrap.style.setProperty('--yzf-candidate-font-size', `${candidateFontSize}px`);
+    wrap.style.setProperty('--yzf-candidate-grid-padding', '0px');
+  };
+
+  const setDynamicBoardSize = () => {
+    const wrap = document.querySelector('.board-wrap');
+    const stage = document.getElementById('boardStage');
+    const topbar = document.querySelector('.topbar');
+    const hint = document.getElementById('hintPanel');
+    if (!wrap || !stage) return;
+
+    const visual = window.visualViewport;
+    const viewportW = visual?.width || window.innerWidth || document.documentElement.clientWidth;
+    const viewportH = visual?.height || window.innerHeight || document.documentElement.clientHeight;
+    const wrapStyle = window.getComputedStyle(wrap);
+    const lineMetrics = readBoardLineMetrics(wrapStyle);
+    const wrapRect = wrap.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    const paddingLeft = getPx(wrapStyle, 'padding-left');
+    const paddingRight = getPx(wrapStyle, 'padding-right');
+    const paddingTop = getPx(wrapStyle, 'padding-top');
+    const paddingBottom = getPx(wrapStyle, 'padding-bottom');
+    const paddingX = paddingLeft + paddingRight;
+    const gap = getPx(wrapStyle, 'column-gap');
+    const viewportGuard = 6;
+    const wrapTopInViewport = Math.max(0, wrapRect.top || 0);
+    const stageTopInViewport = Math.max(wrapTopInViewport + paddingTop, stageRect.top || 0);
+    const landscapeBoardTop = wrapTopInViewport + paddingTop;
+    const isCompactLandscape = window.matchMedia('(orientation: landscape) and (max-height: 640px)').matches;
+    const isLandscapeGrid = window.matchMedia('(orientation: landscape) and (min-width: 700px)').matches || isCompactLandscape;
+
+    let size;
+    let maxByHeight;
+    if (isLandscapeGrid) {
+      const configuredRightMin = getPx(wrapStyle, '--yzf-right-panel-min');
+      const rightMin = configuredRightMin || (isCompactLandscape ? 220 : 280);
+      const availableW = Math.max(0, (wrapRect.width || viewportW) - paddingX - rightMin - gap);
+      maxByHeight = Math.max(0, viewportH - landscapeBoardTop - paddingBottom - viewportGuard);
+      size = Math.floor(Math.min(availableW, maxByHeight));
+    } else {
+      const topbarH = topbar ? topbar.getBoundingClientRect().height : 0;
+      const hintStyle = hint ? window.getComputedStyle(hint) : null;
+      const reservedHintH = hintStyle ? (Number.parseFloat(hintStyle.height) || 66) : 66;
+      const availableW = Math.max(0, (wrapRect.width || viewportW) - paddingX);
+      const boardTop = Math.max(stageTopInViewport, wrapTopInViewport + paddingTop + topbarH);
+      maxByHeight = Math.max(0, viewportH - boardTop - reservedHintH - paddingBottom - viewportGuard);
+      size = Math.floor(Math.min(availableW, maxByHeight > 260 ? maxByHeight : availableW));
+    }
+
+    const minSize = viewportW < 420 ? 216 : 270;
+    let maxSize = Math.max(
+      lineMetrics.totalLineWidth + 9 * CELL_SIZE_QUANTUM,
+      Math.min(viewportW - 8, Math.max(lineMetrics.totalLineWidth + 9 * CELL_SIZE_QUANTUM, maxByHeight || viewportH - 8))
+    );
+    // A browser cannot reliably know a monitor's physical centimetres.
+    // Use a configurable CSS-pixel cap for normal desktop landscape, while
+    // keeping compact/mobile modes governed by their available viewport.
+    if (isLandscapeGrid && !isCompactLandscape) {
+      const configuredDesktopCap = getPx(wrapStyle, '--yzf-desktop-board-max') || 700;
+      maxSize = Math.min(maxSize, configuredDesktopCap);
+    }
+
+    const geometry = quantizeBoardGeometry(size, minSize, maxSize, lineMetrics);
+    const currentSize = Number.parseFloat(wrap.style.getPropertyValue('--yzf-board-size')) || 0;
+    const currentCell = Number.parseFloat(wrap.style.getPropertyValue('--yzf-cell-size')) || 0;
+    const currentBox = Number.parseFloat(wrap.style.getPropertyValue('--yzf-box-line-width')) || 0;
+    if (currentSize && Math.abs(currentSize - geometry.boardSize) < 0.05
+        && Math.abs(currentCell - geometry.cellSize) < 0.05
+        && Math.abs(currentBox - lineMetrics.boxLine) < 0.05) return;
+    applyBoardGeometryVariables(wrap, geometry, lineMetrics);
+    window.dispatchEvent(new CustomEvent('yzf-board-geometry-applied', {
+      detail: { ...geometry, ...lineMetrics },
+    }));
+  };
+
+  let raf = 0;
+
+  // V433: the Sudoku board owns an independent visual panel. Business/content updates
+  // in the right panel must not resize it. Browser viewport changes are different: normal
+  // window resizing and desktop page zoom both dispatch window.resize, so handle only that
+  // external signal (debounced) and keep ResizeObserver/right-panel observers out of this path.
+  let lastAppliedBoardSize = 0;
+  const applyDynamicBoardSize = () => {
+    const wrap = document.querySelector('.board-wrap');
+    if (!wrap) return;
+    setDynamicBoardSize();
+    const next = Number.parseFloat(window.getComputedStyle(wrap).getPropertyValue('--yzf-board-size')) || 0;
+    if (next && Math.abs(next - lastAppliedBoardSize) < 0.5) return;
+    lastAppliedBoardSize = next;
+  };
+
+  const scheduleDynamicBoardSizeForLayoutMode = () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(applyDynamicBoardSize);
+  };
+
+  let viewportResizeTimer = 0;
+  const scheduleDynamicBoardSizeForViewport = () => {
+    // Browser zoom can emit several resize events while the zoom level settles. Debouncing
+    // prevents visible size stepping, while right-panel DOM/content changes never enter here.
+    window.clearTimeout(viewportResizeTimer);
+    viewportResizeTimer = window.setTimeout(scheduleDynamicBoardSizeForLayoutMode, 120);
+  };
+
+  window.addEventListener('resize', scheduleDynamicBoardSizeForViewport, { passive: true });
+  window.addEventListener('orientationchange', scheduleDynamicBoardSizeForLayoutMode, { passive: true });
+  document.addEventListener('fullscreenchange', scheduleDynamicBoardSizeForLayoutMode);
+  document.addEventListener('webkitfullscreenchange', scheduleDynamicBoardSizeForLayoutMode);
+  window.addEventListener('yzf-layout-modechange', scheduleDynamicBoardSizeForLayoutMode);
+  window.addEventListener('yzf-board-geometrychange', scheduleDynamicBoardSizeForLayoutMode);
+  document.addEventListener('DOMContentLoaded', scheduleDynamicBoardSizeForLayoutMode);
+}
+
+[
+  [btnTechAllIn, "allIn"], [btnTechHighSpeed, "highSpeed"], [btnTechExtremeSpeed, "extremeSpeed"],
+  [btnTechWhipRating, "whipRating"], [btnTechBraidRating, "braidRating"],
+].forEach(([button, preset]) => button?.addEventListener("click", () => applyTechniquePreset(preset)));
 
 lang.addEventListener("change", () => {
   applyStaticLanguage();
@@ -18243,6 +15859,7 @@ window.addEventListener("beforeunload", () => {
   saveAppSessionNow();
 });
 
+installDynamicBoardSizing();
 installMobileSolveMode();
 applyStaticLanguage();
 

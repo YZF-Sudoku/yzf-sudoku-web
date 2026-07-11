@@ -1378,9 +1378,7 @@
     .yzf-overlay-edge.blossom-main {
       stroke: #16a34a;
     }
-    .yzf-overlay-edge.blossom-branch {
-      stroke: #ef4444;
-    }
+    .yzf-overlay-edge.blossom-branch,
     .yzf-overlay-edge.braid-main {
       stroke: #ef4444;
     }
@@ -1430,9 +1428,7 @@
     .yzf-overlay-node {
       opacity: 0.98;
     }
-    .yzf-overlay-node.start {
-      fill: rgba(255, 214, 74, 0.8);
-    }
+    .yzf-overlay-node.start,
     .yzf-overlay-node.single.start,
     .yzf-overlay-node.group.start {
       fill: rgba(255, 214, 74, 0.8);
@@ -1519,7 +1515,7 @@
     .sudoku-cell.solver-cell-bkclr-4 { background: #FFC059 !important; }
     .sudoku-cell.solver-cell-bkclr-5 { background: #B1A5F3 !important; }
     .sudoku-cell.solver-cell-bkclr-6 { background: #F7A5A7 !important; }
-    .sudoku-cell.solver-cell-bkclr-7 { background: #86F280 !important; }
+    .sudoku-cell.solver-cell-bkclr-7,
     .sudoku-cell.solver-cell-bkclr-8 { background: #86F280 !important; }
     .sudoku-cell.solver-cell-bkclr-9 { background: #FFFF00 !important; }
     .sudoku-cell.solver-cell-bkclr-10 { background: #FFA500 !important; }
@@ -1527,12 +1523,13 @@
     .sudoku-cell.solver-cell-bkclr-12 { background: #EB0000 !important; }
     .sudoku-cell.hint-peer { background: #f8fafc; }
     .cell-value {
+      font-family: Tahoma, Arial, sans-serif;
       font-size: var(--yzf-value-font-size, clamp(22px, 60cqw, 42px));
-      font-weight: 600;
+      font-weight: 400;
       line-height: 1;
     }
-    .cell-value.given { color: #0f172a; }
-    .cell-value.solved { color: #1d4ed8; }
+    .cell-value.given { color: #000; }
+    .cell-value.solved { color: #00f; }
     .cell-value.suggested { color: var(--place); }
     .cell-value.focus {
       position: relative;
@@ -1558,8 +1555,10 @@
       width: 100%;
       height: 100%;
       padding: var(--yzf-candidate-grid-padding, 3px);
-      color: #516479;
+      color: #464646;
+      font-family: Tahoma, Arial, sans-serif;
       font-size: var(--yzf-candidate-font-size, clamp(8px, 30cqw, 14px));
+      font-weight: 400;
       line-height: 1;
       text-align: center;
     }
@@ -2338,13 +2337,11 @@
       margin: 0;
       font-size: 18px;
       font-weight: 650;
+      touch-action: manipulation;
     }
     .numpad.candidate-mode button {
       font-size: 14px;
       font-weight: 600;
-    }
-    .numpad button {
-      touch-action: manipulation;
     }
     .numpad button.active {
       border-color: var(--accent);
@@ -2354,19 +2351,6 @@
     .numpad .mode-toggle {
       font-size: 14px;
       font-weight: 700;
-    }
-    .numpad .ocr-role-toggle {
-      min-height: 34px;
-      align-self: center;
-      padding: 4px 10px;
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.15;
-      white-space: nowrap;
-      letter-spacing: 0;
-    }
-    .numpad .ocr-role-toggle[hidden] {
-      display: none !important;
     }
     body.board-pointer-mouse:not(.mobile-solve-mode) #tabControls > #numpad,
     body.board-pointer-mouse:not(.mobile-solve-mode) .manual-mark-touch-only {
@@ -2695,11 +2679,8 @@
       }
     }
     @media (orientation: landscape) and (min-width: 700px) {
-      .app-shell {
-        max-width: none;
-      }
-  
-    .workspace {
+      .app-shell,
+      .workspace {
         max-width: none;
       }
       .board-wrap {
@@ -3701,19 +3682,19 @@
     }
 
     .board-stage {
-      filter: drop-shadow(0 12px 25px rgba(27, 43, 72, 0.12));
+      filter: none;
     }
     .sudoku-board {
       border-width: 3px;
-      border-color: #172033;
-      background: #172033;
-      box-shadow: var(--shadow-board);
+      border-color: #000;
+      background: #000;
+      box-shadow: none;
     }
     .sudoku-cell {
-      border-color: #9ba9bd;
+      border-color: #646464;
     }
-    .sudoku-cell.box-right { border-right-color: #172033; }
-    .sudoku-cell.box-bottom { border-bottom-color: #172033; }
+    .sudoku-cell.box-right { border-right-color: #000; }
+    .sudoku-cell.box-bottom { border-bottom-color: #000; }
     .sudoku-cell.selected {
       background: #dceafe;
       box-shadow: inset 0 0 0 3px #3478f6;
@@ -3901,6 +3882,31 @@
     }
     #tabTechniques {
       max-height: none;
+    }
+
+    /* Path and optional-steps panels keep their header controls fixed and give
+       the remaining height to exactly one scrolling tree. This avoids nested
+       vertical scrollbars from .tab-panel and .json-treeview. */
+    #tabPath:not([hidden]),
+    #tabAllSteps:not([hidden]) {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #tabPath #tree,
+    #tabAllSteps #allStepsTree {
+      display: flex;
+      flex: 1 1 auto;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+    #tabPath #tree > .json-treeview,
+    #tabAllSteps #allStepsTree > .json-treeview {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: none;
+      overflow: auto;
     }
 
     #tabControls:not([hidden]) {
@@ -4371,8 +4377,7 @@
       touch-action: manipulation;
       background: #eaf0f7;
     }
-    body.mobile-solve-mode .app-shell { display: none !important; }
-
+    body.mobile-solve-mode .app-shell,
     .mobile-solve-shell[hidden] { display: none !important; }
     .mobile-solve-shell {
       --mobile-board-size: 360px;
@@ -4512,7 +4517,7 @@
       max-width: none !important;
       margin: 0 !important;
       flex: 0 0 var(--mobile-board-size);
-      filter: drop-shadow(0 9px 20px rgba(22, 41, 70, 0.16));
+      filter: none;
     }
     .mobile-solve-shell .candidate-grid {
       font-size: var(--yzf-candidate-font-size) !important;
@@ -4598,8 +4603,7 @@
       min-height: 34px;
       font-size: clamp(14px, 4.5vh, 19px);
     }
-    .mobile-solve-shell.is-landscape .numpad .mode-toggle,
-    .mobile-solve-shell.is-landscape .numpad .ocr-role-toggle:not([hidden]) {
+    .mobile-solve-shell.is-landscape .numpad .mode-toggle {
       grid-column: 1 / -1;
     }
 
@@ -5101,8 +5105,8 @@
       --yzf-grid-line-width: 1px;
       --yzf-box-line-factor: 2;
       --yzf-box-line-width: 2px;
-      --yzf-grid-line-color: #8799af;
-      --yzf-box-line-color: #172033;
+      --yzf-grid-line-color: #646464;
+      --yzf-box-line-color: #000000;
       --yzf-cell-size: 72px;
       --yzf-box-line-pos-1: 220px;
       --yzf-box-line-pos-2: 440px;
@@ -5132,7 +5136,7 @@
         var(--yzf-cell-size, 72px) !important;
       border: 0 !important;
       padding: var(--yzf-box-line-width, 2px) !important;
-      background: var(--yzf-grid-line-color, #8799af) !important;
+      background: var(--yzf-grid-line-color, #646464) !important;
       gap: 0 !important;
       isolation: isolate;
       overflow: hidden;
@@ -5148,38 +5152,38 @@
          fractional future gridline/factorboxline settings. */
       background:
         linear-gradient(to right,
-          var(--yzf-box-line-color, #172033) 0,
-          var(--yzf-box-line-color, #172033) var(--yzf-box-line-width, 2px),
+          var(--yzf-box-line-color, #000000) 0,
+          var(--yzf-box-line-color, #000000) var(--yzf-box-line-width, 2px),
           transparent var(--yzf-box-line-width, 2px),
           transparent calc(100% - var(--yzf-box-line-width, 2px)),
-          var(--yzf-box-line-color, #172033) calc(100% - var(--yzf-box-line-width, 2px)),
-          var(--yzf-box-line-color, #172033) 100%),
+          var(--yzf-box-line-color, #000000) calc(100% - var(--yzf-box-line-width, 2px)),
+          var(--yzf-box-line-color, #000000) 100%),
         linear-gradient(to bottom,
-          var(--yzf-box-line-color, #172033) 0,
-          var(--yzf-box-line-color, #172033) var(--yzf-box-line-width, 2px),
+          var(--yzf-box-line-color, #000000) 0,
+          var(--yzf-box-line-color, #000000) var(--yzf-box-line-width, 2px),
           transparent var(--yzf-box-line-width, 2px),
           transparent calc(100% - var(--yzf-box-line-width, 2px)),
-          var(--yzf-box-line-color, #172033) calc(100% - var(--yzf-box-line-width, 2px)),
-          var(--yzf-box-line-color, #172033) 100%),
+          var(--yzf-box-line-color, #000000) calc(100% - var(--yzf-box-line-width, 2px)),
+          var(--yzf-box-line-color, #000000) 100%),
         linear-gradient(to right,
           transparent 0,
           transparent var(--yzf-box-line-pos-1, 220px),
-          var(--yzf-box-line-color, #172033) var(--yzf-box-line-pos-1, 220px),
-          var(--yzf-box-line-color, #172033) calc(var(--yzf-box-line-pos-1, 220px) + var(--yzf-box-line-width, 2px)),
+          var(--yzf-box-line-color, #000000) var(--yzf-box-line-pos-1, 220px),
+          var(--yzf-box-line-color, #000000) calc(var(--yzf-box-line-pos-1, 220px) + var(--yzf-box-line-width, 2px)),
           transparent calc(var(--yzf-box-line-pos-1, 220px) + var(--yzf-box-line-width, 2px)),
           transparent var(--yzf-box-line-pos-2, 440px),
-          var(--yzf-box-line-color, #172033) var(--yzf-box-line-pos-2, 440px),
-          var(--yzf-box-line-color, #172033) calc(var(--yzf-box-line-pos-2, 440px) + var(--yzf-box-line-width, 2px)),
+          var(--yzf-box-line-color, #000000) var(--yzf-box-line-pos-2, 440px),
+          var(--yzf-box-line-color, #000000) calc(var(--yzf-box-line-pos-2, 440px) + var(--yzf-box-line-width, 2px)),
           transparent calc(var(--yzf-box-line-pos-2, 440px) + var(--yzf-box-line-width, 2px))),
         linear-gradient(to bottom,
           transparent 0,
           transparent var(--yzf-box-line-pos-1, 220px),
-          var(--yzf-box-line-color, #172033) var(--yzf-box-line-pos-1, 220px),
-          var(--yzf-box-line-color, #172033) calc(var(--yzf-box-line-pos-1, 220px) + var(--yzf-box-line-width, 2px)),
+          var(--yzf-box-line-color, #000000) var(--yzf-box-line-pos-1, 220px),
+          var(--yzf-box-line-color, #000000) calc(var(--yzf-box-line-pos-1, 220px) + var(--yzf-box-line-width, 2px)),
           transparent calc(var(--yzf-box-line-pos-1, 220px) + var(--yzf-box-line-width, 2px)),
           transparent var(--yzf-box-line-pos-2, 440px),
-          var(--yzf-box-line-color, #172033) var(--yzf-box-line-pos-2, 440px),
-          var(--yzf-box-line-color, #172033) calc(var(--yzf-box-line-pos-2, 440px) + var(--yzf-box-line-width, 2px)),
+          var(--yzf-box-line-color, #000000) var(--yzf-box-line-pos-2, 440px),
+          var(--yzf-box-line-color, #000000) calc(var(--yzf-box-line-pos-2, 440px) + var(--yzf-box-line-width, 2px)),
           transparent calc(var(--yzf-box-line-pos-2, 440px) + var(--yzf-box-line-width, 2px)));
     }
     .sudoku-cell,
@@ -5194,10 +5198,7 @@
       padding: 0 !important;
     }
     @media (orientation: landscape) and (min-width: 700px) and (min-height: 641px) {
-      .app-shell {
-        max-width: var(--yzf-desktop-workspace-max, 1540px) !important;
-        margin-inline: auto !important;
-      }
+      .app-shell,
       .workspace {
         max-width: var(--yzf-desktop-workspace-max, 1540px) !important;
         margin-inline: auto !important;
@@ -5627,11 +5628,11 @@
 
           <section id="tabTechniques" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnTechniques" data-tab-panel="techniques" hidden>
             <div class="technique-toolbar">
-              <button id="btnTechAllIn" class="compact primary" type="button">All In</button>
-              <button id="btnTechHighSpeed" class="compact" type="button">High Speed</button>
-              <button id="btnTechExtremeSpeed" class="compact" type="button">Extreme Speed</button>
-              <button id="btnTechWhipRating" class="compact" type="button">Whip Rating</button>
-              <button id="btnTechBraidRating" class="compact" type="button">Braid Rating</button>
+              <button id="btnTechAllIn" class="compact primary" type="button">全选</button>
+              <button id="btnTechHighSpeed" class="compact" type="button">高速</button>
+              <button id="btnTechExtremeSpeed" class="compact" type="button">极速</button>
+              <button id="btnTechWhipRating" class="compact" type="button">whip评分</button>
+              <button id="btnTechBraidRating" class="compact" type="button">braid评分</button>
             </div>
             <div id="techniqueList" class="technique-list"></div>
           </section>
@@ -5730,178 +5731,7 @@
   </section>
 
 
-    <script>
-      (() => {
-        const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
-        const CELL_SIZE_QUANTUM = 3; // FB geometry: each real cell stays divisible by the 3x3 candidate grid.
-
-        const getPx = (style, prop) => Number.parseFloat(style.getPropertyValue(prop)) || 0;
-
-        const readBoardLineMetrics = (wrapStyle) => {
-          const gridLine = Math.max(0.25, getPx(wrapStyle, '--yzf-grid-line-width') || 1);
-          const factorRaw = Number.parseFloat(wrapStyle.getPropertyValue('--yzf-box-line-factor'));
-          const boxFactor = Number.isFinite(factorRaw) && factorRaw > 0 ? factorRaw : 2;
-          const boxLine = gridLine * boxFactor;
-          return {
-            gridLine,
-            boxFactor,
-            boxLine,
-            totalLineWidth: 6 * gridLine + 4 * boxLine,
-          };
-        };
-
-        const quantizeBoardGeometry = (rawSize, minSize, maxSize, lineMetrics) => {
-          const { totalLineWidth } = lineMetrics;
-          const toCellFloor = (boardSize) => Math.max(0, Math.floor((boardSize - totalLineWidth) / (9 * CELL_SIZE_QUANTUM)) * CELL_SIZE_QUANTUM);
-          const toCellCeil = (boardSize) => Math.max(CELL_SIZE_QUANTUM, Math.ceil((boardSize - totalLineWidth) / (9 * CELL_SIZE_QUANTUM)) * CELL_SIZE_QUANTUM);
-          const maxCell = Math.max(CELL_SIZE_QUANTUM, toCellFloor(maxSize));
-          const minCell = Math.min(maxCell, toCellCeil(Math.min(minSize, maxSize)));
-          const rawCell = toCellFloor(Math.max(0, rawSize));
-          const cellSize = clamp(rawCell, minCell, maxCell);
-          return {
-            cellSize,
-            boardSize: 9 * cellSize + totalLineWidth,
-          };
-        };
-
-        const applyBoardGeometryVariables = (wrap, geometry, lineMetrics) => {
-          const { cellSize, boardSize } = geometry;
-          const { gridLine, boxFactor, boxLine } = lineMetrics;
-          // The unified line layer is measured from the board's outer edge.
-          // Outer frame padding therefore participates in the same offset model
-          // as FB's offsetLine/ofst coordinates.
-          const boxLinePos1 = boxLine + 3 * cellSize + 2 * gridLine;
-          const boxLinePos2 = 2 * boxLine + 6 * cellSize + 4 * gridLine;
-          const valueFontSize = Math.max(22, Math.min(72, Math.round(cellSize * 0.62)));
-          const candidateFontSize = Math.max(8, Math.min(24, Math.round(cellSize * 0.22)));
-
-          wrap.style.setProperty('--yzf-board-size', `${boardSize}px`);
-          wrap.style.setProperty('--yzf-cell-size', `${cellSize}px`);
-          wrap.style.setProperty('--yzf-grid-line-width', `${gridLine}px`);
-          wrap.style.setProperty('--yzf-box-line-factor', String(boxFactor));
-          wrap.style.setProperty('--yzf-box-line-width', `${boxLine}px`);
-          wrap.style.setProperty('--yzf-box-line-pos-1', `${boxLinePos1}px`);
-          wrap.style.setProperty('--yzf-box-line-pos-2', `${boxLinePos2}px`);
-          wrap.style.setProperty('--yzf-value-font-size', `${valueFontSize}px`);
-          wrap.style.setProperty('--yzf-candidate-font-size', `${candidateFontSize}px`);
-          wrap.style.setProperty('--yzf-candidate-grid-padding', '0px');
-        };
-
-        const setDynamicBoardSize = () => {
-          const wrap = document.querySelector('.board-wrap');
-          const stage = document.getElementById('boardStage');
-          const topbar = document.querySelector('.topbar');
-          const hint = document.getElementById('hintPanel');
-          if (!wrap || !stage) return;
-
-          const visual = window.visualViewport;
-          const viewportW = visual?.width || window.innerWidth || document.documentElement.clientWidth;
-          const viewportH = visual?.height || window.innerHeight || document.documentElement.clientHeight;
-          const wrapStyle = window.getComputedStyle(wrap);
-          const lineMetrics = readBoardLineMetrics(wrapStyle);
-          const wrapRect = wrap.getBoundingClientRect();
-          const stageRect = stage.getBoundingClientRect();
-          const paddingLeft = getPx(wrapStyle, 'padding-left');
-          const paddingRight = getPx(wrapStyle, 'padding-right');
-          const paddingTop = getPx(wrapStyle, 'padding-top');
-          const paddingBottom = getPx(wrapStyle, 'padding-bottom');
-          const paddingX = paddingLeft + paddingRight;
-          const paddingY = paddingTop + paddingBottom;
-          const gap = getPx(wrapStyle, 'column-gap');
-          const viewportGuard = 6;
-          const wrapTopInViewport = Math.max(0, wrapRect.top || 0);
-          const stageTopInViewport = Math.max(wrapTopInViewport + paddingTop, stageRect.top || 0);
-          const landscapeBoardTop = wrapTopInViewport + paddingTop;
-          const isCompactLandscape = window.matchMedia('(orientation: landscape) and (max-height: 640px)').matches;
-          const isLandscapeGrid = window.matchMedia('(orientation: landscape) and (min-width: 700px)').matches || isCompactLandscape;
-
-          let size;
-          let maxByHeight;
-          if (isLandscapeGrid) {
-            const configuredRightMin = getPx(wrapStyle, '--yzf-right-panel-min');
-            const rightMin = configuredRightMin || (isCompactLandscape ? 220 : 280);
-            const availableW = Math.max(0, (wrapRect.width || viewportW) - paddingX - rightMin - gap);
-            maxByHeight = Math.max(0, viewportH - landscapeBoardTop - paddingBottom - viewportGuard);
-            size = Math.floor(Math.min(availableW, maxByHeight));
-          } else {
-            const topbarH = topbar ? topbar.getBoundingClientRect().height : 0;
-            const hintStyle = hint ? window.getComputedStyle(hint) : null;
-            const reservedHintH = hintStyle ? (Number.parseFloat(hintStyle.height) || 66) : 66;
-            const availableW = Math.max(0, (wrapRect.width || viewportW) - paddingX);
-            const boardTop = Math.max(stageTopInViewport, wrapTopInViewport + paddingTop + topbarH);
-            maxByHeight = Math.max(0, viewportH - boardTop - reservedHintH - paddingBottom - viewportGuard);
-            size = Math.floor(Math.min(availableW, maxByHeight > 260 ? maxByHeight : availableW));
-          }
-
-          const minSize = viewportW < 420 ? 216 : 270;
-          let maxSize = Math.max(
-            lineMetrics.totalLineWidth + 9 * CELL_SIZE_QUANTUM,
-            Math.min(viewportW - 8, Math.max(lineMetrics.totalLineWidth + 9 * CELL_SIZE_QUANTUM, maxByHeight || viewportH - 8))
-          );
-          // A browser cannot reliably know a monitor's physical centimetres.
-          // Use a configurable CSS-pixel cap for normal desktop landscape, while
-          // keeping compact/mobile modes governed by their available viewport.
-          if (isLandscapeGrid && !isCompactLandscape) {
-            const configuredDesktopCap = getPx(wrapStyle, '--yzf-desktop-board-max') || 700;
-            maxSize = Math.min(maxSize, configuredDesktopCap);
-          }
-
-          const geometry = quantizeBoardGeometry(size, minSize, maxSize, lineMetrics);
-          const currentSize = Number.parseFloat(wrap.style.getPropertyValue('--yzf-board-size')) || 0;
-          const currentCell = Number.parseFloat(wrap.style.getPropertyValue('--yzf-cell-size')) || 0;
-          const currentBox = Number.parseFloat(wrap.style.getPropertyValue('--yzf-box-line-width')) || 0;
-          if (currentSize && Math.abs(currentSize - geometry.boardSize) < 0.05
-              && Math.abs(currentCell - geometry.cellSize) < 0.05
-              && Math.abs(currentBox - lineMetrics.boxLine) < 0.05) return;
-          applyBoardGeometryVariables(wrap, geometry, lineMetrics);
-          window.dispatchEvent(new CustomEvent('yzf-board-geometry-applied', {
-            detail: { ...geometry, ...lineMetrics },
-          }));
-        };
-
-        let raf = 0;
-        const scheduleDynamicBoardSize = () => {
-          cancelAnimationFrame(raf);
-          raf = requestAnimationFrame(setDynamicBoardSize);
-        };
-
-        // V433: the Sudoku board owns an independent visual panel. Business/content updates
-        // in the right panel must not resize it. Browser viewport changes are different: normal
-        // window resizing and desktop page zoom both dispatch window.resize, so handle only that
-        // external signal (debounced) and keep ResizeObserver/right-panel observers out of this path.
-        let lastAppliedBoardSize = 0;
-        const applyDynamicBoardSize = () => {
-          const wrap = document.querySelector('.board-wrap');
-          if (!wrap) return;
-          setDynamicBoardSize();
-          const next = Number.parseFloat(window.getComputedStyle(wrap).getPropertyValue('--yzf-board-size')) || 0;
-          if (next && Math.abs(next - lastAppliedBoardSize) < 0.5) return;
-          lastAppliedBoardSize = next;
-        };
-
-        const scheduleDynamicBoardSizeForLayoutMode = () => {
-          cancelAnimationFrame(raf);
-          raf = requestAnimationFrame(applyDynamicBoardSize);
-        };
-
-        let viewportResizeTimer = 0;
-        const scheduleDynamicBoardSizeForViewport = () => {
-          // Browser zoom can emit several resize events while the zoom level settles. Debouncing
-          // prevents visible size stepping, while right-panel DOM/content changes never enter here.
-          window.clearTimeout(viewportResizeTimer);
-          viewportResizeTimer = window.setTimeout(scheduleDynamicBoardSizeForLayoutMode, 120);
-        };
-
-        window.addEventListener('resize', scheduleDynamicBoardSizeForViewport, { passive: true });
-        window.addEventListener('orientationchange', scheduleDynamicBoardSizeForLayoutMode, { passive: true });
-        document.addEventListener('fullscreenchange', scheduleDynamicBoardSizeForLayoutMode);
-        document.addEventListener('webkitfullscreenchange', scheduleDynamicBoardSizeForLayoutMode);
-        window.addEventListener('yzf-layout-modechange', scheduleDynamicBoardSizeForLayoutMode);
-        window.addEventListener('yzf-board-geometrychange', scheduleDynamicBoardSizeForLayoutMode);
-        document.addEventListener('DOMContentLoaded', scheduleDynamicBoardSizeForLayoutMode);
-      })();
-    </script>
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
     <script type="module" src="./app.js?v=wasm-e5e12ce89f5dba20"></script>
   </body>
