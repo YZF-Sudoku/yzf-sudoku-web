@@ -17,7 +17,6 @@ const OCR_CORRECTION_UI_VERSION = "20260629-ocr-correction-v7.1-gridfix";
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
 const COACH_BASE32_REVERSE = new Map([...COACH_BASE32_CHARS].map((ch, index) => [ch, index]));
 
-const out = document.getElementById("out");
 const tree = document.getElementById("tree");
 const allStepsTree = document.getElementById("allStepsTree");
 const allStepsFilterText = document.getElementById("allStepsFilterText");
@@ -3262,13 +3261,13 @@ function paintBeforeLongTask() {
   });
 }
 
-function log(text) {
-  out.classList.remove("hidden");
-  out.textContent = text;
+function debugLog(value) {
+  if (!APP_DEBUG_MODE) return;
+  console.debug("[YZF]", value);
 }
 
-function logUi(key, values = null) {
-  log(values ? uif(key, values) : ui(key));
+function debugLogUi(key, values = null) {
+  debugLog(values ? uif(key, values) : ui(key));
 }
 
 function relocalizeIfExactText(element, key) {
@@ -8204,7 +8203,6 @@ function clearStepViewState(options = {}) {
     resetSelectedIndex = false,
     clearSolveTree = true,
     clearAllStepsTree = true,
-    hideOutput = true,
     clearHint = true,
   } = options;
 
@@ -8227,9 +8225,6 @@ function clearStepViewState(options = {}) {
   }
 
   clearBranchState();
-  if (hideOutput) {
-    out.classList.add("hidden");
-  }
 }
 
 function applySnapshotRefreshState(nextSnapshot = null) {
@@ -10050,8 +10045,6 @@ function enterStepPreview(data) {
   previewSnapshotActive = false;
   currentPreviewRecord = null;
   renderBoardSnapshot(currentSnapshot, null);
-  out.classList.add("hidden");
-  out.textContent = "";
 }
 
 function parseAndPreviewStepCollection(text, tabName) {
@@ -13380,7 +13373,7 @@ async function init() {
   const restoredSession = await restoreAppSession();
   renderTechniques();
   activateTab("controls");
-  logUi("wasmLoaded");
+  debugLogUi("wasmLoaded");
   if (!restoredSession) {
     renderBoard(null);
   }
@@ -13477,7 +13470,7 @@ async function importPuzzleFromCurrentInput(options = {}) {
       });
     }
     setStatus(uif("inputEmptyClipboardFailed", { error: clipboard.error }));
-    log(ui("loadFailedPrefix") + uif("inputEmptyClipboardFailed", { error: clipboard.error }));
+    debugLog(ui("loadFailedPrefix") + uif("inputEmptyClipboardFailed", { error: clipboard.error }));
     return { ok: false, error: clipboard.error };
   }
   const rawInput = (givens.value || "").trim();
@@ -13489,7 +13482,7 @@ async function importPuzzleFromCurrentInput(options = {}) {
       return importPuzzleFromCurrentInput({ ...options, clipboardAlreadyTried: true });
     }
     setStatus(uif("inputEmptyClipboardFailed", { error: clipboard.error }));
-    log(ui("loadFailedPrefix") + uif("inputEmptyClipboardFailed", { error: clipboard.error }));
+    debugLog(ui("loadFailedPrefix") + uif("inputEmptyClipboardFailed", { error: clipboard.error }));
     return { ok: false, error: clipboard.error };
   }
   let importText = "";
@@ -13499,7 +13492,7 @@ async function importPuzzleFromCurrentInput(options = {}) {
     const clipboardRetry = await retryPuzzleImportFromClipboard(options, rawInput);
     if (clipboardRetry) return clipboardRetry;
     const message = error instanceof Error ? error.message : "Coach puzzle string decode failed";
-    log(ui("loadFailedPrefix") + message);
+    debugLog(ui("loadFailedPrefix") + message);
     setStatus(ui("loadFailedPrefix") + message);
     return { ok: false, error: message };
   }
@@ -13508,7 +13501,7 @@ async function importPuzzleFromCurrentInput(options = {}) {
     originalBoard = result.state?.givens || result.givens || result.puzzle;
     givens.value = result.givens === result.puzzle && !result.hasCandidates ? result.puzzle : rawInput;
     resetBoardContextForSnapshot(result.state, { resetSelectedIndex: true });
-        log(JSON.stringify(result, null, 2));
+        debugLog(JSON.stringify(result, null, 2));
     setStatus(uif("importedPuzzle", { format: result.format, candidates: result.hasCandidates ? ui("importedWithCandidates") : "" }));
     updateInputControls();
     scheduleAppSessionSave();
@@ -13518,7 +13511,7 @@ async function importPuzzleFromCurrentInput(options = {}) {
     const clipboardRetry = await retryPuzzleImportFromClipboard(options, rawInput);
     if (clipboardRetry) return clipboardRetry;
         const error = result?.error || ui("importUnknownFormat");
-    log(ui("loadFailedPrefix") + error);
+    debugLog(ui("loadFailedPrefix") + error);
     setStatus(ui("loadFailedPrefix") + error);
     return { ok: false, error };
   }
@@ -14187,8 +14180,8 @@ async function confirmOcrCorrection() {
     result.source = "local-image-ocr";
     result.ocrImportFormat = importFormat;
     const attribution = await localSudokuOcrAttributionSafe();
-    if (attribution) log(uif("ocrDoneLog", { attribution }));
-    else log(ui("ocrDoneLogNoAttribution"));
+    if (attribution) debugLog(uif("ocrDoneLog", { attribution }));
+    else debugLog(ui("ocrDoneLogNoAttribution"));
   } else {
     // Keep the correction session alive after an invalid/non-unique import so
     // the user can repair the OCR result instead of losing all edits.
@@ -14217,7 +14210,7 @@ async function recognizeAndImportImageFile(file) {
       await resetLocalSudokuOcrLoaderAfterFailure();
     }
     setStatus(uif("ocrFailed", { message }));
-    log(uif("ocrFailed", { message }));
+    debugLog(uif("ocrFailed", { message }));
     return { ok: false, error: message };
   } finally {
     ocrResourceProgressActive = false;
@@ -14239,7 +14232,7 @@ async function recognizeFirstClipboardImage() {
   if (!navigator.clipboard?.read) {
     const message = ui("ocrClipboardUnsupported");
     setStatus(message);
-    log(message);
+    debugLog(message);
     return { ok: false, error: message };
   }
   try {
@@ -14259,7 +14252,7 @@ async function recognizeFirstClipboardImage() {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     setStatus(uif("ocrClipboardReadFailed", { message }));
-    log(uif("ocrClipboardReadFailed", { message }));
+    debugLog(uif("ocrClipboardReadFailed", { message }));
     return { ok: false, error: message };
   }
 }
@@ -14463,7 +14456,7 @@ btnGenerateTraining?.addEventListener("click", async () => {
         if (puzzle) {
           if (!engine.load(puzzle)) {
             setStatus(ui("trainingInvalidSyncFailed"));
-            log(JSON.stringify(result, null, 2));
+            debugLog(JSON.stringify(result, null, 2));
             return;
           }
         }
@@ -14500,18 +14493,18 @@ btnGenerateTraining?.addEventListener("click", async () => {
           : "";
 
         setStatus(uif("trainingInvalidFound", { detail, step: stepText ? uif("trainingStepTextPrefix", { step: stepText }) : "" }));
-        log(JSON.stringify(result, null, 2));
+        debugLog(JSON.stringify(result, null, 2));
         return;
       }
       const last = result?.lastRating ? ui("lastRating").replace("{rating}", formatRating(result.lastRating)) : "";
       setStatus(uif("trainingFailed", { error: result?.error || label, last }));
-      log(JSON.stringify(result, null, 2));
+      debugLog(JSON.stringify(result, null, 2));
       return;
     }
 
     if (!engine.load(result.puzzle)) {
       setStatus(ui("trainingSyncFailed"));
-      log(JSON.stringify(result, null, 2));
+      debugLog(JSON.stringify(result, null, 2));
       return;
     }
     originalBoard = result.state?.givens || result.puzzle;
@@ -14532,8 +14525,7 @@ btnGenerateTraining?.addEventListener("click", async () => {
       lastSolveData = null;
       clearBranchState();
     }
-    out.classList.add("hidden");
-    out.textContent = JSON.stringify(result, null, 2);
+    debugLog(result);
     setStatus(uif("trainingGenerated", { technique: label, attempts: result.attempts, rating: formatRating(result.rating) }));
     updateInputControls();
   } finally {
@@ -14553,7 +14545,7 @@ btnExportPuzzle?.addEventListener("click", async () => {
   const puzzle = await selectedExportPuzzleString();
   if (!puzzle) {
     setStatus(ui("exportUnavailable"));
-    log(JSON.stringify({
+    debugLog(JSON.stringify({
       ok: false,
       error: "exported_puzzle_unavailable",
     }, null, 2));
@@ -14562,7 +14554,7 @@ btnExportPuzzle?.addEventListener("click", async () => {
   givens.value = puzzle;
   const copied = await copyText(puzzle);
   const format = getExportFormat();
-  log(JSON.stringify({
+  debugLog(JSON.stringify({
     ok: true,
     format,
     formatLabel: selectedExportFormatLabel(),
@@ -14604,7 +14596,7 @@ btnRate.addEventListener("click", async () => {
       ? uif("rateInputSuffix", { format: result.inputFormat, mode: result.usedCandidateState ? ui("rateUseCandidateState") : ui("rateUsePuzzle") })
       : "";
     setStatus(`${formatRating(result)}${suffix}`);
-    log(JSON.stringify({ ...result, backgroundElapsedMs: message.elapsedMs }, null, 2));
+    debugLog(JSON.stringify({ ...result, backgroundElapsedMs: message.elapsedMs }, null, 2));
   } catch (error) {
     if (String(error?.message || "") === "rating_cancelled") return;
     setStatus(uif("rateWorkerFailed", { error: error instanceof Error ? error.message : String(error) }));
@@ -14617,7 +14609,7 @@ btnStep.addEventListener("click", () => {
   const text = engine.next_step_json();
   currentHint = parseJson(text);
   renderBoard(currentHint);
-  log(text);
+  debugLog(text);
 });
 
 btnApply.addEventListener("click", () => {
@@ -14647,7 +14639,7 @@ btnApply.addEventListener("click", () => {
     givens.value = nextText;
     originalBoard = result.state?.givens || result.givens || result.puzzle || snapshotGivensString(currentSnapshot);
         renderBoardSnapshot(currentSnapshot, null);
-    log(JSON.stringify(result, null, 2));
+    debugLog(JSON.stringify(result, null, 2));
     updateInputControls();
     setStatus(ui("appliedPreviewStep"));
     return;
@@ -14655,10 +14647,10 @@ btnApply.addEventListener("click", () => {
   currentHint = null;
   const text = engine.apply_hint_json();
   if (refreshAfterEdit(text)) {
-    log(text);
+    debugLog(text);
     setStatus(ui("appliedHint"));
   } else {
-    log(text);
+    debugLog(text);
   }
 });
 
@@ -14763,7 +14755,7 @@ btnAllSteps?.addEventListener("click", async () => {
       raw = engine.all_steps_json();
       elapsed = performance.now() - start;
     }
-    log(raw);
+    debugLog(raw);
     renderAllStepsPath(raw);
     const data = parseJson(raw);
     if (!data?.ok) {
@@ -14775,7 +14767,7 @@ btnAllSteps?.addEventListener("click", async () => {
     setStatus(uif("allStepsFound", { count: data?.candidateCount ?? data?.steps ?? 0, source: sourceText, time: timeText }));
   } catch (err) {
     console.error(err);
-    log(uif("allStepsFailed", { error: err?.message || err }));
+    debugLog(uif("allStepsFailed", { error: err?.message || err }));
     setStatus(uif("allStepsFailed", { error: err?.message || err }));
   } finally {
     setSolverBusy("findall", false);
@@ -14815,14 +14807,14 @@ btnSolve.addEventListener("click", async () => {
       elapsed = performance.now() - start;
     }
 
-    log(raw);
+    debugLog(raw);
 
     renderSolvePath(raw);
     const data = parseJson(raw);
     setStatus(uif("solveCompleted", { status: data?.status || "unknown", steps: data?.steps ?? "?", elapsed: elapsed.toFixed(1) }));
   } catch (err) {
     console.error(err);
-    log(uif("solvePathRenderFailed", { error: err }));
+    debugLog(uif("solvePathRenderFailed", { error: err }));
     setStatus(uif("solveFailed", { error: err?.message || err }));
   } finally {
     setSolverBusy("solve", false);
@@ -15865,5 +15857,7 @@ applyStaticLanguage();
 
 init().catch((err) => {
   console.error(err);
-  log(`${ui("wasmLoadFailed")}: ${err}`);
+  const message = `${ui("wasmLoadFailed")}: ${err}`;
+  setStatus(message);
+  debugLog(message);
 });
