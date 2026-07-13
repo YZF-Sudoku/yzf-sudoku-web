@@ -1,12 +1,20 @@
-import createModule from "./sudoku_wasm.js?v=wasm-e5e12ce89f5dba20";
+import createModule from "./sudoku_wasm.js?v=wasm-47dda30ae97cac69";
 import {
   categoryNameForLocale,
   localizedStepDescription,
   techniqueIdentityForStep,
   techniqueNameForStep,
 } from "./step-localization.js?v=20260710-step-i18n-v5-title-proof";
+import {
+  TECHNIQUE_TUTORIAL_CARDS,
+  TECHNIQUE_TUTORIAL_FIELDS,
+} from "./technique-tutorial-data.js?v=20260713-dynamic-tutorial-v8";
+import {
+  buildAuditedStepExplanationPayload,
+  buildAuditedTechniqueGuide,
+} from "./step-explanation.js?v=20260713-dynamic-tutorial-audit-v8";
 
-const APP_VERSION = "wasm-e5e12ce89f5dba20";
+const APP_VERSION = "wasm-47dda30ae97cac69";
 const MANUAL_VERSION = "20260709-manual-v2.5-tlg-input-guard";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
@@ -264,6 +272,7 @@ const manualMarkStatus = document.getElementById("manualMarkStatus");
 const difficultySelect = document.getElementById("difficultySelect");
 const batchMode = document.getElementById("batchMode");
 const batchFilename = document.getElementById("batchFilename");
+const batchPanel = batchFilename?.closest("details") || null;
 const batchSolveFile = document.getElementById("batchSolveFile");
 const batchStatus = document.getElementById("batchStatus");
 const trainingTechniqueSelect = document.getElementById("trainingTechniqueSelect");
@@ -687,6 +696,8 @@ for (const [key, zh, en] of [
   ["stepExplain", "解释", "Explain"],
   ["stepExplainTitle", "动态教程：为什么这一步成立", "Dynamic tutorial: why this step works"],
   ["stepExplainUnavailable", "当前没有可解释的步骤。", "No explainable step is selected."],
+  ["stepTutorialGuide", "技巧原理", "Technique guide"],
+  ["stepTutorialCurrent", "当前步骤", "Current step"],
   ["close", "关闭", "Close"],
   ["fullscreen", "全屏", "Fullscreen"],
   ["exitFullscreen", "退出全屏", "Exit fullscreen"],
@@ -1176,7 +1187,7 @@ for (const [key, zh, en] of [
   ["trainingStepTextPrefix", "；{step}", "; {step}"],
   ["trainingFailed", "训练题生成失败：{error}{last}。", "Training puzzle generation failed: {error}{last}."],
   ["trainingSyncFailed", "训练题已生成，但主引擎同步失败。", "Training puzzle was generated, but syncing it to the main engine failed."],
-  ["trainingGenerated", "已生成 {technique} 训练题：尝试 {attempts} 次，{rating}。", "Generated {technique} training puzzle: {attempts} attempts, {rating}."],
+  ["trainingGenerated", "已生成 {technique} 训练题并停在技巧出现前的盘面：尝试 {attempts} 次，{rating}。", "Generated a {technique} training puzzle and stopped at the board just before the technique appears: {attempts} attempts, {rating}."],
   ["exportUnavailable", "当前盘面无法导出：没有有效 81 位题面或候选盘状态。", "Cannot export the current board: no valid 81-char puzzle or candidate state."],
   ["coachCompressUnsupported", "当前环境不支持 Coach 题串压缩", "This environment does not support Coach string compression"],
   ["coachDecompressUnsupported", "当前环境不支持 Coach 题串解压", "This environment does not support Coach string decompression"],
@@ -3057,6 +3068,9 @@ function applyStaticLanguage() {
     ["stepExplainDialogTitle", "stepExplainTitle"], ["stepExplainDialogClose", "close"],
   ]);
   updateStepExplainButtonState();
+  if (stepExplainDialog?.open && currentStepExplainContext?.step) {
+    refreshOpenStepExplanationDialog();
+  }
   updateFullscreenButton();
   updateMobileSolveLanguage();
   setLocalizedTexts([
@@ -3238,11 +3252,32 @@ function techniqueName(step) {
   return techniqueNameForStep(step, lang.value);
 }
 
+function isWhipOrBraidStep(step) {
+  return /^(Whip|GWhip|Braid|GBraid)$/i.test(String(step?.kind || ""));
+}
+
+function stepChainLength(step) {
+  const explicit = Number(step?.chainLength ?? step?.chain_length ?? 0);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+
+  // Compatibility with pre-fix JSON where Whip/Braid length was published as rank.
+  const legacy = Number(step?.rank || 0);
+  return isWhipOrBraidStep(step) && Number.isFinite(legacy) && legacy > 0 ? legacy : 0;
+}
+
+function stepHasStrictRank(step) {
+  return step?.rankAvailable === true || step?.rank_available === true;
+}
+
+function stepStrictRank(step) {
+  return stepHasStrictRank(step) ? Number(step?.rank || 0) : 0;
+}
+
 function stepDisplayName(step) {
   const base = techniqueName(step);
-  const rank = Number(step?.rank || 0);
-  if (rank > 0 && /^(Whip|GWhip|Braid|GBraid)$/i.test(String(step?.kind || "")) && !/\[\d+\]/.test(base)) {
-    return `${base}[${rank}]`;
+  const chainLength = stepChainLength(step);
+  if (chainLength > 0 && isWhipOrBraidStep(step) && !/\[\d+\]/.test(base)) {
+    return `${base}[${chainLength}]`;
   }
   return base;
 }
@@ -4907,7 +4942,9 @@ function normalizePromotedGroupedAicStepResult(sampleJson) {
     selectedPathRank: 0,
     selectedPathReason: "manual_promoted_stepresult_sample",
     explanation: sampleJson.description || "Grouped AIC manual promoted sample; not from default solver.",
+    rankAvailable: sampleJson.rankAvailable === true,
     rank: Number.isInteger(sampleJson.rank) ? sampleJson.rank : 0,
+    chainLength: Number.isInteger(sampleJson.chainLength) ? sampleJson.chainLength : 0,
     path: {
       nodes: pathNodes,
       edges: pathEdges,
@@ -6912,7 +6949,9 @@ function normalizeManualAdvancedStepResult(stepResult, puzzle, responseMeta = {}
     selectedPathRank: 0,
     selectedPathReason: "manual_advanced_stepresult",
     explanation: responseMeta.description || stepResult?.description || lang.value === "en" ? "Manual advanced result; also available in default solving when enabled" : "高级技巧结果；启用后也可由默认求解使用",
+    rankAvailable: stepResult?.rankAvailable === true,
     rank: Number.isInteger(stepResult?.rank) ? stepResult.rank : 0,
+    chainLength: Number.isInteger(stepResult?.chainLength) ? stepResult.chainLength : 0,
     hasBackendColorCands: Array.isArray(stepResult?.colorCands) && stepResult.colorCands.length > 0,
     // V433: keep backend colorCands in the overlay model.  renderBoardSnapshot()
     // paints color=13/14 first, but renderChainOverlay()->applyBoardChainHighlights()
@@ -7215,47 +7254,60 @@ function stepExplainConclusion(step = {}) {
 }
 
 function stepExplainTemplateType(step = {}) {
-  const key = stepExplainKindKey(step);
-  if (/fullhouse|hiddensingle|nakedsingle|single/.test(key)) return "single";
-  if (/locked|pointing|claiming|intersection/.test(key)) return "locked";
-  if (/naked.*(pair|triple|quad|subset)|hidden.*(pair|triple|quad|subset)|subset/.test(key)) return "subset";
-  if (/skyscraper|2-string|two string|twostringkite|turbot/.test(key)) return "turbot";
-  // Complex rank/exocet families must be identified before the generic Fish/Chain buckets.
-  // Kazusa treats Multifish and Complex Fish through rank theory, not ordinary base-cover fish.
-  if (/multi\s*-?\s*fish|multifish|mutant fish|franken fish|complex\s+(swordfish|jellyfish|squirmbag|fish)|rank\s*fish/.test(key)) return "rankFish";
-  if (/sk\s*loop|msls|multi-sector locked|rank\s*0|rank-zero|zero\s*rank/.test(key)) return "rank0";
-  if (/mutant\s*(junior|senior)?\s*exocet|mutant\s*je|mutant\s*se|junior\s*exocet|senior\s*exocet|weak\s*exocet|double\s*je|jexocet|\bje\b|\bse\b|exocet/.test(key)) return "exocet";
-  if (/cell.*force|region.*force|force\s*chain|forcing\s*chain|dynamic\s*chain|dynamic\s*forcing|merged\s*forcing|finned\s*chain/.test(key)) return "forcing";
-  // Blossom-family loops are ALS/forcing structures, not ordinary AIC loops.
-  // Keep them out of the generic "loop" fallback so Blossom Loop / Death Blossom
-  // do not disappear into the normal chain tutorial.
-  if (/death\s*blossom|deathblossom|blossom\s*loop|blossomloop|burring\s*loop|burringloop|burred\s*loop|kraken\s*blossom|kraken\s*als|blossom/.test(key)) return "blossom";
-  // Kazusa groups Oddagon/Tridagon with Rank Logic -> Negative Ranks.
-  // This is neither uniqueness (UR/BUG second-solution proof) nor an ordinary
-  // Guardian catch-all: the core proof is an unsatisfiable odd/negative-rank
-  // structure, with guardians/extras acting only as exits from that bad state.
-  if (/bi[-\s]*value\s*oddagon|bivalueoddagon|tri[-\s]*value\s*oddagon|triplet\s*oddagon|tripletoddagon|trivalue\s*oddagon|oddagon|tridagon/.test(key)) return "oddagon";
-  // Uniqueness families must be classified before guardian wording.
-  // Kazusa places UR/UL/XR/AR/BUG/GSP under uniqueness/deadly-pattern logic:
-  // even when a step name contains "guardian" (for example UR Guardian), the
-  // explanation still depends on the unique-solution premise.
-  if (/unique|\bur\b|urguardian|ur\s*guardian|bug|avoidable|deadly|rectangle|gsp|global single pattern|unique\s*loop|extended\s*rectangle|avoidable\s*rectangle/.test(key)) return "unique";
-  // Guardian/Broken-Pattern logic is reserved for techniques whose proof is
-  // genuinely "guards must contain at least one truth" rather than uniqueness.
-  // Kazusa describes Broken Wing under Guardian Logic; Broken Loop / no-solution
-  // patterns are also read this way. Do not pull UR/BUG/AR/GSP out of uniqueness.
-  if (/broken\s*wing|brokenwing|broken\s*loop|pattern\s*having\s*no\s*solution|no\s*solution\s*pattern|guardian\s*logic|guardians?/.test(key)) return "guardian";
-  if (/fish|x-wing|xwing|swordfish|jellyfish|finned|sashimi|kraken|empty rectangle|eri/.test(key)) return "fish";
-  // WXYZ/VWXYZ and bent almost subsets are better explained as ALS-XZ/Bent-Set logic,
-  // not as a classic two-wing pivot pattern.
-  if (/wxyz|vwxyz|bent almost|bent subset|bentset/.test(key)) return "alsWing";
-  if (/als|ahs|almost locked|almost hidden/.test(key)) return "als";
-  // W/M/S/L/M3/Grouped M3 Wings emitted by FindAIC are compressed AIC names:
-  // they should be read as two/three-strong-link chains, not as ordinary pivot + two wings.
-  if (/(grouped\s*)?m3\s*-?\s*wing|m3wing|m\s*-?\s*wing|s\s*-?\s*wing|l\s*-?\s*wing|w\s*-?\s*wing|wwing/.test(key)) return "aicWing";
-  if (/xy-wing|xywing|xyz-wing|xyzz?wing|xyzring|wing/.test(key)) return "wing";
-  if (/rank|base cover|cover set/.test(key) || Number(step.rank || 0) > 0) return "rank";
-  if (/whip|gwhip|braid|gbraid|forcing|chain|aic|nice loop|loop|ring|color/.test(key) || (Array.isArray(step.nodes) && step.nodes.length > 0)) return "chain";
+  const kind = String(step.kind || "");
+  const title = String(step.title || "");
+  const titleKey = `${title} ${step.chainType || ""}`.toLowerCase();
+
+  // Exact producer identity wins.  Internal edge names in a Complex AIC title
+  // (ALS, UR Guardian, Tridagon, Almost Fish...) are annotations, not a request
+  // to replace the outer chain tutorial with another technique family.
+  if (["FullHouse", "HiddenSingle", "NakedSingle", "SingleCandidate"].includes(kind)) return "single";
+  if (kind === "LockedCandidates") return "locked";
+  if (["NakedPair", "NakedTriple", "NakedQuad", "HiddenPair", "HiddenTriple", "HiddenQuad"].includes(kind)) return "subset";
+  if (["Skyscraper", "TwoStringKite"].includes(kind)) return "turbot";
+  if (["EmptyRectangle", "ERIPair"].includes(kind)) return "singleDigit";
+  if (["ComplexSwordfish", "ComplexJellyfish", "ComplexSquirmbagFish", "Multifish", "RankMultifish"].includes(kind)) return "rankFish";
+  if (["SKLoop", "MSLS"].includes(kind)) return "rank0";
+  if (["JE", "SeniorExocet", "WeakExocet"].includes(kind)) return "exocet";
+  if (["CellRegionFC", "DynamicChain"].includes(kind)) return "forcing";
+  if (["DeathBlossom", "BlossomLoop"].includes(kind)) return "blossom";
+  if (["BivalueOddagon", "TripletOddagon"].includes(kind)) return "oddagon";
+  if (["GSP", "BUGOne", "BUGPlusN", "AvoidableRectangle", "UniqueRectangle", "UniqueLoop", "ExtendedRectangle"].includes(kind)) return "unique";
+  if (kind === "BrokenWing") return "guardian";
+  if (kind === "Fireworks") return "fireworks";
+  if (["XWing", "Swordfish", "Jellyfish", "FinnedXWing", "FinnedSwordfish", "FinnedJellyfish"].includes(kind)) return "fish";
+  if (kind === "WXYZWing") return "alsWing";
+  if (["AlmostPair", "AlmostTriple", "SueDeCoq", "ALSXZ", "ALSXYWing", "ALSWWing", "AHSXZ", "AHSXYWing", "AHSWWing"].includes(kind)) return "als";
+  if (["WWing", "XYWing", "XYZWing", "XYZRing"].includes(kind)) return "wing";
+  if (["ALSChain", "AHSChain", "XChain", "XYChain", "AIC", "GroupedAIC", "ComplexAIC", "Whip", "GWhip", "Braid", "GBraid"].includes(kind)) {
+    if (["AIC", "GroupedAIC"].includes(kind) && /(?:grouped\s*)?m3\s*-?\s*wing|m3wing|m\s*-?\s*wing|s\s*-?\s*wing|l\s*-?\s*wing|w\s*-?\s*wing/i.test(titleKey)) return "aicWing";
+    return "chain";
+  }
+  if (kind === "BruteForce") return "bruteForce";
+
+  // Conservative compatibility fallback.  Deliberately excludes description:
+  // ordinary prose frequently contains substrings such as "als" in "false".
+  if (/full house|hidden single|naked single|single candidate/.test(titleKey)) return "single";
+  if (/locked candidates|pointing|claiming/.test(titleKey)) return "locked";
+  if (/naked (pair|triple|quad)|hidden (pair|triple|quad)|subset/.test(titleKey)) return "subset";
+  if (/skyscraper|2-string kite|two-string kite|turbot/.test(titleKey)) return "turbot";
+  if (/empty rectangle|eri pair/.test(titleKey)) return "singleDigit";
+  if (/multi\s*-?\s*fish|multifish|complex\s+(swordfish|jellyfish|squirmbag|fish)|rank\s*fish/.test(titleKey)) return "rankFish";
+  if (/sk\s*loop|msls|rank\s*0|rank-zero|zero\s*rank/.test(titleKey)) return "rank0";
+  if (/exocet|jexocet|junior\s*exocet|senior\s*exocet|weak\s*exocet/.test(titleKey)) return "exocet";
+  if (/force\s*chain|forcing\s*chain|dynamic\s*chain/.test(titleKey)) return "forcing";
+  if (/death\s*blossom|blossom\s*loop|burring\s*loop|burred\s*loop/.test(titleKey)) return "blossom";
+  if (/oddagon|tridagon/.test(titleKey)) return "oddagon";
+  if (/unique|\bur\b|bug|avoidable|deadly|hidden\s*rectangle|unique\s*loop|extended\s*rectangle|gsp|gurth/.test(titleKey)) return "unique";
+  if (/broken\s*wing|broken\s*loop|guardian\s*logic/.test(titleKey)) return "guardian";
+  if (/fireworks?/.test(titleKey)) return "fireworks";
+  if (/x-wing|swordfish|jellyfish|finned|sashimi|fish/.test(titleKey)) return "fish";
+  if (/wxyz|vwxyz|bent almost|bent subset/.test(titleKey)) return "alsWing";
+  if (/als|ahs|almost locked|almost hidden|sue de coq/.test(titleKey) && !/als chain|ahs chain/.test(titleKey)) return "als";
+  if (/xy-wing|xyz-wing|xyz-ring|w-wing/.test(titleKey)) return "wing";
+  if (/rank|base cover|cover set/.test(titleKey)) return "rank";
+  if (/whip|braid|chain|aic|nice loop|cycle|ring/.test(titleKey) || (Array.isArray(step.nodes) && step.nodes.length > 0)) return "chain";
+  if (/brute force|bruteforce/.test(titleKey)) return "bruteForce";
   return "generic";
 }
 
@@ -7272,7 +7324,8 @@ function stepExplainBuildLines(step = {}) {
   const structureCount = Array.isArray(step.cells) ? step.cells.length : 0;
   const edgeCount = Array.isArray(step.edges) ? step.edges.length : 0;
   const groupCount = Array.isArray(step.groups) ? step.groups.length : 0;
-  const rank = Number(step.rank || 0);
+  const rank = stepStrictRank(step);
+  const chainLength = stepChainLength(step);
 
   const lines = [];
   const checks = [];
@@ -7307,6 +7360,26 @@ function stepExplainBuildLines(step = {}) {
     checks.push(zh
       ? (isKite ? "确认一条强链在行、一条强链在列；宫内连接端是弱连接，删数同时看见两个远端。" : "确认两条强链分别在两条平行行/列中；底部连接端互相看见，删数同时看见两个楼顶端。")
       : (isKite ? "Verify one strong link is in a row and one in a column; the box-side joined endpoints see each other, and the deletion sees both far endpoints." : "Verify the two strong links are in parallel rows/columns; the joined base endpoints see each other, and the deletion sees both top endpoints."));
+  } else if (type === "singleDigit") {
+    const isEriPair = String(step.kind || "") === "ERIPair";
+    lines.push(zh
+      ? `只观察候选 ${cand || "目标数字"}，按宫内 ER/ERI 入口与外部共轭关系组成的短链读取。`
+      : `Look only at candidate ${cand || "the target digit"}; read the in-box ER/ERI entry and the external conjugate relation as a short chain.`);
+    lines.push(zh
+      ? `${isEriPair ? "两个 ERI 入口共同限制目标候选" : "空矩形入口与外部强对把两个端点连接起来"}，因此 ${conclusion}。`
+      : `${isEriPair ? "The two ERI entries jointly constrain the target" : "The empty-rectangle entry and the external strong pair connect the two endpoints"}, therefore ${conclusion}.`);
+    proof = zh
+      ? "数学逻辑：宫内 ER/ERI 结构把同一数字压缩成可传递的入口，再与行列中的共轭对形成强弱链。若目标候选成立，会同时切断所有可行端点，与至少一个端点必须为真矛盾。"
+      : "Logic: the in-box ER/ERI structure compresses the digit into an inference entry and combines with row/column conjugate pairs as a strong/weak chain. If the target were true, it would disable every viable endpoint, contradicting that at least one endpoint must be true.";
+    checks.push(zh ? "确认这是同一数字的 ER/ERI 短链，不要按唯一矩形或普通 base-cover 鱼解释。" : "Verify this is a same-digit ER/ERI short chain, not a uniqueness rectangle or an ordinary base-cover fish.");
+  } else if (type === "fireworks") {
+    lines.push(zh ? `观察 Fireworks 核心和它向相关行列承接的候选集合，结论为 ${conclusion}。` : `Inspect the Fireworks core and the candidates it projects into the related rows and columns; the conclusion is ${conclusion}.`);
+    proof = zh ? "数学逻辑：核心候选不能任意全部离开，否则相关数字在行、列或宫中的可用位置会被压缩到不足以完成合法分配。删数来自这些出口和承接位置的容量限制。" : "Logic: the core candidates cannot all leave freely; otherwise the available positions in the related rows, columns, or box would have insufficient capacity for a legal assignment. Eliminations follow from those exit/support constraints.";
+    checks.push(zh ? "核对核心、出口和受影响行列，不要把 Fireworks 默认解释成 Broken Wing/Guardian。" : "Check the core, exits, and affected rows/columns; do not default Fireworks to Broken-Wing/Guardian logic.");
+  } else if (type === "bruteForce") {
+    lines.push(zh ? `这是搜索兜底结论：${conclusion}。` : `This is a search fallback conclusion: ${conclusion}.`);
+    proof = zh ? "BruteForce 通过尝试候选并检查能否完成全盘来验证结论；它可靠，但不是局部手工技巧证明。" : "BruteForce verifies the conclusion by trying candidates and checking whether the grid can be completed. It is reliable, but it is not a local human-technique proof.";
+    checks.push(zh ? "不要把该步骤当作可复用的局部技巧模板。" : "Do not treat this step as a reusable local technique pattern.");
   } else if (type === "guardian") {
     const key = stepExplainKindKey(step);
     const isBrokenWing = /broken\s*wing|brokenwing/.test(key);
@@ -7381,7 +7454,7 @@ function stepExplainBuildLines(step = {}) {
   } else if (type === "aicWing") {
     lines.push(zh ? `按步骤描述里的 Eureka/AIC 顺序阅读${nodesText ? `：${nodesText}` : ""}。` : `Read the Eureka/AIC text in order${nodesText ? `: ${nodesText}` : ""}.`);
     lines.push(zh ? `这个名称里的 Wing 是链结构的压缩命名，不是普通“枢纽 + 两翼”的双翼模板；它通常由两条或三条强关系串联，推出结论 ${conclusion}。` : `Here “Wing” is a compressed chain name, not the ordinary pivot-plus-two-wings template; it is usually made from two or three strong links and implies ${conclusion}.`);
-    proof = zh ? "数学逻辑：Kazusa 的 W-Wing 先按两个分支读：某个区域内目标数字的所有落点必有一个成立，每个落点都会推出一个同数字翼端，因此这些翼端至少一真；多分支 W-Wing 只是把两个分支扩展成三个或更多分支。YZF 里由 FindAIC 命名的 M-Wing、S-Wing、L-Wing、M3-Wing、Grouped M3-Wing 更应按 AIC/强制链理解。等号段表示强关系：两端至少一真；短横段表示弱关系：两端不能同时真。多个强关系经弱关系连接后，会得到某组端点至少一真，或得到目标候选若成立就沿链传播到矛盾。因此删数不是来自一个固定双翼枢纽，而是来自这条多强链/多分支覆盖了目标候选的全部可能。" : "Logic: Kazusa's W-Wing is first a branch proof: every possible position of the target digit in a house has one true branch, and each branch forces a same-digit wing endpoint, so at least one endpoint is true. Multi-Branch W-Wing extends this from two branches to three or more. In YZF, M-Wing, S-Wing, L-Wing, M3-Wing, and Grouped M3-Wing names emitted by FindAIC should be read as AIC/forcing-chain compressions. Equality segments are strong links: at least one end is true; dash segments are weak links: both ends cannot be true. Several strong links joined by weak links prove that a set of endpoints has at least one truth, or that the target candidate propagates to contradiction. The deletion comes from complete multi-strong-link/branch coverage, not from a fixed two-wing pivot.";
+    proof = zh ? "数学逻辑：Kazusa 的 W-Wing 先按两个分支读：某个区域内目标数字的所有落点必有一个成立，每个落点都会推出一个同数字翼端，因此这些翼端至少一真；多分支 W-Wing 只是把两个分支扩展成三个或更多分支。YZF 里由 FindAIC 命名的 M-Wing、S-Wing、L1/L2/L3-Wing、M3-Wing、Grouped M3-Wing 更应按 AIC/强制链理解。等号段表示强关系：两端至少一真；短横段表示弱关系：两端不能同时真。多个强关系经弱关系连接后，会得到某组端点至少一真，或得到目标候选若成立就沿链传播到矛盾。因此删数不是来自一个固定双翼枢纽，而是来自这条多强链/多分支覆盖了目标候选的全部可能。" : "Logic: Kazusa's W-Wing is first a branch proof: every possible position of the target digit in a house has one true branch, and each branch forces a same-digit wing endpoint, so at least one endpoint is true. Multi-Branch W-Wing extends this from two branches to three or more. In YZF, M-Wing, S-Wing, L1/L2/L3-Wing, M3-Wing, and Grouped M3-Wing names emitted by FindAIC should be read as AIC/forcing-chain compressions. Equality segments are strong links: at least one end is true; dash segments are weak links: both ends cannot be true. Several strong links joined by weak links prove that a set of endpoints has at least one truth, or that the target candidate propagates to contradiction. The deletion comes from complete multi-strong-link/branch coverage, not from a fixed two-wing pivot.";
     checks.push(zh ? "不要强行找普通 Wing 的 pivot；逐段核对描述中的每个“=”是否真是强关系，每个“-”是否真是弱关系。" : "Do not force a classic wing pivot; verify each '=' segment is a real strong link and each '-' segment is a real weak link.");
     checks.push(zh ? "Grouped 节点要当作一个分组端点读：组内任一候选成立都代表该端点成立。" : "Read grouped nodes as one grouped endpoint: any true candidate in the group makes that endpoint true.");
   } else if (type === "alsWing") {
@@ -7485,97 +7558,188 @@ function stepExplainBuildLines(step = {}) {
   if (structureCount) meta.push(zh ? `结构格 ${structureCount}` : `${structureCount} cells`);
   if (edgeCount) meta.push(zh ? `链边 ${edgeCount}` : `${edgeCount} edges`);
   if (groupCount) meta.push(zh ? `分组 ${groupCount}` : `${groupCount} groups`);
-  if (rank) meta.push(`rank ${rank}`);
+  if (chainLength) meta.push(zh ? `链长 ${chainLength}` : `chain length ${chainLength}`);
+  if (stepHasStrictRank(step)) meta.push(`rank ${rank}`);
 
   return { type, lines, proof, checks, meta };
 }
 
+
+function stepTutorialCardKey(step = {}) {
+  const aliases = {
+    RankMultifish: "Multifish",
+    AHSChain: "ALSChain",
+    AHSXYWing: "ALSXYWing",
+    AHSWWing: "ALSWWing",
+  };
+  const direct = aliases[step.kind] || step.kind;
+  if (direct && TECHNIQUE_TUTORIAL_CARDS[direct]) return direct;
+
+  const key = stepExplainKindKey(step);
+  const titleAliases = [
+    [/hidden rectangle|uniqueness test|unique rectangle|ur type|ur guardian/, "UniqueRectangle"],
+    [/continuous nice loop|discontinuous nice loop|complex aic/, "ComplexAIC"],
+    [/grouped aic/, "GroupedAIC"],
+    [/death blossom/, "DeathBlossom"],
+    [/blossom loop|burring loop|burred loop/, "BlossomLoop"],
+    [/senior exocet/, "SeniorExocet"],
+    [/weak exocet/, "WeakExocet"],
+    [/junior exocet|\bje\b/, "JE"],
+    [/multi[- ]?fish/, "Multifish"],
+  ];
+  for (const [pattern, cardKey] of titleAliases) {
+    if (pattern.test(key) && TECHNIQUE_TUTORIAL_CARDS[cardKey]) return cardKey;
+  }
+  return "";
+}
+
+function appendStepExplainSection(parent, headingText, bodyText, extraClass = "") {
+  if (!String(bodyText || "").trim()) return null;
+  const section = document.createElement("section");
+  section.className = `step-explain-section ${extraClass}`.trim();
+  const heading = document.createElement("div");
+  heading.className = "step-explain-section-heading";
+  heading.textContent = headingText;
+  const body = document.createElement("div");
+  body.className = "step-explain-section-body";
+  body.textContent = String(bodyText);
+  section.append(heading, body);
+  parent.appendChild(section);
+  return section;
+}
+
+function buildTechniqueTutorialGuide(step = {}) {
+  const locale = lang.value === "en" ? "en" : "zh";
+  const auditedCard = buildAuditedTechniqueGuide(step, locale);
+  const cardKey = auditedCard ? "" : stepTutorialCardKey(step);
+  const card = auditedCard || (cardKey ? TECHNIQUE_TUTORIAL_CARDS[cardKey]?.[locale] : null);
+  if (!Array.isArray(card) || card.length === 0) return null;
+
+  const group = document.createElement("section");
+  group.className = "step-tutorial-group step-tutorial-guide";
+  const title = document.createElement("h3");
+  title.className = "step-tutorial-group-title";
+  title.textContent = ui("stepTutorialGuide");
+  group.appendChild(title);
+
+  const sections = document.createElement("div");
+  sections.className = "step-explain-sections";
+  const fields = TECHNIQUE_TUTORIAL_FIELDS[locale] || [];
+  card.forEach((text, index) => {
+    appendStepExplainSection(sections, fields[index] || "", text, index === 2 ? "step-explain-section-math" : "");
+  });
+  group.appendChild(sections);
+  return group;
+}
+
+function createCurrentStepGroup() {
+  const group = document.createElement("section");
+  group.className = "step-tutorial-group step-tutorial-current";
+  const title = document.createElement("h3");
+  title.className = "step-tutorial-group-title";
+  title.textContent = ui("stepTutorialCurrent");
+  group.appendChild(title);
+  return group;
+}
+
 function buildStepExplanationContent(step, snapshot = currentSnapshot) {
   const zh = lang.value === "zh";
-  const backend = step?.explanation?.[zh ? "zh" : "en"];
+  // Audited families use the source-verified browser model first. This keeps
+  // explanations correct even when an older cached WASM still contains the
+  // former one-template-per-category text. Non-audited families continue to
+  // use the authoritative backend payload until their source audit is closed.
+  const audited = buildAuditedStepExplanationPayload(step, zh ? "zh" : "en");
+  const backend = audited || step?.explanation?.[zh ? "zh" : "en"];
+  const legacyWhipBraidRankPayload = isWhipOrBraidStep(step) &&
+    step?.rankAvailable !== true &&
+    !Number.isInteger(step?.chainLength) &&
+    Number(step?.rank || 0) > 0;
+  const fragment = document.createDocumentFragment();
+
+  const subtitle = document.createElement("div");
+  subtitle.className = "step-explain-subtitle";
+  const displayName = stepDisplayName(step);
+  const description = formatHintDesc(step);
+  const normalizedDescription = description.replace(/^\s+/, "");
+  const repeatsName = normalizedDescription.startsWith(`${displayName}:`)
+    || normalizedDescription.startsWith(`${displayName}：`)
+    || normalizedDescription === displayName;
+  subtitle.textContent = repeatsName ? normalizedDescription : `${displayName} · ${normalizedDescription}`;
+  fragment.appendChild(subtitle);
+
+  const guide = buildTechniqueTutorialGuide(step);
+  if (guide) fragment.appendChild(guide);
+
+  const currentGroup = createCurrentStepGroup();
 
   // V486 explanation contract: current WASM provides the full bilingual model.
-  // The legacy formatter remains only as a compatibility fallback for old JSON;
-  // it is not used by the bundled WASM.
-  if (!backend || typeof backend !== "object") {
+  // The legacy formatter remains only as a compatibility fallback for old JSON.
+  if (!backend || typeof backend !== "object" || legacyWhipBraidRankPayload) {
     const data = stepExplainBuildLines(step, snapshot);
-    const fragment = document.createDocumentFragment();
-    const subtitle = document.createElement("div");
-    subtitle.className = "step-explain-subtitle";
-    subtitle.textContent = `${stepDisplayName(step)} · ${formatHintDesc(step)}`;
-    fragment.appendChild(subtitle);
-    const ol = document.createElement("ol");
-    data.lines.forEach((line) => {
-      const li = document.createElement("li");
-      li.textContent = line;
-      ol.appendChild(li);
+    const sections = document.createElement("div");
+    sections.className = "step-explain-sections";
+    data.lines.forEach((line, index) => {
+      appendStepExplainSection(
+        sections,
+        zh ? `推导 ${index + 1}` : `Deduction ${index + 1}`,
+        line,
+      );
     });
-    fragment.appendChild(ol);
-    const proof = document.createElement("div");
-    proof.className = "step-explain-proof";
-    proof.textContent = data.proof;
-    fragment.appendChild(proof);
+    appendStepExplainSection(sections, zh ? "数学逻辑" : "Logic", data.proof, "step-explain-section-math");
+    appendStepExplainSection(sections, zh ? "结论" : "Conclusion", stepExplainConclusion(step), "step-explain-section-conclusion");
+    currentGroup.appendChild(sections);
+    if (Array.isArray(data.meta) && data.meta.length > 0) {
+      const meta = document.createElement("div");
+      meta.className = "step-explain-meta";
+      data.meta.forEach((item) => {
+        const span = document.createElement("span");
+        span.className = "step-explain-pill";
+        span.textContent = String(item);
+        meta.appendChild(span);
+      });
+      currentGroup.appendChild(meta);
+    }
+    fragment.appendChild(currentGroup);
     return fragment;
   }
 
   const labels = zh
-    ? { structure: "结构", principle: "依据", deduction: "推导", conclusion: "结论", eureka: "尤里卡／原始证明", checks: "核对", raw: "原始后端证明" }
-    : { structure: "Structure", principle: "Principle", deduction: "Deduction", conclusion: "Conclusion", eureka: "Eureka / formal proof", checks: "Checks", raw: "Raw backend proof" };
-
-  const fragment = document.createDocumentFragment();
-  const subtitle = document.createElement("div");
-  subtitle.className = "step-explain-subtitle";
-  subtitle.textContent = `${stepDisplayName(step)} · ${formatHintDesc(step)}`;
-  fragment.appendChild(subtitle);
+    ? { structure: "结构", principle: "依据", deduction: "推导", conclusion: "结论", eureka: "尤里卡／原始证明", checks: "当前步骤核对" }
+    : { structure: "Structure", principle: "Principle", deduction: "Deduction", conclusion: "Conclusion", eureka: "Eureka / formal proof", checks: "Current-step checks" };
 
   const sections = document.createElement("div");
   sections.className = "step-explain-sections";
-  const appendSection = (key, text, extraClass = "") => {
-    if (!String(text || "").trim()) return;
-    const section = document.createElement("section");
-    section.className = `step-explain-section ${extraClass}`.trim();
-    const heading = document.createElement("div");
-    heading.className = "step-explain-section-heading";
-    heading.textContent = labels[key];
-    const body = document.createElement("div");
-    body.className = "step-explain-section-body";
-    body.textContent = String(text);
-    section.append(heading, body);
-    sections.appendChild(section);
-  };
+  appendStepExplainSection(sections, labels.structure, backend.structure);
+  appendStepExplainSection(sections, labels.principle, backend.principle);
+  appendStepExplainSection(sections, labels.deduction, backend.deduction);
+  appendStepExplainSection(sections, labels.conclusion, backend.conclusion, "step-explain-section-conclusion");
 
-  appendSection("structure", backend.structure);
-  appendSection("principle", backend.principle);
-  appendSection("deduction", backend.deduction);
-  appendSection("conclusion", backend.conclusion, "step-explain-section-conclusion");
   if (backend.eureka) {
-    const section = document.createElement("section");
-    section.className = "step-explain-section";
-    const heading = document.createElement("div");
-    heading.className = "step-explain-section-heading";
-    heading.textContent = labels.eureka;
+    const details = document.createElement("details");
+    details.className = "step-explain-details";
+    const summary = document.createElement("summary");
+    summary.textContent = labels.eureka;
     const pre = document.createElement("pre");
     pre.className = "step-explain-eureka";
     pre.textContent = String(backend.eureka);
-    section.append(heading, pre);
-    sections.appendChild(section);
+    details.append(summary, pre);
+    sections.appendChild(details);
   }
-  fragment.appendChild(sections);
+  currentGroup.appendChild(sections);
 
   if (Array.isArray(backend.checks) && backend.checks.length > 0) {
-    const section = document.createElement("section");
-    section.className = "step-explain-section";
-    const heading = document.createElement("div");
-    heading.className = "step-explain-section-heading";
-    heading.textContent = labels.checks;
+    const details = document.createElement("details");
+    details.className = "step-explain-details";
+    const summary = document.createElement("summary");
+    summary.textContent = labels.checks;
     const ul = document.createElement("ul");
     backend.checks.forEach((line) => {
       const li = document.createElement("li");
       li.textContent = String(line);
       ul.appendChild(li);
     });
-    section.append(heading, ul);
-    fragment.appendChild(section);
+    details.append(summary, ul);
+    currentGroup.appendChild(details);
   }
 
   if (Array.isArray(backend.meta) && backend.meta.length > 0) {
@@ -7587,9 +7751,10 @@ function buildStepExplanationContent(step, snapshot = currentSnapshot) {
       span.textContent = String(item);
       meta.appendChild(span);
     });
-    fragment.appendChild(meta);
+    currentGroup.appendChild(meta);
   }
 
+  fragment.appendChild(currentGroup);
   return fragment;
 }
 
@@ -7615,11 +7780,82 @@ function closeStepExplanationDialog() {
   }
 }
 
-function resetStepExplainDialogPosition() {
-  if (!stepExplainDialog) return;
-  stepExplainDialog.style.left = "50%";
-  stepExplainDialog.style.top = "50%";
-  stepExplainDialog.style.transform = "translate(-50%, -50%)";
+function stepExplainViewportRect() {
+  const vv = window.visualViewport;
+  const left = vv?.offsetLeft || 0;
+  const top = vv?.offsetTop || 0;
+  const width = vv?.width || window.innerWidth;
+  const height = vv?.height || window.innerHeight;
+  return { left, top, right: left + width, bottom: top + height, width, height };
+}
+
+function positionStepExplanationDialog() {
+  if (!stepExplainDialog?.open || !boardStage) return;
+  const viewport = stepExplainViewportRect();
+  const boardRect = boardStage.getBoundingClientRect();
+  const gap = 8;
+  const minUsefulWidth = Math.min(300, Math.max(240, viewport.width * 0.52));
+  const minUsefulHeight = 180;
+
+  const candidates = [
+    {
+      name: "right",
+      left: boardRect.right + gap,
+      top: viewport.top + gap,
+      width: viewport.right - boardRect.right - gap * 2,
+      height: viewport.height - gap * 2,
+      preference: 4,
+    },
+    {
+      name: "below",
+      left: viewport.left + gap,
+      top: boardRect.bottom + gap,
+      width: viewport.width - gap * 2,
+      height: viewport.bottom - boardRect.bottom - gap * 2,
+      preference: 3,
+    },
+    {
+      name: "left",
+      left: viewport.left + gap,
+      top: viewport.top + gap,
+      width: boardRect.left - viewport.left - gap * 2,
+      height: viewport.height - gap * 2,
+      preference: 2,
+    },
+    {
+      name: "above",
+      left: viewport.left + gap,
+      top: viewport.top + gap,
+      width: viewport.width - gap * 2,
+      height: boardRect.top - viewport.top - gap * 2,
+      preference: 1,
+    },
+  ].filter((item) => item.width >= 220 && item.height >= 130);
+
+  let chosen = candidates
+    .filter((item) => item.width >= minUsefulWidth && item.height >= minUsefulHeight)
+    .sort((a, b) => (b.preference - a.preference) || (b.width * b.height - a.width * a.height))[0];
+  if (!chosen) {
+    chosen = candidates.sort((a, b) => (b.width * b.height - a.width * a.height) || (b.preference - a.preference))[0];
+  }
+  if (!chosen) return;
+
+  stepExplainDialog.dataset.placement = chosen.name;
+  stepExplainDialog.style.transform = "none";
+  stepExplainDialog.style.left = `${Math.round(chosen.left)}px`;
+  stepExplainDialog.style.top = `${Math.round(chosen.top)}px`;
+  stepExplainDialog.style.width = `${Math.max(220, Math.floor(chosen.width))}px`;
+  stepExplainDialog.style.height = `${Math.max(130, Math.floor(chosen.height))}px`;
+}
+
+function refreshOpenStepExplanationDialog() {
+  const ctx = currentStepExplainContext;
+  if (!ctx?.step || !ctx.step.valid || !stepExplainDialogContent) return;
+  const title = `${ui("stepExplainTitle")} · ${stepDisplayName(ctx.step)}`;
+  setTextById("stepExplainDialogTitle", title);
+  setTextById("stepExplainDialogClose", ui("close"));
+  stepExplainDialogContent.replaceChildren(buildStepExplanationContent(ctx.step, ctx.snapshot));
+  requestAnimationFrame(positionStepExplanationDialog);
 }
 
 function openStepExplanationDialog() {
@@ -7629,14 +7865,12 @@ function openStepExplanationDialog() {
     return;
   }
   if (!stepExplainDialog || !stepExplainDialogContent) return;
-  setTextById("stepExplainDialogTitle", ui("stepExplainTitle"));
-  setTextById("stepExplainDialogClose", ui("close"));
-  stepExplainDialogContent.replaceChildren(buildStepExplanationContent(ctx.step, ctx.snapshot));
   stepExplainDialog.classList.remove("hidden");
-  resetStepExplainDialogPosition();
-  if (typeof stepExplainDialog.showModal === "function") {
-    stepExplainDialog.showModal();
+  if (!stepExplainDialog.open) {
+    if (typeof stepExplainDialog.show === "function") stepExplainDialog.show();
+    else stepExplainDialog.setAttribute("open", "");
   }
+  refreshOpenStepExplanationDialog();
 }
 
 function renderStepExplanation(step = null, snapshot = currentSnapshot) {
@@ -9008,20 +9242,62 @@ function sanitizeFilename(name) {
   return cleaned || fallback;
 }
 
+function selectedTrainingTechniqueName() {
+  const kind = trainingTechniqueSelect?.value || "";
+  if (!kind) return "";
+  const state = techniqueState.length ? techniqueState : loadTechniqueState();
+  const item = state.find((technique) => technique.kind === kind);
+  if (item) return techniqueName(item);
+  return String(trainingTechniqueSelect?.selectedOptions?.[0]?.textContent || kind)
+    .replace(/\s*\([^()]*\)\s*$/, "")
+    .trim();
+}
+
+function defaultBatchFilename() {
+  if (batchMode?.value === "solve") return "sudoku-batch-solve.tsv";
+  const technique = selectedTrainingTechniqueName();
+  return technique ? sanitizeFilename(`${technique}.txt`) : "sudoku-batch.txt";
+}
+
+let batchFilenameAutoValue = "sudoku-batch.txt";
+
+function syncBatchFilenameDefault() {
+  if (!batchFilename) return;
+  const current = String(batchFilename.value || "").trim();
+  const userEdited = batchFilename.dataset.userEdited === "true";
+  if (userEdited && current && current !== batchFilenameAutoValue) return;
+  const next = defaultBatchFilename();
+  batchFilename.value = next;
+  batchFilenameAutoValue = next;
+  batchFilename.dataset.userEdited = "false";
+}
+
+function generatedLibraryPuzzleString(puzzle) {
+  const chars = [...String(puzzle || "")].filter((ch) => /[0-9.]/.test(ch));
+  if (chars.length !== 81) return "";
+  const normalized = chars.map((ch) => (ch === "0" ? "." : ch)).join("");
+  return `:0000:x:${normalized}:::`;
+}
+
+function formatSkfrScore(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? (numeric / 10).toFixed(1) : "";
+}
+
+function generatedYzfScore(result) {
+  return result?.solve?.yzfRate
+    ?? result?.solve?.rating?.score
+    ?? result?.yzfRate
+    ?? result?.rating?.yzfRate?.score
+    ?? "";
+}
+
 function batchLine(result, index) {
-  const rating = result.rating || {};
   return [
     index,
-    result.technique || "",
-    result.puzzle || "",
-    result.solution || "",
-    result.difficultyName || selectedDifficultyLabel(),
-    result.attempts ?? "",
-    result.clues ?? "",
-    rating.er ?? "",
-    rating.ep ?? "",
-    rating.ed ?? "",
-    rating.aig ?? "",
+    generatedLibraryPuzzleString(result?.puzzle),
+    generatedYzfScore(result),
+    formatSkfrScore(result?.rating?.er),
   ].join("\t") + "\n";
 }
 
@@ -9121,6 +9397,7 @@ function updateBatchModeUi() {
   if (batchSolveFile) {
     batchSolveFile.closest("label")?.classList.toggle("hidden", !solving);
   }
+  syncBatchFilenameDefault();
   if (batchStatus && !batchStatus.textContent.trim()) {
     batchStatus.textContent = ui("batchStatusIdle");
   }
@@ -9150,7 +9427,8 @@ function batchSolveLine(result, index) {
     result.steps ?? "",
     rating.score ?? result.yzfRate ?? "",
     rating.hardestKind || "",
-    rating.hardestRank ?? "",
+    rating.hardestChainLength ?? "",
+    rating.hardestRankAvailable ? (rating.hardestRank ?? "") : "",
     rating.hardestTitle || "",
     result.error || "",
   ].join("\t") + "\n";
@@ -9275,8 +9553,8 @@ async function runBatchTaskInMainEngine(config, handlers) {
       if (result?.ok) {
         if (!trainingKind) {
           const solve = parseJson(engine.solve_summary_json(500));
+          result.solve = solve;
           if (solve?.status === "invalid_step") {
-            result.solve = solve;
             handlers.onInvalidStep?.(result);
             return { status: "invalid_step", generated, failed, attempts, target };
           }
@@ -9347,18 +9625,26 @@ function scoreForStepRecord(record) {
 function summarizePathRating(path) {
   let score = 0;
   let hardestScore = 0;
+  let hardestMetric = 0;
+  let hardestRankAvailable = false;
   let hardestRank = 0;
+  let hardestChainLength = 0;
   let hardestKind = "";
   let hardestTitle = "";
   for (const record of path || []) {
     const step = record?.step || record || {};
     const stepScore = scoreForStepRecord(record);
-    const stepRank = Number(step?.rank || 0);
+    const chainLength = stepChainLength(step);
+    const strictRank = stepStrictRank(step);
+    const stepMetric = chainLength || strictRank;
     score += stepScore;
     const kind = step?.kind || record?.kind || "";
-    if (stepScore > hardestScore || (stepScore === hardestScore && stepRank > hardestRank)) {
+    if (stepScore > hardestScore || (stepScore === hardestScore && stepMetric > hardestMetric)) {
       hardestScore = stepScore;
-      hardestRank = stepRank;
+      hardestMetric = stepMetric;
+      hardestRankAvailable = stepHasStrictRank(step);
+      hardestRank = hardestRankAvailable ? strictRank : 0;
+      hardestChainLength = chainLength;
       hardestKind = kind;
       hardestTitle = step?.title || stepDisplayName(step) || kind;
     }
@@ -9367,7 +9653,9 @@ function summarizePathRating(path) {
     type: "YZFRate",
     score,
     hardestScore,
+    hardestRankAvailable,
     hardestRank,
+    hardestChainLength,
     hardestKind,
     hardestTitle,
   };
@@ -9743,8 +10031,12 @@ function renderStepNode(record, index) {
   if (Array.isArray(step.links) && step.links.length > 0) {
     children.push(renderLeaf("links", `${step.links.length}`, "number"));
   }
-  if (step.rank) {
-    children.push(renderLeaf("rank", String(step.rank), "number"));
+  const chainLength = stepChainLength(step);
+  if (chainLength > 0) {
+    children.push(renderLeaf(lang.value === "zh" ? "链长" : "chainLength", String(chainLength), "number"));
+  }
+  if (stepHasStrictRank(step)) {
+    children.push(renderLeaf("rank", String(stepStrictRank(step)), "number"));
   }
   if (record.beforeHash || record.before?.stateHash) {
     children.push(renderLeaf("beforeHash", record.beforeHash || record.before.stateHash, "string"));
@@ -9817,8 +10109,9 @@ function renderStepCollectionTreeView(data, options = {}) {
   const hardestBase = rating?.hardestKind
     ? techniqueName({ kind: rating.hardestKind, title: rating.hardestTitle || rating.hardestKind })
     : String(rating?.hardestTitle || "");
+  const hardestLength = Number(rating?.hardestChainLength || 0);
   const hardest = hardestBase
-    ? `${hardestBase}${Number(rating?.hardestRank || 0) > 0 ? `[${rating.hardestRank}]` : ""}`
+    ? `${hardestBase}${hardestLength > 0 && !/\[\d+\]/.test(hardestBase) ? `[${hardestLength}]` : ""}`
     : "";
   if (hardest) {
     detailParts.push(`Hardest=${hardest}`);
@@ -13391,7 +13684,10 @@ for (const button of tabButtons) {
   });
 }
 
-trainingTechniqueSelect?.addEventListener("change", updateTrainingTechniqueSelectColor);
+trainingTechniqueSelect?.addEventListener("change", () => {
+  updateTrainingTechniqueSelectColor();
+  syncBatchFilenameDefault();
+});
 btnTrainingTextFilter?.addEventListener("click", openTrainingTextFilterDialog);
 btnTrainingTextFilterApply?.addEventListener("click", applyTrainingTextFilterDialog);
 btnTrainingTextFilterClear?.addEventListener("click", () => {
@@ -13404,6 +13700,14 @@ trainingTextFilterDialog?.addEventListener("click", (event) => {
   if (event.target === trainingTextFilterDialog) closeTrainingTextFilterDialog();
 });
 batchMode?.addEventListener("change", updateBatchModeUi);
+batchFilename?.addEventListener("input", () => {
+  batchFilename.dataset.userEdited = String(batchFilename.value || "").trim() === batchFilenameAutoValue
+    ? "false"
+    : "true";
+});
+batchPanel?.addEventListener("toggle", () => {
+  if (batchPanel.open) syncBatchFilenameDefault();
+});
 
 async function readClipboardTextForLoad() {
   if (!navigator.clipboard?.readText) {
@@ -14318,7 +14622,7 @@ btnBatchStop?.addEventListener("click", () => {
 btnBatchGenerate?.addEventListener("click", async () => {
   if (!engine) return;
   const mode = batchMode?.value === "solve" ? "solve" : "generate";
-  const filename = sanitizeFilename(batchFilename?.value || (mode === "solve" ? "sudoku-batch-solve.tsv" : "sudoku-batch.txt"));
+  const filename = sanitizeFilename(batchFilename?.value || defaultBatchFilename());
   const difficulty = Number(difficultySelect.value || 0);
   const trainingKind = mode === "generate" ? (trainingTechniqueSelect?.value || "") : "";
   const trainingLabel = trainingTechniqueSelect?.selectedOptions?.[0]?.textContent || trainingKind;
@@ -14502,30 +14806,21 @@ btnGenerateTraining?.addEventListener("click", async () => {
       return;
     }
 
-    if (!engine.load(result.puzzle)) {
+    const matchedIndex = Math.max(0, Number(result.matchedStepIndex || 0) - 1);
+    const matchedRecord = Array.isArray(result.solve?.path) ? result.solve.path[matchedIndex] : null;
+    const trainingSnapshot = matchedRecord?.before || null;
+    originalBoard = result.puzzle;
+    const trainingLibrary = snapshotToLibraryString(trainingSnapshot);
+    const imported = trainingLibrary ? parseJson(engine.import_puzzle_json(trainingLibrary)) : null;
+    if (!trainingSnapshot || !trainingLibrary || !imported?.ok) {
       setStatus(ui("trainingSyncFailed"));
-      debugLog(JSON.stringify(result, null, 2));
+      debugLog(JSON.stringify({ ...result, trainingSnapshotFound: Boolean(trainingSnapshot), trainingLibrary, imported }, null, 2));
       return;
     }
-    originalBoard = result.state?.givens || result.puzzle;
-    givens.value = result.puzzle;
-    currentHint = null;
-    selectedIndex = -1;
-    currentSnapshot = result.state || getCurrentSnapshot();
-        previewSnapshotActive = false;
-    currentPreviewRecord = null;
-    lastAllStepsData = null;
-    allStepsTree?.replaceChildren();
-    clearBranchState();
-    renderBoardSnapshot(currentSnapshot, null);
-    if (result.solve) {
-      renderSolvePath(JSON.stringify(result.solve));
-    } else {
-      tree.replaceChildren();
-      lastSolveData = null;
-      clearBranchState();
-    }
-    debugLog(result);
+
+    givens.value = trainingLibrary;
+    resetBoardContextForSnapshot(imported.state || trainingSnapshot, { resetSelectedIndex: true });
+    debugLog({ ...result, trainingLibrary, trainingStepIndex: matchedIndex + 1 });
     setStatus(uif("trainingGenerated", { technique: label, attempts: result.attempts, rating: formatRating(result.rating) }));
     updateInputControls();
   } finally {
@@ -14655,60 +14950,19 @@ btnApply.addEventListener("click", () => {
 });
 
 
-function installStepExplainDialogDrag() {
-  if (!stepExplainDialog) return;
-  const header = stepExplainDialog.querySelector(".step-explain-dialog-header");
-  if (!header) return;
-  let dragState = null;
-  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-
-  header.addEventListener("pointerdown", (event) => {
-    if (event.button !== undefined && event.button !== 0) return;
-    if (event.target?.closest?.("button, a, input, select, textarea")) return;
-    const rect = stepExplainDialog.getBoundingClientRect();
-    dragState = {
-      pointerId: event.pointerId,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-      width: rect.width,
-      height: rect.height,
-    };
-    stepExplainDialog.style.transform = "none";
-    stepExplainDialog.style.left = `${rect.left}px`;
-    stepExplainDialog.style.top = `${rect.top}px`;
-    header.setPointerCapture?.(event.pointerId);
-    event.preventDefault();
-  });
-
-  header.addEventListener("pointermove", (event) => {
-    if (!dragState || dragState.pointerId !== event.pointerId) return;
-    const margin = 8;
-    const maxLeft = Math.max(margin, window.innerWidth - dragState.width - margin);
-    const maxTop = Math.max(margin, window.innerHeight - dragState.height - margin);
-    const nextLeft = clamp(event.clientX - dragState.offsetX, margin, maxLeft);
-    const nextTop = clamp(event.clientY - dragState.offsetY, margin, maxTop);
-    stepExplainDialog.style.left = `${nextLeft}px`;
-    stepExplainDialog.style.top = `${nextTop}px`;
-  });
-
-  const endDrag = (event) => {
-    if (!dragState || dragState.pointerId !== event.pointerId) return;
-    header.releasePointerCapture?.(event.pointerId);
-    dragState = null;
-  };
-  header.addEventListener("pointerup", endDrag);
-  header.addEventListener("pointercancel", endDrag);
-}
-
 btnStepExplain?.addEventListener("click", openStepExplanationDialog);
 stepExplainDialogClose?.addEventListener("click", closeStepExplanationDialog);
-stepExplainDialog?.addEventListener("click", (event) => {
-  if (event.target === stepExplainDialog) closeStepExplanationDialog();
-});
 stepExplainDialog?.addEventListener("close", () => {
   stepExplainDialog.classList.add("hidden");
 });
-installStepExplainDialogDrag();
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && stepExplainDialog?.open) closeStepExplanationDialog();
+});
+window.addEventListener("resize", positionStepExplanationDialog);
+window.addEventListener("orientationchange", () => requestAnimationFrame(positionStepExplanationDialog));
+document.addEventListener("fullscreenchange", () => requestAnimationFrame(positionStepExplanationDialog));
+window.visualViewport?.addEventListener("resize", positionStepExplanationDialog);
+window.visualViewport?.addEventListener("scroll", positionStepExplanationDialog);
 
 allStepsFilterText?.addEventListener("input", () => {
   allStepsFilterState.query = allStepsFilterText.value || "";
@@ -15823,7 +16077,6 @@ lang.addEventListener("change", () => {
     tlgSolverState.lastTone = formattedStatus.tone;
     updateTlgSolverUi();
   }
-  relocalizeIfExactText(out, "wasmLoaded");
   relocalizeIfExactText(hintPanel, "waitingWasm");
   relocalizeIfExactText(hintPanel, "initialHint");
   if (lastSolveData) {

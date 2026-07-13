@@ -1052,102 +1052,102 @@ Kazusa tutorial 的讲法不是简单列技巧名，而是按“从可见约束�
 
 **Kind:** CellRegionFC **Category:** Chains **Difficulty:** 7 已接入 / wired
 
-- **基本含义：**格/区域强制链从一个格子或区域的所有可能分支出发。
+- **基本含义：**搜索器按 Cell、Region、UR 或 Triplet Oddagon 实体组织关键分支；显示时会把每条分支反向回放成正常 Forcing Chain。
 
-- **成立逻辑：**如果每个分支最终都得到同一个结论，该结论就不依赖分支选择，必然成立。
+- **成立逻辑：**每条显示分支都有一个单候选或 ALS 扇区端点，端点能够推出一组删数。系统对所有分支的端点删数集合求交集，只输出每条分支都能得到的共同删数。
 
-- **数学逻辑：**Kazusa 的强制链说明强调它不是普通头尾取交集的链，而是完备分支推理。对某个格或区域，所有可能候选/位置必须有且只有一个成立；如果逐一假设每个分支后都会推出同一个删数或同一个出数，那么无论真实分支是哪一个，该共同结论都必然成立。归并强制链、鳍链、动态强制链只是分支组织方式不同。
+- **数学逻辑：**设第 i 条分支端点能删除的候选集合为 Dᵢ，则最终输出 D₁∩D₂∩…∩Dₙ。无论真实解对应哪条强制分支，交集中的候选都会被排除。Cell/Region/UR/Triplet Oddagon 名称只描述搜索实体与分支来源；最终始终按各分支端点共同结论输出标准 Forcing Chain。
 
-- **看盘步骤：**① 找起始格/区域；② 分别读各分支；③ 找共同结果；④ 应用共同结果。
+- **看盘步骤：**① 分别读每条反向回放链；② 找到各分支端点；③ 写出每个端点能删的候选；④ 只保留所有分支共有的删数。
 
-- **高亮阅读：**高亮会有多条分支；不要只看第一条链。
+- **高亮阅读：**高亮会覆盖多条分支；第一条链只是显示主分支，最终结论必须在全部分支端点中同时成立。
 
-- **核对要点：**核对所有分支是否都指向同一删数或出数。
+- **核对要点：**搜索器内部的失效状态只负责定位关键分支；用户级证明应逐条反向回放，并核对端点删数集合的交集。
 
 
 ### Whip Whip
 
 **Kind:** Whip **Category:** Chains **Difficulty:** 7 已接入 / wired
 
-- **基本含义：**Whip 是线性强制结构，像一条有方向的链，逐步排除起点候选。
+- **基本含义：**Whip 是从待删目标候选为真开始的一条有序单主干证明。
 
-- **成立逻辑：**假设目标候选成立会沿链迫使后续节点，最终导致某个必要候选无处可去。
+- **成立逻辑：**每一步先排除一个左链接候选，再在当时已经更新的局面中迫使唯一右链接候选成立；最后使某格无候选，或使某数字在行、列、宫中无落点。
 
-- **数学逻辑：**Whip 是“假设目标候选为真会走到矛盾”的线性反证链。链上每一层都用已知强弱关系逼迫下一步；若最终导致某格无候选、某区域某数字无位置，或同一区域重复，则最初目标候选不能为真，所以可以删除。
+- **数学逻辑：**Whip 的强关系不是预先固定的静态 AIC 强边，而可以依赖主干前面已经排除的候选。假设目标成立后，按记录顺序逐步更新候选；终止格或终止区域被排空，因此目标假设为假。
 
-- **看盘步骤：**① 看被删候选；② 假设它成立；③ 沿主链读后果；④ 到矛盾处确认删除。
+- **看盘步骤：**① 看被删目标；② 沿单主干按顺序读 OFF→ON；③ 每一步核对右链接在当时确实唯一；④ 核对终止格/区域被排空。
 
-- **高亮阅读：**高亮主链为重点，通常有明确起点和终点矛盾。
+- **高亮阅读：**目标使用起点色，主干 ON/OFF 使用既有链配色，终止区域会显示被排除的支持候选。
 
-- **核对要点：**顺着链方向读，不要把旁边无关候选纳入主链。
+- **核对要点：**不能跳过中间候选更新后直接把 Whip 当成静态强弱链；每条动态强关系都要在该步局面中成立。
 
 
 ### g-Whip 分组 Whip
 
 **Kind:** GWhip **Category:** Chains **Difficulty:** 7 已接入 / wired
 
-- **基本含义：**g-Whip 是带分组节点的 Whip。
+- **基本含义：**g-Whip 与 Whip 使用同一单主干逻辑，但允许合法的同数字分组扇区作为节点。
 
-- **成立逻辑：**分组节点表示多个位置共同承担一个候选，其他读法与 Whip 相同。
+- **成立逻辑：**分组节点整体表示一个逻辑候选，例如某数字在一组格中至少一处成立；它在主干中作为一个右链接或左链接节点参与动态传播。
 
-- **数学逻辑：**g-Whip 把 Whip 的单格节点推广为分组节点。分组仍表示同一个逻辑命题，例如某数字在某一组格中至少一处成立；如果假设目标成立后，分组链最终造成区域无落点或候选冲突，目标候选就被反证删除。
+- **数学逻辑：**除了节点可以是分组扇区外，g-Whip 与 Whip 相同：假设目标成立，依次排除左链接并强制右链接，最终排空一个格或区域。组内格不能被任意拆开选择。
 
-- **看盘步骤：**① 看被删候选；② 沿分组主链读；③ 找矛盾点；④ 删除起点候选。
+- **看盘步骤：**① 看目标；② 把每个分组候选当成整体；③ 沿单主干核对；④ 确认终止排空。
 
-- **高亮阅读：**高亮会出现组节点；组节点当成一个整体。
+- **高亮阅读：**分组扇区会整体着色；不要只取其中某一个格代替整个节点。
 
-- **核对要点：**确认分组候选位于同一区域约束内。
+- **核对要点：**确认分组形状符合后端允许的行—宫或列—宫扇区，并且在当前局面中承担同一个逻辑命题。
 
 
 ### Dynamic Chain 动态链
 
 **Kind:** DynamicChain **Category:** Chains **Difficulty:** 7 已接入 / wired
 
-- **基本含义：**动态链允许链中产生新的临时结论，再继续推理。
+- **基本含义：**动态链从同一源候选的 ON/OFF 状态建立传播网络，并允许使用传播过程中动态形成的新关系。
 
-- **成立逻辑：**它仍是确定逻辑：每个临时后果都由前面假设强制推出，最终得到共同结论或矛盾。
+- **成立逻辑：**实际输出分为 Dynamic Contradiction Chain 与 Dynamic Verity Chain；两者还都有普通与 Grouped 版本。
 
-- **数学逻辑：**Dynamic Chain 允许在假设过程中继续使用中间推出的出数/删数。它的用户级逻辑仍是反证：假设某候选成立后，所有后续推理都是确定逻辑；若确定逻辑最终矛盾，则初始假设必假。
+- **数学逻辑：**Contradiction 分支中，某一个源状态同时推出同一候选 ON 与 OFF，因此该源状态不可能；源 ON 被否定则删目标，源 OFF 被否定则目标出数。Verity 分支中，源 ON 与源 OFF 两种完备状态都推出同一个 ON 或 OFF 结论，因此该共同结论无条件成立。
 
-- **看盘步骤：**① 看起始假设；② 看动态推出的中间结论；③ 看最终矛盾/共同点；④ 应用结论。
+- **看盘步骤：**① 找源候选；② 区分 Contradiction 或 Verity；③ 分别读实际网络分支；④ 应用否定源状态或两状态共同结论。
 
-- **高亮阅读：**高亮可能包含较长路径和多层分支。
+- **高亮阅读：**Grouped Dynamic Chain 中，组节点整体参与传播；分支树展示的是实际父路径，不要求是一条线。
 
-- **核对要点：**用户核对时重点看最终共同结论，不必手工复原所有搜索路径。
+- **核对要点：**不要把 Verity Chain 误写成单分支反证；它依赖源 ON/OFF 两种状态的共同结论。
 
 
 ### Braid Braid
 
 **Kind:** Braid **Category:** Chains **Difficulty:** 7 已接入 / wired
 
-- **基本含义：**Braid 是比 Whip 更允许分支的强制证明。
+- **基本含义：**Braid 是从目标候选为真开始的分叉证明；与 Whip 的单主干不同，它允许多个替代左链接分支。
 
-- **成立逻辑：**目标候选若成立，会在多个可选路径中仍不可避免地走向矛盾，因此目标可删。
+- **成立逻辑：**在每个分叉点，所有仍可能的左链接候选都必须被覆盖；每条支路再强制相应右链接或继续分叉。所有支路合起来排空终止格或区域，目标才可删除。
 
-- **数学逻辑：**Braid 是比 Whip 更宽的反证证明。假设目标候选成立后，每一层不只保留一条线性后继，而是允许多个候选共同承担“逃生分支”；若所有分支最终都被堵死，说明目标成立会让盘面无解，因此目标可删。
+- **数学逻辑：**Braid 证明的是完整分支树，不是“挑一条能到矛盾的路径”。任一分叉点漏掉一个仍合法的候选，证明就不完备。若回放结构实际只有一条主干，源码会按证明形态重新命名为 Whip。
 
-- **看盘步骤：**① 看被删候选；② 读主链；③ 查看旁支如何封堵替代选择；④ 到矛盾点确认删除。
+- **看盘步骤：**① 看目标；② 找主干与分叉点；③ 在每个分叉点核对全部替代候选；④ 确认所有支路共同排空终止约束。
 
-- **高亮阅读：**高亮通常有主链和旁支；主链表示证明骨架，旁支表示必要支撑。
+- **高亮阅读：**主链与支持分支会分别显示；分支不是装饰，而是补齐主干无法独立覆盖的替代选择。
 
-- **核对要点：**不要把所有分支都当成同一条线；按系统给出的主链/分支关系读。
+- **核对要点：**必须检查分叉完备性；不能只读第一条 chain branch。
 
 
 ### g-Braid 分组 Braid
 
 **Kind:** GBraid **Category:** Chains **Difficulty:** 7 已接入 / wired
 
-- **基本含义：**g-Braid 是带分组节点的 Braid。
+- **基本含义：**g-Braid 是允许分组节点的 Braid。
 
-- **成立逻辑：**分组节点把多个候选位置合并为一个证明节点，帮助表达区域级强制关系。
+- **成立逻辑：**分叉证明的完备性要求不变，只是某些候选位置由合法分组扇区整体表示。
 
-- **数学逻辑：**g-Braid 是 Braid 的分组版本。它把若干同数字同区域的位置合成一个节点，但证明目标不变：假设目标成立后，所有可能分支都被强制关系、弱关系和区域容量排除，最终没有合法完成方式。
+- **数学逻辑：**每个分叉点仍须覆盖全部可能；分组节点作为一个逻辑命题参与某条支路。所有普通与分组支路合并后排空终止约束，目标可删。若最终只有单主干，则按实际证明命名为 g-Whip。
 
-- **看盘步骤：**① 看目标候选；② 找主链；③ 找分组/旁支；④ 确认所有逃路被封堵。
+- **看盘步骤：**① 看目标；② 识别普通/分组节点；③ 核对每个分叉的全部支路；④ 核对终止排空。
 
-- **高亮阅读：**高亮可能更密集；先识别分组节点，再看主链/分支。
+- **高亮阅读：**先把每个组节点看成整体，再读分支树；不要把一个组拆成多条互相独立的支路。
 
-- **核对要点：**确认删数由整套 braid 证明，而非某单条弱连接独立推出。
+- **核对要点：**同时检查分组合法性和分叉完备性。
 
 
 ## Rank Logic / 覆盖计数逻辑
@@ -1159,35 +1159,33 @@ Kazusa tutorial 的讲法不是简单列技巧名，而是按“从可见约束�
 
 **Kind:** SKLoop **Category:** Rank Logic **Difficulty:** 7 已接入 / wired
 
-- **基本含义：**SK Loop 不按普通 AIC 环讲，优先看作 MSLS 的典型外观：四个宫形成矩形，宫内常有对角给定数，用来组成 Home set。
+- **基本含义：**SK Loop 与 Domino Loop 是同一技巧。本项目实际搜索固定 8 个分组链接段，按行、宫、列、宫交替闭合；每段可以承载一个或多个数字，不是普通单数字 AIC 环。
 
-- **成立逻辑：**四宫矩形中的 Home/Away 覆盖把一批核心格锁成 Multi-Sector Naked/Hidden Set。核心格容量被 digit covers 用满后，额外候选不能成立。
+- **成立逻辑：**几何段数固定为 8，但每个“数字 + house”组合分别计作一个 Link 名额。主体格 Truth 数与所有 8 段合计的 Link 名额严格相等，因此形成 Rank 0；结构外同数字候选若占用某一 Link house，就会挤占已满容量。
 
-- **数学逻辑：**David P Bird 对 SK/MSLS 的解释是：先把数字分成 Home set 与 Away set，再把这些数字覆盖分配给若干行、列、宫。已给/已定数字从相应 house 的覆盖中扣除，只统计仍需安置的 digit covers。若所有候选都被覆盖的核心格数 NS 与 digit covers 数 DC 相等，就形成 MS-NS：NS 个格正好要容纳 DC 个必要数字，容量没有余量。若某个 potential elimination 成立，就会消耗一个必要覆盖，导致剩余 NS 格只能由更少 digit covers 填充，最终出现某格无数可填或某格要放两个数的矛盾。SK Loop 常见的“四宫矩形 + 对角给定数”只是这种 MSLS 平衡的容易识别形态。
+- **数学逻辑：**设 8 个几何段依次为 L₁…L₈，各段携带数字集合 Dᵢ。相邻段沿闭环作 XOR 递推，L₈ 必须与 L₁ 相容；LinkSlotCount = Σ|Dᵢ|，并要求 CellCount = LinkSlotCount。标题中的“16 Links”表示 16 个数字-house Link 名额，不表示 16 个几何段。
 
-- **看盘步骤：**① 找四宫矩形；② 看对角给定数是否组合出 Home set；③ 看 Home/Away 覆盖被分配到哪些行列宫；④ 核对 NS/HS/DC 是否平衡；⑤ 删除 potential eliminations。
+- **看盘步骤：**① 先确认 SegmentCount=8；② 逐段读取实际数字组；③ 将每个数字-house 组合分别计为一个 Link 名额；④ 核对 CellCount=LinkSlotCount；⑤ 删除结构外抢占 Link 容量的候选。
 
-- **高亮阅读：**先看被覆盖核心格和边缘的 digit cover 标注，不要只沿线圈方向读。
+- **高亮阅读：**LoopBody、8 个 Link 段与删数必须分层显示；一段 Link 中的多个数字应整体阅读，不要拆成若干普通 X-Chain。
 
-- **核对要点：**确认删数是部分覆盖格中的被覆盖候选、核心格中被覆盖两次的候选，或隐藏集合口径下的未覆盖额外候选；Almost/Rank 1 情况还要确认例外位置已经被定位。
-
+- **核对要点：**SK Loop 就是 Domino Loop；当前实现是严格 Rank 0 八段闭环。必须区分 8 个链接段与合计 Link 名额，不能把标题中的 LinkCount 当作段数。
 
 ### MSLS 多区域锁定集合
 
 **Kind:** MSLS **Category:** Rank Logic **Difficulty:** 7 已接入 / wired
 
-- **基本含义：**MSLS 是 Multi-Sector Locked Sets。Kazusa 将它放在秩理论“网”结构中理解；David P Bird 的 Home/Away、NS/HS/DC 口径则更适合用户手算核对。
+- **基本含义：**本项目实际有 Exact Rank-0 与 Advanced Rank-0 两条搜索路径；Advanced 还可带 Attachment。它们都以核心格名额与所选 Link 名额相等为最终判据。
 
-- **成立逻辑：**设 NS 为所有候选都被覆盖的格数，HS 为至少一个候选被覆盖的格数，DC 为 digit covers 总数。通常有 HS ≥ DC ≥ NS。删数来自这些数量关系被锁定后，某候选成立会打破容量平衡。
+- **成立逻辑：**Exact 分支逐数字比较其在结构中占用的行、列、宫，选最低成本覆盖；Advanced 分支还会枚举浮动数字的行侧/列侧分配，并吸收被链接条件强制加入的 Attachment。
 
-- **数学逻辑：**MSLS 先选择一组 Home 数字和互补 Away 数字，再给若干行、列、宫分配 Home/Away 覆盖。每个 house 中已经作为给定或已出数的数字不再需要放置，因此从覆盖中扣除。若 DC = NS，则核心格形成 Multi-Sector Naked Set：必要数字数量与核心格容量相等，所以部分覆盖格中的被覆盖候选、以及核心格中被覆盖两次的候选若成立，都会让剩余核心格无法被剩余 digit covers 填满。若 HS = DC，则形成 Multi-Sector Hidden Set：可容纳格容量正好等于必要数字数量，未覆盖的额外候选不能占位。Almost/Rank 1 形态允许一个例外名额；只有证明某删数不可能是那个例外时，才可删除。
+- **数学逻辑：**若 Core 的 CellCount 与最终 LinkCount 相等，所有 Link 容量恰好用于容纳核心格中的必要真数。结构外同 Link-house 候选会抢占容量；结构内被多个 Link 重复覆盖的候选会造成自噬超额，因此均可删除。PermutableDigits 只表示存在等价最小覆盖，不改变总容量。
 
-- **看盘步骤：**① 看 Home/Away 或 Base/Roof 数字集；② 看哪些 house 被选中；③ 对每个 house 扣除给定/已定数字，得到 digit covers；④ 数 NS、HS、DC；⑤ 按 MS-NS、MS-HS 或 Almost 规则核对删数。
+- **看盘步骤：**① 确认 Core；② 逐数字比较行/列/宫覆盖成本；③ Advanced 分支枚举浮动数字分配并检查 Attachment；④ 核对 CellCount=LinkCount；⑤ 应用外部或 Cannibalism 删数。
 
-- **高亮阅读：**括号中的数字通常是某行/列/宫仍需放置的 digit covers；方括号核心格是 NS/HS 的主体；删数一般标在 potential eliminations 上。
+- **高亮阅读：**Core、Attachment、实际 Link、PermutableDigits 与删数必须分层显示，不能只用一句“Rank 0”代替搜索器真实构造。
 
-- **核对要点：**不要只说“强弱区域等量”就结束；用户应能看到为什么 DC=NS 或 HS=DC 会让容量用满。若是 Rank 1，要额外确认唯一例外或 guardian 被正确处理。
-
+- **核对要点：**Exact、Advanced、Advanced with Attachment 是不同搜索路径；动态教程只解释当前步骤实际输出的 Branch 和角色。
 
 ### Multi-Fish 多重鱼
 
@@ -1232,52 +1230,49 @@ Kazusa tutorial 的讲法不是简单列技巧名，而是按“从可见约束�
 
 **Kind:** JE **Category:** Exocet **Difficulty:** 8 已接入 / wired
 
-- **基本含义：**Kazusa 的飞鱼基本推理从 base cells 的真数字对出发，证明 target/crossline 结构必须承接这些数字；Junior Exocet 的目标是证明两个 target cells 合起来必须持有与两个 base cells 相同的一对真数字。
+- **基本含义：**Junior Exocet 以 Base 真数字必须由两侧 Target 承接为主干；本项目还在同一搜索实体内执行多种独立检查，而不是把所有删数都归入一个“JE 通用规则”。
 
-- **成立逻辑：**base cells 位于一条 mini-line，确定 base cross-line；另外两条平行 cross-lines 与 target/cross cells 形成 S-cell 容量限制。base 中真正成立的数字，必须在 target/cross 结构中得到相容承接。
+- **成立逻辑：**Base、Targets 与 Cross/S-cells 建立基础配额后，搜索器只应用实际触发的检查，包括 Target Cells Check、X-Rule、Mirror Check、Locked Member In Target、True Base、JEPOM 等。
 
-- **数学逻辑：**对任一真正进入 base 的数字来说，它在三条 cross-lines 中需要满足固定的出现次数。普通 S cells 最多只能提供其中一部分承接，因此 target cells 必须提供缺少的必要落点。于是 target cells 中的非 base 数字可以删除；若某候选成立会破坏“base 真数对 = target 真数对”，使某个 base 数字无处安置，或让 S-cell/cross-line 容量超限，它就可删。
+- **数学逻辑：**每个检查都有独立前提和删数集合。例如 Locked Member 利用 Target 内非 Base 数字的锁定，Mirror 利用镜像承接关系，True Base 约束 Base 真数字的可行位置，JEPOM 则以模板穷举验证候选是否存在于任何相容安排中。没有输出的检查不得补入证明。
 
-- **看盘步骤：**① 找 Base；② 找 Target；③ 找 Cross/Crossline/S cells；④ 核对 target 是否只承接 base 真数字；⑤ 按结论删除非 base 候选、共同可见候选、或不兼容 base-pair 的候选。
+- **看盘步骤：**① 确认 Base 和 BaseCandidates；② 区分 Targets 与 Cross/S-cells；③ 读取步骤列出的每个 Check；④ 分别核对 Check 对应的角色与删数；⑤ 只应用实际输出结论。
 
-- **高亮阅读：**Base、Target、Cross、Companion、Guardian 的角色必须分开看。不要看到 cross 区域就一概删除；只删结论列出的、破坏同步/配额关系的候选。
+- **高亮阅读：**Base、Target Q/R、Cross、Mirror、Locked Member、True Base 等角色分层显示；复杂 Franken/Mutant/Advanced 外形仍由这些实际内部条件表达，不靠标题猜测。
 
-- **核对要点：**先确认 base 候选集合；再确认 target cells 合起来只能承接 base 真数对；最后核对每一个删数属于哪一类推论：非 base target 候选、共同可见删数、非 S-cell 删数、或 incompatible base pair 推出的删数。
-
+- **核对要点：**同一 JE 步骤可能同时触发多个检查；动态教程必须完整列出实际 Check，不能自动套用整套 Junior Exocet 规则。
 
 ### Senior Exocet Senior Exocet
 
 **Kind:** SeniorExocet **Category:** Exocet **Difficulty:** 8 已接入 / wired
 
-- **基本含义：**Senior Exocet 是 Junior Exocet 的扩展：target 可能从更大的 S-cell 集合中选出，有时还会嵌入交叉结构内部。
+- **基本含义：**Senior Exocet 允许多格 Target、Endo Target、Target-line AHS 和调整后的 Cross-Line/S-cell 集合；Franken、Mutant、Complex、Advanced 等外形主要体现在这些内部构造条件中。
 
-- **成立逻辑：**选择 base cells 的方式与 Junior 类似，但会选取扩展后的 S cells 与 target cells。每个 base 候选在剩余 S cells 中最多只能由两个 cover houses 承接，因此 target 仍必须提供必要承接。
+- **成立逻辑：**搜索器在 Base→Target 承接主干上分别检查 Cross-Line Need、Target-House Lock、Non-Base Target Cleanup、True Base Constraint、Mirror、Incompatible Base、X-Rule、Potential Target Cover House 等条件。
 
-- **数学逻辑：**Senior Exocet 的证明仍是容量证明：base 真数字在三条 cross-lines 中需要满足固定次数，而普通 S cells 只能提供两次承接，所以 target cells 必须提供第三次承接。target 嵌入 cross 结构时，要区分 endo-target、cross cell、companion 和普通 S cell；若某候选让一个 base 数字无法获得 target 承接，或让 S-cell 容量超过允许次数，它就可删。
+- **数学逻辑：**这些检查彼此独立：Cross-Line Need 要求指定 S-cells 必须包含某些数字；Target-House Lock 用目标区域锁定候选；Incompatible Base 排除无法同时满足承接配额的 Base 组合；Potential Target Cover House 则利用目标候选唯一可用的覆盖区域。只有实际触发的检查才构成本步证明。
 
-- **看盘步骤：**① 找 Base；② 区分 Target 与 Cross/S cells；③ 特别看 Endo-Target；④ 核对每个 base 候选是否能由两个 cover houses 加 target 完成承接；⑤ 只应用结论列出的删数。
+- **看盘步骤：**① 找 Base；② 区分 TargetGroup、Endo Target 与 Cross/S-cells；③ 读取所有实际 Check；④ 分别核对 Target-line AHS、锁定、镜像、X-Rule 或覆盖宫条件；⑤ 应用对应删数。
 
-- **高亮阅读：**Senior 的高亮通常更复杂，但不要被形状带偏：仍按 base/target/S-cell/cross-line 的容量角色读。
+- **高亮阅读：**Base、TargetGroup A/B、Cross、Locked Non-base 与各检查结果分层显示；说明文字中的 Cross-Line Need 等就是搜索实体分类证据，不应被压成一个 Senior 标题。
 
-- **核对要点：**不能把所有交叉格候选都删掉；只删除破坏 base-target 同步或 S-cell 容量限制的候选。
-
+- **核对要点：**不能因为形状像某种 Complex Exocet 就补入未输出规则；每个删数必须能追到本步列出的具体 Check。
 
 ### Weak Exocet Weak Exocet
 
 **Kind:** WeakExocet **Category:** Exocet **Difficulty:** 8 已接入 / wired
 
-- **基本含义：**Weak Exocet 是条件较弱的 Exocet 形态，只保留部分 base-target 同步约束。
+- **基本含义：**Weak Exocet 只保留当前结构能够证明的部分 Base→Target 同步，不继承完整 Junior/Senior Exocet 的全部删数。搜索器还会明确输出弱位、Y 区锁定数字以及本步实际触发的附加检查。
 
-- **成立逻辑：**虽然不满足完整 Junior/Senior Exocet 的全部条件，但 base 中每一种可行真数对仍必须在 target/cross 结构中找到合法承接。只有在所有合法承接分支中都会冲突的候选才能删除。
+- **成立逻辑：**Y-lock 表示某个基准数字锁定在 Y 区，由此才可能扩展出 Z 区、W 区或 M 格删数。Target Cells Check 是 **T 格检查**；Mirror Check 是 **M 格检查**，并不是 T 邻规则。只有源码显式输出 Adjacent Target 时才称为 T 邻。
 
-- **数学逻辑：**Weak Exocet 不能直接套完整 JE 的所有删数规则。它的证明是“所有可行分支覆盖”：枚举 base 可能真数对，每个分支都要求 target/cross 有相容安排。若某候选成立后，在每个分支里都会造成 target 无法承接、cross-line 容量超限，或某 base 数字无法放置，那么该候选可删。
+- **数学逻辑：**T 格检查删除 Target 中无法承接 Base 的候选；Z 区检查删除对应 Z 格中的非基准候选；W 区检查在满足容量条件的位置删除基准候选；M 格检查使用 Target 与其镜面节点删除不兼容候选。动态教程只合并当前步骤实际输出的检查，不补入未触发规则。
 
-- **看盘步骤：**① 找弱 Exocet 骨架；② 看缺失或弱化的是哪条条件；③ 找仍然成立的同步/容量关系；④ 只删除被所有可行分支共同排除的候选。
+- **看盘步骤：**① 确认 BaseCandidates、Base 与弱位；② 若有 YLock，核对 Y 区支撑格；③ 分别读取 TCheckTargets、ZZoneTargets、WZoneTargets、MNodes/MCheckTargets；④ 只执行本步列出的 Check；⑤ 应用对应删数。
 
-- **高亮阅读：**高亮会标出弱化后的 base/target/cross 关系；用户要特别关注“弱”在哪里。
+- **高亮阅读：**Base、Targets、Cross、WeakSeat、YArea、ZZone、WZoneTargets、MNodes 与各删数目标分层显示。M 格与 T 格必须分开，不能把 Mirror Check 误写成 T 邻。
 
-- **核对要点：**结论通常比完整 JE 少；不要把 Weak Exocet 当成 Junior Exocet 自动扩展删数。
-
+- **核对要点：**已有两条 Weak Exocet 真实 Library 样例：一条只触发 Y-lock + Z 区检查，另一条同时触发 T 格、Z 区、W 区与 M 格检查；教程必须按实际 Check 选择性显示。
 
 ### Exocet 扩展形态 Extension Notes
 
@@ -1303,14 +1298,15 @@ Kazusa tutorial 的讲法不是简单列技巧名，而是按“从可见约束�
 
 **Kind:** BruteForce **Category:** Fallback **Difficulty:** 10 已接入 / wired
 
-- **基本含义：**BruteForce 是搜索兜底，不是建议玩家学习的手工技巧。
+- **基本含义：**BruteForce 是 Verified-Solution Placement：完整终解先由全盘搜索验证，步骤再从终解中读取一个未解格的正确数字作为末端兜底。
 
-- **成立逻辑：**当当前配置没有可展示逻辑时，程序可用搜索验证或完成盘面。
+- **成立逻辑：**搜索器优先选择当前候选数较少的未解格，并从已验证的 CompleteSolution 读取其落数。它不是把一次猜测包装成局部逻辑。
 
-- **数学逻辑：**BruteForce 不是人工技巧，而是穷举验证。它通过尝试候选并检查是否能完成全盘来判断结论；这种结论数学上可靠，但不提供适合手工复盘的局部结构证明。
+- **数学逻辑：**可靠性来自完整终解验证，而不是局部结构证明；因此本步只报告终解落数，不推导枢轴、链、数组或局部矛盾。
 
-- **看盘步骤：**① 确认这是兜底；② 不把它当技巧学习；③ 必要时调整技巧配置；④ 用它验证答案。
+- **看盘步骤：**① 确认逻辑技巧已无结果；② 完整求解并验证终解；③ 选择候选较少的未解格；④ 从终解读取并落数。
 
-- **高亮阅读：**通常没有复杂高亮；结果更像完成解而非一步逻辑解释。
+- **高亮阅读：**只显示所选格和最终落数，不制造不存在的局部技巧结构。
 
-- **核对要点：**若你想坚持逻辑解题，应回到技巧配置，启用更多逻辑技巧或查看前一步。
+- **核对要点：**BruteForce 不参与技巧训练；若要坚持逻辑解题，应调整技巧配置或查看更早步骤。
+

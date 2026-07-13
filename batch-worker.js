@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-e5e12ce89f5dba20";
+import createModule from "./sudoku_wasm.js?v=wasm-47dda30ae97cac69";
 
-const APP_VERSION = "wasm-e5e12ce89f5dba20";
+const APP_VERSION = "wasm-47dda30ae97cac69";
 let enginePromise = null;
 let cancelRequested = false;
 
@@ -46,8 +46,8 @@ function makeGeneratedItem(engine, config) {
 
   if (!trainingKind) {
     const solve = parseJson(engine.solve_summary_json(500));
+    result.solve = solve;
     if (solve?.status === "invalid_step") {
-      result.solve = solve;
       return { result, invalid: true };
     }
   }

@@ -419,20 +419,20 @@
       "Use the whole grouped braid proof; no single branch should be treated as sufficient unless it independently reaches contradiction."
     ),
     SKLoop: entry(
-      "SK Loop is best read as a recognizable MSLS form: four boxes in a rectangle, often with diagonal givens defining a Home digit set.",
-      "Home/Away covers lock a collection of core cells into a Multi-Sector Naked or Hidden Set. Once digit-cover capacity equals cell capacity, extra candidates are impossible.",
-      "Using David P. Bird's notation, count core cells NS or HS and the remaining digit covers DC after solved digits are removed. When DC=NS, the core is a Multi-Sector Naked Set; when DC=HS, it is a Multi-Sector Hidden Set. A potential elimination would consume capacity required by the covers and cause an unfillable cell or duplicated assignment.",
-      "1. Find the four-box rectangle. 2. Identify Home and Away digits. 3. Assign their covers to rows, columns, and boxes. 4. Check NS/HS/DC balance. 5. Remove the reported potential eliminations.",
-      "Read core cells and digit-cover labels rather than tracing it as an ordinary AIC loop.",
-      "Verify the exact capacity count. Rank-1 or Almost forms require a separately justified exception or guardian."
+      "SK Loop and Domino Loop are the same technique. The detector uses exactly eight grouped link segments alternating through rows, boxes, columns, and boxes; one segment may carry several digits.",
+      "The geometric segment count is fixed at eight, while every digit-house pair counts as one Link slot. Body cell truths equal the total Link slots, giving strict rank 0.",
+      "Let the eight segments be L1...L8 with digit sets Di. LinkSlotCount is the sum of |Di|, and CellCount must equal LinkSlotCount. '16 Links' in the title means digit-house Link slots, not sixteen geometric segments.",
+      "1. Confirm SegmentCount=8. 2. Read each segment's digit set. 3. Count digit-house Link slots. 4. Verify CellCount=LinkSlotCount. 5. Remove outside candidates that steal link capacity.",
+      "Display LoopBody, the eight Link segments, and eliminations separately. Treat multiple digits on one segment as one grouped Link role.",
+      "SK Loop is Domino Loop and is a strict rank-0 eight-segment loop. Keep segment count separate from Link-slot count."
     ),
     MSLS: entry(
-      "MSLS means Multi-Sector Locked Sets. Home/Away digits and NS/HS/DC counts provide a practical way to verify the lock.",
-      "Selected houses require a fixed number of digit covers. When the number of required covers equals available core-cell capacity, extra candidates cannot occupy that capacity.",
-      "Let NS be cells whose candidates are all covered, HS cells with at least one covered candidate, and DC the remaining digit-cover count. Usually HS ≥ DC ≥ NS. DC=NS gives a Multi-Sector Naked Set; DC=HS gives a Multi-Sector Hidden Set. Rank-1 forms allow one exception and need extra proof before an elimination is valid.",
-      "1. Identify Home/Away or Base/Roof digit sets. 2. Select the houses. 3. Subtract already solved digits from each cover. 4. Count NS, HS, and DC. 5. Apply the MS-NS, MS-HS, or Almost rule.",
-      "Bracketed core cells and house cover labels are the main evidence; eliminations are shown as potential eliminations.",
-      "Do not stop at saying ‘equal strong and weak sectors.’ Show why DC=NS or DC=HS fills the available capacity, and justify the exception in Rank-1 cases."
+      "This project has Exact Rank-0, Advanced Rank-0, and Advanced with Attachment MSLS paths.",
+      "Exact selects the cheapest row, column, or box cover for each digit. Advanced also enumerates row-side/column-side choices for floating digits and may absorb attachment cells.",
+      "When Core CellCount equals final LinkCount, capacity is saturated. Outside candidates in a selected link house steal capacity, while candidates covered by multiple links are cannibal overfills.",
+      "1. Confirm the Core. 2. Compare cover cost for each digit. 3. For Advanced, verify floating-digit choices and Attachments. 4. Check CellCount=LinkCount. 5. Apply outside or cannibal eliminations.",
+      "Display Core, Attachment, actual Links, PermutableDigits, and eliminations separately.",
+      "Exact, Advanced, and Advanced with Attachment are distinct search paths. Explain only the Branch emitted by the step."
     ),
     RankMultifish: entry(
       "Multi-Fish in rank logic is a Rank-0 cover structure that may involve several digits and several sector types.",
@@ -451,28 +451,28 @@
       "Do not describe it as an ordinary AIC loop or merely a closed Death Blossom. Rank 0 and every branch reinforcement must be verified."
     ),
     JE: entry(
-      "Junior Exocet proves that the two target cells together contain the same true digit pair as the two base cells.",
-      "The base mini-line and three cross-lines impose S-cell capacity. True base digits must be carried by compatible target and cross-line placements.",
-      "For each true base digit, the cross-lines require a fixed number of occurrences. Ordinary S cells cannot provide all required support, so the targets must supply the missing occurrence. Non-base target digits and candidates incompatible with that base-target synchronization are false.",
-      "1. Identify the base cells. 2. Identify targets. 3. Locate cross-lines, S cells, companions, and any guardians. 4. Verify that targets can carry only the base pair. 5. Apply the reported elimination class.",
-      "Keep Base, Target, Cross, Companion, and Guardian roles separate. Do not eliminate every candidate merely because it lies in a cross region.",
-      "Verify the base candidate set, the target-pair synchronization, and which rule justifies each elimination: non-base target, common visibility, non-S-cell, or incompatible base pair."
+      "Junior Exocet is built on true base digits being carried by the two target sides; the same search entity also runs several independent checks.",
+      "After the Base, Targets, and Cross/S-cell quota is established, apply only checks actually triggered: Target Check, X-Rule, Mirror, Locked Member, True Base, JEPOM, and others.",
+      "Every Check has its own prerequisites and elimination set. Absent checks must not be added. Double JExocet and Almost JE4 use their own emitted roles.",
+      "1. Confirm BaseCandidates. 2. Separate Targets from Cross/S-cells. 3. Read every Check. 4. Match it to roles and eliminations. 5. Apply the actual conclusion.",
+      "Display Base, Target Q/R, Cross, Mirror, Locked Member, True Base, and other roles separately.",
+      "One step may trigger several checks. The tutorial must list all actual checks and must not inherit the entire JE rule set."
     ),
     SeniorExocet: entry(
-      "Senior Exocet extends Junior Exocet by choosing targets from a larger S-cell set, sometimes inside the cross structure.",
-      "Base digits still need a fixed number of cross-line supports. Ordinary S cells provide only part of that support, so a target or endo-target must provide the remainder.",
-      "The proof remains a capacity argument. Distinguish endo-targets, cross cells, companions, and ordinary S cells; a candidate is false only when it prevents a base digit from receiving target support or exceeds S-cell capacity.",
-      "1. Find the bases. 2. Separate targets from cross/S cells. 3. Identify endo-targets. 4. Check support for every base candidate. 5. Apply only listed eliminations.",
-      "The geometry is more complicated than Junior Exocet, but the roles are still base, target, S-cell, and cross-line capacity.",
-      "Do not delete all cross-cell candidates. Eliminate only candidates that break base-target synchronization or the proved capacity bound."
+      "Senior Exocet permits multi-cell targets, endo-targets, target-line AHS, and adjusted cross-line/S-cell sets.",
+      "Actual checks include Cross-Line Need, Target-House Lock, Non-Base Target Cleanup, True Base, Mirror, Incompatible Base, X-Rule, and Potential Target Cover House.",
+      "Each check independently constrains base-to-target carrying and S-cell capacity. Only checks emitted by this step belong to its proof.",
+      "1. Find the Base. 2. Separate target groups from Cross/S-cells. 3. Read every Check. 4. Verify locks, mirrors, AHS, X-Rule, or cover-house conditions. 5. Apply eliminations.",
+      "Display Base, TargetGroup A/B, Cross, locked non-base candidates, and check results separately.",
+      "Do not infer rules from a Franken, Mutant, Complex, or Advanced shape. Every elimination must trace to a concrete emitted Check."
     ),
     WeakExocet: entry(
-      "Weak Exocet retains only part of the normal base-target synchronization conditions.",
-      "Every feasible true base pair must still have a compatible target/cross arrangement. A candidate can be removed only if it fails in every feasible branch.",
-      "Enumerate the possible base pairs and their compatible target/cross completions. If the target candidate causes missing support, capacity overflow, or an impossible placement in every branch, it is false.",
-      "1. Identify the weak Exocet skeleton. 2. Determine which standard condition is missing or weakened. 3. Keep only the synchronization and capacity facts that still hold. 4. Apply eliminations common to all feasible branches.",
-      "The highlighting should make the weakened relation visible; pay attention to exactly what is no longer guaranteed.",
-      "Do not inherit the full Junior Exocet elimination catalogue. Weak Exocet normally supports fewer conclusions."
+      "Weak Exocet retains only the partial Base-to-Target synchronization proved by the current weak structure and emits the WeakSeat, YLock, and checks actually triggered.",
+      "Y-lock means a base digit is locked in the Y area. Target Cells Check is the T-cell check; Mirror Check is the M-cell check, not the Adjacent-Target rule. Use Adjacent Target only when explicitly emitted.",
+      "The T-cell check removes incompatible target candidates; the Z-zone check removes non-base candidates from Z cells; the W-zone check removes base candidates where its capacity condition holds; the M-cell check uses targets and mirror nodes to remove incompatible candidates.",
+      "1. Confirm BaseCandidates, Base, and WeakSeat. 2. Verify YLock/YArea. 3. Read TCheckTargets, ZZoneTargets, WZoneTargets, and MNodes/MCheckTargets. 4. Apply only actual Checks. 5. Apply their eliminations.",
+      "Display Base, Targets, Cross, WeakSeat, YArea, ZZone, WZoneTargets, MNodes, and each target role separately.",
+      "The corpus now has one real Y-lock+Z-zone sample and one real multi-check T-cell+Z-zone+W-zone+M-cell sample. The tutorial must remain selective."
     ),
     ExocetExtensions: entry(
       "JE+, Double JE, Almost JE, and Mutant JE modify object pairs, targets, cross-lines, or S-cell conditions within the Exocet base-target proof.",
@@ -483,12 +483,12 @@
       "Do not infer additional eliminations that the current step result did not prove."
     ),
     BruteForce: entry(
-      "BruteForce is a search fallback, not a hand-solving technique.",
-      "When the enabled logical techniques find no displayable step, search can verify or complete the puzzle.",
-      "Exhaustive search tries candidates and checks whether a full valid grid exists. The result is mathematically reliable but does not provide a local human-readable proof.",
-      "1. Recognize that this is fallback output. 2. Do not study it as a manual technique. 3. Adjust technique settings if needed. 4. Use it to verify the final answer.",
-      "There is usually little structural highlighting; the result resembles a completed solution rather than one logical step.",
-      "To keep a logic-only solve, enable more techniques or inspect the preceding logical step."
+      "BruteForce is a Verified-Solution Placement: verify the complete solution first, then read one unsolved cell from it as the terminal fallback.",
+      "The detector prefers an unsolved cell with few candidates and reads its value from CompleteSolution. It does not disguise one guess as local logic.",
+      "Reliability comes from verification of the full solution, not a local structural proof. The step reports only the solved placement.",
+      "1. Confirm logical techniques have no result. 2. Solve and verify the full grid. 3. Select an unsolved cell with few candidates. 4. Read and place its solved digit.",
+      "Display only the selected cell and final placement; do not invent pivots, chains, or subsets.",
+      "BruteForce is excluded from technique training. For a logic-only solve, change the configuration or inspect an earlier step."
     ),
   };
 
@@ -513,14 +513,14 @@
     ["#reading-intro > h2", "Reading Guide"],
     ["#reading-intro > p:nth-of-type(1)", "This guide follows Kazusa's layered progression: direct techniques, local and full candidate marking, chains, constructions, rank theory, Exocet, and deadly patterns. It condenses those ideas into what a player should inspect when the program shows a step."],
     ["#reading-intro > p:nth-of-type(2)", "<strong>Matched to the currently wired backend:</strong> the reference table contains 70 entries. <code>AHS-XY-Wing</code>, <code>AHS-W-Wing</code>, and <code>AHS Chain</code> remain explicit reference placeholders, so they are not listed as implemented techniques."],
-    ["#reading-intro > p:nth-of-type(3)", "Further reading: <a href=\"https://github.com/kyoyama-kazusa/Sudoku/tree/main/docs/tutorial\" rel=\"noopener\" target=\"_blank\">Kazusa Sudoku tutorial</a> and <a href=\"https://hodoku.sourceforge.net/en/techniques.php\" rel=\"noopener\" target=\"_blank\">HoDoKu Solving Techniques</a>. This page borrows their definition → reasoning → checkpoint rhythm without copying diagrams or documenting internal search code."],
-    ["#hodoku-style-reading > p", "HoDoKu is easy to read because it organizes each technique as definition → example → why the elimination works → how to find it. YZF follows the same player-facing rhythm: identify the structure, understand the proof, then verify the conclusion."],
-    ["#hodoku-style-reading .method-boxes > div:nth-child(1) h3", "1. Identify the structure"],
-    ["#hodoku-style-reading .method-boxes > div:nth-child(1) p", "Check the highlighted cells, candidates, houses, chain nodes, or set outlines and confirm that they match the named technique."],
-    ["#hodoku-style-reading .method-boxes > div:nth-child(2) h3", "2. Read the proof"],
-    ["#hodoku-style-reading .method-boxes > div:nth-child(2) p", "Decide whether the step uses a unique location, set capacity, base-cover logic, alternating links, uniqueness contradiction, or rank/guardian coverage."],
-    ["#hodoku-style-reading .method-boxes > div:nth-child(3) h3", "3. Verify the conclusion"],
-    ["#hodoku-style-reading .method-boxes > div:nth-child(3) p", "Confirm that every placement or elimination is covered by the structure. The dynamic Explain button inserts the current step's cells and conclusions into the same proof templates."],
+    ["#reading-intro > p:nth-of-type(3)", "Further reading: <a href=\"https://github.com/kyoyama-kazusa/Sudoku/tree/main/docs/tutorial\" rel=\"noopener\" target=\"_blank\">Kazusa Sudoku tutorial</a>. This page uses a definition → reasoning → checkpoint reading structure without copying external diagrams or documenting internal search code."],
+    ["#step-reading-method > p", "This guide organizes each technique as definition → current structure → why the placement or elimination works → how to verify it. Identify the structure, understand the proof, then verify the conclusion."],
+    ["#step-reading-method .method-boxes > div:nth-child(1) h3", "1. Identify the structure"],
+    ["#step-reading-method .method-boxes > div:nth-child(1) p", "Check the highlighted cells, candidates, houses, chain nodes, or set outlines and confirm that they match the named technique."],
+    ["#step-reading-method .method-boxes > div:nth-child(2) h3", "2. Read the proof"],
+    ["#step-reading-method .method-boxes > div:nth-child(2) p", "Decide whether the step uses a unique location, set capacity, base-cover logic, alternating links, uniqueness contradiction, or rank/guardian coverage."],
+    ["#step-reading-method .method-boxes > div:nth-child(3) h3", "3. Verify the conclusion"],
+    ["#step-reading-method .method-boxes > div:nth-child(3) p", "Confirm that every placement or elimination is covered by the structure. The dynamic Explain button inserts the current step's cells and conclusions into the same proof templates."],
     ["#dynamic-step-tutorial > p:nth-of-type(1)", "The main interface keeps Explain beside the User Manual link. After Hint, or after selecting a step from Available Steps or the solution path, it reads the current step result fields—title, kind, description, cells, candidates, actions, eliminations, nodes, edges, groups, rank, and more—and builds a proof for that exact step. The button remains disabled when no valid step is selected."],
     ["#dynamic-step-tutorial > p:nth-of-type(2)", "The static guide explains each technique's general mathematics; the dynamic tutorial fills in the current cells, digits, eliminations, chain nodes, and cover counts. You therefore see the proof for the current grid rather than only an abstract definition."],
     ["#reading-legend > h2", "Reading Highlights and Conclusions"],

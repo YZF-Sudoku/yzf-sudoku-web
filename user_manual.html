@@ -1200,9 +1200,10 @@
 <ol>
 <li>选择“批量出题”、输出文件名和主界面的难度。</li>
 <li>若“训练”下拉框选择了技巧，批量任务会只输出包含该技巧的训练题；未选择则普通批量生成。</li>
+<li>主界面的实时训练生成会直接显示目标技巧出现前的盘面，不显示解题路径，也不保留步骤高亮。</li>
 <li>点击“开始”持续生成，点击“停止”结束并关闭/下载文件。</li>
 </ol>
-<p>每行是制表符分隔记录，包含序号、技巧、题串、答案、难度、尝试次数、提示数和评分字段。</p>
+<p>每行一题，使用制表符分隔四列：序号、Library 题串、YZF 评分、SKFR 的 ER 评分。选择训练技巧后，批量面板的默认文件名会自动使用技巧名称。</p>
 <h3>批量解题</h3>
 <ol>
 <li>选择“批量解题”。</li>
@@ -1219,9 +1220,10 @@
 <ol>
 <li>Select Batch Generate, an output filename, and the main difficulty.</li>
 <li>If a Training technique is selected, only training puzzles containing that technique are emitted; otherwise generation is unrestricted.</li>
+<li>Realtime training generation on the main screen opens the board immediately before the target technique, without a solution path or step highlighting.</li>
 <li>Press Start to generate continuously and Stop to finish and close/download the file.</li>
 </ol>
-<p>Each tab-separated line contains index, technique, puzzle, solution, difficulty, attempts, clue count, and rating fields.</p>
+<p>Each puzzle occupies one tab-separated line with four columns: index, Library puzzle string, YZF score, and the SKFR ER score. When a training technique is selected, the batch panel defaults the filename to the technique name.</p>
 <h3>Batch Solving</h3>
 <ol>
 <li>Select Batch Solve.</li>

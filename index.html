@@ -3444,50 +3444,69 @@
     }
     .step-explain-dialog {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      width: min(760px, calc(100vw - 28px));
-      max-height: min(76vh, 720px);
+      top: 8px;
+      left: auto;
+      right: 8px;
+      width: min(440px, calc(100vw - 16px));
+      height: calc(100dvh - 16px);
+      max-width: none;
+      max-height: none;
       margin: 0;
-      transform: translate(-50%, -50%);
-      border: 1px solid rgba(148, 163, 184, 0.45);
-      border-radius: 16px;
+      transform: none;
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      border-radius: 14px;
       padding: 0;
       background: var(--panel);
       color: var(--ink);
-      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.32);
+      box-shadow: 0 18px 54px rgba(15, 23, 42, 0.28);
+      overflow: hidden;
+      z-index: 1400;
     }
-    .step-explain-dialog::backdrop {
-      background: rgba(15, 23, 42, 0.42);
+    .step-explain-dialog[open] {
+      display: flex;
+      flex-direction: column;
     }
+    .step-explain-dialog::backdrop { background: transparent; }
     .step-explain-dialog.hidden { display: none; }
     .step-explain-dialog-header {
       display: flex;
+      flex: 0 0 auto;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 12px 16px;
+      min-height: 46px;
+      padding: 10px 12px 10px 14px;
       border-bottom: 1px solid rgba(148, 163, 184, 0.32);
-      cursor: move;
-      touch-action: none;
-      user-select: none;
+      background: color-mix(in srgb, var(--panel) 94%, #eaf1ff 6%);
+      user-select: text;
     }
-    .step-explain-dialog-header strong { font-size: 15px; }
+    .step-explain-dialog-header strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 14px;
+    }
     .step-explain-dialog-close {
+      flex: 0 0 auto;
       margin: 0;
       border: 1px solid rgba(148, 163, 184, 0.5);
       border-radius: 999px;
       padding: 4px 10px;
-      background: rgba(255, 255, 255, 0.72);
+      background: rgba(255, 255, 255, 0.78);
       color: var(--ink);
       cursor: pointer;
     }
     .step-explain-dialog-content {
-      padding: 12px 16px 16px;
-      overflow: auto;
-      max-height: calc(min(76vh, 720px) - 52px);
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 12px 14px 18px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
       font-size: 13px;
-      line-height: 1.6;
+      line-height: 1.62;
     }
     .step-explain-dialog-content ol,
     .step-explain-dialog-content ul {
@@ -3495,6 +3514,70 @@
       padding: 0;
     }
     .step-explain-dialog-content li { margin: 5px 0; }
+    .step-tutorial-group + .step-tutorial-group {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 2px solid rgba(148, 163, 184, 0.28);
+    }
+    .step-tutorial-group-title {
+      margin: 0 0 8px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 850;
+    }
+    .step-tutorial-guide .step-explain-section {
+      border-left: 3px solid rgba(29, 78, 216, 0.38);
+    }
+    .step-tutorial-current .step-explain-section {
+      border-left: 3px solid rgba(5, 150, 105, 0.38);
+    }
+    .step-explain-section-math {
+      background: rgba(15, 118, 110, 0.05) !important;
+    }
+    .step-explain-details {
+      margin-top: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.42);
+    }
+    .step-explain-details > summary {
+      padding: 7px 9px;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .step-explain-details > :not(summary) {
+      margin: 0;
+      padding: 0 10px 10px;
+    }
+    .step-explain-dialog-content .step-explain-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .step-explain-dialog-content .step-explain-pill {
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.48);
+    }
+    @media (max-width: 699px) {
+      .step-explain-dialog {
+        border-radius: 12px;
+      }
+      .step-explain-dialog-header {
+        min-height: 42px;
+        padding: 8px 10px 8px 12px;
+      }
+      .step-explain-dialog-content {
+        padding: 10px 11px 16px;
+        font-size: 12.5px;
+      }
+    }
 
     .training-text-filter-dialog {
       position: fixed;
@@ -5407,7 +5490,7 @@
               </div>
             </details>
 
-            <details class="input-panel batch-panel">
+            <details id="batchPanel" class="input-panel batch-panel">
               <summary>批量任务</summary>
               <div class="batch-grid">
                 <label>
@@ -5732,6 +5815,6 @@
 
 
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=wasm-e5e12ce89f5dba20"></script>
+    <script type="module" src="./app.js?v=wasm-47dda30ae97cac69"></script>
   </body>
 </html>
