@@ -422,7 +422,7 @@ export const TECHNIQUE_TUTORIAL_CARDS = {
       "这些额外候选必须破坏全双值致命形态；结论来自异常候选之间的共同约束。",
       "BUG+n 是 BUG+1 的推广。若去掉若干额外候选后会得到一个全双值、可互换的 BUG 双解结构，就会产生第二个完成盘，这与谜题唯一解前提矛盾。因此这些额外候选不可能全部为假；系统给出的删数来自“保持至少一个破坏点成立”之后对同格或同区域的排除。",
       "① 看全盘双值骨架；② 找异常候选；③ 看异常之间关系；④ 应用共同结论。",
-      "高亮会标出多个异常点，不一定只有一个出数。",
+      "每个异常格只高亮该格真正多出的 Guardian 候选；不能把所有 Guardian 数字泛涂到每个异常格，否则 BUG+3 会被视觉误读成 BUG+5。",
       "核对异常候选是否确实是防止 BUG 形态成立的必要点。"
     ],
     "en": [
@@ -430,7 +430,7 @@ export const TECHNIQUE_TUTORIAL_CARDS = {
       "At least one exception must break the underlying all-bivalue deadly state, so the exceptions constrain one another.",
       "If all relevant extras were removed, the grid would reduce to an interchangeable BUG completion. Uniqueness forbids that, so the reported elimination follows from preserving at least one valid breaker.",
       "1. Identify the bivalue skeleton. 2. Mark every exception. 3. Inspect their shared constraints. 4. Apply the common consequence.",
-      "Several exceptional candidates may be highlighted; the result need not be a single placement.",
+      "Each exceptional cell highlights only its own truly extra guardian candidates; do not paint the union of all guardian digits onto every exceptional cell.",
       "Verify that the highlighted extras are genuinely the candidates preventing the BUG state."
     ]
   },

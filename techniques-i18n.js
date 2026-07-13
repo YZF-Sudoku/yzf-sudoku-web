@@ -152,7 +152,7 @@
       "At least one exception must break the underlying all-bivalue deadly state, so the exceptions constrain one another.",
       "If all relevant extras were removed, the grid would reduce to an interchangeable BUG completion. Uniqueness forbids that, so the reported elimination follows from preserving at least one valid breaker.",
       "1. Identify the bivalue skeleton. 2. Mark every exception. 3. Inspect their shared constraints. 4. Apply the common consequence.",
-      "Several exceptional candidates may be highlighted; the result need not be a single placement.",
+      "Each exceptional cell highlights only its own truly extra guardian candidates; do not paint the union of all guardian digits onto every exceptional cell.",
       "Verify that the highlighted extras are genuinely the candidates preventing the BUG state."
     ),
     Skyscraper: entry(
