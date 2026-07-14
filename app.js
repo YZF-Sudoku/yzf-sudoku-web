@@ -120,7 +120,12 @@ let localSudokuOcrModulePromise = null;
 let ortScriptPromise = null;
 let localSudokuOcrLoadAttempt = 0;
 const APP_SESSION_STORAGE_KEY = "yzf_sudoku_session_v1";
-const SHARED_PUZZLE_QUERY_PARAM = "puzzle";
+const SHARED_PUZZLE_QUERY_PARAM = "p";
+const LEGACY_SHARED_PUZZLE_QUERY_PARAM = "puzzle";
+const SHARED_PUZZLE_S1_PREFIX = "s1.";
+const SHARED_PUZZLE_S1_DATA_BYTES = 102;
+const SHARED_PUZZLE_S1_TOTAL_BYTES = 106;
+const SHARED_PUZZLE_S1_TEXT_LENGTH = 145;
 const EXPORT_FORMAT_STORAGE_KEY = "yzf_sudoku_export_format_v1";
 let appSessionSaveTimer = 0;
 let appSessionRestoring = false;
@@ -1022,7 +1027,7 @@ for (const [key, zh, en] of [
   ["preferClipboardLoadTitle", "加载题目时优先使用剪贴板，失败后再用文本框", "Prefer clipboard when loading puzzles, then fall back to the text box"],
   ["exportPuzzle", "导出题串", "Export puzzle"],
   ["sharePuzzle", "分享题面", "Share puzzle"],
-  ["sharePuzzleTitle", "生成包含当前 Library 题串的链接，并复制到剪贴板。", "Create a link containing the current Library puzzle string and copy it to the clipboard."],
+  ["sharePuzzleTitle", "生成包含当前盘面定长编码的链接，并复制到剪贴板。", "Create a link containing the fixed-length encoding of the current board and copy it to the clipboard."],
   ["exportFormatLabel", "导出格式", "Export format"],
   ["exportFormatOriginal", "原始题串", "Original puzzle"],
   ["exportFormatKnown", "已知数字串", "Known digits"],
@@ -1034,7 +1039,8 @@ for (const [key, zh, en] of [
   ["clearSavedSessionTitle", "清除浏览器中自动保存的上次盘面和技巧配置；不会清空当前盘面。", "Clear the last board and technique settings saved in this browser; the current board is not cleared."],
   ["sessionRestored", "已恢复上次关闭时的盘面和技巧配置。", "Restored the board and technique settings from the last session."],
   ["sharedPuzzleLoaded", "已从分享链接导入题面。", "Imported the puzzle from the shared link."],
-  ["sharedPuzzleEmpty", "分享链接中的 puzzle 参数为空，未恢复本地现场。", "The puzzle parameter in the shared link is empty; the saved local session was not restored."],
+  ["sharedPuzzleEmpty", "分享链接中的题面参数为空，未恢复本地现场。", "The puzzle parameter in the shared link is empty; the saved local session was not restored."],
+  ["sharedPuzzleInvalid", "分享链接题面编码无效：{message}", "The shared puzzle encoding is invalid: {message}"],
   ["sessionRestoreFailed", "恢复上次现场失败：{message}", "Failed to restore the last session: {message}"],
   ["sessionCleared", "已清除本地保存的盘面和技巧配置。", "Cleared the saved board and technique settings in this browser."],
   ["ratePuzzle", "评分当前题目", "Rate puzzle"],
@@ -1123,7 +1129,7 @@ for (const [key, zh, en] of [
   ["findAllBusy", "搜索中...", "Searching..."],
   ["wasmLoaded", "wasm 已加载。", "wasm loaded."],
   ["exportCopied", "题串已导出并复制到剪贴板。", "Puzzle string exported and copied to the clipboard."],
-  ["shareUnavailable", "分享失败：当前没有可生成 Library 题串的有效盘面。", "Share failed: the current board cannot be serialized as a Library puzzle string."],
+  ["shareUnavailable", "分享失败：当前没有可编码的有效盘面。", "Share failed: the current board cannot be encoded."],
   ["shareCopied", "分享链接已复制到剪贴板：{url}", "Share link copied to the clipboard: {url}"],
   ["shareClipboardFailed", "分享链接已生成，但浏览器未允许写入剪贴板：{url}", "The share link was created, but the browser did not allow clipboard access: {url}"],
   ["exportToInput", "题串已导出到输入框。", "Puzzle string exported to the input box."],
@@ -3824,26 +3830,224 @@ function exportedPuzzleString() {
   return "";
 }
 
+function sharedPuzzleCrc16(bytes, length = bytes.length) {
+  let crc = 0xffff;
+  for (let index = 0; index < length; index += 1) {
+    crc ^= bytes[index] << 8;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc & 0x8000) !== 0
+        ? ((crc << 1) ^ 0x1021) & 0xffff
+        : (crc << 1) & 0xffff;
+    }
+  }
+  return crc;
+}
+
+function sharedPuzzleBytesToBase64Url(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/u, "");
+}
+
+function sharedPuzzleBase64UrlToBytes(text) {
+  if (!/^[A-Za-z0-9_-]+$/u.test(text)) {
+    throw new Error("Base64URL contains invalid characters");
+  }
+  const padded = `${text.replaceAll("-", "+").replaceAll("_", "/")}${"=".repeat((4 - (text.length % 4)) % 4)}`;
+  let binary = "";
+  try {
+    binary = atob(padded);
+  } catch {
+    throw new Error("Base64URL decoding failed");
+  }
+  return Uint8Array.from(binary, (ch) => ch.charCodeAt(0));
+}
+
+function sharedPuzzleCompactCandidateMask(values) {
+  return (values || []).reduce((mask, digitValue) => {
+    const digit = Number(digitValue);
+    return Number.isInteger(digit) && digit >= 1 && digit <= 9
+      ? mask | (1 << (digit - 1))
+      : mask;
+  }, 0);
+}
+
+function encodeSnapshotToSharedS1(snapshot = currentSnapshot) {
+  const boardText = snapshotBoardString(snapshot);
+  const givensText = snapshotGivensString(snapshot);
+  if (boardText.length !== 81 || givensText.length !== 81 || !Array.isArray(snapshot?.cells) || snapshot.cells.length < 81) {
+    return "";
+  }
+
+  const states = new Uint16Array(81);
+  for (let index = 0; index < 81; index += 1) {
+    const value = Number(boardText[index] || 0);
+    if (value >= 1 && value <= 9) {
+      const isGiven = Boolean(snapshot.cells[index]?.given) || givensText[index] === String(value);
+      states[index] = (isGiven ? 511 : 520) + value;
+    } else {
+      states[index] = sharedPuzzleCompactCandidateMask(snapshot.cells[index]?.candidates || []);
+    }
+  }
+
+  const bytes = new Uint8Array(SHARED_PUZZLE_S1_TOTAL_BYTES);
+  bytes[0] = 0x59; // Y
+  bytes[1] = 0x31; // 1
+  let outputOffset = 2;
+  let buffer = 0;
+  let bufferedBits = 0;
+  for (const state of states) {
+    buffer = (buffer << 10) | state;
+    bufferedBits += 10;
+    while (bufferedBits >= 8) {
+      bufferedBits -= 8;
+      bytes[outputOffset] = (buffer >>> bufferedBits) & 0xff;
+      outputOffset += 1;
+      buffer &= (1 << bufferedBits) - 1;
+    }
+  }
+  if (bufferedBits > 0) {
+    bytes[outputOffset] = (buffer << (8 - bufferedBits)) & 0xff;
+    outputOffset += 1;
+  }
+  if (outputOffset !== 2 + SHARED_PUZZLE_S1_DATA_BYTES) {
+    throw new Error("s1 payload packing length mismatch");
+  }
+
+  const crc = sharedPuzzleCrc16(bytes, SHARED_PUZZLE_S1_TOTAL_BYTES - 2);
+  bytes[SHARED_PUZZLE_S1_TOTAL_BYTES - 2] = (crc >>> 8) & 0xff;
+  bytes[SHARED_PUZZLE_S1_TOTAL_BYTES - 1] = crc & 0xff;
+  const encoded = `${SHARED_PUZZLE_S1_PREFIX}${sharedPuzzleBytesToBase64Url(bytes)}`;
+  if (encoded.length !== SHARED_PUZZLE_S1_TEXT_LENGTH) {
+    throw new Error("s1 text length mismatch");
+  }
+  return encoded;
+}
+
+function decodeSharedS1States(encoded) {
+  if (!encoded.startsWith(SHARED_PUZZLE_S1_PREFIX)) {
+    throw new Error("unsupported share encoding");
+  }
+  if (encoded.length !== SHARED_PUZZLE_S1_TEXT_LENGTH) {
+    throw new Error(`s1 length must be ${SHARED_PUZZLE_S1_TEXT_LENGTH} characters`);
+  }
+
+  const bytes = sharedPuzzleBase64UrlToBytes(encoded.slice(SHARED_PUZZLE_S1_PREFIX.length));
+  if (bytes.length !== SHARED_PUZZLE_S1_TOTAL_BYTES) {
+    throw new Error("s1 byte length mismatch");
+  }
+  if (bytes[0] !== 0x59 || bytes[1] !== 0x31) {
+    throw new Error("s1 header mismatch");
+  }
+  const expectedCrc = (bytes[SHARED_PUZZLE_S1_TOTAL_BYTES - 2] << 8)
+    | bytes[SHARED_PUZZLE_S1_TOTAL_BYTES - 1];
+  const actualCrc = sharedPuzzleCrc16(bytes, SHARED_PUZZLE_S1_TOTAL_BYTES - 2);
+  if (expectedCrc !== actualCrc) {
+    throw new Error("s1 checksum mismatch");
+  }
+  if ((bytes[2 + SHARED_PUZZLE_S1_DATA_BYTES - 1] & 0x3f) !== 0) {
+    throw new Error("s1 padding bits are not zero");
+  }
+
+  const states = new Uint16Array(81);
+  let inputOffset = 2;
+  let buffer = 0;
+  let bufferedBits = 0;
+  for (let index = 0; index < 81; index += 1) {
+    while (bufferedBits < 10) {
+      buffer = (buffer << 8) | bytes[inputOffset];
+      inputOffset += 1;
+      bufferedBits += 8;
+    }
+    bufferedBits -= 10;
+    const state = (buffer >>> bufferedBits) & 0x3ff;
+    buffer &= (1 << bufferedBits) - 1;
+    if (state > 529) {
+      throw new Error(`s1 cell state is out of range at cell ${index + 1}`);
+    }
+    states[index] = state;
+  }
+  return states;
+}
+
+function sharedS1StatesToLibraryString(states) {
+  if (!states || states.length !== 81) {
+    throw new Error("s1 must contain 81 cell states");
+  }
+
+  const boardChars = new Array(81).fill(".");
+  let boardPart = "";
+  for (let index = 0; index < 81; index += 1) {
+    const state = Number(states[index]);
+    if (state >= 512 && state <= 520) {
+      const digit = state - 511;
+      boardChars[index] = String(digit);
+      boardPart += String(digit);
+    } else if (state >= 521 && state <= 529) {
+      const digit = state - 520;
+      boardChars[index] = String(digit);
+      boardPart += `+${digit}`;
+    } else {
+      boardPart += ".";
+    }
+  }
+
+  const boardText = boardChars.join("");
+  let eliminations = "";
+  for (let index = 0; index < 81; index += 1) {
+    const state = Number(states[index]);
+    if (state > 511) continue;
+    const candidateMask = state << 1;
+    const legalMask = legalCandidateMaskForBoard(boardText, index);
+    const removedMask = legalMask & ~candidateMask;
+    const row = Math.floor(index / 9) + 1;
+    const col = (index % 9) + 1;
+    for (let digit = 1; digit <= 9; digit += 1) {
+      if ((removedMask & (1 << digit)) !== 0) {
+        eliminations += `${digit}${row}${col} `;
+      }
+    }
+  }
+  return `:0000:x:${boardPart}:${eliminations.trim()}::`;
+}
+
+function decodeSharedPuzzleValue(value) {
+  const text = String(value || "").trim();
+  if (text.startsWith(SHARED_PUZZLE_S1_PREFIX)) {
+    return sharedS1StatesToLibraryString(decodeSharedS1States(text));
+  }
+  return text;
+}
+
 function sharedPuzzleParameterFromCurrentUrl() {
   try {
     const url = new URL(window.location.href);
-    if (!url.searchParams.has(SHARED_PUZZLE_QUERY_PARAM)) {
-      return { present: false, value: "" };
+    for (const name of [SHARED_PUZZLE_QUERY_PARAM, LEGACY_SHARED_PUZZLE_QUERY_PARAM]) {
+      if (url.searchParams.has(name)) {
+        return {
+          present: true,
+          name,
+          value: String(url.searchParams.get(name) || "").trim(),
+        };
+      }
     }
-    return {
-      present: true,
-      value: String(url.searchParams.get(SHARED_PUZZLE_QUERY_PARAM) || "").trim(),
-    };
+    return { present: false, name: "", value: "" };
   } catch {
-    return { present: false, value: "" };
+    return { present: false, name: "", value: "" };
   }
 }
 
-function buildPuzzleShareUrl(libraryString) {
+function buildPuzzleShareUrl(encodedPuzzle) {
   const url = new URL(window.location.href);
   url.search = "";
   url.hash = "";
-  url.searchParams.set(SHARED_PUZZLE_QUERY_PARAM, libraryString);
+  url.searchParams.set(SHARED_PUZZLE_QUERY_PARAM, encodedPuzzle);
   return url.toString();
 }
 
@@ -3855,7 +4059,17 @@ async function importSharedPuzzleFromUrl() {
     return { present: true, loaded: false };
   }
 
-  givens.value = shared.value;
+  let importText = "";
+  try {
+    importText = decodeSharedPuzzleValue(shared.value);
+  } catch (error) {
+    setStatus(uif("sharedPuzzleInvalid", {
+      message: error instanceof Error ? error.message : String(error),
+    }));
+    return { present: true, loaded: false };
+  }
+
+  givens.value = importText;
   const result = await importPuzzleFromCurrentInput({
     clipboardFallback: false,
     preferClipboardFirst: false,
@@ -3870,19 +4084,28 @@ async function importSharedPuzzleFromUrl() {
 }
 
 async function shareCurrentPuzzle() {
-  const libraryString = snapshotToLibraryString();
-  if (!libraryString) {
+  let encodedPuzzle = "";
+  try {
+    encodedPuzzle = encodeSnapshotToSharedS1();
+  } catch (error) {
+    setStatus(uif("sharedPuzzleInvalid", {
+      message: error instanceof Error ? error.message : String(error),
+    }));
+    return;
+  }
+  if (!encodedPuzzle) {
     setStatus(ui("shareUnavailable"));
     return;
   }
 
-  const url = buildPuzzleShareUrl(libraryString);
+  const url = buildPuzzleShareUrl(encodedPuzzle);
   const copied = await copyText(url);
   setStatus(uif(copied ? "shareCopied" : "shareClipboardFailed", { url }));
   debugLog(JSON.stringify({
     ok: true,
     action: "share_puzzle",
-    format: "library",
+    format: "s1",
+    parameterLength: encodedPuzzle.length,
     url,
     copied,
   }, null, 2));
