@@ -120,6 +120,7 @@ let localSudokuOcrModulePromise = null;
 let ortScriptPromise = null;
 let localSudokuOcrLoadAttempt = 0;
 const APP_SESSION_STORAGE_KEY = "yzf_sudoku_session_v1";
+const SHARED_PUZZLE_QUERY_PARAM = "puzzle";
 const EXPORT_FORMAT_STORAGE_KEY = "yzf_sudoku_export_format_v1";
 let appSessionSaveTimer = 0;
 let appSessionRestoring = false;
@@ -241,6 +242,7 @@ async function localSudokuOcrAttributionSafe() {
   }
 }
 const btnExportPuzzle = document.getElementById("btnExportPuzzle");
+const btnSharePuzzle = document.getElementById("btnSharePuzzle");
 const exportFormatSelect = document.getElementById("exportFormatSelect");
 const btnRate = document.getElementById("btnRate");
 const btnStep = document.getElementById("btnStep");
@@ -1019,6 +1021,8 @@ for (const [key, zh, en] of [
   ["preferClipboardLoad", "剪贴板优先", "Clipboard first"],
   ["preferClipboardLoadTitle", "加载题目时优先使用剪贴板，失败后再用文本框", "Prefer clipboard when loading puzzles, then fall back to the text box"],
   ["exportPuzzle", "导出题串", "Export puzzle"],
+  ["sharePuzzle", "分享题面", "Share puzzle"],
+  ["sharePuzzleTitle", "生成包含当前 Library 题串的链接，并复制到剪贴板。", "Create a link containing the current Library puzzle string and copy it to the clipboard."],
   ["exportFormatLabel", "导出格式", "Export format"],
   ["exportFormatOriginal", "原始题串", "Original puzzle"],
   ["exportFormatKnown", "已知数字串", "Known digits"],
@@ -1029,6 +1033,8 @@ for (const [key, zh, en] of [
   ["clearSavedSession", "清除本地现场", "Clear saved session"],
   ["clearSavedSessionTitle", "清除浏览器中自动保存的上次盘面和技巧配置；不会清空当前盘面。", "Clear the last board and technique settings saved in this browser; the current board is not cleared."],
   ["sessionRestored", "已恢复上次关闭时的盘面和技巧配置。", "Restored the board and technique settings from the last session."],
+  ["sharedPuzzleLoaded", "已从分享链接导入题面。", "Imported the puzzle from the shared link."],
+  ["sharedPuzzleEmpty", "分享链接中的 puzzle 参数为空，未恢复本地现场。", "The puzzle parameter in the shared link is empty; the saved local session was not restored."],
   ["sessionRestoreFailed", "恢复上次现场失败：{message}", "Failed to restore the last session: {message}"],
   ["sessionCleared", "已清除本地保存的盘面和技巧配置。", "Cleared the saved board and technique settings in this browser."],
   ["ratePuzzle", "评分当前题目", "Rate puzzle"],
@@ -1117,6 +1123,9 @@ for (const [key, zh, en] of [
   ["findAllBusy", "搜索中...", "Searching..."],
   ["wasmLoaded", "wasm 已加载。", "wasm loaded."],
   ["exportCopied", "题串已导出并复制到剪贴板。", "Puzzle string exported and copied to the clipboard."],
+  ["shareUnavailable", "分享失败：当前没有可生成 Library 题串的有效盘面。", "Share failed: the current board cannot be serialized as a Library puzzle string."],
+  ["shareCopied", "分享链接已复制到剪贴板：{url}", "Share link copied to the clipboard: {url}"],
+  ["shareClipboardFailed", "分享链接已生成，但浏览器未允许写入剪贴板：{url}", "The share link was created, but the browser did not allow clipboard access: {url}"],
   ["exportToInput", "题串已导出到输入框。", "Puzzle string exported to the input box."],
   ["rateNoPuzzle", "评分失败：当前没有有效题串。", "Rating failed: no valid puzzle string is available."],
   ["rateFailedSimple", "评分失败。", "Rating failed."],
@@ -3174,11 +3183,12 @@ function applyStaticLanguage() {
   const moreSummary = [...document.querySelectorAll(".input-panel summary")].find((el) => /更多|More/i.test(el.textContent));
   if (moreSummary) moreSummary.textContent = ui("moreInput");
   setLocalizedTexts([
-    ["preferClipboardLoadLabel", "preferClipboardLoad"], ["btnExportPuzzle", "exportPuzzle"],
+    ["preferClipboardLoadLabel", "preferClipboardLoad"], ["btnExportPuzzle", "exportPuzzle"], ["btnSharePuzzle", "sharePuzzle"],
     ["btnClearSavedSession", "clearSavedSession"], ["btnImageOcrPickText", "ocrPickImage"],
     ["btnImageOcrCameraText", "ocrCameraImage"], ["btnImageOcrClipboard", "ocrClipboardImage"],
   ]);
   setTitleAndAria(document.getElementById("preferClipboardLoadChip"), ui("preferClipboardLoadTitle"));
+  setTitleAndAria(btnSharePuzzle, ui("sharePuzzleTitle"));
   updateExportFormatLabels();
   setTitleAndAria(btnClearSavedSession, ui("clearSavedSessionTitle"));
   setTextById("btnRate", ratingTask ? ui("rateCancel") : ui("ratePuzzle"));
@@ -3814,6 +3824,70 @@ function exportedPuzzleString() {
   return "";
 }
 
+function sharedPuzzleParameterFromCurrentUrl() {
+  try {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has(SHARED_PUZZLE_QUERY_PARAM)) {
+      return { present: false, value: "" };
+    }
+    return {
+      present: true,
+      value: String(url.searchParams.get(SHARED_PUZZLE_QUERY_PARAM) || "").trim(),
+    };
+  } catch {
+    return { present: false, value: "" };
+  }
+}
+
+function buildPuzzleShareUrl(libraryString) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set(SHARED_PUZZLE_QUERY_PARAM, libraryString);
+  return url.toString();
+}
+
+async function importSharedPuzzleFromUrl() {
+  const shared = sharedPuzzleParameterFromCurrentUrl();
+  if (!shared.present) return { present: false, loaded: false };
+  if (!shared.value) {
+    setStatus(ui("sharedPuzzleEmpty"));
+    return { present: true, loaded: false };
+  }
+
+  givens.value = shared.value;
+  const result = await importPuzzleFromCurrentInput({
+    clipboardFallback: false,
+    preferClipboardFirst: false,
+    clipboardAlreadyTried: true,
+    urlImport: true,
+  });
+  if (result?.ok) {
+    setStatus(ui("sharedPuzzleLoaded"));
+    return { present: true, loaded: true };
+  }
+  return { present: true, loaded: false };
+}
+
+async function shareCurrentPuzzle() {
+  const libraryString = snapshotToLibraryString();
+  if (!libraryString) {
+    setStatus(ui("shareUnavailable"));
+    return;
+  }
+
+  const url = buildPuzzleShareUrl(libraryString);
+  const copied = await copyText(url);
+  setStatus(uif(copied ? "shareCopied" : "shareClipboardFailed", { url }));
+  debugLog(JSON.stringify({
+    ok: true,
+    action: "share_puzzle",
+    format: "library",
+    url,
+    copied,
+  }, null, 2));
+}
+
 function currentSessionLibraryString() {
   if (!engine || appSessionRestoring || previewSnapshotActive) return "";
   return exportedPuzzleString();
@@ -3861,8 +3935,10 @@ function scheduleAppSessionSave() {
   }, 350);
 }
 
-async function restoreAppSession() {
+async function restoreAppSession(options = {}) {
   if (!engine) return false;
+  const restorePuzzle = options.restorePuzzle !== false;
+  const announce = options.announce !== false;
   let payload = null;
   try {
     const raw = localStorage.getItem(APP_SESSION_STORAGE_KEY);
@@ -3883,7 +3959,7 @@ async function restoreAppSession() {
       engine.set_techniques_json(JSON.stringify(payload.techniqueConfig));
       loadTechniqueState();
     }
-    if (payload.libraryString) {
+    if (restorePuzzle && payload.libraryString) {
       givens.value = payload.libraryString;
       const restored = await importPuzzleFromCurrentInput({ clipboardFallback: false, sessionRestore: true });
       if (!restored?.ok) {
@@ -3891,11 +3967,11 @@ async function restoreAppSession() {
       }
     }
     renderTechniques();
-    setStatus(ui("sessionRestored"));
+    if (announce) setStatus(ui("sessionRestored"));
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    setStatus(uif("sessionRestoreFailed", { message }));
+    if (announce) setStatus(uif("sessionRestoreFailed", { message }));
     console.warn("Failed to restore YZF session", error);
     return false;
   } finally {
@@ -13663,11 +13739,19 @@ async function init() {
   }
   buildNumpad();
   loadTechniqueState();
-  const restoredSession = await restoreAppSession();
+  const sharedParameter = sharedPuzzleParameterFromCurrentUrl();
+  let restoredSession = false;
+  let sharedPuzzle = { present: sharedParameter.present, loaded: false };
+  if (sharedParameter.present) {
+    await restoreAppSession({ restorePuzzle: false, announce: false });
+    sharedPuzzle = await importSharedPuzzleFromUrl();
+  } else {
+    restoredSession = await restoreAppSession();
+  }
   renderTechniques();
   activateTab("controls");
   debugLogUi("wasmLoaded");
-  if (!restoredSession) {
+  if (!sharedPuzzle.loaded && !restoredSession) {
     renderBoard(null);
   }
   if (!APP_DEBUG_MODE) {
@@ -14835,6 +14919,8 @@ updateExportFormatLabels();
 exportFormatSelect?.addEventListener("change", () => {
   saveExportFormatSetting();
 });
+
+btnSharePuzzle?.addEventListener("click", shareCurrentPuzzle);
 
 btnExportPuzzle?.addEventListener("click", async () => {
   const puzzle = await selectedExportPuzzleString();
