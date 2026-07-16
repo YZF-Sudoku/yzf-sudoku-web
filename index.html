@@ -5396,15 +5396,7 @@
           <section id="tabControls" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnControls" data-tab-panel="controls">
               <label class="generate-options">
                 <span>难度</span>
-              <select id="difficultySelect" title="生成题目时使用参考项目的 ER 难度分档">
-                <option value="0">Random (ER 0-12.0)</option>
-                <option value="1">Easy (ER 0-1.5)</option>
-                <option value="2">Medium (ER 1.5-2.8)</option>
-                <option value="3">Hard (ER 2.8-6.0)</option>
-                <option value="4">Unfair (ER 6.0-8.0)</option>
-                <option value="5">Extreme (ER 8.0-9.3)</option>
-                <option value="6">Insane (ER 9.3-12.0)</option>
-              </select>
+              <select id="difficultySelect" title="生成题目时使用参考项目的 ER 难度分档"></select>
             </label>
             <div class="generate-options training-options">
               <span>训练</span>
@@ -5796,15 +5788,7 @@
       <p id="mobileSolveNewPuzzleWarning" class="mobile-solve-new-puzzle-warning" hidden>当前作答进度或标记将在生成新题后清除。</p>
       <fieldset class="mobile-solve-new-puzzle-fieldset">
         <legend id="mobileSolveNewPuzzleDifficultyLegend">难度</legend>
-        <div id="mobileSolveNewPuzzleOptions" class="mobile-solve-new-puzzle-options" role="radiogroup" aria-labelledby="mobileSolveNewPuzzleDifficultyLegend">
-          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="0" /><span><b id="mobileSolveDifficultyLabel0">随机</b><small>ER 0–12.0</small></span></label>
-          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="1" /><span><b id="mobileSolveDifficultyLabel1">简单</b><small>ER 0–1.5</small></span></label>
-          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="2" /><span><b id="mobileSolveDifficultyLabel2">中等</b><small>ER 1.5–2.8</small></span></label>
-          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="3" /><span><b id="mobileSolveDifficultyLabel3">困难</b><small>ER 2.8–6.0</small></span></label>
-          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="4" /><span><b id="mobileSolveDifficultyLabel4">不公平</b><small>ER 6.0–8.0</small></span></label>
-          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="5" /><span><b id="mobileSolveDifficultyLabel5">极难</b><small>ER 8.0–9.3</small></span></label>
-          <label><input type="radio" name="mobileSolveNewPuzzleDifficulty" value="6" /><span><b id="mobileSolveDifficultyLabel6">疯狂</b><small>ER 9.3–12.0</small></span></label>
-        </div>
+        <div id="mobileSolveNewPuzzleOptions" class="mobile-solve-new-puzzle-options" role="radiogroup" aria-labelledby="mobileSolveNewPuzzleDifficultyLegend"></div>
       </fieldset>
       <div class="mobile-solve-new-puzzle-actions">
         <button id="btnMobileSolveNewPuzzleCancel" type="button">取消</button>
@@ -5816,6 +5800,6 @@
 
 
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=20260714-url-share-s1-v2"></script>
+    <script type="module" src="./app.js?v=20260716-difficulty-i18n-v1"></script>
   </body>
 </html>

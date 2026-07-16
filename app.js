@@ -13,6 +13,10 @@ import {
   buildAuditedStepExplanationPayload,
   buildAuditedTechniqueGuide,
 } from "./step-explanation.js?v=20260713-dynamic-tutorial-audit-v8";
+import {
+  difficultyDescriptor,
+  difficultyLevels,
+} from "./ui-localization.js?v=20260716-difficulty-i18n-v1";
 
 const APP_VERSION = "wasm-db5fc69e13fa517a";
 const MANUAL_VERSION = "20260709-manual-v2.5-tlg-input-guard";
@@ -720,13 +724,6 @@ for (const [key, zh, en] of [
   ["mobileSolveNewPuzzleGenerating", "生成中…", "Generating…"],
   ["mobileSolveNewPuzzleCancel", "取消", "Cancel"],
   ["mobileSolveNewPuzzleDifficulty", "难度", "Difficulty"],
-  ["mobileDifficultyRandom", "随机", "Random"],
-  ["mobileDifficultyEasy", "入门", "Easy"],
-  ["mobileDifficultyMedium", "初级", "Medium"],
-  ["mobileDifficultyHard", "进阶", "Hard"],
-  ["mobileDifficultyUnfair", "棘手", "Unfair"],
-  ["mobileDifficultyExtreme", "极限", "Extreme"],
-  ["mobileDifficultyInsane", "骨灰", "Insane"],
   ["mobileSolveMore", "更多", "More"],
   ["mobileSolveMoreTitle", "更多功能", "More tools"],
   ["mobileSolveClear", "清除", "Clear"],
@@ -3052,6 +3049,84 @@ function setLocalizedSelectOptions(select, labels) {
   }
 }
 
+function currentDifficultyLanguage() {
+  return lang?.value === "en" ? "en" : "zh";
+}
+
+function difficultyLabel(value, { withRange = false } = {}) {
+  const descriptor = difficultyDescriptor(value, currentDifficultyLanguage());
+  return withRange ? descriptor.label : descriptor.name;
+}
+
+function difficultyControlLevels(container, selector) {
+  return [...(container?.querySelectorAll(selector) || [])].map((node) => Number(node.value));
+}
+
+function difficultyControlsMatch(levels) {
+  const desktopLevels = difficultySelect ? [...difficultySelect.options].map((option) => Number(option.value)) : levels;
+  const mobileLevels = mobileSolveNewPuzzleOptions
+    ? difficultyControlLevels(mobileSolveNewPuzzleOptions, 'input[name="mobileSolveNewPuzzleDifficulty"]')
+    : levels;
+  return desktopLevels.length === levels.length
+    && mobileLevels.length === levels.length
+    && levels.every((level, index) => desktopLevels[index] === level && mobileLevels[index] === level);
+}
+
+function rebuildDifficultyControls(levels) {
+  const selectedDesktop = String(difficultySelect?.value || "0");
+  const selectedMobile = mobileSolveNewPuzzleOptions
+    ?.querySelector('input[name="mobileSolveNewPuzzleDifficulty"]:checked')?.value || selectedDesktop;
+
+  if (difficultySelect) {
+    const fragment = document.createDocumentFragment();
+    for (const level of levels) {
+      const option = document.createElement("option");
+      option.value = String(level);
+      fragment.appendChild(option);
+    }
+    difficultySelect.replaceChildren(fragment);
+    difficultySelect.value = levels.includes(Number(selectedDesktop)) ? selectedDesktop : "0";
+  }
+
+  if (mobileSolveNewPuzzleOptions) {
+    const fragment = document.createDocumentFragment();
+    for (const level of levels) {
+      const label = document.createElement("label");
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "mobileSolveNewPuzzleDifficulty";
+      input.value = String(level);
+      const text = document.createElement("span");
+      const name = document.createElement("b");
+      name.dataset.difficultyName = String(level);
+      const range = document.createElement("small");
+      range.dataset.difficultyRange = String(level);
+      text.append(name, range);
+      label.append(input, text);
+      fragment.appendChild(label);
+    }
+    mobileSolveNewPuzzleOptions.replaceChildren(fragment);
+    const checked = mobileSolveNewPuzzleOptions.querySelector(`input[name="mobileSolveNewPuzzleDifficulty"][value="${selectedMobile}"]`)
+      || mobileSolveNewPuzzleOptions.querySelector('input[name="mobileSolveNewPuzzleDifficulty"][value="0"]');
+    if (checked) checked.checked = true;
+  }
+}
+
+function updateDifficultyControlsLanguage() {
+  const levels = difficultyLevels();
+  if (!difficultyControlsMatch(levels)) rebuildDifficultyControls(levels);
+
+  for (const level of levels) {
+    const descriptor = difficultyDescriptor(level, currentDifficultyLanguage());
+    const option = difficultySelect?.querySelector(`option[value="${level}"]`);
+    if (option) option.textContent = descriptor.label;
+    const mobileName = mobileSolveNewPuzzleOptions?.querySelector(`[data-difficulty-name="${level}"]`);
+    const mobileRange = mobileSolveNewPuzzleOptions?.querySelector(`[data-difficulty-range="${level}"]`);
+    if (mobileName) mobileName.textContent = descriptor.name;
+    if (mobileRange) mobileRange.textContent = descriptor.range;
+  }
+}
+
 function applyStaticLanguage() {
   document.documentElement.lang = lang.value === "en" ? "en" : "zh-CN";
   const linkLangSuffix = `?lang=${encodeURIComponent(lang.value || "zh")}`;
@@ -3093,6 +3168,7 @@ function applyStaticLanguage() {
     ["tabBtnPath", "path"], ["tabBtnAllSteps", "allSteps"],
   ]);
   setInputLabelByControl("difficultySelect", ui("difficulty"));
+  updateDifficultyControlsLanguage();
   setInputLabelByControl("trainingTechniqueSelect", ui("training"));
   if (difficultySelect) difficultySelect.title = ui("difficultyTitle");
   if (trainingTechniqueSelect) trainingTechniqueSelect.title = ui("trainingTitle");
@@ -3356,7 +3432,7 @@ function formatRating(rating) {
 }
 
 function selectedDifficultyLabel() {
-  return difficultySelect.options[difficultySelect.selectedIndex]?.textContent || "Random";
+  return difficultyLabel(difficultySelect?.value || 0, { withRange: true });
 }
 
 function normalizePuzzle(text) {
@@ -14904,14 +14980,14 @@ function generatePuzzleAtDifficulty(difficulty) {
   const result = parseJson(engine.generate_puzzle_difficulty_json(normalizedDifficulty, 0));
   if (!result?.ok) {
     const last = result?.lastRating ? uif("lastRating", { rating: formatRating(result.lastRating) }) : "";
-    setStatus(uif("generateFailed", { difficulty: result?.difficultyName || selectedDifficultyLabel(), last }));
+    setStatus(uif("generateFailed", { difficulty: difficultyLabel(result?.difficultyName ?? normalizedDifficulty), last }));
     return result || { ok: false };
   }
 
   originalBoard = result.state?.givens || result.puzzle;
   givens.value = result.puzzle;
   resetBoardContextForSnapshot(result.state, { resetSelectedIndex: true });
-    setStatus(uif("generatedPuzzle", { difficulty: result.difficultyName, clues: result.clues, rating: formatRating(result.rating) }));
+    setStatus(uif("generatedPuzzle", { difficulty: difficultyLabel(result.difficultyName ?? normalizedDifficulty), clues: result.clues, rating: formatRating(result.rating) }));
   updateInputControls();
   return result;
 }
@@ -15775,11 +15851,6 @@ function updateMobileSolveLanguage() {
   setTextById("btnMobileSolveNewPuzzleClose", ui("close"));
   setTextById("btnMobileSolveNewPuzzleCancel", ui("mobileSolveNewPuzzleCancel"));
   if (!btnMobileSolveNewPuzzleGenerate?.disabled) setTextById("btnMobileSolveNewPuzzleGenerate", ui("mobileSolveNewPuzzleGenerate"));
-  const mobileDifficultyKeys = [
-    "mobileDifficultyRandom", "mobileDifficultyEasy", "mobileDifficultyMedium", "mobileDifficultyHard",
-    "mobileDifficultyUnfair", "mobileDifficultyExtreme", "mobileDifficultyInsane",
-  ];
-  mobileDifficultyKeys.forEach((key, index) => setTextById(`mobileSolveDifficultyLabel${index}`, ui(key)));
   setTextById("btnMobileSolveClear", ui("mobileSolveClear"));
   updateMobileSolveMarksButton();
   setTextById("btnMobileSolveUndo", ui("undo"));
@@ -15871,7 +15942,6 @@ async function generateMobileSolveNewPuzzle() {
     const result = generatePuzzleAtDifficulty(difficulty);
     if (!result?.ok) return;
     clearManualMarks();
-    setStatus(uif("generatedPuzzle", { difficulty: result.difficultyName, clues: result.clues, rating: formatRating(result.rating) }));
     setMobileSolveNewPuzzlePanel(false);
     applyMobileSolvePreferences();
     updateMobileSolveInputState();
@@ -15990,6 +16060,7 @@ function openPuzzleInputFromMobile() {
 
 function installMobileSolveMode() {
   ensureMobileSolveHomeMarkers();
+  updateDifficultyControlsLanguage();
   loadMobileSolvePreferences();
   loadMobileNewPuzzleDifficulty();
   syncMobileNewPuzzleDifficultyChoice();

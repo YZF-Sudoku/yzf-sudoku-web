@@ -386,17 +386,41 @@ const DIFFICULTIES = {
   6: { zh: "骨灰", en: "Insane", range: "ER 9.3–12.0" },
 };
 
+const DIFFICULTY_LEVELS = Object.freeze(Object.keys(DIFFICULTIES).map(Number));
+
 const DIFFICULTY_NAME_TO_LEVEL = new Map([
   ["random", 0], ["easy", 1], ["medium", 2], ["hard", 3], ["unfair", 4], ["extreme", 5], ["insane", 6],
   ["随机", 0], ["入门", 1], ["初级", 2], ["进阶", 3], ["棘手", 4], ["极限", 5], ["骨灰", 6],
+  // Compatibility with the older mobile-only labels that once lived in index.html.
+  ["简单", 1], ["中等", 2], ["困难", 3], ["不公平", 4], ["极难", 5], ["疯狂", 6],
 ]);
 
-export function localizeDifficulty(value, language = "zh", options = {}) {
+function normalizeDifficultyLevel(value) {
+  const raw = String(value ?? "").trim();
+  const numeric = raw !== "" && Number.isFinite(Number(raw)) ? Number(raw) : NaN;
+  const level = Number.isInteger(numeric) ? numeric : DIFFICULTY_NAME_TO_LEVEL.get(raw.toLowerCase());
+  return Object.prototype.hasOwnProperty.call(DIFFICULTIES, level) ? level : 0;
+}
+
+export function difficultyLevels() {
+  return [...DIFFICULTY_LEVELS];
+}
+
+export function difficultyDescriptor(value, language = "zh") {
   const locale = normalizeLanguage(language);
-  let level = Number.isFinite(Number(value)) && String(value).trim() !== "" ? Number(value) : DIFFICULTY_NAME_TO_LEVEL.get(String(value || "").trim().toLowerCase());
-  if (!DIFFICULTIES[level]) level = 0;
+  const level = normalizeDifficultyLevel(value);
   const item = DIFFICULTIES[level];
-  return options.withRange ? `${item[locale]} (${item.range})` : item[locale];
+  return {
+    level,
+    name: item[locale],
+    range: item.range,
+    label: `${item[locale]} (${item.range})`,
+  };
+}
+
+export function localizeDifficulty(value, language = "zh", options = {}) {
+  const item = difficultyDescriptor(value, language);
+  return options.withRange ? item.label : item.name;
 }
 
 const FORMAT_LABELS = {
