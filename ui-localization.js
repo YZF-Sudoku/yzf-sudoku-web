@@ -464,6 +464,11 @@ const APP_STATUS_LABELS = {
       updateComplete: "新版本已加载完成。",
       installAccepted: "应用安装请求已提交。",
       installDismissed: "已取消安装。",
+      wakeLockActive: "屏幕常亮已启用；离开做题模式后会自动释放。",
+      wakeLockDisabled: "屏幕常亮已关闭。",
+      wakeLockUnsupported: "当前浏览器或运行环境不支持屏幕常亮。",
+      wakeLockReleased: "屏幕常亮已被系统释放；可关闭后重新开启以重试。",
+      wakeLockFailed: "无法保持屏幕常亮：{message}",
     },
   },
   en: {
@@ -506,6 +511,11 @@ const APP_STATUS_LABELS = {
       updateComplete: "The new version has loaded.",
       installAccepted: "The app installation request was submitted.",
       installDismissed: "Installation was cancelled.",
+      wakeLockActive: "Screen Wake Lock is active and will be released when Solve Mode closes.",
+      wakeLockDisabled: "Screen Wake Lock is off.",
+      wakeLockUnsupported: "Screen Wake Lock is unavailable in this browser or runtime.",
+      wakeLockReleased: "Screen Wake Lock was released by the system; toggle it off and on to retry.",
+      wakeLockFailed: "Keeping the screen awake failed: {message}",
     },
   },
 };
@@ -527,7 +537,11 @@ export function appStatusDescriptor(kind, state, language = "zh", values = {}) {
     },
     save: { saved: "ok", dirty: "warn", saving: "working", error: "error" },
     back: { closeDialog: "info", closeNewPuzzle: "info", closeDrawer: "info", closeMarks: "info", exitSolve: "info", leaveApp: "muted" },
-    transient: { idle: "muted", shared: "info", copied: "ok", shareCancelled: "muted", shareFailed: "error", restored: "ok", updateComplete: "update", installAccepted: "ok", installDismissed: "muted" },
+    transient: {
+      idle: "muted", shared: "info", copied: "ok", shareCancelled: "muted", shareFailed: "error",
+      restored: "ok", updateComplete: "update", installAccepted: "ok", installDismissed: "muted",
+      wakeLockActive: "ok", wakeLockDisabled: "muted", wakeLockUnsupported: "warn", wakeLockReleased: "warn", wakeLockFailed: "error",
+    },
   };
   return { kind, state, label, tone: tones[kind]?.[state] || "info" };
 }

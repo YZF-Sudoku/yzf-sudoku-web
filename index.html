@@ -4909,7 +4909,7 @@
       margin-top: 4px;
     }
     .mobile-solve-drawer.mobile-marks-view .mobile-solve-drawer-grid,
-    .mobile-solve-drawer.mobile-marks-view .mobile-solve-language-row {
+    .mobile-solve-drawer.mobile-marks-view .mobile-solve-settings {
       display: none !important;
     }
     .mobile-solve-shell .manual-marks-panel.mobile-manual-marks {
@@ -5175,20 +5175,44 @@
       color: #164990;
       box-shadow: inset 0 0 0 1px rgba(52, 120, 246, 0.12);
     }
-    .mobile-solve-language-row {
+    .mobile-solve-settings {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      align-items: center;
       gap: 8px;
       margin-top: 10px;
       padding-top: 9px;
       border-top: 1px solid var(--border);
+    }
+    .mobile-solve-setting-row,
+    .mobile-solve-language-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
       color: #526278;
       font-size: 12px;
       font-weight: 750;
     }
+    .mobile-solve-setting-copy {
+      display: grid;
+      gap: 1px;
+      min-width: 0;
+    }
+    .mobile-solve-setting-copy small {
+      color: #748197;
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.25;
+    }
+    .mobile-solve-setting-row input[type="checkbox"] {
+      width: 22px;
+      height: 22px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+    .mobile-solve-setting-row input[type="checkbox"]:disabled { opacity: .45; }
     .mobile-solve-language-row select {
-      width: 100%;
+      width: min(180px, 48vw);
       min-width: 0;
       height: 36px;
       margin: 0;
@@ -5486,7 +5510,7 @@
             <div id="brandSubtitle" class="brand-subtitle">移动优先逻辑训练器</div>
           </div>
           <div class="app-status-cluster" aria-label="应用状态"><button class="app-status-button" type="button" data-app-status-kind="pwa" data-state="initializing" data-tone="working" aria-label="正在初始化离线功能" title="正在初始化离线功能"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 18.5h9.2a4.3 4.3 0 0 0 .6-8.6A6.2 6.2 0 0 0 5.4 8.4 5 5 0 0 0 7.5 18.5Z"></path></svg><span class="app-status-dot" aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="save" data-state="saved" data-tone="ok" aria-label="当前进度已保存" title="当前进度已保存"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5h11l3 3V20.5H5Z"></path><path d="M8 3.5v6h8v-5M8 20.5v-7h8v7"></path></svg><span class="app-status-dot" aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="back" data-state="leaveApp" data-tone="muted" hidden aria-label="返回" title="返回"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6"></path><path d="M5 12h9a5 5 0 0 1 5 5v1"></path></svg><span class="app-status-badge" data-app-back-badge aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="transient" data-state="idle" data-tone="ok" hidden aria-label="状态通知" title="状态通知"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12.5 10.7 15 16.5 8.8"></path><circle cx="12" cy="12" r="8.5"></circle></svg><span class="app-status-dot" aria-hidden="true"></span></button></div>
-          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260717-pwa-status-v1" target="_blank" rel="noopener">使用手册</a>
+          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260717-pwa-wakelock-icon-v2" target="_blank" rel="noopener">使用手册</a>
           <button id="btnStepExplain" class="step-explain-button" type="button" disabled title="当前没有可解释的步骤。" aria-label="当前没有可解释的步骤。">解释</button>
           <a id="techniquesLink" class="manual-link" href="./techniques.html" target="_blank" rel="noopener">技巧说明</a>
           <button id="btnMobileSolveMode" class="mobile-solve-entry" type="button" title="做题模式" aria-label="做题模式">做题</button>
@@ -5943,13 +5967,22 @@
         <button id="btnMobileSolveAnalysis" type="button">分析模式</button>
       </div>
       <div id="mobileSolveMarksDrawerHost" class="mobile-solve-marks-drawer-host" hidden></div>
-      <label class="mobile-solve-language-row">
-        <span id="mobileSolveLanguageLabel">语言</span>
-        <select id="mobileSolveLang" aria-label="语言">
-          <option value="zh">中文</option>
-          <option value="en">English</option>
-        </select>
-      </label>
+      <div class="mobile-solve-settings">
+        <label class="mobile-solve-setting-row" for="mobileSolveWakeLockToggle">
+          <span class="mobile-solve-setting-copy">
+            <span id="mobileSolveWakeLockLabel">屏幕常亮</span>
+            <small id="mobileSolveWakeLockStatus">进入做题模式后自动启用</small>
+          </span>
+          <input id="mobileSolveWakeLockToggle" type="checkbox" checked aria-checked="true" />
+        </label>
+        <label class="mobile-solve-language-row">
+          <span id="mobileSolveLanguageLabel">语言</span>
+          <select id="mobileSolveLang" aria-label="语言">
+            <option value="zh">中文</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+      </div>
     </aside>
     <div id="mobileSolveNewPuzzleBackdrop" class="mobile-solve-new-puzzle-backdrop" hidden></div>
     <section id="mobileSolveNewPuzzlePanel" class="mobile-solve-new-puzzle-panel" role="dialog" aria-modal="true" aria-labelledby="mobileSolveNewPuzzleTitle" hidden>
@@ -5973,6 +6006,6 @@
   <div id="appStatusToast" class="app-status-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=20260717-pwa-status-v1"></script>
+    <script type="module" src="./app.js?v=20260717-pwa-wakelock-icon-v2"></script>
   </body>
 </html>

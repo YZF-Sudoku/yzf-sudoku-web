@@ -17,10 +17,10 @@ import {
   appStatusDescriptor,
   difficultyDescriptor,
   difficultyLevels,
-} from "./ui-localization.js?v=20260717-pwa-status-v1";
+} from "./ui-localization.js?v=20260717-pwa-wakelock-icon-v2";
 
 const APP_VERSION = "wasm-db5fc69e13fa517a";
-const MANUAL_VERSION = "20260717-pwa-status-v1";
+const MANUAL_VERSION = "20260717-pwa-wakelock-icon-v2";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
@@ -326,6 +326,8 @@ const mobileSolveInputState = document.getElementById("mobileSolveInputState");
 const mobileSolveDrawer = document.getElementById("mobileSolveDrawer");
 const mobileSolveBackdrop = document.getElementById("mobileSolveBackdrop");
 const mobileSolveLang = document.getElementById("mobileSolveLang");
+const mobileSolveWakeLockToggle = document.getElementById("mobileSolveWakeLockToggle");
+const mobileSolveWakeLockStatus = document.getElementById("mobileSolveWakeLockStatus");
 const btnMobileSolveExit = document.getElementById("btnMobileSolveExit");
 const btnMobileSolveNewPuzzle = document.getElementById("btnMobileSolveNewPuzzle");
 const btnMobileSolveFullscreen = document.getElementById("btnMobileSolveFullscreen");
@@ -391,6 +393,12 @@ let mobileSolveMarksOpen = false;
 let mobileSolveMarksPlacement = "";
 let mobileSolveCandidatesVisible = true;
 let mobileSolveSameDigitHighlight = true;
+let mobileSolveKeepScreenAwake = true;
+let mobileSolveScreenWakeLock = null;
+let mobileSolveWakeLockRequest = null;
+let mobileSolveWakeLockGeneration = 0;
+let mobileSolveWakeLockUnexpectedRelease = false;
+let mobileSolveWakeLockFailed = false;
 let mobileSolveNewPuzzleOpen = false;
 let mobileSolvePuzzleBaselineSignature = "";
 let ocrCorrectionState = null;
@@ -753,6 +761,13 @@ for (const [key, zh, en] of [
   ["mobileSolveShowCandidates", "显示候选数", "Show candidates"],
   ["mobileSolveDisableSameDigit", "关闭同数字高亮", "Disable same-digit highlight"],
   ["mobileSolveEnableSameDigit", "开启同数字高亮", "Enable same-digit highlight"],
+  ["mobileSolveWakeLock", "屏幕常亮", "Keep screen awake"],
+  ["mobileSolveWakeLockActive", "做题时保持屏幕常亮：已启用", "Keep screen awake while solving: active"],
+  ["mobileSolveWakeLockWaiting", "进入做题模式后自动启用", "Activates automatically in Solve Mode"],
+  ["mobileSolveWakeLockOff", "已关闭；手机将按系统设置息屏", "Off; the phone may sleep normally"],
+  ["mobileSolveWakeLockReleased", "已被系统释放；关闭再开启可重试", "Released by the system; toggle off and on to retry"],
+  ["mobileSolveWakeLockFailed", "启用失败；关闭再开启可重试", "Activation failed; toggle off and on to retry"],
+  ["mobileSolveWakeLockUnsupported", "当前浏览器不支持屏幕常亮", "Screen Wake Lock is unavailable in this browser"],
   ["mobileInputState", "{mode} · {digit}", "{mode} · {digit}"],
   ["mobileSelectCellFirst", "请先选择一个单元格。", "Select a cell first."],
   ["mobileNothingToClear", "当前单元格没有可清除的内容。", "There is nothing to clear in this cell."],
@@ -15902,6 +15917,9 @@ function loadMobileSolvePreferences() {
     if (typeof saved?.sameDigitHighlight === "boolean") {
       mobileSolveSameDigitHighlight = saved.sameDigitHighlight;
     }
+    if (typeof saved?.keepScreenAwake === "boolean") {
+      mobileSolveKeepScreenAwake = saved.keepScreenAwake;
+    }
   } catch {
     // Keep defaults when storage is unavailable or an old value is malformed.
   }
@@ -15912,9 +15930,135 @@ function saveMobileSolvePreferences() {
     localStorage.setItem(MOBILE_SOLVE_PREFERENCES_KEY, JSON.stringify({
       candidatesVisible: mobileSolveCandidatesVisible,
       sameDigitHighlight: mobileSolveSameDigitHighlight,
+      keepScreenAwake: mobileSolveKeepScreenAwake,
     }));
   } catch {
     // The mode remains fully usable when persistent storage is blocked.
+  }
+}
+
+
+function mobileSolveWakeLockSupported() {
+  return Boolean(window.isSecureContext && navigator.wakeLock && typeof navigator.wakeLock.request === "function");
+}
+
+function mobileSolveWakeLockIsActive() {
+  return Boolean(mobileSolveScreenWakeLock && mobileSolveScreenWakeLock.released !== true);
+}
+
+function updateMobileSolveWakeLockUi() {
+  const supported = mobileSolveWakeLockSupported();
+  if (mobileSolveWakeLockToggle) {
+    mobileSolveWakeLockToggle.checked = mobileSolveKeepScreenAwake;
+    mobileSolveWakeLockToggle.disabled = !supported;
+    mobileSolveWakeLockToggle.setAttribute("aria-checked", mobileSolveKeepScreenAwake ? "true" : "false");
+    mobileSolveWakeLockToggle.title = ui("mobileSolveWakeLock");
+  }
+  let stateKey = "mobileSolveWakeLockWaiting";
+  if (!supported) stateKey = "mobileSolveWakeLockUnsupported";
+  else if (!mobileSolveKeepScreenAwake) stateKey = "mobileSolveWakeLockOff";
+  else if (mobileSolveWakeLockFailed) stateKey = "mobileSolveWakeLockFailed";
+  else if (mobileSolveWakeLockUnexpectedRelease) stateKey = "mobileSolveWakeLockReleased";
+  else if (mobileSolveWakeLockIsActive()) stateKey = "mobileSolveWakeLockActive";
+  if (mobileSolveWakeLockStatus) {
+    mobileSolveWakeLockStatus.textContent = ui(stateKey);
+    mobileSolveWakeLockStatus.dataset.state = stateKey;
+  }
+}
+
+async function releaseMobileSolveWakeLock(options = {}) {
+  const { announce = false } = options;
+  mobileSolveWakeLockGeneration += 1;
+  mobileSolveWakeLockUnexpectedRelease = false;
+  mobileSolveWakeLockFailed = false;
+  const sentinel = mobileSolveScreenWakeLock;
+  mobileSolveScreenWakeLock = null;
+  mobileSolveWakeLockRequest = null;
+  if (sentinel && sentinel.released !== true) {
+    try { await sentinel.release(); } catch { /* Browser already released it. */ }
+  }
+  updateMobileSolveWakeLockUi();
+  if (announce) setTransientStatus("wakeLockDisabled");
+}
+
+async function requestMobileSolveWakeLock(options = {}) {
+  const { announceFailure = true, announceSuccess = false } = options;
+  if (!mobileSolveKeepScreenAwake || !mobileSolveActive || document.visibilityState !== "visible") {
+    updateMobileSolveWakeLockUi();
+    return false;
+  }
+  if (mobileSolveWakeLockIsActive()) {
+    updateMobileSolveWakeLockUi();
+    return true;
+  }
+  if (mobileSolveWakeLockRequest) return mobileSolveWakeLockRequest;
+  if (!mobileSolveWakeLockSupported()) {
+    updateMobileSolveWakeLockUi();
+    if (announceFailure) setTransientStatus("wakeLockUnsupported", {}, { duration: 3600 });
+    return false;
+  }
+
+  const generation = ++mobileSolveWakeLockGeneration;
+  mobileSolveWakeLockFailed = false;
+  const request = (async () => {
+    try {
+      const sentinel = await navigator.wakeLock.request("screen");
+      const stillWanted = generation === mobileSolveWakeLockGeneration
+        && mobileSolveKeepScreenAwake
+        && mobileSolveActive
+        && document.visibilityState === "visible";
+      if (!stillWanted) {
+        try { await sentinel.release(); } catch { /* Ignore a stale request. */ }
+        return false;
+      }
+      mobileSolveScreenWakeLock = sentinel;
+      mobileSolveWakeLockUnexpectedRelease = false;
+      mobileSolveWakeLockFailed = false;
+      sentinel.addEventListener("release", () => {
+        const wasCurrent = mobileSolveScreenWakeLock === sentinel;
+        if (wasCurrent) mobileSolveScreenWakeLock = null;
+        const unexpected = wasCurrent
+          && mobileSolveKeepScreenAwake
+          && mobileSolveActive
+          && document.visibilityState === "visible";
+        mobileSolveWakeLockUnexpectedRelease = unexpected;
+        updateMobileSolveWakeLockUi();
+        if (unexpected) setTransientStatus("wakeLockReleased", {}, { duration: 4200 });
+      }, { once: true });
+      updateMobileSolveWakeLockUi();
+      if (announceSuccess) setTransientStatus("wakeLockActive");
+      return true;
+    } catch (error) {
+      if (generation === mobileSolveWakeLockGeneration) {
+        mobileSolveScreenWakeLock = null;
+        mobileSolveWakeLockFailed = true;
+      }
+      updateMobileSolveWakeLockUi();
+      if (announceFailure) {
+        setTransientStatus("wakeLockFailed", {
+          message: error instanceof Error ? error.message : String(error),
+        }, { duration: 4200 });
+      }
+      return false;
+    } finally {
+      if (mobileSolveWakeLockRequest === request) mobileSolveWakeLockRequest = null;
+    }
+  })();
+  mobileSolveWakeLockRequest = request;
+  return request;
+}
+
+async function setMobileSolveKeepScreenAwake(enabled, options = {}) {
+  mobileSolveKeepScreenAwake = Boolean(enabled);
+  saveMobileSolvePreferences();
+  updateMobileSolveWakeLockUi();
+  if (mobileSolveKeepScreenAwake) {
+    await requestMobileSolveWakeLock({
+      announceFailure: options.announce !== false,
+      announceSuccess: options.announce !== false,
+    });
+  } else {
+    await releaseMobileSolveWakeLock({ announce: options.announce !== false });
   }
 }
 
@@ -15983,6 +16127,7 @@ function updateMobileSolvePreferenceButtons() {
     btnMobileSolveSameDigit.setAttribute("aria-label", label);
     btnMobileSolveSameDigit.setAttribute("aria-pressed", mobileSolveSameDigitHighlight ? "true" : "false");
   }
+  updateMobileSolveWakeLockUi();
 }
 
 function applyMobileSolvePreferences() {
@@ -16278,6 +16423,8 @@ function updateMobileSolveLanguage() {
   setTextById("btnMobileSolveInput", ui("mobileSolveInput"));
   setTextById("btnMobileSolveAnalysis", ui("mobileSolveAnalysis"));
   setTextById("mobileSolveLanguageLabel", ui("mobileSolveLanguage"));
+  setTextById("mobileSolveWakeLockLabel", ui("mobileSolveWakeLock"));
+  updateMobileSolveWakeLockUi();
   mobileSolveShell?.setAttribute("aria-label", ui("mobileSolveMode"));
   mobileSolveShell?.querySelector(".mobile-solve-actions")?.setAttribute("aria-label", ui("mobileSolveActions"));
   mobileSolveDrawer?.setAttribute("aria-label", ui("mobileSolveMoreTitle"));
@@ -16393,6 +16540,7 @@ function enterMobileSolveMode() {
   if (!mobileSolveShell || !boardStage || !numpad) return false;
   if (mobileSolveActive) {
     scheduleMobileSolveLayout();
+    requestMobileSolveWakeLock({ announceFailure: false }).catch(() => {});
     return true;
   }
   ensureMobileSolveHomeMarkers();
@@ -16414,6 +16562,7 @@ function enterMobileSolveMode() {
   scheduleMobileSolveLayout();
   window.setTimeout(scheduleMobileSolveLayout, 140);
   updateAppBackStatus();
+  requestMobileSolveWakeLock({ announceFailure: true }).catch(() => {});
   return true;
 }
 
@@ -16428,6 +16577,7 @@ async function exitMobileSolveMode(options = {}) {
   restoreMobileSolveManualMarks();
   clearMobileSolveDigitHighlights();
   mobileSolveActive = false;
+  await releaseMobileSolveWakeLock();
   syncMobileSolveCompletedDigitButtons();
   mobileSolveShell.hidden = true;
   mobileSolveShell.style.removeProperty("left");
@@ -16524,6 +16674,9 @@ function installMobileSolveMode() {
   btnMobileSolveInput?.addEventListener("click", openPuzzleInputFromMobile);
   btnMobileSolveCandidates?.addEventListener("click", toggleMobileSolveCandidates);
   btnMobileSolveSameDigit?.addEventListener("click", toggleMobileSolveSameDigitHighlight);
+  mobileSolveWakeLockToggle?.addEventListener("change", () => {
+    setMobileSolveKeepScreenAwake(mobileSolveWakeLockToggle.checked).catch(() => {});
+  });
   btnMobileSolveAnalysis?.addEventListener("click", () => exitMobileSolveMode());
   mobileSolveLang?.addEventListener("change", () => {
     lang.value = mobileSolveLang.value;
@@ -16896,7 +17049,12 @@ btnClearSavedSession?.addEventListener("click", clearSavedAppSession);
 window.addEventListener("beforeunload", flushAppSessionSave);
 window.addEventListener("pagehide", flushAppSessionSave);
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") flushAppSessionSave();
+  if (document.visibilityState === "hidden") {
+    flushAppSessionSave();
+    updateMobileSolveWakeLockUi();
+  } else if (mobileSolveActive && mobileSolveKeepScreenAwake) {
+    requestMobileSolveWakeLock({ announceFailure: false }).catch(() => {});
+  }
 });
 
 installDynamicBoardSizing();

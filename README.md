@@ -58,6 +58,15 @@ On phones and narrow touch devices, use the **Solve / 做题** button in the boa
 
 The active puzzle, selected digit, input mode, undo/redo history, and language are preserved when rotating the device or returning to analysis mode.
 
+### Screen Wake Lock
+
+Solve Mode keeps the screen awake by default through the browser Screen Wake Lock API. The toggle is available in **More / 更多** and is stored with the other mobile solve preferences.
+
+- The lock is requested only while Solve Mode is active and the page is visible.
+- It is released when leaving Solve Mode.
+- Browsers release it when the app goes into the background; YZF requests it again after returning to the foreground.
+- HTTPS, localhost, or an installed PWA is required. Battery saver or device policy may still reject the request.
+
 ## WebAssembly Solver
 
 The Sudoku solving engine runs in the browser through WebAssembly.

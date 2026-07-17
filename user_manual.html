@@ -481,7 +481,7 @@
 <h1>YZF Sudoku 使用手册 / User Manual</h1>
 <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
 <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-<div class="meta">Version: Manual v2.7 · Updated: 2026-07-17</div>
+<div class="meta">Version: Manual v2.8 · Updated: 2026-07-17</div>
 </div>
 <div aria-label="Manual language view / 手册语言视图" class="manual-language-toolbar" role="group">
 <button aria-pressed="true" data-manual-lang-button="bilingual" type="button">双语 / Bilingual</button>
@@ -1729,7 +1729,7 @@
 <li><strong>清除：</strong>清除当前选中格的大数字；候选模式下可清除当前选中的候选。</li>
 <li><strong>撤销/重做：</strong>与主界面共用历史。</li>
 <li><strong>标记：</strong>打开完整手工标记面板。</li>
-<li><strong>更多：</strong>打开提示、应用、可选步骤、题面输入、候选显示、同数字高亮、全屏、分析模式和语言。</li>
+<li><strong>更多：</strong>打开提示、应用、可选步骤、题面输入、候选显示、同数字高亮、屏幕常亮、全屏、分析模式和语言。</li>
 </ul>
 <h3>标题栏状态图标</h3>
 <ul>
@@ -1765,12 +1765,14 @@
 <li><strong>题面输入：</strong>退出做题布局后展开输入面板并聚焦文本框。</li>
 <li><strong>隐藏/显示候选数：</strong>只改变显示，不删除候选。</li>
 <li><strong>关闭/开启同数字高亮：</strong>根据当前数字盘数字，高亮相同大数字。</li>
+<li><strong>屏幕常亮：</strong>默认开启。进入做题模式时申请 Screen Wake Lock，退出做题模式时释放；切到后台后浏览器会自动释放，重新回到前台时程序会再次申请。关闭该开关后按手机系统的屏保时间正常息屏。</li>
 <li><strong>全屏：</strong>调用浏览器 Fullscreen API。</li>
 <li><strong>分析模式：</strong>退出专用做题界面，返回完整分析 UI。</li>
 </ul>
 <h3>屏幕方向、图片与缓存</h3>
 <p>横屏时盘面在左、控制区在右；竖屏时纵向排列并按可用高度缩放。普通全屏在小屏/触屏设备上可能自动进入做题模式，OCR 校正全屏除外。</p>
 <p>手机没有稳定的 <span class="kbd">Ctrl</span>+<span class="kbd">V</span>，请使用“选择图片识别”或“拍照识别”。Chrome Android 没有完全等同于 <span class="kbd">Ctrl</span>+<span class="kbd">F5</span> 的快捷键；升级覆盖包后若仍显示旧界面，可关闭页面重新打开，或清除该站点缓存。</p>
+<div class="note">屏幕常亮需要 HTTPS、localhost 或已安装 PWA 等安全上下文。省电模式、低电量、浏览器或 MagicOS 系统策略仍可能拒绝或临时撤销锁；程序会显示失败提示，但不会修改系统屏保设置。</div>
 </div>
 <div class="en">
 <p>At widths up to about 900px or with a coarse/touch pointer, the top bar shows Solve. It moves the real board and number pad into a fixed viewport rather than cloning them, so edits, Undo, hints, and analysis remain synchronized.</p>
@@ -1790,7 +1792,7 @@
 <li><strong>Clear:</strong> clears the selected user value, or the selected candidate in Candidate mode.</li>
 <li><strong>Undo/Redo:</strong> shares history with the main interface.</li>
 <li><strong>Marks:</strong> opens the full Manual Marks panel.</li>
-<li><strong>More:</strong> opens Hint, Apply, Available Steps, Puzzle Input, candidate visibility, same-digit highlighting, Fullscreen, Analysis Mode, and language.</li>
+<li><strong>More:</strong> opens Hint, Apply, Available Steps, Puzzle Input, candidate visibility, same-digit highlighting, Screen Wake Lock, Fullscreen, Analysis Mode, and language.</li>
 </ul>
 <h3>Title-Bar Status Icons</h3>
 <ul>
@@ -1825,12 +1827,14 @@
 <li><strong>Puzzle Input:</strong> leaves Solve Mode, opens the input panel, and focuses the text area.</li>
 <li><strong>Hide/Show Candidates:</strong> changes display only.</li>
 <li><strong>Disable/Enable Same-Digit Highlight:</strong> highlights large digits matching the current pad digit.</li>
+<li><strong>Keep Screen Awake:</strong> enabled by default. Solve Mode requests a Screen Wake Lock and releases it when Solve Mode closes. Browsers release it in the background; the app requests it again after returning to the foreground. Turn the switch off to use the phone's normal sleep timeout.</li>
 <li><strong>Fullscreen:</strong> calls the browser Fullscreen API.</li>
 <li><strong>Analysis Mode:</strong> exits the dedicated solve interface.</li>
 </ul>
 <h3>Orientation, Images, and Cache</h3>
 <p>Landscape places board and controls side by side; portrait stacks and scales them. Normal fullscreen may enter Solve Mode automatically on small/touch devices; OCR correction fullscreen is exempt.</p>
 <p>Mobile has no reliable <span class="kbd">Ctrl</span>+<span class="kbd">V</span>; use Select Image or Take Photo. Chrome Android has no exact <span class="kbd">Ctrl</span>+<span class="kbd">F5</span>. After installing an overlay package, close/reopen the page or clear the site cache if the old UI remains.</p>
+<div class="note">Screen Wake Lock requires a secure context such as HTTPS, localhost, or an installed PWA. Battery saver, low battery, browser policy, or MagicOS may still reject or release it. The app reports the failure but never changes the system sleep timeout.</div>
 </div>
 </div>
 </section>
@@ -1923,6 +1927,7 @@
 <tr><td>离线打开分享链接显示空白或旧题</td><td>离线包尚未完整就绪，或旧 Service Worker 仍在等待更新。</td><td>联网打开一次，等待绿色云朵；若云朵为紫色，点击应用新版本后再断网测试。</td></tr>
 <tr><td>安卓返回键直接退出应用</td><td>页面未加载本版返回层级守卫，或浏览器仍使用旧缓存。</td><td>联网打开并应用紫色更新；新版会先关闭弹窗、抽屉、标记和做题模式。</td></tr>
 <tr><td>软盘长期为橙色或红色</td><td>本地存储被禁用、空间不足，或隐私模式阻止保存。</td><td>点击软盘立即重试；允许站点存储并退出隐私模式。重要题面先手工导出。</td></tr>
+<tr><td>做题时仍然自动息屏</td><td>“屏幕常亮”被关闭、页面不是安全上下文，或省电模式/MagicOS 撤销了 Screen Wake Lock。</td><td>在“更多”中开启“屏幕常亮”，通过 HTTPS、localhost 或已安装 PWA 运行；关闭省电模式后重新进入做题模式。若提示不支持，只能调整系统屏保时间。</td></tr>
 <tr><td>加载总是用了剪贴板里的旧题</td><td>“剪贴板优先”已勾选。</td><td>取消勾选，或先更新剪贴板内容。</td></tr>
 <tr><td>图片识别提示 <code>no available backend found</code></td><td>ORT runtime/WASM 路径错误或 Standalone 内联不完整。</td><td>普通版检查 OCR runtime 资源；Standalone 重新打包。</td></tr>
 <tr><td>OCR 下载反复从头开始</td><td>服务器不支持 Range、缓存被禁用，或隐私模式清理了本地数据。</td><td>使用支持 Range 的静态托管，允许站点存储；网络恢复后重试。</td></tr>
