@@ -6,7 +6,12 @@
   <meta name="color-scheme" content="only light" />
   <meta name="theme-color" content="#eef2f7" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <link rel="icon" href="data:," />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="YZF Sudoku" />
+  <link rel="manifest" href="./app.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
   <title>YZF_Sudoku</title>
   <style>
     :root {
@@ -72,6 +77,7 @@
       justify-content: flex-end;
       gap: 0;
       min-width: 0;
+      margin-right: auto;
     }
     .brand-title {
       font-size: 15px;
@@ -82,6 +88,143 @@
     }
     .brand-subtitle {
       display: none;
+    }
+
+    .app-status-cluster {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 3px;
+      min-width: 0;
+      flex: 0 0 auto;
+    }
+    .app-status-button,
+    .app-status-back-control {
+      --status-color: #64748b;
+      position: relative;
+      display: inline-grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      min-width: 30px;
+      min-height: 30px;
+      margin: 0;
+      padding: 4px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--status-color);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .app-status-button:hover,
+    .app-status-button:focus-visible,
+    .app-status-back-control:hover,
+    .app-status-back-control:focus-visible {
+      border-color: color-mix(in srgb, var(--status-color) 38%, #cbd5e1);
+      background: color-mix(in srgb, var(--status-color) 10%, #fff);
+      color: var(--status-color);
+      outline: none;
+    }
+    .app-status-button[hidden] { display: none !important; }
+    .app-status-button svg,
+    .app-status-back-control svg {
+      width: 21px;
+      height: 21px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+    .app-status-button[data-tone="ok"], .app-status-back-control[data-tone="ok"] { --status-color: #16a34a; }
+    .app-status-button[data-tone="working"], .app-status-back-control[data-tone="working"] { --status-color: #1976d2; }
+    .app-status-button[data-tone="warn"], .app-status-back-control[data-tone="warn"] { --status-color: #d97706; }
+    .app-status-button[data-tone="error"], .app-status-back-control[data-tone="error"] { --status-color: #dc2626; }
+    .app-status-button[data-tone="update"], .app-status-back-control[data-tone="update"] { --status-color: #9333ea; }
+    .app-status-button[data-tone="info"], .app-status-back-control[data-tone="info"] { --status-color: #2563eb; }
+    .app-status-dot {
+      position: absolute;
+      right: 1px;
+      bottom: 1px;
+      width: 8px;
+      height: 8px;
+      border: 1.5px solid #fff;
+      border-radius: 999px;
+      background: var(--status-color);
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-color) 28%, transparent);
+      pointer-events: none;
+    }
+    .app-status-button[data-tone="working"] .app-status-dot {
+      width: 9px;
+      height: 9px;
+      border: 2px solid color-mix(in srgb, var(--status-color) 24%, #fff);
+      border-top-color: var(--status-color);
+      background: #fff;
+      animation: yzf-status-spin .85s linear infinite;
+    }
+    .app-status-button[data-state="unsupported"] .app-status-dot,
+    .app-status-button[data-state="leaveApp"] .app-status-dot { opacity: .42; }
+    .app-status-badge {
+      position: absolute;
+      right: -2px;
+      top: -3px;
+      min-width: 14px;
+      height: 14px;
+      padding: 0 3px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #fff;
+      border-radius: 999px;
+      background: var(--status-color);
+      color: #fff;
+      font-size: 8px;
+      font-weight: 850;
+      line-height: 1;
+      pointer-events: none;
+    }
+    .app-status-badge:empty { display: none; }
+    @keyframes yzf-status-spin { to { transform: rotate(360deg); } }
+    .app-status-toast {
+      position: fixed;
+      z-index: 20050;
+      left: 50%;
+      bottom: max(12px, env(safe-area-inset-bottom));
+      max-width: min(92vw, 620px);
+      transform: translate(-50%, 14px);
+      padding: 9px 13px;
+      border: 1px solid color-mix(in srgb, var(--toast-color, #2563eb) 42%, #cbd5e1);
+      border-radius: 999px;
+      background: rgba(255,255,255,.97);
+      color: #1e293b;
+      box-shadow: 0 8px 28px rgba(15,23,42,.18);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.3;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .16s ease, transform .16s ease;
+    }
+    .app-status-toast[data-visible="true"] {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    .app-status-toast[data-tone="ok"] { --toast-color: #16a34a; }
+    .app-status-toast[data-tone="warn"] { --toast-color: #d97706; }
+    .app-status-toast[data-tone="error"] { --toast-color: #dc2626; }
+    .app-status-toast[data-tone="update"] { --toast-color: #9333ea; }
+    .app-status-toast[data-tone="working"] { --toast-color: #1976d2; }
+    .app-status-visually-hidden {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0,0,0,0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
     }
 
     .manual-link {
@@ -4536,7 +4679,7 @@
     .mobile-solve-topbar {
       grid-area: mobile-top;
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
       align-items: center;
       gap: 6px;
       min-height: 38px;
@@ -4558,6 +4701,34 @@
       font-weight: 700;
       line-height: 1.15;
     }
+    .mobile-solve-topbar .app-status-cluster {
+      gap: 1px;
+    }
+    .mobile-solve-topbar .app-status-button,
+    .mobile-solve-topbar .app-status-back-control {
+      width: 28px;
+      height: 30px;
+      min-width: 28px;
+      min-height: 30px;
+      padding: 4px;
+    }
+    .mobile-solve-topbar .app-status-button svg,
+    .mobile-solve-topbar .app-status-back-control svg {
+      width: 20px;
+      height: 20px;
+    }
+    .mobile-solve-topbar .app-status-back-control {
+      border-color: rgba(148,163,184,.45);
+      background: rgba(248,250,252,.84);
+    }
+    @media (max-width: 390px) {
+      .mobile-solve-topbar { gap: 3px; padding-inline: 3px; }
+      .mobile-solve-topbar .app-status-cluster { gap: 0; }
+      .mobile-solve-topbar .app-status-button { width: 25px; min-width: 25px; padding: 3px; }
+      .mobile-solve-topbar .app-status-button svg { width: 18px; height: 18px; }
+      .mobile-solve-title { font-size: 13px; }
+    }
+
     .mobile-solve-title-wrap {
       min-width: 0;
       text-align: center;
@@ -5314,7 +5485,8 @@
             <div class="brand-title">YZF_Sudoku</div>
             <div id="brandSubtitle" class="brand-subtitle">移动优先逻辑训练器</div>
           </div>
-          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260709-manual-v2.5-tlg-input-guard" target="_blank" rel="noopener">使用手册</a>
+          <div class="app-status-cluster" aria-label="应用状态"><button class="app-status-button" type="button" data-app-status-kind="pwa" data-state="initializing" data-tone="working" aria-label="正在初始化离线功能" title="正在初始化离线功能"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 18.5h9.2a4.3 4.3 0 0 0 .6-8.6A6.2 6.2 0 0 0 5.4 8.4 5 5 0 0 0 7.5 18.5Z"></path></svg><span class="app-status-dot" aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="save" data-state="saved" data-tone="ok" aria-label="当前进度已保存" title="当前进度已保存"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5h11l3 3V20.5H5Z"></path><path d="M8 3.5v6h8v-5M8 20.5v-7h8v7"></path></svg><span class="app-status-dot" aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="back" data-state="leaveApp" data-tone="muted" hidden aria-label="返回" title="返回"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6"></path><path d="M5 12h9a5 5 0 0 1 5 5v1"></path></svg><span class="app-status-badge" data-app-back-badge aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="transient" data-state="idle" data-tone="ok" hidden aria-label="状态通知" title="状态通知"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12.5 10.7 15 16.5 8.8"></path><circle cx="12" cy="12" r="8.5"></circle></svg><span class="app-status-dot" aria-hidden="true"></span></button></div>
+          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260717-pwa-status-v1" target="_blank" rel="noopener">使用手册</a>
           <button id="btnStepExplain" class="step-explain-button" type="button" disabled title="当前没有可解释的步骤。" aria-label="当前没有可解释的步骤。">解释</button>
           <a id="techniquesLink" class="manual-link" href="./techniques.html" target="_blank" rel="noopener">技巧说明</a>
           <button id="btnMobileSolveMode" class="mobile-solve-entry" type="button" title="做题模式" aria-label="做题模式">做题</button>
@@ -5735,11 +5907,12 @@
 
   <section id="mobileSolveShell" class="mobile-solve-shell is-portrait" hidden aria-label="手机做题模式">
     <header class="mobile-solve-topbar">
-      <button id="btnMobileSolveExit" type="button">返回</button>
+      <button id="btnMobileSolveExit" class="app-status-back-control" type="button" data-state="exitSolve" data-tone="info" title="返回" aria-label="返回"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6"></path><path d="M5 12h14"></path></svg><span id="mobileBackDepthBadge" class="app-status-badge" aria-hidden="true"></span><span id="mobileSolveExitText" class="app-status-visually-hidden">返回</span></button>
       <div class="mobile-solve-title-wrap">
         <div id="mobileSolveTitle" class="mobile-solve-title">做题模式</div>
         <div id="mobileSolveInputState" class="mobile-solve-input-state">出数 · 1</div>
       </div>
+      <div class="app-status-cluster" aria-label="应用状态"><button class="app-status-button" type="button" data-app-status-kind="pwa" data-state="initializing" data-tone="working" aria-label="正在初始化离线功能" title="正在初始化离线功能"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 18.5h9.2a4.3 4.3 0 0 0 .6-8.6A6.2 6.2 0 0 0 5.4 8.4 5 5 0 0 0 7.5 18.5Z"></path></svg><span class="app-status-dot" aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="save" data-state="saved" data-tone="ok" aria-label="当前进度已保存" title="当前进度已保存"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5h11l3 3V20.5H5Z"></path><path d="M8 3.5v6h8v-5M8 20.5v-7h8v7"></path></svg><span class="app-status-dot" aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="transient" data-state="idle" data-tone="ok" hidden aria-label="状态通知" title="状态通知"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12.5 10.7 15 16.5 8.8"></path><circle cx="12" cy="12" r="8.5"></circle></svg><span class="app-status-dot" aria-hidden="true"></span></button></div>
       <button id="btnMobileSolveNewPuzzle" type="button" aria-expanded="false">新题</button>
     </header>
     <div id="mobileSolveBoardHost" class="mobile-solve-board-host"></div>
@@ -5797,9 +5970,9 @@
     </section>
   </section>
 
-
+  <div id="appStatusToast" class="app-status-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=20260716-difficulty-i18n-v1"></script>
+    <script type="module" src="./app.js?v=20260717-pwa-status-v1"></script>
   </body>
 </html>

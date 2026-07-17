@@ -423,6 +423,115 @@ export function localizeDifficulty(value, language = "zh", options = {}) {
   return options.withRange ? item.label : item.name;
 }
 
+const APP_STATUS_LABELS = {
+  zh: {
+    pwa: {
+      unsupported: "当前浏览器不支持 PWA 离线安装。",
+      initializing: "正在初始化离线功能…",
+      downloading: "正在准备离线资源 {loaded} / {total} MB（{done}/{count}）",
+      ready: "离线资源已准备完成。",
+      installed: "已在应用模式运行，离线资源已准备完成。",
+      installable: "离线资源已准备完成；点击可安装应用。",
+      offlineReady: "当前处于离线状态，可完整使用。",
+      offlinePartial: "当前处于离线状态，但离线资源尚未准备完整。",
+      error: "离线资源准备失败：{message}",
+      updateReady: "新版本已准备完成；点击图标立即更新。",
+      updating: "正在切换到新版本…",
+      checking: "正在检查离线资源和新版本…",
+      incomplete: "离线资源不完整；点击图标重新下载。",
+    },
+    save: {
+      saved: "当前进度已保存。",
+      dirty: "当前进度有尚未保存的更改。",
+      saving: "正在保存当前进度…",
+      error: "当前进度保存失败：{message}",
+    },
+    back: {
+      closeDialog: "返回键将关闭当前弹窗。",
+      closeNewPuzzle: "返回键将关闭新题面板。",
+      closeDrawer: "返回键将关闭更多功能面板。",
+      closeMarks: "返回键将退出手工标记面板。",
+      exitSolve: "返回键将退出做题模式。",
+      leaveApp: "当前位于根界面；返回键将离开应用。",
+    },
+    transient: {
+      idle: "状态通知",
+      shared: "已打开系统分享面板。",
+      copied: "分享链接已复制到剪贴板。",
+      shareCancelled: "已取消分享。",
+      shareFailed: "分享失败：{message}",
+      restored: "已恢复上次做题进度。",
+      updateComplete: "新版本已加载完成。",
+      installAccepted: "应用安装请求已提交。",
+      installDismissed: "已取消安装。",
+    },
+  },
+  en: {
+    pwa: {
+      unsupported: "PWA offline installation is unavailable in this browser.",
+      initializing: "Initializing offline support…",
+      downloading: "Preparing offline resources {loaded} / {total} MB ({done}/{count})",
+      ready: "Offline resources are ready.",
+      installed: "Running as an installed app; offline resources are ready.",
+      installable: "Offline resources are ready; tap to install the app.",
+      offlineReady: "You are offline and all features remain available.",
+      offlinePartial: "You are offline, but offline resources are not complete yet.",
+      error: "Offline resource setup failed: {message}",
+      updateReady: "A new version is ready; tap the icon to update.",
+      updating: "Switching to the new version…",
+      checking: "Checking offline resources and updates…",
+      incomplete: "Offline resources are incomplete; tap the icon to download them again.",
+    },
+    save: {
+      saved: "Current progress is saved.",
+      dirty: "Current progress has unsaved changes.",
+      saving: "Saving current progress…",
+      error: "Saving current progress failed: {message}",
+    },
+    back: {
+      closeDialog: "Back will close the current dialog.",
+      closeNewPuzzle: "Back will close the New Puzzle panel.",
+      closeDrawer: "Back will close the More Tools drawer.",
+      closeMarks: "Back will leave the Manual Marks panel.",
+      exitSolve: "Back will exit Solve Mode.",
+      leaveApp: "You are at the root screen; Back will leave the app.",
+    },
+    transient: {
+      idle: "Status notification",
+      shared: "The system share sheet is open.",
+      copied: "The share link was copied to the clipboard.",
+      shareCancelled: "Sharing was cancelled.",
+      shareFailed: "Sharing failed: {message}",
+      restored: "The previous solving session was restored.",
+      updateComplete: "The new version has loaded.",
+      installAccepted: "The app installation request was submitted.",
+      installDismissed: "Installation was cancelled.",
+    },
+  },
+};
+
+function formatAppStatusText(template, values = {}) {
+  return String(template || "").replace(/\{([A-Za-z0-9_]+)\}/g, (_match, key) => String(values[key] ?? ""));
+}
+
+export function appStatusDescriptor(kind, state, language = "zh", values = {}) {
+  const locale = normalizeLanguage(language);
+  const group = APP_STATUS_LABELS[locale]?.[kind] || APP_STATUS_LABELS.zh[kind] || {};
+  const fallback = APP_STATUS_LABELS.en?.[kind]?.[state] || `${kind}:${state}`;
+  const label = formatAppStatusText(group[state] || fallback, values);
+  const tones = {
+    pwa: {
+      unsupported: "muted", initializing: "working", downloading: "working", checking: "working",
+      ready: "ok", installed: "ok", installable: "ok", offlineReady: "warn",
+      offlinePartial: "error", incomplete: "warn", error: "error", updateReady: "update", updating: "working",
+    },
+    save: { saved: "ok", dirty: "warn", saving: "working", error: "error" },
+    back: { closeDialog: "info", closeNewPuzzle: "info", closeDrawer: "info", closeMarks: "info", exitSolve: "info", leaveApp: "muted" },
+    transient: { idle: "muted", shared: "info", copied: "ok", shareCancelled: "muted", shareFailed: "error", restored: "ok", updateComplete: "update", installAccepted: "ok", installDismissed: "muted" },
+  };
+  return { kind, state, label, tone: tones[kind]?.[state] || "info" };
+}
+
 const FORMAT_LABELS = {
   zh: {
     puzzle81: "81 位题面",

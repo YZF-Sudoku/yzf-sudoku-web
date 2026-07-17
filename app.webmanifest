@@ -1,0 +1,21 @@
+{
+  "id": "./",
+  "name": "YZF Sudoku",
+  "short_name": "YZF Sudoku",
+  "description": "Advanced Sudoku solving, training, rating, OCR and logic analysis that runs locally in your browser.",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "theme_color": "#163d5e",
+  "background_color": "#eef2f7",
+  "categories": ["games", "education", "utilities"],
+  "icons": [
+    {"src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "./icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

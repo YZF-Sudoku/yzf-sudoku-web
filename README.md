@@ -157,3 +157,23 @@ The OCR model files are credited to **Alex Kubiesa** and are not claimed as orig
 ONNX Runtime Web files remain third-party runtime components.
 
 Project-specific frontend logic, documentation, integration code, and generated web runtime packaging belong to the YZF Sudoku project unless otherwise stated.
+
+## PWA full-offline build
+
+The regular `web-app` deployment is an installable PWA. Before packaging or
+publishing, regenerate the atomic offline asset manifest after every frontend,
+WASM, Worker, OCR, manual, icon, or model change:
+
+```bash
+python3 tools/generate_pwa_assets.py
+```
+
+Deploy `app.webmanifest`, `sw.js`, `pwa-assets.js`, `icons/`, and every file
+listed by `pwa-assets.js` together. The service worker installs a release only
+after all listed resources are cached. Query-bearing shared puzzle URLs reuse
+the cached `index.html` app shell instead of creating one cache entry per
+puzzle.
+
+For local PWA testing use `http://localhost` (treated as a secure context) or
+HTTPS. Direct `file://` opening remains the job of `index_standalone.html` and
+does not register a service worker.

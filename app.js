@@ -14,12 +14,13 @@ import {
   buildAuditedTechniqueGuide,
 } from "./step-explanation.js?v=20260713-dynamic-tutorial-audit-v8";
 import {
+  appStatusDescriptor,
   difficultyDescriptor,
   difficultyLevels,
-} from "./ui-localization.js?v=20260716-difficulty-i18n-v1";
+} from "./ui-localization.js?v=20260717-pwa-status-v1";
 
 const APP_VERSION = "wasm-db5fc69e13fa517a";
-const MANUAL_VERSION = "20260709-manual-v2.5-tlg-input-guard";
+const MANUAL_VERSION = "20260717-pwa-status-v1";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
@@ -133,6 +134,16 @@ const SHARED_PUZZLE_S1_TEXT_LENGTH = 145;
 const EXPORT_FORMAT_STORAGE_KEY = "yzf_sudoku_export_format_v1";
 let appSessionSaveTimer = 0;
 let appSessionRestoring = false;
+let appSaveStatus = { state: "saved", values: {} };
+let pwaStatus = { state: "initializing", values: {} };
+let pwaRegistration = null;
+let pwaInstallPrompt = null;
+let pwaCacheReady = false;
+let pwaReloadRequested = false;
+let transientStatus = { state: "", values: {} };
+let transientStatusTimer = 0;
+let appBackGuardInstalled = false;
+let appBackPopHandling = false;
 
 
 function loadScriptOnce(src) {
@@ -338,6 +349,9 @@ const btnMobileSolveInput = document.getElementById("btnMobileSolveInput");
 const btnMobileSolveCandidates = document.getElementById("btnMobileSolveCandidates");
 const btnMobileSolveSameDigit = document.getElementById("btnMobileSolveSameDigit");
 const btnMobileSolveAnalysis = document.getElementById("btnMobileSolveAnalysis");
+const appStatusControls = [...document.querySelectorAll("[data-app-status-kind]")];
+const appStatusToast = document.getElementById("appStatusToast");
+const mobileBackDepthBadge = document.getElementById("mobileBackDepthBadge");
 
 let engine = null;
 let trainingTextFilter = { includeText: "", excludeText: "", caseSensitive: false };
@@ -1341,6 +1355,357 @@ function uif(key, values = {}) {
   return ui(key).replace(/\{(\w+)\}/g, (_, name) => values[name] ?? "");
 }
 
+function appStatusLanguage() {
+  return lang?.value === "en" ? "en" : "zh";
+}
+
+function renderAppStatus(kind, state, values = {}) {
+  const descriptor = appStatusDescriptor(kind, state, appStatusLanguage(), values);
+  for (const control of appStatusControls) {
+    if (control.dataset.appStatusKind !== kind) continue;
+    control.dataset.state = state;
+    control.dataset.tone = descriptor.tone;
+    control.title = descriptor.label;
+    control.setAttribute("aria-label", descriptor.label);
+    if (kind === "transient") control.hidden = !state || state === "idle";
+    if (kind === "back") control.hidden = state === "leaveApp";
+    const badge = control.querySelector("[data-app-back-badge]");
+    if (badge && kind === "back") badge.textContent = values.depth > 1 ? String(values.depth) : "";
+  }
+  if (kind === "back" && btnMobileSolveExit) {
+    btnMobileSolveExit.dataset.state = state;
+    btnMobileSolveExit.dataset.tone = descriptor.tone;
+    btnMobileSolveExit.title = descriptor.label;
+    btnMobileSolveExit.setAttribute("aria-label", descriptor.label);
+    if (mobileBackDepthBadge) mobileBackDepthBadge.textContent = values.depth > 1 ? String(values.depth) : "";
+  }
+  return descriptor;
+}
+
+function showAppStatusToast(kind, state, values = {}, options = {}) {
+  const descriptor = renderAppStatus(kind, state, values);
+  if (appStatusToast) {
+    appStatusToast.textContent = descriptor.label;
+    appStatusToast.dataset.tone = descriptor.tone;
+    appStatusToast.dataset.visible = "true";
+    window.clearTimeout(transientStatusTimer);
+    transientStatusTimer = window.setTimeout(() => {
+      appStatusToast.dataset.visible = "false";
+      if (kind === "transient") {
+        transientStatus = { state: "", values: {} };
+        renderAppStatus("transient", "idle", {});
+      }
+    }, Math.max(1200, Number(options.duration || 2800)));
+  }
+  return descriptor;
+}
+
+function setTransientStatus(state, values = {}, options = {}) {
+  transientStatus = { state, values };
+  return showAppStatusToast("transient", state, values, options);
+}
+
+function setAppSaveStatus(state, values = {}) {
+  appSaveStatus = { state, values };
+  return renderAppStatus("save", state, values);
+}
+
+function megabytes(value) {
+  return (Math.max(0, Number(value) || 0) / 1_000_000).toFixed(1);
+}
+
+function pwaInstalledDisplayMode() {
+  return window.matchMedia?.("(display-mode: standalone)")?.matches === true
+    || window.matchMedia?.("(display-mode: fullscreen)")?.matches === true
+    || window.navigator.standalone === true;
+}
+
+function effectiveReadyPwaState() {
+  if (!navigator.onLine) return pwaCacheReady ? "offlineReady" : "offlinePartial";
+  if (pwaInstalledDisplayMode()) return "installed";
+  if (pwaInstallPrompt) return "installable";
+  return "ready";
+}
+
+function setPwaStatus(state, values = {}) {
+  pwaStatus = { state, values };
+  return renderAppStatus("pwa", state, values);
+}
+
+function refreshPwaStatusLanguage() {
+  renderAppStatus("pwa", pwaStatus.state, pwaStatus.values);
+  renderAppStatus("save", appSaveStatus.state, appSaveStatus.values);
+  const back = currentAppBackState();
+  renderAppStatus("back", back.state, { depth: back.depth });
+  if (transientStatus.state) renderAppStatus("transient", transientStatus.state, transientStatus.values);
+  else renderAppStatus("transient", "idle", {});
+}
+
+function currentAppBackState() {
+  const layers = [];
+  if (typeof ocrCorrectionIsActive === "function" && ocrCorrectionIsActive()) layers.push("closeDialog");
+  if (stepExplainDialog?.open) layers.push("closeDialog");
+  if (trainingTextFilterDialog?.open) layers.push("closeDialog");
+  if (tlgLibraryDialog?.open) layers.push("closeDialog");
+  if (mobileSolveNewPuzzleOpen) layers.push("closeNewPuzzle");
+  if (mobileSolveMarksOpen) layers.push("closeMarks");
+  else if (mobileSolveDrawerOpen) layers.push("closeDrawer");
+  if (mobileSolveActive) layers.push("exitSolve");
+  return { state: layers[0] || "leaveApp", depth: layers.length };
+}
+
+function updateAppBackStatus() {
+  const back = currentAppBackState();
+  renderAppStatus("back", back.state, { depth: back.depth });
+  return back;
+}
+
+async function closeTopAppUiLayer() {
+  if (typeof ocrCorrectionIsActive === "function" && ocrCorrectionIsActive()) {
+    return closeOcrCorrection(true) !== false;
+  }
+  if (stepExplainDialog?.open) {
+    closeStepExplanationDialog();
+    updateAppBackStatus();
+    return true;
+  }
+  if (trainingTextFilterDialog?.open) {
+    closeTrainingTextFilterDialog();
+    updateAppBackStatus();
+    return true;
+  }
+  if (tlgLibraryDialog?.open) {
+    tlgLibraryDialog.close();
+    updateAppBackStatus();
+    return true;
+  }
+  if (mobileSolveNewPuzzleOpen) {
+    setMobileSolveNewPuzzlePanel(false);
+    updateAppBackStatus();
+    return true;
+  }
+  if (mobileSolveMarksOpen) {
+    closeMobileSolveMarks();
+    updateAppBackStatus();
+    return true;
+  }
+  if (mobileSolveDrawerOpen) {
+    setMobileSolveDrawer(false);
+    updateAppBackStatus();
+    return true;
+  }
+  if (mobileSolveActive) {
+    await exitMobileSolveMode();
+    updateAppBackStatus();
+    return true;
+  }
+  return false;
+}
+
+function installAppBackNavigation() {
+  if (!window.history?.pushState || appBackGuardInstalled) return;
+  try {
+    const baseState = { ...(history.state || {}), yzfAppRoot: true };
+    history.replaceState(baseState, "", window.location.href);
+    history.pushState({ ...baseState, yzfAppGuard: true }, "", window.location.href);
+    appBackGuardInstalled = true;
+  } catch {
+    return;
+  }
+  window.addEventListener("popstate", async () => {
+    if (appBackPopHandling) return;
+    appBackPopHandling = true;
+    try {
+      const closed = await closeTopAppUiLayer();
+      if (closed) {
+        history.pushState({ ...(history.state || {}), yzfAppGuard: true }, "", window.location.href);
+      } else {
+        appBackGuardInstalled = false;
+        history.back();
+      }
+    } finally {
+      appBackPopHandling = false;
+      window.requestAnimationFrame(updateAppBackStatus);
+    }
+  });
+  const observer = new MutationObserver(() => window.requestAnimationFrame(updateAppBackStatus));
+  for (const target of [document.body, stepExplainDialog, trainingTextFilterDialog, tlgLibraryDialog, mobileSolveShell, mobileSolveDrawer, mobileSolveNewPuzzlePanel]) {
+    if (target) observer.observe(target, { attributes: true, attributeFilter: ["open", "hidden", "class"] });
+  }
+  document.addEventListener("click", () => window.requestAnimationFrame(updateAppBackStatus), { passive: true });
+  updateAppBackStatus();
+}
+
+async function activatePwaUpdate() {
+  const waiting = pwaRegistration?.waiting;
+  if (!waiting) {
+    showAppStatusToast("pwa", pwaStatus.state, pwaStatus.values);
+    return;
+  }
+  pwaReloadRequested = true;
+  setPwaStatus("updating");
+  waiting.postMessage({ type: "YZF_PWA_SKIP_WAITING" });
+}
+
+async function promptPwaInstall() {
+  if (!pwaInstallPrompt) {
+    showAppStatusToast("pwa", pwaStatus.state, pwaStatus.values);
+    return;
+  }
+  const promptEvent = pwaInstallPrompt;
+  pwaInstallPrompt = null;
+  await promptEvent.prompt();
+  const choice = await promptEvent.userChoice;
+  if (choice?.outcome === "accepted") setTransientStatus("installAccepted");
+  else setTransientStatus("installDismissed");
+  setPwaStatus(effectiveReadyPwaState());
+}
+
+async function handlePwaStatusAction() {
+  if (pwaStatus.state === "updateReady") {
+    await activatePwaUpdate();
+    return;
+  }
+  if (pwaInstallPrompt && ["ready", "installable"].includes(pwaStatus.state)) {
+    await promptPwaInstall();
+    return;
+  }
+  if (["incomplete", "error"].includes(pwaStatus.state) && pwaRegistration) {
+    if (!navigator.onLine) {
+      showAppStatusToast("pwa", pwaStatus.state, pwaStatus.values, { duration: 3600 });
+      return;
+    }
+    setPwaStatus("checking");
+    const worker = navigator.serviceWorker.controller || pwaRegistration.active;
+    if (worker) worker.postMessage({ type: "YZF_PWA_REPAIR" });
+    else {
+      try { await pwaRegistration.update(); } catch (error) {
+        setPwaStatus("error", { message: error instanceof Error ? error.message : String(error) });
+      }
+    }
+    return;
+  }
+  showAppStatusToast("pwa", pwaStatus.state, pwaStatus.values, { duration: 3600 });
+}
+
+function handlePwaWorkerMessage(event) {
+  const data = event.data || {};
+  if (!String(data.type || "").startsWith("YZF_PWA_")) return;
+  if (data.type === "YZF_PWA_PROGRESS") {
+    setPwaStatus("downloading", {
+      loaded: megabytes(data.loadedBytes),
+      total: megabytes(data.totalBytes),
+      done: Number(data.done || 0),
+      count: Number(data.count || 0),
+    });
+    return;
+  }
+  if (data.type === "YZF_PWA_UPDATE_READY") {
+    pwaCacheReady = true;
+    setPwaStatus("updateReady");
+    return;
+  }
+  if (data.type === "YZF_PWA_READY") {
+    pwaCacheReady = true;
+    setPwaStatus(effectiveReadyPwaState());
+    return;
+  }
+  if (data.type === "YZF_PWA_MISSING") {
+    pwaCacheReady = false;
+    setPwaStatus(navigator.onLine ? "incomplete" : "offlinePartial");
+    return;
+  }
+  if (data.type === "YZF_PWA_ERROR") {
+    setPwaStatus("error", { message: data.message || "unknown error" });
+  }
+}
+
+async function installPwaSupport() {
+  if (globalThis.YZF_STANDALONE) {
+    pwaCacheReady = true;
+    setPwaStatus("installed");
+    return;
+  }
+  if (!("serviceWorker" in navigator) || (!window.isSecureContext && location.hostname !== "localhost" && location.hostname !== "127.0.0.1")) {
+    setPwaStatus("unsupported");
+    return;
+  }
+  navigator.serviceWorker.addEventListener("message", handlePwaWorkerMessage);
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    pwaCacheReady = true;
+    if (pwaReloadRequested) {
+      setTransientStatus("updateComplete", {}, { duration: 1200 });
+      window.setTimeout(() => window.location.reload(), 80);
+    } else {
+      setPwaStatus(effectiveReadyPwaState());
+    }
+  });
+  window.addEventListener("online", () => {
+    if (["offlineReady", "offlinePartial"].includes(pwaStatus.state)) setPwaStatus(effectiveReadyPwaState());
+  });
+  window.addEventListener("offline", () => setPwaStatus(pwaCacheReady ? "offlineReady" : "offlinePartial"));
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    pwaInstallPrompt = event;
+    if (pwaCacheReady && !pwaInstalledDisplayMode()) setPwaStatus("installable");
+  });
+  window.addEventListener("appinstalled", () => {
+    pwaInstallPrompt = null;
+    setPwaStatus("installed");
+  });
+  setPwaStatus("checking");
+  try {
+    pwaRegistration = await navigator.serviceWorker.register("./sw.js", { scope: "./", updateViaCache: "none" });
+    pwaRegistration.addEventListener("updatefound", () => {
+      const worker = pwaRegistration.installing;
+      if (!worker) return;
+      if (navigator.serviceWorker.controller) setPwaStatus("downloading", { loaded: "0.0", total: "?", done: 0, count: 0 });
+      worker.addEventListener("statechange", () => {
+        if (worker.state === "installed" && navigator.serviceWorker.controller) setPwaStatus("updateReady");
+      });
+    });
+    if (pwaRegistration.waiting) {
+      pwaCacheReady = true;
+      setPwaStatus("updateReady");
+      return;
+    }
+    const statusWorker = navigator.serviceWorker.controller || pwaRegistration.active;
+    if (statusWorker) statusWorker.postMessage({ type: "YZF_PWA_GET_STATUS" });
+    navigator.serviceWorker.ready.then((registration) => {
+      pwaRegistration = registration;
+      const worker = navigator.serviceWorker.controller || registration.active;
+      if (worker) worker.postMessage({ type: "YZF_PWA_GET_STATUS" });
+    }).catch(() => {});
+  } catch (error) {
+    setPwaStatus("error", { message: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+function installAppStatusControls() {
+  for (const control of appStatusControls) {
+    control.addEventListener("click", async () => {
+      const kind = control.dataset.appStatusKind;
+      if (kind === "pwa") await handlePwaStatusAction();
+      else if (kind === "save") {
+        if (appSaveStatus.state === "dirty" || appSaveStatus.state === "error") saveAppSessionNow();
+        else showAppStatusToast("save", appSaveStatus.state, appSaveStatus.values);
+      } else if (kind === "back") {
+        if (!(await closeTopAppUiLayer())) showAppStatusToast("back", "leaveApp");
+      } else if (kind === "transient" && transientStatus.state) {
+        showAppStatusToast("transient", transientStatus.state, transientStatus.values);
+      }
+    });
+  }
+  btnMobileSolveExit?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    if (!(await closeTopAppUiLayer()) && mobileSolveActive) await exitMobileSolveMode();
+  }, { capture: true });
+  renderAppStatus("save", "saved");
+  renderAppStatus("pwa", "initializing");
+  renderAppStatus("transient", "idle", {});
+  updateAppBackStatus();
+}
+
 
 const MANUAL_MARK_CUSTOM_COLORS_KEY = "yzf_manual_mark_custom_colors_v1";
 const MANUAL_MARK_COLORS = [
@@ -1642,6 +2007,7 @@ function currentManualMarkColor() {
 
 function setManualMarkStatus(message) {
   if (manualMarkStatus) manualMarkStatus.textContent = message;
+  scheduleAppSessionSave();
   if (mobileSolveActive && mobileSolveMarksOpen && mobileSolveStatus) {
     mobileSolveStatus.textContent = String(message || "");
     mobileSolveStatus.title = String(message || "");
@@ -3334,6 +3700,7 @@ function applyStaticLanguage() {
   updateManualMarkControls();
   renderTrainingTechniqueOptionsOnly();
   updateInputControls();
+  refreshPwaStatusLanguage();
 }
 
 function text(key) {
@@ -4167,16 +4534,40 @@ async function shareCurrentPuzzle() {
     setStatus(uif("sharedPuzzleInvalid", {
       message: error instanceof Error ? error.message : String(error),
     }));
+    setTransientStatus("shareFailed", { message: error instanceof Error ? error.message : String(error) });
     return;
   }
   if (!encodedPuzzle) {
     setStatus(ui("shareUnavailable"));
+    setTransientStatus("shareFailed", { message: ui("shareUnavailable") });
     return;
   }
 
   const url = buildPuzzleShareUrl(encodedPuzzle);
-  const copied = await copyText(url);
+  // Start clipboard writing and the system share request in the same user
+  // activation turn. Awaiting one before invoking the other can make Android
+  // browsers reject the second privileged API.
+  const copyPromise = copyText(url);
+  let shared = false;
+  let shareError = null;
+  if (typeof navigator.share === "function") {
+    try {
+      await navigator.share({
+        title: "YZF Sudoku",
+        text: appStatusLanguage() === "en" ? "Shared Sudoku puzzle" : "分享一个数独题面",
+        url,
+      });
+      shared = true;
+    } catch (error) {
+      if (error?.name !== "AbortError") shareError = error;
+    }
+  }
+  const copied = await copyPromise;
   setStatus(uif(copied ? "shareCopied" : "shareClipboardFailed", { url }));
+  if (shared) setTransientStatus("shared");
+  else if (copied) setTransientStatus("copied");
+  else if (shareError) setTransientStatus("shareFailed", { message: shareError instanceof Error ? shareError.message : String(shareError) });
+  else setTransientStatus("shareCancelled");
   debugLog(JSON.stringify({
     ok: true,
     action: "share_puzzle",
@@ -4184,6 +4575,7 @@ async function shareCurrentPuzzle() {
     parameterLength: encodedPuzzle.length,
     url,
     copied,
+    shared,
   }, null, 2));
 }
 
@@ -4215,23 +4607,40 @@ function buildAppSessionPayload() {
 }
 
 function saveAppSessionNow() {
-  if (appSessionRestoring) return;
+  if (appSessionRestoring) return false;
+  setAppSaveStatus("saving");
   try {
     const payload = buildAppSessionPayload();
-    if (!payload) return;
+    if (!payload) {
+      setAppSaveStatus("saved");
+      return true;
+    }
     localStorage.setItem(APP_SESSION_STORAGE_KEY, JSON.stringify(payload));
+    setAppSaveStatus("saved");
+    return true;
   } catch (error) {
     console.warn("Failed to save YZF session", error);
+    setAppSaveStatus("error", { message: error instanceof Error ? error.message : String(error) });
+    return false;
   }
 }
 
 function scheduleAppSessionSave() {
   if (appSessionRestoring) return;
+  setAppSaveStatus("dirty");
   if (appSessionSaveTimer) window.clearTimeout(appSessionSaveTimer);
   appSessionSaveTimer = window.setTimeout(() => {
     appSessionSaveTimer = 0;
     saveAppSessionNow();
   }, 350);
+}
+
+function flushAppSessionSave() {
+  if (appSessionSaveTimer) {
+    window.clearTimeout(appSessionSaveTimer);
+    appSessionSaveTimer = 0;
+  }
+  return saveAppSessionNow();
 }
 
 async function restoreAppSession(options = {}) {
@@ -4266,7 +4675,11 @@ async function restoreAppSession(options = {}) {
       }
     }
     renderTechniques();
-    if (announce) setStatus(ui("sessionRestored"));
+    if (announce) {
+      setStatus(ui("sessionRestored"));
+      setTransientStatus("restored");
+    }
+    setAppSaveStatus("saved");
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -15841,7 +16254,8 @@ function updateMobileSolveLanguage() {
   setTextById("btnMobileSolveMode", ui("mobileSolveEntry"));
   setTitleAndAria(btnMobileSolveMode, ui("mobileSolveMode"));
   setTextById("mobileSolveTitle", ui("mobileSolveMode"));
-  setTextById("btnMobileSolveExit", ui("mobileSolveExit"));
+  setTextById("mobileSolveExitText", ui("mobileSolveExit"));
+  updateAppBackStatus();
   setTextById("btnMobileSolveNewPuzzle", ui("mobileSolveNewPuzzle"));
   setTitleAndAria(btnMobileSolveNewPuzzle, ui("mobileSolveNewPuzzleTitle"));
   setTextById("mobileSolveNewPuzzleTitle", ui("mobileSolveNewPuzzleTitle"));
@@ -15919,6 +16333,7 @@ function setMobileSolveNewPuzzlePanel(open) {
   } else {
     btnMobileSolveNewPuzzle?.focus?.({ preventScroll: true });
   }
+  updateAppBackStatus();
 }
 
 function openMobileSolveNewPuzzlePanel() {
@@ -15970,6 +16385,7 @@ function setMobileSolveDrawer(open, options = {}) {
   btnMobileSolveMore?.setAttribute("aria-expanded", mobileSolveDrawerOpen && mobileSolveMarksPlacement !== "drawer" ? "true" : "false");
   setTextById("mobileSolveDrawerTitle", ui(mobileSolveMarksOpen && mobileSolveMarksPlacement === "drawer" ? "mobileSolveMarksTitle" : "mobileSolveMoreTitle"));
   if (mobileSolveDrawerOpen) btnMobileSolveDrawerClose?.focus?.({ preventScroll: true });
+  updateAppBackStatus();
 }
 
 function enterMobileSolveMode() {
@@ -15997,6 +16413,7 @@ function enterMobileSolveMode() {
   setMobileSolveDrawer(false);
   scheduleMobileSolveLayout();
   window.setTimeout(scheduleMobileSolveLayout, 140);
+  updateAppBackStatus();
   return true;
 }
 
@@ -16023,6 +16440,7 @@ async function exitMobileSolveMode(options = {}) {
   if (exitFullscreen && isFullscreen()) {
     try { await exitFullscreenSafe(); } catch { /* keep analysis mode usable */ }
   }
+  updateAppBackStatus();
 }
 
 function clearMobileSolveSelection() {
@@ -16069,7 +16487,6 @@ function installMobileSolveMode() {
   if (hintPanel) hintObserver.observe(hintPanel, { childList: true, subtree: true, characterData: true });
 
   btnMobileSolveMode?.addEventListener("click", enterMobileSolveMode);
-  btnMobileSolveExit?.addEventListener("click", () => exitMobileSolveMode());
   btnMobileSolveNewPuzzle?.addEventListener("click", openMobileSolveNewPuzzlePanel);
   btnMobileSolveFullscreen?.addEventListener("click", () => { setMobileSolveDrawer(false); toggleFullscreen(); });
   btnMobileSolveNewPuzzleClose?.addEventListener("click", () => setMobileSolveNewPuzzlePanel(false));
@@ -16476,17 +16893,18 @@ lang.addEventListener("change", () => {
 
 btnClearSavedSession?.addEventListener("click", clearSavedAppSession);
 
-window.addEventListener("beforeunload", () => {
-  if (appSessionSaveTimer) {
-    window.clearTimeout(appSessionSaveTimer);
-    appSessionSaveTimer = 0;
-  }
-  saveAppSessionNow();
+window.addEventListener("beforeunload", flushAppSessionSave);
+window.addEventListener("pagehide", flushAppSessionSave);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") flushAppSessionSave();
 });
 
 installDynamicBoardSizing();
 installMobileSolveMode();
+installAppStatusControls();
+installAppBackNavigation();
 applyStaticLanguage();
+installPwaSupport();
 
 init().catch((err) => {
   console.error(err);

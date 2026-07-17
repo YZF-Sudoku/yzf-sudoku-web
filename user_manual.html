@@ -481,7 +481,7 @@
 <h1>YZF Sudoku 使用手册 / User Manual</h1>
 <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
 <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-<div class="meta">Version: Manual v2.6 · Updated: 2026-07-10</div>
+<div class="meta">Version: Manual v2.7 · Updated: 2026-07-17</div>
 </div>
 <div aria-label="Manual language view / 手册语言视图" class="manual-language-toolbar" role="group">
 <button aria-pressed="true" data-manual-lang-button="bilingual" type="button">双语 / Bilingual</button>
@@ -509,6 +509,7 @@
 <li><a href="#superhard">内置超难题库 / Built-in Superhard Bank</a></li>
 <li><a href="#export">导出、截图与分享 / Export, Capture &amp; Share</a></li>
 <li><a href="#mobile">手机做题、标记与 TLG / Mobile Solving, Marks &amp; TLG</a></li>
+<li><a href="#pwa">PWA 安装、离线与状态图标 / PWA, Offline &amp; Status Icons</a></li>
 <li><a href="#standalone">Standalone 版本 / Standalone Version</a></li>
 <li><a href="#troubleshooting">常见问题 / Troubleshooting</a></li>
 <li><a href="#credits">模型与来源声明 / Credits</a></li>
@@ -1723,13 +1724,21 @@
 </ol>
 <h3>顶部与底部按钮</h3>
 <ul>
-<li><strong>返回：</strong>退出做题模式并回到原滚动位置。</li>
+<li><strong>返回：</strong>优先关闭当前弹窗、更多抽屉或手工标记；没有内层界面时才退出做题模式并回到原滚动位置。标题栏返回图标右上角数字表示仍可关闭的层数。</li>
 <li><strong>新题：</strong>选择 ER 难度后生成；已有作答或标记时会警告，确认后清除进度和手工标记。</li>
 <li><strong>清除：</strong>清除当前选中格的大数字；候选模式下可清除当前选中的候选。</li>
 <li><strong>撤销/重做：</strong>与主界面共用历史。</li>
 <li><strong>标记：</strong>打开完整手工标记面板。</li>
 <li><strong>更多：</strong>打开提示、应用、可选步骤、题面输入、候选显示、同数字高亮、全屏、分析模式和语言。</li>
 </ul>
+<h3>标题栏状态图标</h3>
+<ul>
+<li><strong>云朵：</strong>显示离线资源下载、完整就绪、当前离线、新版本可用或失败。黄色表示缓存不完整，联网点击会自动补齐；出现“新版本已就绪”时点击会切换到新版本。</li>
+<li><strong>软盘：</strong>绿色表示已保存，橙色表示有未保存修改，蓝色旋转表示正在保存，红色表示保存失败。切到后台、关闭页面或系统回收页面前会立即刷新保存。</li>
+<li><strong>返回箭头：</strong>说明安卓返回键下一步会关闭什么；数字角标表示当前 UI 层级深度。</li>
+<li><strong>临时反馈：</strong>分享、复制、恢复现场和更新完成会短暂显示，约 2–3 秒后自动收起。</li>
+</ul>
+<div class="note">这些图标只占标题栏固定位置，不新增纵向状态条。轻触图标会显示完整中文说明。</div>
 <h3>候选与手工标记</h3>
 <ul>
 <li>普通候选编辑：先选“候选”和数字，再轻触格子。</li>
@@ -1776,13 +1785,21 @@
 </ol>
 <h3>Top and Bottom Actions</h3>
 <ul>
-<li><strong>Back:</strong> exits Solve Mode and restores the previous scroll position.</li>
+<li><strong>Back:</strong> first closes the current dialog, More drawer, or Manual Marks layer. It exits Solve Mode only when no inner layer remains. The badge on the title-bar Back icon shows the remaining depth.</li>
 <li><strong>New Puzzle:</strong> chooses an ER band and generates. Existing progress/marks trigger a warning.</li>
 <li><strong>Clear:</strong> clears the selected user value, or the selected candidate in Candidate mode.</li>
 <li><strong>Undo/Redo:</strong> shares history with the main interface.</li>
 <li><strong>Marks:</strong> opens the full Manual Marks panel.</li>
 <li><strong>More:</strong> opens Hint, Apply, Available Steps, Puzzle Input, candidate visibility, same-digit highlighting, Fullscreen, Analysis Mode, and language.</li>
 </ul>
+<h3>Title-Bar Status Icons</h3>
+<ul>
+<li><strong>Cloud:</strong> shows offline-resource download, full readiness, current offline state, update availability, or failure. Tap for details; when an update is ready, tapping switches to it.</li>
+<li><strong>Disk:</strong> green means saved, amber means unsaved changes, spinning blue means saving, and red means failure. The session is flushed when the page goes to the background, closes, or is reclaimed by the OS.</li>
+<li><strong>Back arrow:</strong> explains what Android Back will close next. Its badge shows the current UI-layer depth.</li>
+<li><strong>Temporary feedback:</strong> sharing, copying, session restore, and update completion appear briefly, then collapse after about 2–3 seconds.</li>
+</ul>
+<div class="note">These icons use fixed title-bar space and do not add a vertical status bar. Tap an icon to read the full English description.</div>
 <h3>Candidates and Manual Marks</h3>
 <ul>
 <li>Ordinary candidate editing: choose Candidate and a digit, then tap a cell.</li>
@@ -1817,8 +1834,63 @@
 </div>
 </div>
 </section>
+<section id="pwa">
+<h2>17. PWA 安装、离线与状态图标 / PWA, Offline &amp; Status Icons</h2>
+<div class="pair">
+<div class="zh">
+<p>普通 Web 版现在是可安装 PWA。GitHub Pages、本地 HTTPS 和 <code>localhost</code> 均可使用；不需要自有域名或服务器后台。</p>
+<h3>首次准备完整离线资源</h3>
+<ol>
+<li>首次联网打开页面，等待云朵图标从蓝色下载状态变成绿色。</li>
+<li>点击云朵确认显示“离线资源已准备完成”。完整包约 20 MB，包含主界面、Worker、WASM、OCR runtime、两个 OCR 模型、技巧说明和使用手册。</li>
+<li>Chrome 出现安装条件后，云朵图标会提示“点击可安装应用”。点击后按系统提示添加到主屏幕。</li>
+<li>开启飞行模式，彻底关闭浏览器，再从桌面图标启动；云朵显示“当前处于离线状态，可完整使用”即通过验收。</li>
+</ol>
+<h3>缓存与更新规则</h3>
+<ul>
+<li>Service Worker 只有在全部资源下载成功后才激活新版本，避免新 <code>app.js</code> 与旧 Worker/WASM 混用。</li>
+<li>分享链接中的 <code>?p=s1.…</code> 不会为每道题重复缓存页面；离线打开时仍由同一份缓存入口恢复题面。</li>
+<li>发现更新时云朵变紫并提示“新版本已准备完成”。点击后页面刷新到完整新版本；正在评分或生成时可稍后再点。</li>
+<li>清除浏览器“缓存文件”会要求重新下载离线资源；程序会检测缺失项并把云朵变黄，联网点击即可重新补齐。清除“站点数据”还会删除现场、设置和 IndexedDB 中的 TLG 用户题库。</li>
+</ul>
+<h3>状态图标与操作</h3>
+<table><thead><tr><th>图标</th><th>含义</th><th>点击行为</th></tr></thead><tbody>
+<tr><td>云朵</td><td>离线资源、联网/离线、安装与更新</td><td>查看下载详情、触发安装、重试或应用更新</td></tr>
+<tr><td>软盘</td><td>已保存、未保存、保存中、保存失败</td><td>查看保存状态；失败或未保存时立即重试</td></tr>
+<tr><td>返回箭头</td><td>当前 UI 层级和安卓返回键目标</td><td>关闭最上层界面；根界面时提示将离开应用</td></tr>
+<tr><td>临时圆形图标</td><td>分享、复制、恢复或更新结果</td><td>在自动消失前再次查看文字说明</td></tr>
+</tbody></table>
+<div class="warn">首次安装仍需联网一次。只有云朵明确显示“离线资源已准备完成”后，才算完整离线可用。</div>
+</div>
+<div class="en">
+<p>The regular Web build is now an installable PWA. It works on GitHub Pages, local HTTPS, and <code>localhost</code>; no custom domain or server backend is required.</p>
+<h3>Preparing the Complete Offline Package</h3>
+<ol>
+<li>Open the page online for the first time and wait for the cloud icon to change from blue download state to green.</li>
+<li>Tap the cloud and confirm that it says “Offline resources are ready.” The roughly 20 MB package includes the main UI, Workers, WASM, OCR runtime, both OCR models, Techniques, and this Manual.</li>
+<li>When Chrome exposes installation, the cloud says “tap to install the app.” Tap it and follow the system prompt to add the app to the Home screen.</li>
+<li>Enable airplane mode, fully close the browser, and launch from the Home-screen icon. The cloud should report that all features remain available offline.</li>
+</ol>
+<h3>Cache and Update Rules</h3>
+<ul>
+<li>A new Service Worker activates only after every resource has downloaded, preventing a new <code>app.js</code> from being mixed with old Workers or WASM.</li>
+<li>Shared <code>?p=s1.…</code> URLs reuse the same cached app shell instead of creating one cached page per puzzle, and still restore the puzzle offline.</li>
+<li>When an update is ready, the cloud turns purple. Tap it to reload the complete new release; during rating or generation, simply wait and tap later.</li>
+<li>Clearing browser cache requires downloading offline resources again. The app detects missing files, turns the cloud yellow, and repairs the package when you tap it online. Clearing site data also removes the saved session, settings, and the IndexedDB TLG user library.</li>
+</ul>
+<h3>Status Icons and Actions</h3>
+<table><thead><tr><th>Icon</th><th>Meaning</th><th>Tap action</th></tr></thead><tbody>
+<tr><td>Cloud</td><td>Offline package, connectivity, installation, and updates</td><td>Show progress, install, retry, or apply an update</td></tr>
+<tr><td>Disk</td><td>Saved, dirty, saving, or failed</td><td>Show save state; retry immediately when dirty or failed</td></tr>
+<tr><td>Back arrow</td><td>Current UI depth and Android Back target</td><td>Close the top layer; at root, explain that Back leaves the app</td></tr>
+<tr><td>Temporary circle</td><td>Share, copy, restore, or update result</td><td>Repeat the text before the icon disappears automatically</td></tr>
+</tbody></table>
+<div class="warn">The first installation still needs one online session. Full offline use is guaranteed only after the cloud explicitly reports that offline resources are ready.</div>
+</div>
+</div>
+</section>
 <section id="standalone">
-<h2>17. Standalone 版本 / Standalone Version</h2>
+<h2>18. Standalone 版本 / Standalone Version</h2>
 <div class="pair">
 <div class="zh">
 <p>Standalone 版用于离线运行，不需要本地服务器。构建脚本需要把应用 JS、WASM、OCR JS、ONNX Runtime Web、runtime WASM 和两个模型文件内联或打包进单文件 HTML。</p>
@@ -1841,12 +1913,16 @@
 </div>
 </section>
 <section id="troubleshooting">
-<h2>18. 常见问题 / Troubleshooting</h2>
+<h2>19. 常见问题 / Troubleshooting</h2>
 <table>
 <thead>
 <tr><th>问题 / Issue</th><th>原因 / Cause</th><th>处理 / Fix</th></tr>
 </thead>
 <tbody>
+<tr><td>云朵一直显示下载中或变黄</td><td>网络中断、静态托管返回错误、缓存文件被清理，或浏览器存储空间不足。</td><td>保持页面前台联网；恢复网络或释放空间后点击云朵，程序会检查并补齐缺失资源。</td></tr>
+<tr><td>离线打开分享链接显示空白或旧题</td><td>离线包尚未完整就绪，或旧 Service Worker 仍在等待更新。</td><td>联网打开一次，等待绿色云朵；若云朵为紫色，点击应用新版本后再断网测试。</td></tr>
+<tr><td>安卓返回键直接退出应用</td><td>页面未加载本版返回层级守卫，或浏览器仍使用旧缓存。</td><td>联网打开并应用紫色更新；新版会先关闭弹窗、抽屉、标记和做题模式。</td></tr>
+<tr><td>软盘长期为橙色或红色</td><td>本地存储被禁用、空间不足，或隐私模式阻止保存。</td><td>点击软盘立即重试；允许站点存储并退出隐私模式。重要题面先手工导出。</td></tr>
 <tr><td>加载总是用了剪贴板里的旧题</td><td>“剪贴板优先”已勾选。</td><td>取消勾选，或先更新剪贴板内容。</td></tr>
 <tr><td>图片识别提示 <code>no available backend found</code></td><td>ORT runtime/WASM 路径错误或 Standalone 内联不完整。</td><td>普通版检查 OCR runtime 资源；Standalone 重新打包。</td></tr>
 <tr><td>OCR 下载反复从头开始</td><td>服务器不支持 Range、缓存被禁用，或隐私模式清理了本地数据。</td><td>使用支持 Range 的静态托管，允许站点存储；网络恢复后重试。</td></tr>
@@ -1886,7 +1962,7 @@
 </table>
 </section>
 <section id="credits">
-<h2>19. 模型与来源声明 / Credits</h2>
+<h2>20. 模型与来源声明 / Credits</h2>
 <div class="pair">
 <div class="zh">
 <p>数独图片识别使用 Alex Kubiesa / Sudoku OCR 训练的本地模型。识别只在浏览器本地执行，不上传图片，也不使用在线 fallback。</p>
