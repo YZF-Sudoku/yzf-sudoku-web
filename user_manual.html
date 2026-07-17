@@ -481,7 +481,7 @@
 <h1>YZF Sudoku 使用手册 / User Manual</h1>
 <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
 <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-<div class="meta">Version: Manual v2.8 · Updated: 2026-07-17</div>
+<div class="meta">Version: Manual v2.9 · Updated: 2026-07-18</div>
 </div>
 <div aria-label="Manual language view / 手册语言视图" class="manual-language-toolbar" role="group">
 <button aria-pressed="true" data-manual-lang-button="bilingual" type="button">双语 / Bilingual</button>
@@ -592,7 +592,7 @@
 <tr><td>手工候选标记</td><td>按当前模式使用左/右键；链、构造链和微型区域由第二次点击的左右键决定类型</td><td>先点格子，再使用大数字键和面板按钮；长按可删除常规视觉标记</td></tr>
 <tr><td>替换解题路径</td><td>右键可替换步骤</td><td>长按约 0.65 秒</td></tr>
 <tr><td>标记截图</td><td>优先复制 PNG 到剪贴板，失败时下载</td><td>优先打开系统分享，失败时下载</td></tr>
-<tr><td>做题布局</td><td>通常使用分析主界面</td><td>可进入专用做题模式，盘面和数字盘始终可见</td></tr>
+<tr><td>做题布局</td><td>通常使用分析主界面</td><td>可进入专用做题模式，盘面和数字区始终可见；底部为单行 1–9 数字带；下一行提供出数/候选、撤销、重做、提示、应用、标记和更多，清除操作位于“更多”中</td></tr>
 </tbody>
 </table>
 </div>
@@ -780,7 +780,7 @@
 <ol>
 <li><strong>Load a puzzle:</strong> paste a string, use OCR, restore a session, or generate one. Verify all black givens first; OCR puzzles may need given/user-digit role correction.</li>
 <li><strong>Mouse input:</strong> work directly on the board. Left-click an active candidate to set it; left-click a user value to clear it; right-click a candidate slot to remove or restore it.</li>
-<li><strong>Touch/pen input:</strong> the number pad is shown. Choose Value/Candidate and 1–9, then tap the target cell.</li>
+<li><strong>Touch/pen input:</strong> the solve layout shows a single-row 1–9 digit strip. The next row provides Value/Candidate, Undo, Redo, Hint, Apply, Marks, and More; Clear is under More. Choose Value/Candidate and 1–9, then tap the target cell.</li>
 <li><strong>Analyze manually:</strong> open Manual Marks for circles, colors, chains, blocks, or staged eliminations. Visual marks are separate from the real candidate grid.</li>
 <li><strong>Check logic:</strong> Hint only previews the next program step. Press Apply Hint to commit it. Available Steps can compare multiple legal options.</li>
 <li><strong>Continue or recover:</strong> formal values, candidate edits, and applied hints enter Undo history. Undo mistakes before continuing.</li>
@@ -1034,7 +1034,7 @@
 <li><strong>不方便长按：</strong>先点“删除”，再轻触格子或大数字键，效果相同；但画链是例外，删除指定边要重复选择同端点和同类型。</li>
 <li><strong>手机链/构造链/微型区域：</strong>先选择成对按钮中的类型，再依次使用“点格子 → 点大数字键”指定两个端点。重复同类型端点删除。</li>
 <li>候选类标记会自动显示候选。长按删除只删手工标记，不会直接删真实候选。</li>
-<li>做题模式中点“标记”打开面板；竖屏空间足够时内嵌在盘面下方，横屏或高度不足时进入抽屉。</li>
+<li>做题模式中点“标记”打开面板；面板保持为内嵌形式，显示在盘面/控制区下方，不再切换到抽屉弹层。</li>
 </ul>
 <h3>操作速查表</h3>
 <table>
@@ -1137,7 +1137,7 @@
 <li><strong>Without long-press:</strong> choose Erase first, then tap the cell or large digit. Chains are the exception: remove a specific edge by repeating the same endpoints and type.</li>
 <li><strong>Mobile chain/construction/Mini-Region:</strong> choose the paired type button, then use “tap cell → tap large digit” for both endpoints. Repeat the same type and endpoints to remove.</li>
 <li>Candidate modes automatically reveal candidates. Long-press erases only the manual mark, not the live candidate.</li>
-<li>In Solve Mode, press Marks. It appears inline when portrait space allows, otherwise in the drawer.</li>
+<li>In Solve Mode, press Marks. The panel stays inline in the solve layout instead of switching to a popup drawer. The main action row contains Value/Candidate, Undo, Redo, Hint, Apply, Marks, and More; Clear is available under More.</li>
 </ul>
 <h3>Operation Matrix</h3>
 <table>

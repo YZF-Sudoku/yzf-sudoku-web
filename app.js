@@ -338,6 +338,7 @@ const mobileSolveNewPuzzleWarning = document.getElementById("mobileSolveNewPuzzl
 const btnMobileSolveNewPuzzleClose = document.getElementById("btnMobileSolveNewPuzzleClose");
 const btnMobileSolveNewPuzzleCancel = document.getElementById("btnMobileSolveNewPuzzleCancel");
 const btnMobileSolveNewPuzzleGenerate = document.getElementById("btnMobileSolveNewPuzzleGenerate");
+const btnMobileSolveInputMode = document.getElementById("btnMobileSolveInputMode");
 const btnMobileSolveClear = document.getElementById("btnMobileSolveClear");
 const btnMobileSolveUndo = document.getElementById("btnMobileSolveUndo");
 const btnMobileSolveRedo = document.getElementById("btnMobileSolveRedo");
@@ -748,6 +749,10 @@ for (const [key, zh, en] of [
   ["mobileSolveNewPuzzleDifficulty", "难度", "Difficulty"],
   ["mobileSolveMore", "更多", "More"],
   ["mobileSolveMoreTitle", "更多功能", "More tools"],
+  ["mobileSolveValueShort", "出数", "Value"],
+  ["mobileSolveCandidateShort", "候选", "Cand."],
+  ["mobileSolveHintShort", "提示", "Hint"],
+  ["mobileSolveApplyShort", "应用", "Apply"],
   ["mobileSolveClear", "清除", "Clear"],
   ["mobileSolveInput", "题面输入", "Puzzle input"],
   ["mobileSolveAnalysis", "分析模式", "Analysis mode"],
@@ -16222,16 +16227,9 @@ function openMobileSolveMarks() {
   ensureMobileSolveHomeMarkers();
   mobileSolveManualMarksWasOpen = manualMarksPanel.open;
   mobileSolveMarksOpen = true;
-  if (shouldInlineMobileSolveMarks()) {
-    setMobileSolveDrawer(false, { preserveMarks: true });
-    mobileSolveShell?.classList.add("mobile-marks-inline");
-    mountMobileSolveManualMarks(mobileSolveMarksHost, "inline");
-  } else {
-    mobileSolveShell?.classList.remove("mobile-marks-inline");
-    mountMobileSolveManualMarks(mobileSolveMarksDrawerHost, "drawer");
-    mobileSolveDrawer?.classList.add("mobile-marks-view");
-    setMobileSolveDrawer(true, { preserveMarks: true });
-  }
+  setMobileSolveDrawer(false, { preserveMarks: true });
+  mobileSolveShell?.classList.add("mobile-marks-inline");
+  mountMobileSolveManualMarks(mobileSolveMarksHost, "inline");
   updateManualMarkControls();
   updateMobileSolveMarksButton();
   scheduleMobileSolveLayout();
@@ -16256,19 +16254,12 @@ function toggleMobileSolveMarks() {
 
 function reconcileMobileSolveMarksPlacement() {
   if (!mobileSolveMarksOpen || !manualMarksPanel) return;
-  const inline = shouldInlineMobileSolveMarks();
-  if (inline && mobileSolveMarksPlacement !== "inline") {
+  if (mobileSolveMarksPlacement !== "inline") {
     setMobileSolveDrawer(false, { preserveMarks: true });
-    mobileSolveDrawer?.classList.remove("mobile-marks-view");
     if (mobileSolveMarksDrawerHost) mobileSolveMarksDrawerHost.hidden = true;
+    mobileSolveDrawer?.classList.remove("mobile-marks-view");
     mobileSolveShell?.classList.add("mobile-marks-inline");
     mountMobileSolveManualMarks(mobileSolveMarksHost, "inline");
-  } else if (!inline && mobileSolveMarksPlacement !== "drawer") {
-    if (mobileSolveMarksHost) mobileSolveMarksHost.hidden = true;
-    mobileSolveShell?.classList.remove("mobile-marks-inline");
-    mountMobileSolveManualMarks(mobileSolveMarksDrawerHost, "drawer");
-    mobileSolveDrawer?.classList.add("mobile-marks-view");
-    setMobileSolveDrawer(true, { preserveMarks: true });
   }
   updateMobileSolveMarksButton();
 }
@@ -16390,9 +16381,16 @@ function syncMobileSolveStatus() {
 }
 
 function updateMobileSolveInputState() {
-  if (!mobileSolveInputState) return;
   const mode = inputMode === "candidate" ? ui("candidateMode") : ui("valueMode");
-  mobileSolveInputState.textContent = uif("mobileInputState", { mode, digit: selectedDigit });
+  if (mobileSolveInputState) {
+    mobileSolveInputState.textContent = uif("mobileInputState", { mode, digit: selectedDigit });
+  }
+  if (btnMobileSolveInputMode) {
+    btnMobileSolveInputMode.textContent = ui(inputMode === "candidate" ? "mobileSolveCandidateShort" : "mobileSolveValueShort");
+    btnMobileSolveInputMode.title = ui("inputModeTitle");
+    btnMobileSolveInputMode.setAttribute("aria-label", ui("inputModeTitle"));
+    btnMobileSolveInputMode.setAttribute("aria-pressed", inputMode === "candidate" ? "true" : "false");
+  }
 }
 
 function updateMobileSolveLanguage() {
@@ -16411,14 +16409,20 @@ function updateMobileSolveLanguage() {
   setTextById("btnMobileSolveNewPuzzleCancel", ui("mobileSolveNewPuzzleCancel"));
   if (!btnMobileSolveNewPuzzleGenerate?.disabled) setTextById("btnMobileSolveNewPuzzleGenerate", ui("mobileSolveNewPuzzleGenerate"));
   setTextById("btnMobileSolveClear", ui("mobileSolveClear"));
+  if (btnMobileSolveInputMode) {
+    btnMobileSolveInputMode.title = ui("inputModeTitle");
+    btnMobileSolveInputMode.setAttribute("aria-label", ui("inputModeTitle"));
+  }
   updateMobileSolveMarksButton();
   setTextById("btnMobileSolveUndo", ui("undo"));
   setTextById("btnMobileSolveRedo", ui("redo"));
   setTextById("btnMobileSolveMore", ui("mobileSolveMore"));
-  setTextById("mobileSolveDrawerTitle", ui(mobileSolveMarksOpen && mobileSolveMarksPlacement === "drawer" ? "mobileSolveMarksTitle" : "mobileSolveMoreTitle"));
+  setTextById("mobileSolveDrawerTitle", ui("mobileSolveMoreTitle"));
   setTextById("btnMobileSolveDrawerClose", ui("close"));
-  setTextById("btnMobileSolveHint", ui("step"));
-  setTextById("btnMobileSolveApply", ui("apply"));
+  setTextById("btnMobileSolveHint", ui("mobileSolveHintShort"));
+  setTitleAndAria(btnMobileSolveHint, ui("step"));
+  setTextById("btnMobileSolveApply", ui("mobileSolveApplyShort"));
+  setTitleAndAria(btnMobileSolveApply, ui("apply"));
   setTextById("btnMobileSolveAllSteps", ui("allSteps"));
   setTextById("btnMobileSolveInput", ui("mobileSolveInput"));
   setTextById("btnMobileSolveAnalysis", ui("mobileSolveAnalysis"));
@@ -16529,8 +16533,8 @@ function setMobileSolveDrawer(open, options = {}) {
     mobileSolveDrawer.classList.toggle("mobile-marks-view", mobileSolveDrawerOpen && mobileSolveMarksOpen && mobileSolveMarksPlacement === "drawer");
   }
   if (mobileSolveBackdrop) mobileSolveBackdrop.hidden = !mobileSolveDrawerOpen;
-  btnMobileSolveMore?.setAttribute("aria-expanded", mobileSolveDrawerOpen && mobileSolveMarksPlacement !== "drawer" ? "true" : "false");
-  setTextById("mobileSolveDrawerTitle", ui(mobileSolveMarksOpen && mobileSolveMarksPlacement === "drawer" ? "mobileSolveMarksTitle" : "mobileSolveMoreTitle"));
+  btnMobileSolveMore?.setAttribute("aria-expanded", mobileSolveDrawerOpen ? "true" : "false");
+  setTextById("mobileSolveDrawerTitle", ui("mobileSolveMoreTitle"));
   if (mobileSolveDrawerOpen) btnMobileSolveDrawerClose?.focus?.({ preventScroll: true });
   updateAppBackStatus();
 }
@@ -16652,15 +16656,18 @@ function installMobileSolveMode() {
     saveMobileNewPuzzleDifficulty(difficultySelect.value);
     syncMobileNewPuzzleDifficultyChoice(difficultySelect.value);
   });
-  btnMobileSolveClear?.addEventListener("click", clearMobileSolveSelection);
+  btnMobileSolveClear?.addEventListener("click", () => {
+    setMobileSolveDrawer(false);
+    clearMobileSolveSelection();
+  });
   btnMobileSolveUndo?.addEventListener("click", () => btnUndo?.click());
   btnMobileSolveRedo?.addEventListener("click", () => btnRedo?.click());
   btnMobileSolveMarks?.addEventListener("click", toggleMobileSolveMarks);
+  btnMobileSolveInputMode?.addEventListener("click", () => {
+    inputMode = inputMode === "candidate" ? "value" : "candidate";
+    updateInputControls();
+  });
   btnMobileSolveMore?.addEventListener("click", () => {
-    if (mobileSolveMarksOpen && mobileSolveMarksPlacement === "drawer") {
-      closeMobileSolveMarks();
-      return;
-    }
     setMobileSolveDrawer(!mobileSolveDrawerOpen);
   });
   btnMobileSolveDrawerClose?.addEventListener("click", () => setMobileSolveDrawer(false));

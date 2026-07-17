@@ -4650,12 +4650,13 @@
     .mobile-solve-shell.is-landscape {
       display: grid;
       grid-template-columns: var(--mobile-board-size) minmax(150px, 1fr);
-      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      grid-template-rows: auto auto auto auto minmax(0, 1fr);
       grid-template-areas:
         "mobile-board mobile-top"
         "mobile-board mobile-status"
         "mobile-board mobile-numpad"
-        "mobile-board mobile-actions";
+        "mobile-board mobile-actions"
+        "mobile-board mobile-marks";
       column-gap: 8px;
       row-gap: 5px;
     }
@@ -4672,7 +4673,8 @@
     .mobile-solve-shell.is-landscape .mobile-solve-topbar,
     .mobile-solve-shell.is-landscape .mobile-solve-status,
     .mobile-solve-shell.is-landscape .mobile-solve-numpad-host,
-    .mobile-solve-shell.is-landscape .mobile-solve-actions {
+    .mobile-solve-shell.is-landscape .mobile-solve-actions,
+    .mobile-solve-shell.is-landscape .mobile-solve-marks-host {
       margin-right: 4px;
     }
 
@@ -4832,49 +4834,77 @@
       width: 100%;
       margin: 0;
       padding: 0;
-      gap: 5px;
+      gap: 0;
       border: 0;
       border-radius: 0;
       background: transparent;
+      align-items: center;
     }
-    .mobile-solve-shell.is-portrait .numpad {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
+    .mobile-solve-shell.is-portrait .numpad,
     .mobile-solve-shell.is-landscape .numpad {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(9, minmax(0, 1fr));
       align-content: center;
     }
-    .mobile-solve-shell .numpad button {
+    .mobile-solve-shell .numpad .mode-toggle {
+      display: none !important;
+    }
+    .mobile-solve-shell .numpad button[data-digit] {
       min-width: 0;
-      min-height: 42px;
+      min-height: 34px;
       margin: 0;
-      padding: 4px 2px;
-      border-radius: 10px;
-      font-size: clamp(16px, 4.8vw, 22px);
+      padding: 2px 0 4px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      color: #36506e;
+      font-size: clamp(20px, 5vw, 24px);
+      font-weight: 800;
       touch-action: manipulation;
     }
-    .mobile-solve-shell.is-landscape .numpad button {
-      min-height: 34px;
-      font-size: clamp(14px, 4.5vh, 19px);
+    .mobile-solve-shell .numpad button[data-digit].active {
+      color: #1258b8;
+      text-decoration: underline;
+      text-decoration-thickness: 3px;
+      text-underline-offset: 6px;
     }
-    .mobile-solve-shell.is-landscape .numpad .mode-toggle {
-      grid-column: 1 / -1;
+    .mobile-solve-shell .numpad button[data-digit][data-complete="true"] {
+      opacity: 0.34;
+    }
+    .mobile-solve-shell.is-landscape .numpad button[data-digit] {
+      min-height: 30px;
+      font-size: clamp(18px, 4.3vh, 22px);
     }
 
     .mobile-solve-actions {
       grid-area: mobile-actions;
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(7, minmax(0, 1fr));
       gap: 5px;
       min-width: 0;
     }
     .mobile-solve-actions button {
-      min-height: 38px;
-      padding: 5px 4px;
+      min-height: 34px;
+      padding: 4px 1px;
+      overflow: hidden;
       background: rgba(255, 255, 255, 0.96);
       color: #28415f;
-      font-size: 12px;
+      font-size: 10.5px;
+      line-height: 1.05;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       touch-action: manipulation;
+    }
+    .mobile-solve-actions #btnMobileSolveHint,
+    .mobile-solve-actions #btnMobileSolveApply {
+      border-color: #a9c3ef;
+      background: #f2f7ff;
+      color: #174f9f;
+    }
+    .mobile-solve-actions #btnMobileSolveInputMode[aria-pressed="true"] {
+      border-color: #8eb3f2;
+      background: #e9f2ff;
+      color: #164990;
     }
     .mobile-solve-actions button.mobile-primary {
       border-color: #9ebcf1;
@@ -4899,10 +4929,12 @@
       grid-area: mobile-marks;
       min-width: 0;
       min-height: 0;
-      overflow: visible;
+      overflow: auto;
+      overscroll-behavior: contain;
     }
     .mobile-solve-shell.is-landscape .mobile-solve-marks-host {
-      display: none !important;
+      display: block;
+      overflow: auto;
     }
     .mobile-solve-marks-drawer-host {
       min-width: 0;
@@ -5084,22 +5116,22 @@
         padding: 3px 7px;
         font-size: 10px;
       }
-      .mobile-solve-shell .numpad { gap: 3px; }
-      .mobile-solve-shell.is-portrait .numpad button {
-        min-height: 34px;
-        padding-block: 2px;
+      .mobile-solve-shell .numpad button[data-digit] {
+        min-height: 28px;
+        padding-block: 1px 2px;
+        font-size: clamp(18px, 4.6vw, 22px);
       }
       .mobile-solve-actions { gap: 3px; }
       .mobile-solve-actions button {
-        min-height: 32px;
-        padding-block: 3px;
-        font-size: 11px;
+        min-height: 30px;
+        padding-block: 2px;
+        font-size: 9.4px;
       }
     }
 
     @media (max-width: 360px) {
-      .mobile-solve-actions { gap: 3px; }
-      .mobile-solve-actions button { padding-inline: 2px; }
+      .mobile-solve-actions { gap: 2px; }
+      .mobile-solve-actions button { padding-inline: 0; font-size: 8.8px; }
       .mobile-solve-shell .manual-marks-panel.mobile-manual-marks .manual-marks-content {
         grid-template-columns: minmax(0, 1fr);
         grid-template-areas:
@@ -5510,7 +5542,7 @@
             <div id="brandSubtitle" class="brand-subtitle">移动优先逻辑训练器</div>
           </div>
           <div class="app-status-cluster" aria-label="应用状态"><button class="app-status-button" type="button" data-app-status-kind="pwa" data-state="initializing" data-tone="working" aria-label="正在初始化离线功能" title="正在初始化离线功能"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 18.5h9.2a4.3 4.3 0 0 0 .6-8.6A6.2 6.2 0 0 0 5.4 8.4 5 5 0 0 0 7.5 18.5Z"></path></svg><span class="app-status-dot" aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="save" data-state="saved" data-tone="ok" aria-label="当前进度已保存" title="当前进度已保存"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5h11l3 3V20.5H5Z"></path><path d="M8 3.5v6h8v-5M8 20.5v-7h8v7"></path></svg><span class="app-status-dot" aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="back" data-state="leaveApp" data-tone="muted" hidden aria-label="返回" title="返回"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6"></path><path d="M5 12h9a5 5 0 0 1 5 5v1"></path></svg><span class="app-status-badge" data-app-back-badge aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="transient" data-state="idle" data-tone="ok" hidden aria-label="状态通知" title="状态通知"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12.5 10.7 15 16.5 8.8"></path><circle cx="12" cy="12" r="8.5"></circle></svg><span class="app-status-dot" aria-hidden="true"></span></button></div>
-          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260717-pwa-wakelock-icon-v2" target="_blank" rel="noopener">使用手册</a>
+          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260718-pwa-mobile-actions-v1" target="_blank" rel="noopener">使用手册</a>
           <button id="btnStepExplain" class="step-explain-button" type="button" disabled title="当前没有可解释的步骤。" aria-label="当前没有可解释的步骤。">解释</button>
           <a id="techniquesLink" class="manual-link" href="./techniques.html" target="_blank" rel="noopener">技巧说明</a>
           <button id="btnMobileSolveMode" class="mobile-solve-entry" type="button" title="做题模式" aria-label="做题模式">做题</button>
@@ -5943,9 +5975,11 @@
     <div id="mobileSolveStatus" class="mobile-solve-status" aria-live="polite">等待加载题面。</div>
     <div id="mobileSolveNumpadHost" class="mobile-solve-numpad-host"></div>
     <div class="mobile-solve-actions" aria-label="做题操作">
-      <button id="btnMobileSolveClear" type="button">清除</button>
+      <button id="btnMobileSolveInputMode" type="button" aria-pressed="false">出数</button>
       <button id="btnMobileSolveUndo" type="button">撤销</button>
       <button id="btnMobileSolveRedo" type="button">重做</button>
+      <button id="btnMobileSolveHint" type="button">提示</button>
+      <button id="btnMobileSolveApply" type="button">应用</button>
       <button id="btnMobileSolveMarks" type="button" aria-pressed="false">标记</button>
       <button id="btnMobileSolveMore" class="mobile-primary" type="button">更多</button>
     </div>
@@ -5957,8 +5991,7 @@
         <button id="btnMobileSolveDrawerClose" type="button">关闭</button>
       </div>
       <div class="mobile-solve-drawer-grid">
-        <button id="btnMobileSolveHint" type="button">提示一步</button>
-        <button id="btnMobileSolveApply" type="button">应用提示</button>
+        <button id="btnMobileSolveClear" type="button">清除</button>
         <button id="btnMobileSolveAllSteps" type="button">可选步骤</button>
         <button id="btnMobileSolveInput" type="button">题面输入</button>
         <button id="btnMobileSolveCandidates" type="button" aria-pressed="false">隐藏候选数</button>
@@ -6006,6 +6039,6 @@
   <div id="appStatusToast" class="app-status-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=20260717-pwa-wakelock-icon-v2"></script>
+    <script type="module" src="./app.js?v=20260718-pwa-mobile-actions-v1"></script>
   </body>
 </html>
