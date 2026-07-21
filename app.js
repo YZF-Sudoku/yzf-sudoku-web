@@ -1,4 +1,4 @@
-import createModule from "./sudoku_wasm.js?v=wasm-db5fc69e13fa517a";
+import createModule from "./sudoku_wasm.js?v=wasm-19430ca264fcc1f4";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -19,13 +19,19 @@ import {
   difficultyLevels,
 } from "./ui-localization.js?v=20260717-pwa-wakelock-icon-v2";
 
-const APP_VERSION = "wasm-db5fc69e13fa517a";
-const MANUAL_VERSION = "20260717-pwa-wakelock-icon-v2";
+const APP_VERSION = "wasm-19430ca264fcc1f4";
+const MANUAL_VERSION = "20260721-otp-training-v1";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
+const TRAINING_OTP_STORAGE_KEY = "yzf-training-otp-v1";
 const OCR_ASSET_VERSION = "20260630-role-glyph-core-v8";
 const OCR_CORRECTION_UI_VERSION = "20260629-ocr-correction-v7.1-gridfix";
+const OTP_INELIGIBLE_TECHNIQUES = new Set([
+  "FullHouse", "HiddenSingle", "NakedSingle", "LockedCandidates",
+  "NakedPair", "HiddenPair", "NakedTriple", "HiddenTriple",
+  "NakedQuad", "HiddenQuad", "BruteForce",
+]);
 
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
 const COACH_BASE32_REVERSE = new Map([...COACH_BASE32_CHARS].map((ch, index) => [ch, index]));
@@ -298,6 +304,8 @@ const batchPanel = batchFilename?.closest("details") || null;
 const batchSolveFile = document.getElementById("batchSolveFile");
 const batchStatus = document.getElementById("batchStatus");
 const trainingTechniqueSelect = document.getElementById("trainingTechniqueSelect");
+const trainingOtp = document.getElementById("trainingOtp");
+const trainingOtpOption = document.getElementById("trainingOtpOption");
 const btnTrainingTextFilter = document.getElementById("btnTrainingTextFilter");
 const trainingTextFilterDialog = document.getElementById("trainingTextFilterDialog");
 const trainingTextFilterInclude = document.getElementById("trainingTextFilterInclude");
@@ -370,6 +378,7 @@ let batchTaskSeq = 0;
 let batchWorkerActiveReject = null;
 let lastSolveData = null;
 let lastAllStepsData = null;
+const ALL_STEPS_STTE_FILTER_KEY = "__stte__";
 let allStepsFilterState = { query: "", technique: "", sortMode: "default", replaceableOnly: false };
 let branchUndoData = null;
 let originalBoard = "";
@@ -778,6 +787,10 @@ for (const [key, zh, en] of [
   ["mobileNothingToClear", "当前单元格没有可清除的内容。", "There is nothing to clear in this cell."],
   ["difficulty", "难度", "Difficulty"],
   ["training", "训练", "Training"],
+  ["trainingOtpLabel", "OTP", "OTP"],
+  ["trainingOtpTitle", "生成 One Trick Pony：Basic 解到停滞后，存在一个符合筛选且可 Single to the End 的关键步骤。", "Generate a One Trick Pony: after Basic techniques stall, a matching key step must lead to Singles to the End."],
+  ["trainingOtpAll", "任意技巧 OTP", "Any-technique OTP"],
+  ["trainingOtpUnsupported", "OTP 的关键步骤必须是非 Basic 逻辑技巧；唯一数、区块、数组和 BruteForce 不能作为 OTP 目标。", "The OTP key step must be a non-Basic logical technique; singles, locked candidates, subsets, and BruteForce cannot be OTP targets."],
   ["trainingTextFilterButton", "文字过滤", "Text filter"],
   ["trainingTextFilterTitle", "训练文字过滤", "Training text filter"],
   ["trainingTextFilterIntro", "条件由前端指定，C++ 后端只在同一个目标技巧步骤内匹配，不会跨步骤拼接。", "The frontend supplies the conditions. The C++ backend matches them within one step of the selected technique; conditions are never combined across steps."],
@@ -1189,6 +1202,7 @@ for (const [key, zh, en] of [
   ["allStepsFilterTechnique", "技巧：{technique}", "Technique: {technique}"],
   ["allStepsFilterConclusionSort", "排序：出数/删数优先", "Sort: placements/eliminations first"],
   ["allStepsFilterReplaceableOnly", "仅可替换", "Replaceable only"],
+  ["allStepsFilterStteOption", "STTE（Single to the End）", "STTE (Single to the End)"],
   ["listSeparator", "；", "; "],
   ["solvePathCannotSerialize", "自动解题失败：当前盘面无法序列化为候选盘状态。", "Auto solve failed: the current board cannot be serialized with candidate state."],
   ["solveCompleted", "自动解题完成：status={status}，步骤 {steps}，用时 {elapsed} ms。", "Auto solve completed: status={status}, steps {steps}, elapsed {elapsed} ms."],
@@ -1226,14 +1240,16 @@ for (const [key, zh, en] of [
   ["batchSolveNoInput", "请先选择批量解题输入文件。文件需为纯文本，一行一题。", "Choose a batch solving input file first. It must be plain text, one puzzle per line."],
   ["batchInvalidStep", "批量出题发现技巧错误，已停止：{detail}", "Batch stopped on an invalid step: {detail}"],
   ["invalidStep", "步骤无效", "Invalid step"],
-  ["trainingNeedTechnique", "请先在“训练”下拉框选择一个技巧。", "Choose a technique in the Training dropdown first."],
+  ["trainingNeedTechnique", "请先在“训练”下拉框选择一个技巧，或勾选 OTP 搜索全部 OTP。", "Choose a technique in the Training dropdown, or enable OTP to search all OTP puzzles."],
   ["trainingSearching", "正在搜索包含 {technique} 的训练题，已用时 {elapsed}...", "Searching for a training puzzle containing {technique}; elapsed {elapsed}..."],
+  ["otpSearching", "正在搜索 {technique}，已用时 {elapsed}...", "Searching for {technique}; elapsed {elapsed}..."],
   ["trainingInvalidSyncFailed", "训练生成发现技巧错误，但失败谜题同步到主引擎失败。", "Training generation found an invalid technique, but syncing the failed puzzle to the main engine failed."],
   ["trainingInvalidFound", "训练生成中发现技巧错误{detail}{step}", "Training generation found an invalid technique{detail}{step}"],
   ["trainingStepTextPrefix", "；{step}", "; {step}"],
   ["trainingFailed", "训练题生成失败：{error}{last}。", "Training puzzle generation failed: {error}{last}."],
   ["trainingSyncFailed", "训练题已生成，但主引擎同步失败。", "Training puzzle was generated, but syncing it to the main engine failed."],
   ["trainingGenerated", "已生成 {technique} 训练题并停在技巧出现前的盘面：尝试 {attempts} 次，{rating}。", "Generated a {technique} training puzzle and stopped at the board just before the technique appears: {attempts} attempts, {rating}."],
+  ["otpGenerated", "已生成 {technique} OTP，并停在 Basic 无法继续的关键盘面：Basic {basicSteps} 步，尝试 {attempts} 次，{rating}。", "Generated a {technique} OTP and stopped at the key board where Basic techniques stall: {basicSteps} Basic steps, {attempts} attempts, {rating}."],
   ["exportUnavailable", "当前盘面无法导出：没有有效 81 位题面或候选盘状态。", "Cannot export the current board: no valid 81-char puzzle or candidate state."],
   ["coachCompressUnsupported", "当前环境不支持 Coach 题串压缩", "This environment does not support Coach string compression"],
   ["coachDecompressUnsupported", "当前环境不支持 Coach 题串解压", "This environment does not support Coach string decompression"],
@@ -3498,6 +3514,15 @@ function rebuildDifficultyControls(levels) {
   }
 }
 
+function updateDifficultySelectCompactWidth() {
+  if (!difficultySelect) return;
+  const text = String(difficultySelect.selectedOptions?.[0]?.textContent || "").trim();
+  let units = 0;
+  for (const ch of text) units += ch.codePointAt(0) > 0x7f ? 2 : 1;
+  const width = Math.max(124, Math.min(196, 30 + units * 6.2));
+  difficultySelect.style.width = `${Math.round(width)}px`;
+}
+
 function updateDifficultyControlsLanguage() {
   const levels = difficultyLevels();
   if (!difficultyControlsMatch(levels)) rebuildDifficultyControls(levels);
@@ -3505,12 +3530,16 @@ function updateDifficultyControlsLanguage() {
   for (const level of levels) {
     const descriptor = difficultyDescriptor(level, currentDifficultyLanguage());
     const option = difficultySelect?.querySelector(`option[value="${level}"]`);
-    if (option) option.textContent = descriptor.label;
+    if (option) {
+      option.textContent = descriptor.label;
+      option.title = descriptor.label;
+    }
     const mobileName = mobileSolveNewPuzzleOptions?.querySelector(`[data-difficulty-name="${level}"]`);
     const mobileRange = mobileSolveNewPuzzleOptions?.querySelector(`[data-difficulty-range="${level}"]`);
     if (mobileName) mobileName.textContent = descriptor.name;
     if (mobileRange) mobileRange.textContent = descriptor.range;
   }
+  updateDifficultySelectCompactWidth();
 }
 
 function applyStaticLanguage() {
@@ -3556,8 +3585,19 @@ function applyStaticLanguage() {
   setInputLabelByControl("difficultySelect", ui("difficulty"));
   updateDifficultyControlsLanguage();
   setInputLabelByControl("trainingTechniqueSelect", ui("training"));
-  if (difficultySelect) difficultySelect.title = ui("difficultyTitle");
-  if (trainingTechniqueSelect) trainingTechniqueSelect.title = ui("trainingTitle");
+  if (difficultySelect) {
+    difficultySelect.title = ui("difficultyTitle");
+    difficultySelect.setAttribute("aria-label", ui("difficulty"));
+  }
+  if (trainingTechniqueSelect) {
+    trainingTechniqueSelect.title = ui("trainingTitle");
+    trainingTechniqueSelect.setAttribute("aria-label", ui("training"));
+  }
+  setTextById("trainingOtpLabel", ui("trainingOtpLabel"));
+  if (trainingOtpOption) {
+    trainingOtpOption.title = ui("trainingOtpTitle");
+    trainingOtpOption.setAttribute("aria-label", ui("trainingOtpTitle"));
+  }
   setLocalizedTexts([
     ["trainingTextFilterButtonText", "trainingTextFilterButton"],
     ["trainingTextFilterDialogTitle", "trainingTextFilterTitle"],
@@ -9886,6 +9926,7 @@ function normalizeTrainingTextFilter(value) {
     includeText: String(value?.includeText || "").replace(/\r\n?/g, "\n").trim(),
     excludeText: String(value?.excludeText || "").replace(/\r\n?/g, "\n").trim(),
     caseSensitive: Boolean(value?.caseSensitive),
+    otp: Boolean(value?.otp),
   };
 }
 
@@ -9914,8 +9955,35 @@ function saveTrainingTextFilter() {
   }
 }
 
+function trainingOtpEnabled() {
+  return Boolean(trainingOtp?.checked);
+}
+
+function loadTrainingOtp() {
+  try {
+    return localStorage.getItem(TRAINING_OTP_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function saveTrainingOtp() {
+  try {
+    localStorage.setItem(TRAINING_OTP_STORAGE_KEY, trainingOtpEnabled() ? "1" : "0");
+  } catch {
+    // Optional persistence only.
+  }
+}
+
+function isOtpEligibleTechnique(kind) {
+  return Boolean(kind) && !OTP_INELIGIBLE_TECHNIQUES.has(String(kind));
+}
+
 function currentTrainingTextFilterPayload() {
-  return { ...normalizeTrainingTextFilter(trainingTextFilter) };
+  return {
+    ...normalizeTrainingTextFilter(trainingTextFilter),
+    otp: trainingOtpEnabled(),
+  };
 }
 
 function updateTrainingTextFilterButton() {
@@ -9966,6 +10034,7 @@ function applyTrainingTextFilterDialog() {
 }
 
 trainingTextFilter = loadTrainingTextFilter();
+if (trainingOtp) trainingOtp.checked = loadTrainingOtp();
 
 function updateTrainingTechniqueSelectColor() {
   if (!trainingTechniqueSelect) return;
@@ -9987,6 +10056,8 @@ function generateTrainingPuzzleInWorker(
   const legacyMethod = summary
     ? "generate_training_puzzle_summary_json"
     : "generate_training_puzzle_json";
+  const otp = Boolean(normalizedFilter.otp);
+  const requestKind = otp ? String(kind || "") : String(kind || "BruteForce");
 
   if (window.YZF_STANDALONE || !window.Worker) {
     if (!engine) {
@@ -9994,16 +10065,16 @@ function generateTrainingPuzzleInWorker(
     }
     if (typeof engine[filteredMethod] === "function") {
       return Promise.resolve(engine[filteredMethod](
-        kind || "BruteForce",
+        requestKind,
         Number(difficulty || 0),
         Number(maxAttempts || 0),
         filterJson
       ));
     }
-    if (isTrainingTextFilterActive(normalizedFilter) || typeof engine[legacyMethod] !== "function") {
+    if (otp || isTrainingTextFilterActive(normalizedFilter) || typeof engine[legacyMethod] !== "function") {
       throw new Error(ui("trainingWorkerFailed"));
     }
-    return Promise.resolve(engine[legacyMethod](kind || "BruteForce", Number(difficulty || 0), Number(maxAttempts || 0)));
+    return Promise.resolve(engine[legacyMethod](requestKind, Number(difficulty || 0), Number(maxAttempts || 0)));
   }
 
   return new Promise((resolve, reject) => {
@@ -10031,12 +10102,13 @@ function generateTrainingPuzzleInWorker(
   });
 }
 
-function startTrainingTimer(label) {
+function startTrainingTimer(label, { otp = false } = {}) {
   const start = Date.now();
-  setStatus(uif("trainingSearching", { technique: label, elapsed: uif("seconds", { seconds: 0 }) }));
+  const key = otp ? "otpSearching" : "trainingSearching";
+  setStatus(uif(key, { technique: label, elapsed: uif("seconds", { seconds: 0 }) }));
   return window.setInterval(() => {
     const elapsed = Math.floor((Date.now() - start) / 1000);
-    setStatus(uif("trainingSearching", { technique: label, elapsed: uif("seconds", { seconds: elapsed }) }));
+    setStatus(uif(key, { technique: label, elapsed: uif("seconds", { seconds: elapsed }) }));
   }, 1000);
 }
 
@@ -10061,9 +10133,20 @@ function selectedTrainingTechniqueName() {
     .trim();
 }
 
+function trainingTechniqueNameForKind(kind) {
+  const normalized = String(kind || "");
+  if (!normalized) return "";
+  const state = techniqueState.length ? techniqueState : loadTechniqueState();
+  const item = state.find((technique) => technique.kind === normalized);
+  return item ? techniqueName(item) : normalized;
+}
+
 function defaultBatchFilename() {
   if (batchMode?.value === "solve") return "sudoku-batch-solve.tsv";
   const technique = selectedTrainingTechniqueName();
+  if (trainingOtpEnabled()) {
+    return sanitizeFilename(technique ? `${technique}-OTP.txt` : "OTP.txt");
+  }
   return technique ? sanitizeFilename(`${technique}.txt`) : "sudoku-batch.txt";
 }
 
@@ -10348,8 +10431,11 @@ async function runBatchTaskInMainEngine(config, handlers) {
       handlers.onItem?.(result);
     } else {
       const trainingKind = config.trainingKind || "";
-      const filterJson = JSON.stringify(normalizeTrainingTextFilter(config.trainingTextFilter));
-      const text = trainingKind
+      const normalizedTrainingFilter = normalizeTrainingTextFilter(config.trainingTextFilter);
+      const otp = Boolean(normalizedTrainingFilter.otp || config.otp);
+      const trainingMode = Boolean(trainingKind || otp);
+      const filterJson = JSON.stringify({ ...normalizedTrainingFilter, otp });
+      const text = trainingMode
         ? engine.generate_training_puzzle_summary_filtered_json(
             trainingKind,
             Number(config.difficulty || 0),
@@ -10359,7 +10445,7 @@ async function runBatchTaskInMainEngine(config, handlers) {
         : engine.generate_puzzle_difficulty_json(Number(config.difficulty || 0), 0);
       result = parseJson(text);
       if (result?.ok) {
-        if (!trainingKind) {
+        if (!trainingMode) {
           const solve = parseJson(engine.solve_summary_json(500));
           result.solve = solve;
           if (solve?.status === "invalid_step") {
@@ -10408,7 +10494,7 @@ function isBranchableOptionalStep(record) {
     lastSolveData &&
     Array.isArray(lastSolveData.path) &&
     lastSolveData.path.length > 0 &&
-    Number(record?.sourceStepIndex || 0) > 0
+    findSolvePathReplacementIndex(record) >= 0
   );
 }
 
@@ -11039,7 +11125,9 @@ function allStepsRecordMatchesFilter(record) {
     const tokens = query.split(/\s+/).filter(Boolean);
     if (!tokens.every((token) => haystack.includes(token))) return false;
   }
-  if (allStepsFilterState.technique && allStepsTechniqueFilterInfo(record).key !== allStepsFilterState.technique) {
+  if (allStepsFilterState.technique === ALL_STEPS_STTE_FILTER_KEY) {
+    if (record?.stte !== true) return false;
+  } else if (allStepsFilterState.technique && allStepsTechniqueFilterInfo(record).key !== allStepsFilterState.technique) {
     return false;
   }
   if (allStepsFilterState.replaceableOnly && !canReplaceOptionalStep(record)) {
@@ -11098,9 +11186,12 @@ function refreshAllStepsFilterOptions(data = lastAllStepsData) {
     const existing = byKey.get(info.key);
     if (!existing || info.order < existing.order) byKey.set(info.key, info);
   }
-  const techniques = [...byKey.values()]
-    .sort((a, b) => (a.order - b.order) || a.label.localeCompare(b.label))
-    .map((info) => ({ value: info.key, label: info.label }));
+  const techniques = [
+    { value: ALL_STEPS_STTE_FILTER_KEY, label: ui("allStepsFilterStteOption") },
+    ...[...byKey.values()]
+      .sort((a, b) => (a.order - b.order) || a.label.localeCompare(b.label))
+      .map((info) => ({ value: info.key, label: info.label })),
+  ];
   setSelectOptions(allStepsFilterTechnique, techniques, ui("allTechniques"));
 }
 
@@ -14504,6 +14595,10 @@ trainingTechniqueSelect?.addEventListener("change", () => {
   updateTrainingTechniqueSelectColor();
   syncBatchFilenameDefault();
 });
+trainingOtp?.addEventListener("change", () => {
+  saveTrainingOtp();
+  syncBatchFilenameDefault();
+});
 btnTrainingTextFilter?.addEventListener("click", openTrainingTextFilterDialog);
 btnTrainingTextFilterApply?.addEventListener("click", applyTrainingTextFilterDialog);
 btnTrainingTextFilterClear?.addEventListener("click", () => {
@@ -15409,6 +15504,7 @@ function generatePuzzleAtDifficulty(difficulty) {
     ? Number(difficulty)
     : 0;
   if (difficultySelect) difficultySelect.value = String(normalizedDifficulty);
+  updateDifficultySelectCompactWidth();
   setStatus(uif("generatingPuzzle", { difficulty: selectedDifficultyLabel() }));
   const result = parseJson(engine.generate_puzzle_difficulty_json(normalizedDifficulty, 0));
   if (!result?.ok) {
@@ -15441,7 +15537,16 @@ btnBatchGenerate?.addEventListener("click", async () => {
   const filename = sanitizeFilename(batchFilename?.value || defaultBatchFilename());
   const difficulty = Number(difficultySelect.value || 0);
   const trainingKind = mode === "generate" ? (trainingTechniqueSelect?.value || "") : "";
-  const trainingLabel = trainingTechniqueSelect?.selectedOptions?.[0]?.textContent || trainingKind;
+  const otp = mode === "generate" && trainingOtpEnabled();
+  if (otp && trainingKind && !isOtpEligibleTechnique(trainingKind)) {
+    updateBatchStatus(ui("trainingOtpUnsupported"));
+    return;
+  }
+  const selectedTrainingLabel = selectedTrainingTechniqueName() || trainingKind;
+  const trainingLabel = otp
+    ? (selectedTrainingLabel ? `${selectedTrainingLabel} OTP` : ui("trainingOtpAll"))
+    : selectedTrainingLabel;
+  const trainingMode = Boolean(trainingKind || otp);
   const puzzles = mode === "solve" ? await collectBatchSolveInputLinesFromFile() : [];
   if (mode === "solve" && !puzzles.length) {
     updateBatchStatus(ui("batchSolveNoInput"));
@@ -15464,7 +15569,7 @@ btnBatchGenerate?.addEventListener("click", async () => {
     // Output is one result per line. No header row, so generated/solved files can be chained directly.
     updateBatchStatus(mode === "solve"
       ? uif("batchSolveStart", { target: puzzles.length })
-      : (trainingKind
+      : (trainingMode
         ? uif("batchTrainingStart", { technique: trainingLabel, difficulty: selectedDifficultyLabel() })
         : uif("batchStart", { difficulty: selectedDifficultyLabel() })));
 
@@ -15473,7 +15578,7 @@ btnBatchGenerate?.addEventListener("click", async () => {
       const lastText = lastPuzzleAttempts ? uif("batchLastPuzzle", { attempts: lastPuzzleAttempts }) : "";
       const values = { prefix, generated, target: puzzles.length, attempts, failed, last: lastText, elapsed: formatElapsedSeconds(startTime) };
       if (mode === "solve") return uif("batchSolveProgress", values);
-      return trainingKind ? uif("batchTrainingProgress", values) : uif("batchProgress", values);
+      return trainingMode ? uif("batchTrainingProgress", values) : uif("batchProgress", values);
     };
     timer = window.setInterval(() => {
       updateBatchStatus(batchProgressStatus());
@@ -15484,6 +15589,7 @@ btnBatchGenerate?.addEventListener("click", async () => {
       target: mode === "solve" ? puzzles.length : 0,
       difficulty,
       trainingKind,
+      otp,
       trainingTextFilter: currentTrainingTextFilterPayload(),
       maxAttempts: 0,
       maxSteps: 500,
@@ -15502,7 +15608,7 @@ btnBatchGenerate?.addEventListener("click", async () => {
         } else {
           generated += 1;
           await writer.write(batchLine(result, generated));
-          lastPuzzleAttempts = trainingKind
+          lastPuzzleAttempts = trainingMode
             ? uif("batchSearchAttempts", { attempts: result.attempts ?? "?" })
             : uif("batchGenerateAttempts", { attempts: result.attempts ?? "?" });
         }
@@ -15527,7 +15633,7 @@ btnBatchGenerate?.addEventListener("click", async () => {
     } else if (mode === "solve") {
       updateBatchStatus(uif("batchSolveDone", { mode: outMode, filename, generated, target: puzzles.length, failed, elapsed: formatElapsedSeconds(startTime) }));
     } else {
-      updateBatchStatus(trainingKind
+      updateBatchStatus(trainingMode
         ? uif("batchTrainingDone", { mode: outMode, filename, technique: trainingLabel, generated, attempts, elapsed: formatElapsedSeconds(startTime) })
         : uif("batchDone", { mode: outMode, filename, generated, attempts, elapsed: formatElapsedSeconds(startTime) }));
     }
@@ -15555,12 +15661,20 @@ btnGenerateTraining?.addEventListener("click", async () => {
   if (!engine) return;
   const difficulty = Number(difficultySelect.value || 0);
   const kind = trainingTechniqueSelect?.value || "";
-  if (!kind) {
+  const otp = trainingOtpEnabled();
+  if (!kind && !otp) {
     setStatus(ui("trainingNeedTechnique"));
     return;
   }
-  const label = trainingTechniqueSelect?.selectedOptions?.[0]?.textContent || kind;
-  const timer = startTrainingTimer(label);
+  if (otp && kind && !isOtpEligibleTechnique(kind)) {
+    setStatus(ui("trainingOtpUnsupported"));
+    return;
+  }
+  const selectedLabel = selectedTrainingTechniqueName() || kind;
+  const label = otp
+    ? (selectedLabel ? `${selectedLabel} OTP` : ui("trainingOtpAll"))
+    : selectedLabel;
+  const timer = startTrainingTimer(label, { otp });
   btnGenerateTraining.disabled = true;
   await paintBeforeLongTask();
 
@@ -15622,6 +15736,31 @@ btnGenerateTraining?.addEventListener("click", async () => {
       return;
     }
 
+    if (result.otp) {
+      const otpSnapshot = result.otpState || null;
+      const otpLibrary = snapshotToLibraryString(otpSnapshot);
+      const imported = otpLibrary ? parseJson(engine.import_puzzle_json(otpLibrary)) : null;
+      if (!otpSnapshot || !otpLibrary || !imported?.ok) {
+        setStatus(ui("trainingSyncFailed"));
+        debugLog(JSON.stringify({ ...result, otpSnapshotFound: Boolean(otpSnapshot), otpLibrary, imported }, null, 2));
+        return;
+      }
+
+      originalBoard = result.puzzle;
+      givens.value = otpLibrary;
+      resetBoardContextForSnapshot(imported.state || otpSnapshot, { resetSelectedIndex: true });
+      const matchedTechnique = trainingTechniqueNameForKind(result.technique) || result.technique || "OTP";
+      debugLog({ ...result, otpLibrary, otpTechnique: matchedTechnique });
+      setStatus(uif("otpGenerated", {
+        technique: matchedTechnique,
+        basicSteps: result.otpBasicSteps ?? 0,
+        attempts: result.attempts,
+        rating: formatRating(result.rating),
+      }));
+      updateInputControls();
+      return;
+    }
+
     const matchedIndex = Math.max(0, Number(result.matchedStepIndex || 0) - 1);
     const matchedRecord = Array.isArray(result.solve?.path) ? result.solve.path[matchedIndex] : null;
     const trainingSnapshot = matchedRecord?.before || null;
@@ -15637,7 +15776,7 @@ btnGenerateTraining?.addEventListener("click", async () => {
     givens.value = trainingLibrary;
     resetBoardContextForSnapshot(imported.state || trainingSnapshot, { resetSelectedIndex: true });
     debugLog({ ...result, trainingLibrary, trainingStepIndex: matchedIndex + 1 });
-    setStatus(uif("trainingGenerated", { technique: label, attempts: result.attempts, rating: formatRating(result.rating) }));
+    setStatus(uif("trainingGenerated", { technique: selectedLabel, attempts: result.attempts, rating: formatRating(result.rating) }));
     updateInputControls();
   } finally {
     window.clearInterval(timer);
@@ -16655,6 +16794,7 @@ function installMobileSolveMode() {
   difficultySelect?.addEventListener("change", () => {
     saveMobileNewPuzzleDifficulty(difficultySelect.value);
     syncMobileNewPuzzleDifficultyChoice(difficultySelect.value);
+    updateDifficultySelectCompactWidth();
   });
   btnMobileSolveClear?.addEventListener("click", () => {
     setMobileSolveDrawer(false);
@@ -17040,6 +17180,7 @@ lang.addEventListener("change", () => {
     tree.replaceChildren(renderSolveTreeView(lastSolveData));
   }
   if (lastAllStepsData && allStepsTree) {
+    refreshAllStepsFilterOptions(lastAllStepsData);
     allStepsTree.replaceChildren(renderAllStepsTreeView(lastAllStepsData));
   }
   renderTechniques();

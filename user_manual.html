@@ -481,7 +481,7 @@
 <h1>YZF Sudoku 使用手册 / User Manual</h1>
 <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
 <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-<div class="meta">Version: Manual v2.9 · Updated: 2026-07-18</div>
+<div class="meta">Version: Manual v3.1 · Updated: 2026-07-21</div>
 </div>
 <div aria-label="Manual language view / 手册语言视图" class="manual-language-toolbar" role="group">
 <button aria-pressed="true" data-manual-lang-button="bilingual" type="button">双语 / Bilingual</button>
@@ -524,7 +524,7 @@
 <ul>
 <li>普通题串、Library、Sukaku、候选盘、Sudoku Coach JSON 与 SCv7_32 导入。</li>
 <li>浏览器本地图片识别、原图对照校正、提示数/出数/候选数角色编辑。</li>
-<li>题目生成、指定技巧训练生成、ER/EP/ED 与 YZF 评分。</li>
+<li>题目生成、指定技巧训练生成、OTP（One Trick Pony）生成、ER/EP/ED 与 YZF 评分。</li>
 <li>提示一步、应用提示、自动解题路径、所有可选步骤、路径替换与动态解释。</li>
 <li>技巧预设、逐项启停、Whip/gWhip 内存模式、Whip/gWhip 最短长度比较、复杂技巧专属子选项。</li>
 <li>手工上色、画圈、删数、画链、区块标记、盘面截图与手机分享。</li>
@@ -823,20 +823,34 @@
 <div class="zh">
 <h3>普通生成</h3>
 <p>先选择 ER 难度分档，再点击“生成”。可选 Random、Easy、Medium、Hard、Unfair、Extreme 和 Insane。状态栏会显示提示数数量和评分。</p>
-<h3>训练生成</h3>
-<p>在“训练”下拉框选择一个技巧，再点击“训练生成”。程序会反复生成并完整解题，直到找到解题路径中包含该技巧的题目。复杂技巧可能需要较长搜索；运行期间按钮会锁定并显示已用时间。</p>
+<h3>训练生成与 OTP</h3>
+<p>生成配置保持在同一行：<strong>Difficulty、训练技巧、OTP、文字过滤</strong>。Difficulty 会按当前名称紧凑显示，把主要空间留给训练技巧；文字过滤仍通过弹出面板设置。</p>
+<ul>
+<li><strong>不勾选 OTP：</strong>选择一个训练技巧后点击“训练生成”，程序反复生成并完整解题，直到路径中包含该技巧。</li>
+<li><strong>勾选 OTP 且指定训练技巧：</strong>程序先只用 Basic 技巧解到无法推进，再仅搜索所选技巧；只要存在一个该技巧步骤，应用后可由 Full House、Hidden Single、Naked Single 一路解到终盘，就接受为该技巧的 OTP。</li>
+<li><strong>勾选 OTP 且未指定技巧：</strong>Basic 停滞后搜索全部非 Basic、非 BruteForce 逻辑技巧；命中任意 STTE 关键步骤即接受。</li>
+</ul>
+<p>OTP 的 Basic 集合包括 Full House、Hidden Single、Naked Single、Locked Candidates，以及显性/隐性 Pair、Triple、Quad。生成成功后，主盘面停在 Basic 无法继续的状态，方便直接训练关键一步。</p>
+<p>OTP 只要求<strong>至少存在一个</strong>合格关键步骤，不要求 STTE 解释唯一。同一个删数由不同技巧、构型或链路解释，不影响 OTP 验收。文字过滤会作用于关键步骤本身。</p>
 <h3>评分当前题目</h3>
 <p>“评分当前题目”会优先识别文本框或当前盘面的格式。普通题使用 puzzle 评分；含候选状态的 Library/Sukaku/Coach 输入使用候选盘评分。结果通常包含 <code>ER</code>、<code>EP</code>、<code>ED</code>，并可能显示 <code>YZFRate</code>。</p>
-<div class="note">训练生成使用当前启用的技巧配置。为了得到可复现结果，先在“技巧”页签选好预设和子选项。</div>
+<div class="note">普通训练和 OTP 生成都使用当前启用的技巧配置及相关子选项。OTP 开关会本地记忆；唯一数、区块、数组和 BruteForce 不能作为 OTP 的指定关键技巧。</div>
 </div>
 <div class="en">
 <h3>Normal Generation</h3>
 <p>Select an ER difficulty band, then press Generate. Available bands are Random, Easy, Medium, Hard, Unfair, Extreme, and Insane. The status reports clue count and rating.</p>
-<h3>Training Generation</h3>
-<p>Select a technique in the Training list, then press Training Generate. The program repeatedly generates and solves puzzles until the solve path contains that technique. Advanced targets may take substantially longer; elapsed time is shown while the action is locked.</p>
+<h3>Training Generation and OTP</h3>
+<p>The four generation controls stay on one line: <strong>Difficulty, Training technique, OTP, and Text filter</strong>. Difficulty uses a compact content-sized field so the technique selector retains most of the available width.</p>
+<ul>
+<li><strong>OTP off:</strong> select a training technique and press Training Generate. The program generates and solves until the path contains that technique.</li>
+<li><strong>OTP on with a selected technique:</strong> Basic techniques run to a stall, then only the selected technique is searched. The puzzle is accepted when one matching step leads to Full House, Hidden Single, and Naked Single all the way to the end.</li>
+<li><strong>OTP on with no selected technique:</strong> after the Basic stall, all non-Basic, non-BruteForce logical techniques are searched; any matching STTE key step accepts the puzzle.</li>
+</ul>
+<p>The OTP Basic set is Full House, Hidden Single, Naked Single, Locked Candidates, plus Naked/Hidden Pair, Triple, and Quad. On success, the live board opens at the Basic-stalled position for immediate key-step training.</p>
+<p>OTP requires <strong>at least one</strong> valid key step, not a unique explanation. Multiple techniques, constructions, or chains explaining the same elimination do not disqualify the puzzle. Text filtering applies to the key step.</p>
 <h3>Rate Current Puzzle</h3>
 <p>Rate Current Puzzle detects the text-area or current-board format. Plain puzzles use puzzle rating, while Library/Sukaku/Coach inputs with candidate state use candidate-grid rating. Results normally include <code>ER</code>, <code>EP</code>, <code>ED</code>, and may include <code>YZFRate</code>.</p>
-<div class="note">Training generation uses the currently enabled technique configuration. Choose the desired preset and sub-options first for reproducible results.</div>
+<div class="note">Normal training and OTP generation both use the enabled technique configuration and sub-options. The OTP switch is remembered locally; singles, locked candidates, subsets, and BruteForce cannot be selected as the OTP key technique.</div>
 </div>
 </div>
 </section>
@@ -879,9 +893,9 @@
 <p>“所有步骤”在当前盘面收集多个合法步骤。可使用：</p>
 <ul>
 <li>关键词过滤技巧名、删数、格坐标或描述。</li>
-<li>按技巧过滤。</li>
+<li>按技巧过滤；技巧列表顶部包含 <strong>STTE（Single to the End）</strong>，选择后只显示应用该步骤后，能够仅靠宫末位、隐性单数和显性单数一路解到终盘的候选。这里只迁移 FB <code>checkSTTE</code> 的第一段，不包含 lclSTE、BTE 和更短路径选项。</li>
 <li>默认排序，或按“出数/删数优先”排序。</li>
-<li>“可替换”只显示可绑定到当前解题路径某一步的候选。</li>
+<li>“可替换”只显示可绑定到当前解题路径某一步的候选；即使可选步骤结果没有显式的来源步编号，也会依据执行前盘面哈希匹配当前路径。</li>
 <li>点击“清除”会同时重置关键词、技巧、排序和“可替换”筛选。</li>
 </ul>
 <h3>预览与替换</h3>
@@ -899,9 +913,9 @@
 <p>All Steps collects multiple legal options for the current board. You can:</p>
 <ul>
 <li>filter by technique name, conclusion, coordinate, or description;</li>
-<li>filter by technique;</li>
+<li>filter by technique; the top of the technique list includes <strong>STTE (Single to the End)</strong>, which shows only options after which Full House, Hidden Single, and Naked Single alone solve to the end. This includes only the first stage of FB <code>checkSTTE</code>, not lclSTE, BTE, or shorter-path options;</li>
 <li>use default order or sort placements/eliminations first;</li>
-<li>show only Replaceable options that can bind to the current solve path;</li>
+<li>show only Replaceable options that can bind to the current solve path; when an explicit source-step number is absent, the board hash before the option is matched against the current path;</li>
 <li>press Clear to reset the text, technique, sort, and Replaceable filters together.</li>
 </ul>
 <h3>Preview and Replace</h3>
@@ -1200,8 +1214,9 @@
 <h3>批量出题</h3>
 <ol>
 <li>选择“批量出题”、输出文件名和主界面的难度。</li>
-<li>若“训练”下拉框选择了技巧，批量任务会只输出包含该技巧的训练题；未选择则普通批量生成。</li>
-<li>主界面的实时训练生成会直接显示目标技巧出现前的盘面，不显示解题路径，也不保留步骤高亮。</li>
+<li>未勾选 OTP 时，选择训练技巧会批量输出包含该技巧的普通训练题；未选择技巧则普通批量生成。</li>
+<li>勾选 OTP 时，批量任务沿用主界面的训练技巧和文字过滤：指定技巧则生成该技巧 OTP，未指定则生成任意技巧 OTP。</li>
+<li>主界面的普通训练生成会显示目标技巧出现前的盘面；OTP 生成会显示 Basic 无法继续的关键盘面。两者都不保留临时步骤高亮。</li>
 <li>点击“开始”持续生成，点击“停止”结束并关闭/下载文件。</li>
 </ol>
 <p>每行一题，使用制表符分隔四列：序号、Library 题串、YZF 评分、SKFR 的 ER 评分。选择训练技巧后，批量面板的默认文件名会自动使用技巧名称。</p>
@@ -1220,8 +1235,9 @@
 <h3>Batch Generation</h3>
 <ol>
 <li>Select Batch Generate, an output filename, and the main difficulty.</li>
-<li>If a Training technique is selected, only training puzzles containing that technique are emitted; otherwise generation is unrestricted.</li>
-<li>Realtime training generation on the main screen opens the board immediately before the target technique, without a solution path or step highlighting.</li>
+<li>With OTP off, a selected Training technique emits ordinary training puzzles containing that technique; no selection performs unrestricted generation.</li>
+<li>With OTP on, batch generation reuses the main Training technique and text filter: a selected technique generates that technique's OTP puzzles, while no selection generates any-technique OTP puzzles.</li>
+<li>Realtime normal training opens immediately before the target technique; OTP generation opens at the Basic-stalled key position. Temporary step highlights are not retained.</li>
 <li>Press Start to generate continuously and Stop to finish and close/download the file.</li>
 </ol>
 <p>Each puzzle occupies one tab-separated line with four columns: index, Library puzzle string, YZF score, and the SKFR ER score. When a training technique is selected, the batch panel defaults the filename to the technique name.</p>

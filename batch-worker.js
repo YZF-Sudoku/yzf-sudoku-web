@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-db5fc69e13fa517a";
+import createModule from "./sudoku_wasm.js?v=wasm-aa62af929305db61";
 
-const APP_VERSION = "wasm-db5fc69e13fa517a";
+const APP_VERSION = "wasm-aa62af929305db61";
 let enginePromise = null;
 let cancelRequested = false;
 
@@ -32,8 +32,10 @@ function makeGeneratedItem(engine, config) {
   const difficulty = Number(config.difficulty || 0);
   const textFilter = config.trainingTextFilter && typeof config.trainingTextFilter === "object"
     ? config.trainingTextFilter
-    : { includeText: "", excludeText: "", caseSensitive: false };
-  const resultText = trainingKind
+    : { includeText: "", excludeText: "", caseSensitive: false, otp: false };
+  const otp = Boolean(textFilter.otp || config.otp);
+  const trainingMode = Boolean(trainingKind || otp);
+  const resultText = trainingMode
     ? engine.generate_training_puzzle_summary_filtered_json(
         trainingKind,
         difficulty,
@@ -44,7 +46,7 @@ function makeGeneratedItem(engine, config) {
   const result = parseJson(resultText);
   if (!result?.ok) return { result, failed: true };
 
-  if (!trainingKind) {
+  if (!trainingMode) {
     const solve = parseJson(engine.solve_summary_json(500));
     result.solve = solve;
     if (solve?.status === "invalid_step") {

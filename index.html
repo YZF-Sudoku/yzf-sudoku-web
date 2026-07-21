@@ -2436,10 +2436,52 @@
     }
     .training-select-line {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: max-content minmax(82px, 1fr) auto auto;
       align-items: center;
       gap: 6px;
+      width: 100%;
       min-width: 0;
+    }
+    .training-select-line #difficultySelect {
+      width: auto;
+      min-width: 124px;
+      max-width: 196px;
+      field-sizing: content;
+      white-space: nowrap;
+    }
+    .training-select-line #trainingTechniqueSelect {
+      width: 100%;
+      min-width: 0;
+    }
+    .training-otp-option {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 32px;
+      min-width: 48px;
+      margin: 0;
+      padding: 3px 7px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: #334155;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+    .training-otp-option:has(input:checked) {
+      border-color: var(--accent);
+      background: #eff6ff;
+      color: var(--accent);
+    }
+    .training-otp-option input {
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      accent-color: var(--accent);
     }
     .training-text-filter-button {
       position: relative;
@@ -2457,6 +2499,27 @@
       background: #eff6ff;
       color: var(--accent);
       padding-right: 18px;
+    }
+    @media (max-width: 520px) {
+      .training-select-line {
+        grid-template-columns: minmax(112px, 138px) minmax(44px, 1fr) auto auto;
+        gap: 4px;
+      }
+      .training-select-line #difficultySelect {
+        width: 100% !important;
+        min-width: 112px;
+        max-width: 138px;
+        padding-inline: 5px;
+        font-size: 11px;
+      }
+      .training-otp-option {
+        min-width: 42px;
+        padding-inline: 5px;
+      }
+      .training-text-filter-button {
+        min-width: 58px;
+        padding-inline: 6px;
+      }
     }
     .training-text-filter-button.active::after {
       content: "";
@@ -4163,9 +4226,18 @@
       background: #fff;
       font-size: 12px;
     }
+    #tabControls > .training-options {
+      grid-column: 1 / -1;
+      display: block;
+    }
     #tabControls > .training-options .training-text-filter-button {
       height: 31px;
       min-width: 70px;
+      font-size: 11px;
+    }
+    #tabControls > .training-options .training-otp-option {
+      height: 31px;
+      min-width: 46px;
       font-size: 11px;
     }
     #tabControls > :is(#numpad, details, .yzf-debug-panel) {
@@ -5622,14 +5694,14 @@
           </div>
 
           <section id="tabControls" class="tab-panel" role="tabpanel" aria-labelledby="tabBtnControls" data-tab-panel="controls">
-              <label class="generate-options">
-                <span>难度</span>
-              <select id="difficultySelect" title="生成题目时使用参考项目的 ER 难度分档"></select>
-            </label>
             <div class="generate-options training-options">
-              <span>训练</span>
               <div class="training-select-line">
-                <select id="trainingTechniqueSelect" title="生成解题路径中包含指定技巧的题目"></select>
+                <select id="difficultySelect" aria-label="难度" title="生成题目时使用参考项目的 ER 难度分档"></select>
+                <select id="trainingTechniqueSelect" aria-label="训练技巧" title="生成解题路径中包含指定技巧的题目"></select>
+                <label id="trainingOtpOption" class="training-otp-option" title="生成 One Trick Pony 谜题">
+                  <input id="trainingOtp" type="checkbox" />
+                  <span id="trainingOtpLabel">OTP</span>
+                </label>
                 <button id="btnTrainingTextFilter" class="training-text-filter-button" type="button" aria-pressed="false" title="文字过滤">
                   <span id="trainingTextFilterButtonText">文字过滤</span>
                 </button>
@@ -6039,6 +6111,6 @@
   <div id="appStatusToast" class="app-status-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=20260718-pwa-mobile-actions-v1"></script>
+    <script type="module" src="./app.js?v=ui-0688aaf667d9"></script>
   </body>
 </html>

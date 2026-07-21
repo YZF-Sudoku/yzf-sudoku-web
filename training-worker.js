@@ -1,6 +1,6 @@
-import createModule from "./sudoku_wasm.js?v=wasm-db5fc69e13fa517a";
+import createModule from "./sudoku_wasm.js?v=wasm-aa62af929305db61";
 
-const APP_VERSION = "wasm-db5fc69e13fa517a";
+const APP_VERSION = "wasm-aa62af929305db61";
 
 let enginePromise = null;
 
@@ -23,7 +23,7 @@ self.addEventListener("message", async (event) => {
     const engine = await getEngine();
     const textFilter = message.textFilter && typeof message.textFilter === "object"
       ? message.textFilter
-      : { includeText: "", excludeText: "", caseSensitive: false };
+      : { includeText: "", excludeText: "", caseSensitive: false, otp: false };
     const filteredMethod = message.summary
       ? "generate_training_puzzle_summary_filtered_json"
       : "generate_training_puzzle_filtered_json";
@@ -31,22 +31,26 @@ self.addEventListener("message", async (event) => {
       ? "generate_training_puzzle_summary_json"
       : "generate_training_puzzle_json";
     const filterActive = Boolean(String(textFilter.includeText || "").trim() || String(textFilter.excludeText || "").trim());
+    const otp = Boolean(textFilter.otp);
+    const requestKind = otp ? String(message.kind || "") : String(message.kind || "BruteForce");
     let resultText = "";
     if (typeof engine[filteredMethod] === "function") {
       resultText = engine[filteredMethod](
-        message.kind || "BruteForce",
+        requestKind,
         Number(message.difficulty || 0),
         Number(message.maxAttempts || 0),
         JSON.stringify(textFilter)
       );
-    } else if (!filterActive && typeof engine[legacyMethod] === "function") {
+    } else if (!otp && !filterActive && typeof engine[legacyMethod] === "function") {
       resultText = engine[legacyMethod](
-        message.kind || "BruteForce",
+        requestKind,
         Number(message.difficulty || 0),
         Number(message.maxAttempts || 0)
       );
     } else {
-      throw new Error("Training text filtering is unavailable in this WASM build");
+      throw new Error(otp
+        ? "OTP training generation is unavailable in this WASM build"
+        : "Training text filtering is unavailable in this WASM build");
     }
     self.postMessage({ type: "result", resultText });
   } catch (error) {
