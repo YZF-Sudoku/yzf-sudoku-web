@@ -17,11 +17,11 @@ import {
   appStatusDescriptor,
   difficultyDescriptor,
   difficultyLevels,
-} from "./ui-localization.js?v=ui-d4758a9cc5df";
+} from "./ui-localization.js?v=ui-d5a841241e91";
 import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-4c2e94ce3029";
 
 const APP_VERSION = "wasm-19430ca264fcc1f4";
-const MANUAL_VERSION = "manual-1e5fbbf0bdb1";
+const MANUAL_VERSION = "manual-5275ef564eeb";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
@@ -157,6 +157,10 @@ let pwaTargetVersion = pwaPendingVersion && pwaPendingVersion !== "1" ? pwaPendi
 let pwaActivationTimer = 0;
 let pwaWaitingSyncTimer = 0;
 let pwaObservedInstallingWorker = null;
+let pwaObservedActivationWorker = null;
+let pwaActivationCommandWorker = null;
+let pwaActivationPort = null;
+let pwaActivationReloadScheduled = false;
 let transientStatus = { state: "", values: {} };
 let transientStatusTimer = 0;
 let appBackGuardInstalled = false;
@@ -1613,30 +1617,141 @@ function clearPwaActivationTimer() {
   pwaActivationTimer = 0;
 }
 
-function schedulePwaActivationTimeout() {
+function closePwaActivationPort() {
+  try { pwaActivationPort?.close?.(); } catch {}
+  pwaActivationPort = null;
+}
+
+function completePwaActivationAndReload() {
+  if (pwaActivationReloadScheduled) return;
+  pwaActivationReloadScheduled = true;
+  pwaCacheReady = true;
+  clearPwaActivationTimer();
+  closePwaActivationPort();
+  pwaActivationCommandWorker = null;
+  setPwaActivationPending(false);
+  pwaReloadRequested = false;
+  setTransientStatus("updateComplete", {}, { duration: 1200 });
+  window.setTimeout(() => window.location.reload(), 120);
+}
+
+function failPwaActivation(message, asset = "") {
+  clearPwaActivationTimer();
+  closePwaActivationPort();
+  pwaActivationCommandWorker = null;
+  setPwaActivationPending(false);
+  pwaReloadRequested = false;
+  pwaLastFailure = {
+    version: pwaTargetVersion,
+    asset: String(asset || ""),
+    message: String(message || "Service Worker activation failed"),
+  };
+  setPwaStatus("updateError", {
+    message: pwaLastFailure.message,
+    asset: pwaLastFailure.asset,
+  });
+}
+
+function handlePwaActivationProtocol(data = {}) {
+  const type = String(data.type || "");
+  if (data.version) pwaTargetVersion = String(data.version);
+  if (type === "YZF_PWA_ACTIVATION_ACCEPTED") {
+    setPwaActivationPending(true, pwaTargetVersion);
+    pwaReloadRequested = true;
+    setPwaStatus("updating");
+    schedulePwaActivationTimeout(60000);
+    return true;
+  }
+  if (type === "YZF_PWA_ACTIVATION_REPAIRING") {
+    setPwaActivationPending(true, pwaTargetVersion);
+    pwaReloadRequested = true;
+    setPwaStatus("updateRepairing", {
+      loaded: megabytes(data.loadedBytes),
+      total: megabytes(data.totalBytes),
+      network: megabytes(data.networkBytes),
+      reused: megabytes(data.reusedBytes),
+      resumed: megabytes(data.resumedBytes),
+      done: Number(data.done || 0),
+      count: Number(data.count || 0),
+      asset: String(data.asset || ""),
+    });
+    schedulePwaActivationTimeout(120000);
+    return true;
+  }
+  if (type === "YZF_PWA_ACTIVATING") {
+    setPwaActivationPending(true, pwaTargetVersion);
+    pwaReloadRequested = true;
+    setPwaStatus("updating");
+    schedulePwaActivationTimeout(60000);
+    return true;
+  }
+  if (type === "YZF_PWA_ACTIVATION_ERROR") {
+    failPwaActivation(String(data.message || "Service Worker activation failed"), String(data.asset || ""));
+    return true;
+  }
+  return false;
+}
+
+function observePwaActivationWorker(worker) {
+  if (!worker || worker === pwaObservedActivationWorker) return;
+  pwaObservedActivationWorker = worker;
+  const sync = () => {
+    if (worker.state === "activating") {
+      setPwaStatus("updating");
+      schedulePwaActivationTimeout(60000);
+    } else if (worker.state === "activated") {
+      completePwaActivationAndReload();
+    } else if (worker.state === "redundant" && pwaActivationRequested) {
+      failPwaActivation(pwaLastFailure?.message || "The new Service Worker became redundant during activation", pwaLastFailure?.asset || "");
+    }
+  };
+  worker.addEventListener("statechange", sync);
+  sync();
+}
+
+function schedulePwaActivationTimeout(timeoutMs = 45000) {
   clearPwaActivationTimer();
   pwaActivationTimer = window.setTimeout(() => {
     pwaActivationTimer = 0;
     if (!pwaActivationRequested) return;
+    if (pwaObservedActivationWorker?.state === "activated") {
+      completePwaActivationAndReload();
+      return;
+    }
     const waiting = pwaRegistration?.waiting;
-    setPwaActivationPending(false);
-    pwaReloadRequested = false;
     if (waiting) {
       pwaCacheReady = true;
-      setPwaStatus("updateReady");
+      failPwaActivation(pwaLastFailure?.message || "The browser kept the new Service Worker waiting and did not confirm activation", pwaLastFailure?.asset || "");
     } else {
-      setPwaStatus("updateError", { message: "Service Worker activation timed out", asset: "" });
+      failPwaActivation(pwaLastFailure?.message || "Service Worker activation timed out", pwaLastFailure?.asset || "");
     }
-  }, 15000);
+  }, timeoutMs);
 }
 
 function requestPwaWorkerActivation(worker) {
   if (!worker) return false;
-  setPwaActivationPending(true);
+  if (pwaActivationCommandWorker === worker && pwaActivationRequested && pwaActivationTimer) return true;
+  pwaActivationCommandWorker = worker;
+  observePwaActivationWorker(worker);
+  setPwaActivationPending(true, pwaTargetVersion);
   pwaReloadRequested = true;
   setPwaStatus("updating");
-  worker.postMessage({ type: "YZF_PWA_SKIP_WAITING" });
-  schedulePwaActivationTimeout();
+  closePwaActivationPort();
+  try {
+    if (typeof MessageChannel === "function") {
+      const channel = new MessageChannel();
+      pwaActivationPort = channel.port1;
+      channel.port1.onmessage = (event) => handlePwaActivationProtocol(event.data || {});
+      channel.port1.start?.();
+      worker.postMessage({ type: "YZF_PWA_SKIP_WAITING", version: pwaTargetVersion }, [channel.port2]);
+    } else {
+      worker.postMessage({ type: "YZF_PWA_SKIP_WAITING", version: pwaTargetVersion });
+    }
+  } catch (error) {
+    failPwaActivation(error instanceof Error ? error.message : String(error));
+    return false;
+  }
+  schedulePwaActivationTimeout(60000);
   return true;
 }
 
@@ -1645,6 +1760,7 @@ function syncPwaWaitingState({ activateIfRequested = true } = {}) {
   if (!waiting) return false;
   pwaLastFailure = null;
   pwaCacheReady = true;
+  observePwaActivationWorker(waiting);
   if (activateIfRequested && pwaActivationRequested) requestPwaWorkerActivation(waiting);
   else setPwaStatus("updateReady");
   return true;
@@ -1794,7 +1910,7 @@ function handlePwaWorkerMessage(event) {
   if (!String(data.type || "").startsWith("YZF_PWA_")) return;
   if (data.type === "YZF_PWA_PROGRESS") {
     pwaTargetVersion = String(data.version || pwaTargetVersion || "");
-    setPwaStatus("downloading", {
+    const values = {
       loaded: megabytes(data.loadedBytes),
       total: megabytes(data.totalBytes),
       network: megabytes(data.networkBytes),
@@ -1804,7 +1920,13 @@ function handlePwaWorkerMessage(event) {
       count: Number(data.count || 0),
       asset: String(data.asset || ""),
       phase: String(data.phase || ""),
-    });
+    };
+    if (pwaActivationRequested) {
+      setPwaStatus("updateRepairing", values);
+      schedulePwaActivationTimeout(120000);
+    } else {
+      setPwaStatus("downloading", values);
+    }
     return;
   }
   if (data.type === "YZF_PWA_STAGED" || data.type === "YZF_PWA_UPDATE_READY") {
@@ -1816,26 +1938,27 @@ function handlePwaWorkerMessage(event) {
     schedulePwaWaitingSync();
     return;
   }
-  if (data.type === "YZF_PWA_ACTIVATING") {
-    pwaTargetVersion = String(data.version || pwaTargetVersion || "");
-    setPwaActivationPending(true);
-    pwaReloadRequested = true;
-    setPwaStatus("updating");
-    schedulePwaActivationTimeout();
+  if ([
+    "YZF_PWA_ACTIVATION_ACCEPTED",
+    "YZF_PWA_ACTIVATION_REPAIRING",
+    "YZF_PWA_ACTIVATING",
+    "YZF_PWA_ACTIVATION_ERROR",
+  ].includes(data.type)) {
+    handlePwaActivationProtocol(data);
     return;
   }
   if (data.type === "YZF_PWA_READY") {
     const readyVersion = String(data.version || "");
-    pwaTargetVersion = readyVersion || pwaTargetVersion || "";
     pwaLastFailure = null;
     pwaCacheReady = true;
     if (pwaActivationRequested) {
       const targetMatches = !pwaPendingVersion || pwaPendingVersion === "1" || !readyVersion || readyVersion === pwaPendingVersion;
       if (!targetMatches) return;
-      clearPwaActivationTimer();
-      setPwaActivationPending(false);
-      pwaReloadRequested = false;
+      pwaTargetVersion = readyVersion || pwaTargetVersion || "";
+      completePwaActivationAndReload();
+      return;
     }
+    pwaTargetVersion = readyVersion || pwaTargetVersion || "";
     setPwaStatus(effectiveReadyPwaState());
     return;
   }
@@ -1876,16 +1999,8 @@ async function installPwaSupport() {
   navigator.serviceWorker.addEventListener("message", handlePwaWorkerMessage);
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     pwaCacheReady = true;
-    clearPwaActivationTimer();
-    const shouldReload = pwaReloadRequested || pwaActivationRequested;
-    setPwaActivationPending(false);
-    pwaReloadRequested = false;
-    if (shouldReload) {
-      setTransientStatus("updateComplete", {}, { duration: 1200 });
-      window.setTimeout(() => window.location.reload(), 80);
-    } else {
-      setPwaStatus(effectiveReadyPwaState());
-    }
+    if (pwaReloadRequested || pwaActivationRequested) completePwaActivationAndReload();
+    else setPwaStatus(effectiveReadyPwaState());
   });
   window.addEventListener("online", () => {
     if (["offlineReady", "offlinePartial"].includes(pwaStatus.state)) setPwaStatus(effectiveReadyPwaState());

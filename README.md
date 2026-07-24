@@ -211,7 +211,10 @@ The browser retry path must call `ServiceWorkerRegistration.update()` before mes
 
 The update-ready UI must be driven by `ServiceWorkerRegistration.waiting`, not by an early message sent near the end of the install event. The worker reports `YZF_PWA_STAGED` after download/verification; the page turns the cloud purple only after the browser has promoted that worker to `waiting`. Applying the update uses a confirmed handshake:
 
-1. the page persists an apply-pending flag and sends `YZF_PWA_SKIP_WAITING` to the waiting worker;
-2. the worker verifies the release, broadcasts `YZF_PWA_ACTIVATING`, and calls `skipWaiting()` inside `event.waitUntil()`;
-3. the page reloads only after `controllerchange` and clears the pending flag;
-4. a manual refresh during this interval resumes the pending activation instead of returning to a permanently purple cloud.
+1. the page persists an apply-pending flag and sends `YZF_PWA_SKIP_WAITING` to the exact waiting worker through a transferred `MessageChannel`;
+2. the worker replies `ACCEPTED`; if verification finds an evicted or missing cache entry, it reports `ACTIVATION_REPAIRING`, runs the same incremental/resumable repair pipeline, and verifies again;
+3. the worker reports `ACTIVATING` and calls `skipWaiting()` inside `event.waitUntil()`; failures return `ACTIVATION_ERROR` with the failing asset/message instead of silently timing out;
+4. the page observes the point-to-point replies, the waiting worker's `statechange`, the broadcast `READY` message, and `controllerchange`. Any authoritative activated signal completes the switch and reloads the page, which avoids Android browsers that delay or omit `controllerchange`;
+5. a manual refresh during this interval resumes the pending activation instead of returning to a permanently purple cloud.
+
+`sw.js` itself is intentionally excluded from `pwa-assets.js`: the browser owns Service Worker script update checks (`updateViaCache: "none"`), while the offline manifest covers only runtime assets that the active release must serve.

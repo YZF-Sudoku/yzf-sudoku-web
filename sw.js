@@ -49,6 +49,7 @@ const MAX_FETCH_ATTEMPTS = 3;
 const INTERNAL_ROOT = new URL("./__yzf_pwa_internal__/", self.registration.scope).href;
 const META_URL = `${INTERNAL_ROOT}release-meta.json`;
 let releaseTask = null;
+let activationRequesterClientId = "";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -139,6 +140,68 @@ async function saveMeta(cache, meta) {
 async function broadcast(message) {
   const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
   for (const client of clients) client.postMessage(message);
+}
+
+function activationMessage(type, details = {}) {
+  return { type, version: manifest.version, ...details };
+}
+
+async function reportActivation(event, type, details = {}) {
+  const message = activationMessage(type, details);
+  try { event?.ports?.[0]?.postMessage(message); } catch {}
+  try { event?.source?.postMessage?.(message); } catch {}
+  await broadcast(message);
+  return message;
+}
+
+async function ensureReleaseCompleteForActivation(event) {
+  if (await releaseIsComplete()) return { repaired: false, stats: null };
+  await reportActivation(event, "YZF_PWA_ACTIVATION_REPAIRING", {
+    message: "The staged release is incomplete; repairing missing offline resources before activation",
+  });
+  const stats = await cacheRelease();
+  if (!(await releaseIsComplete())) {
+    throw new Error("offline release is still incomplete after repair");
+  }
+  return { repaired: true, stats };
+}
+
+async function rememberActivationRequester(event) {
+  activationRequesterClientId = String(event?.source?.id || activationRequesterClientId || "");
+  if (!activationRequesterClientId) return;
+  const cache = await caches.open(CACHE_NAME);
+  const meta = await loadMeta(cache);
+  meta.activationRequesterClientId = activationRequesterClientId;
+  await saveMeta(cache, meta);
+}
+
+async function reportActivationFailure(event, error) {
+  const details = {
+    asset: error?.asset || "",
+    message: error instanceof Error ? error.message : String(error),
+    ...(error?.progress || {}),
+  };
+  await reportActivation(event, "YZF_PWA_ACTIVATION_ERROR", details);
+  // V7/V8 pages do not know ACTIVATION_ERROR yet. Keep the legacy error
+  // message so an already-open old page turns red/yellow instead of silently
+  // timing out back to a purple cloud.
+  await broadcast({ type: "YZF_PWA_ERROR", version: manifest.version, ...details });
+}
+
+async function reloadActivationRequester(meta) {
+  const clientId = String(activationRequesterClientId || meta?.activationRequesterClientId || "");
+  if (!clientId) return false;
+  try {
+    const client = await self.clients.get(clientId);
+    if (!client || typeof client.navigate !== "function") return false;
+    // Do not await navigate from inside the activate event: Chromium may wait
+    // for activation to finish before committing that navigation, creating a
+    // circular wait. Starting it fire-and-forget lets activation settle first.
+    client.navigate(client.url).catch(() => {});
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function sha256Hex(buffer) {
@@ -531,19 +594,35 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
-    if (!(await releaseIsComplete())) throw new Error("cannot activate an incomplete offline release");
-    const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map((key) => caches.delete(key)));
-    await self.clients.claim();
-    const cache = await caches.open(CACHE_NAME);
-    const meta = await loadMeta(cache);
-    await broadcast({
-      type: "YZF_PWA_READY",
-      version: manifest.version,
-      totalBytes: manifest.totalBytes,
-      count: manifest.assets.length,
-      ...meta.stats,
-    });
+    try {
+      if (!(await releaseIsComplete())) {
+        await broadcast(activationMessage("YZF_PWA_ACTIVATION_REPAIRING", {
+          message: "Offline resources changed during activation; repairing before taking control",
+        }));
+        await cacheRelease();
+      }
+      if (!(await releaseIsComplete())) throw new Error("cannot activate an incomplete offline release after repair");
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map((key) => caches.delete(key)));
+      await self.clients.claim();
+      const cache = await caches.open(CACHE_NAME);
+      const meta = await loadMeta(cache);
+      await broadcast({
+        type: "YZF_PWA_READY",
+        version: manifest.version,
+        totalBytes: manifest.totalBytes,
+        count: manifest.assets.length,
+        ...meta.stats,
+      });
+      // Some Android Chromium/WebView builds delay or omit controllerchange on
+      // the page that requested activation. Navigate that exact client after
+      // claim as a compatibility fallback; newer pages also observe statechange
+      // and READY, so this is idempotent.
+      await reloadActivationRequester(meta);
+    } catch (error) {
+      await reportActivationFailure(null, error);
+      throw error;
+    }
   })());
 });
 
@@ -604,9 +683,31 @@ self.addEventListener("message", (event) => {
   const data = event.data || {};
   if (data.type === "YZF_PWA_SKIP_WAITING") {
     event.waitUntil((async () => {
-      if (!(await releaseIsComplete())) throw new Error("cannot activate an incomplete offline release");
-      await broadcast({ type: "YZF_PWA_ACTIVATING", version: manifest.version });
-      await self.skipWaiting();
+      await rememberActivationRequester(event);
+      await reportActivation(event, "YZF_PWA_ACTIVATION_ACCEPTED");
+      // V7/V8 pages start a fixed 15-second timeout as soon as the purple cloud
+      // is clicked. Keep that legacy page alive while a missing large asset is
+      // repaired, otherwise it can turn purple again even though repair is
+      // still progressing.
+      const heartbeat = setInterval(() => {
+        broadcast({
+          type: "YZF_PWA_ACTIVATING",
+          version: manifest.version,
+          repairing: true,
+        }).catch(() => {});
+      }, 7000);
+      try {
+        const repair = await ensureReleaseCompleteForActivation(event);
+        clearInterval(heartbeat);
+        await reportActivation(event, "YZF_PWA_ACTIVATING", {
+          repaired: repair.repaired,
+          ...(repair.stats || {}),
+        });
+        await self.skipWaiting();
+      } catch (error) {
+        clearInterval(heartbeat);
+        await reportActivationFailure(event, error);
+      }
     })());
     return;
   }
