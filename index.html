@@ -23,6 +23,16 @@
       --accent: #1466cc;
       --place: #0b7a4b;
       --delete: #b42318;
+      /* TLG diagram palette: object category is encoded by color, while
+         Truth/Link is encoded by filled versus hollow geometry. */
+      --tlg-candidate-color: #4b88e8;
+      --tlg-candidate-stroke: #244f87;
+      --tlg-elimination-color: #df3b31;
+      --tlg-elimination-stroke: #8f211c;
+      --tlg-cell-color: #78aef2;
+      --tlg-row-color: #a84bd4;
+      --tlg-column-color: #3f9364;
+      --tlg-box-color: #b97845;
     }
     * { box-sizing: border-box; }
     html,
@@ -1333,40 +1343,6 @@
       right: calc(100% + 4px);
       left: auto;
     }
-    .candidate.tlg-house-membership {
-      isolation: isolate;
-      font-weight: 900;
-    }
-    .candidate.tlg-house-membership > .tlg-house-overlay {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 1.62em;
-      height: 1.62em;
-      overflow: visible;
-      pointer-events: none;
-      transform: translate(-50%, calc(-50% - 1.5cqw));
-      z-index: -1;
-    }
-    .candidate.tlg-truth-candidate {
-      /* Kept as a no-op compatibility selector for cached markup. V563 uses
-         the SVG house-membership overlay instead of a single blue outline. */
-      font-weight: 900;
-    }
-    /* Cell Links remain cell-level objects. V574 changed only row/column/box
-       Link rendering to candidate-level overlays; it must not suppress this fill. */
-    .sudoku-cell.tlg-cell-link {
-      background-image: linear-gradient(rgba(14, 165, 233, 0.24), rgba(14, 165, 233, 0.24)) !important;
-    }
-    .sudoku-cell.tlg-cell-truth::after {
-      content: "";
-      position: absolute;
-      inset: max(2px, 0.12em);
-      border: max(2px, 0.16em) solid rgba(20, 102, 204, 0.62);
-      border-radius: max(2px, 0.12em);
-      pointer-events: none;
-      z-index: 8;
-    }
 .yzf-debug-title {
       font-size: 13px;
       font-weight: 700;
@@ -1714,6 +1690,33 @@
       width: 100%;
       height: 100%;
       z-index: 0;
+    }
+    /* The normal 3x3 pencilmark grid remains untouched. TLG preserves the
+       familiar top/middle/bottom and left/centre/right candidate zones, while
+       skewing three evenly spaced tracks inside each zone so all digits own a
+       unique x/y pair and adjacent Truth/Link channels remain separated. */
+    .board-stage.tlg-diagram-layout .candidate-grid {
+      position: relative;
+      display: block;
+      padding: 0;
+    }
+    .board-stage.tlg-diagram-layout .candidate {
+      position: absolute;
+      left: var(--tlg-candidate-x, 50%);
+      top: var(--tlg-candidate-y, 50%);
+      width: 26%;
+      height: 26%;
+      transform: translate(-50%, -50%);
+      touch-action: manipulation;
+    }
+    .board-stage.tlg-diagram-layout .candidate.tlg-diagram-covered {
+      color: transparent !important;
+      opacity: 1;
+      text-shadow: none !important;
+    }
+    .board-stage.tlg-diagram-layout .candidate.tlg-elimination::before,
+    .board-stage.tlg-diagram-layout .candidate.tlg-elimination::after {
+      display: none;
     }
     .candidate.bkclr::before,
     .candidate.link::before,
@@ -5614,7 +5617,7 @@
             <div id="brandSubtitle" class="brand-subtitle">移动优先逻辑训练器</div>
           </div>
           <div class="app-status-cluster" aria-label="应用状态"><button class="app-status-button" type="button" data-app-status-kind="pwa" data-state="initializing" data-tone="working" aria-label="正在初始化离线功能" title="正在初始化离线功能"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 18.5h9.2a4.3 4.3 0 0 0 .6-8.6A6.2 6.2 0 0 0 5.4 8.4 5 5 0 0 0 7.5 18.5Z"></path></svg><span class="app-status-dot" aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="save" data-state="saved" data-tone="ok" aria-label="当前进度已保存" title="当前进度已保存"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5h11l3 3V20.5H5Z"></path><path d="M8 3.5v6h8v-5M8 20.5v-7h8v7"></path></svg><span class="app-status-dot" aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="back" data-state="leaveApp" data-tone="muted" hidden aria-label="返回" title="返回"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6-6 6 6 6"></path><path d="M5 12h9a5 5 0 0 1 5 5v1"></path></svg><span class="app-status-badge" data-app-back-badge aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="transient" data-state="idle" data-tone="ok" hidden aria-label="状态通知" title="状态通知"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12.5 10.7 15 16.5 8.8"></path><circle cx="12" cy="12" r="8.5"></circle></svg><span class="app-status-dot" aria-hidden="true"></span></button></div>
-          <a id="manualLink" class="manual-link" href="./user_manual.html?v=20260718-pwa-mobile-actions-v1" target="_blank" rel="noopener">使用手册</a>
+          <a id="manualLink" class="manual-link" href="./user_manual.html?v=manual-137ed466aea5" target="_blank" rel="noopener">使用手册</a>
           <button id="btnStepExplain" class="step-explain-button" type="button" disabled title="当前没有可解释的步骤。" aria-label="当前没有可解释的步骤。">解释</button>
           <a id="techniquesLink" class="manual-link" href="./techniques.html" target="_blank" rel="noopener">技巧说明</a>
           <button id="btnMobileSolveMode" class="mobile-solve-entry" type="button" title="做题模式" aria-label="做题模式">做题</button>
@@ -6111,6 +6114,6 @@
   <div id="appStatusToast" class="app-status-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=ui-0688aaf667d9"></script>
+    <script type="module" src="./app.js?v=ui-284f96a4975b"></script>
   </body>
 </html>

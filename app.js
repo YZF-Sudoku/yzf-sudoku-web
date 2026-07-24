@@ -18,9 +18,10 @@ import {
   difficultyDescriptor,
   difficultyLevels,
 } from "./ui-localization.js?v=20260717-pwa-wakelock-icon-v2";
+import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-4c2e94ce3029";
 
 const APP_VERSION = "wasm-19430ca264fcc1f4";
-const MANUAL_VERSION = "20260721-otp-training-v1";
+const MANUAL_VERSION = "manual-4286f000384d";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
@@ -455,6 +456,19 @@ let yzfHintBaseText = "";
 
 const APP_URL_PARAMS = new URLSearchParams(window.location.search);
 const APP_DEBUG_MODE = APP_URL_PARAMS.get("dev") === "1" || APP_URL_PARAMS.get("debug") === "1";
+
+const tlgDiagramRenderer = createTlgDiagramRenderer({
+  boardStage,
+  board,
+  overlay: yzfOverlay,
+  underlay: yzfUnderlay,
+  getCandidateCenter,
+  getCellRectLogical,
+  candidateKey: tlgSolverCandidateKey,
+  boxIndex: tlgSolverBoxIndex,
+  canonicalDescriptor: tlgCanonicalDescriptor,
+  normalizeResponseCandidate: normalizeTlgResponseCandidate,
+});
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const YZF_DEBUG_SAMPLE_PATHS = new Map([
@@ -9086,6 +9100,7 @@ function renderCandidates(candidates, removals, focus = null, colorMap = null) {
     const item = document.createElement("span");
     item.className = "candidate";
     item.dataset.digit = String(digit);
+    tlgDiagramRenderer.applyCandidateLayoutStyle(item, digit);
     if (set.has(digit)) {
       item.textContent = digit;
       const fbMark = colorMap instanceof Map ? colorMap.get(digit) : null;
@@ -9122,11 +9137,18 @@ function renderCandidates(candidates, removals, focus = null, colorMap = null) {
 
 function renderBoardSnapshot(snapshot, hint = currentHint) {
   // Do not blend solver/step highlights into the dedicated TLG editing view.
-  if (tlgSolverEditingActive()) hint = null;
+  const tlgDiagramActive = tlgSolverEditingActive();
+  if (tlgDiagramActive) hint = null;
   snapshot = tlgSolverEffectiveSnapshot(snapshot);
+  tlgDiagramRenderer.prepare({
+    enabled: tlgDiagramActive,
+    snapshot,
+    state: tlgDiagramRenderState(),
+  });
   board.replaceChildren();
 
   if (!snapshot) {
+    clearRenderedChainOverlay();
     boardMeta.textContent = "";
     clearManualChainEndpointHighlights();
     clearManualMarkOverlay();
@@ -9269,6 +9291,10 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     renderStepExplanation(null, snapshot);
     setYzfOverlayModeNote("");
     clearRenderedChainOverlay();
+  }
+
+  if (tlgDiagramActive) {
+    tlgDiagramRenderer.render();
   }
 
   // Solver overlay rendering may touch candidate classes for chain hints.
@@ -11754,243 +11780,126 @@ function updateTlgSolverUi() {
   }
 }
 
-const TLG_HOUSE_TYPE_ORDER = ["r", "c", "b"];
-const TLG_HOUSE_TYPE_COLORS = Object.freeze({
-  r: "#0f9d8b",
-  c: "#d4a017",
-  b: "#8b5cf6",
-});
-
-function tlgCandidateEndpointTokens(value) {
-  const endpoints = [];
-  const pattern = /([1-9])r([1-9])c([1-9])/gi;
-  let match;
-  while ((match = pattern.exec(String(value || ""))) !== null) {
-    endpoints.push({
-      digit: Number(match[1]),
-      row: Number(match[2]),
-      column: Number(match[3]),
-    });
-  }
-  return endpoints;
-}
-
-function tlgCandidateBelongsToManualHouseDescriptor(rawValue, type, cellIndex, digit) {
-  const value = String(rawValue || "");
-  const row = Math.floor(cellIndex / 9) + 1;
-  const column = (cellIndex % 9) + 1;
-  const box = tlgSolverBoxIndex(cellIndex);
-  const endpoints = tlgCandidateEndpointTokens(value);
-  if (!endpoints.length) return false;
-
-  // A normal row/column/box Link uses one digit.  Highlight the complete
-  // active candidate set represented by that house descriptor.  Malformed or
-  // deliberately mixed-digit endpoint input is kept conservative: only the
-  // explicitly selected endpoints are highlighted.
-  const endpointDigits = [...new Set(endpoints.map((point) => point.digit))];
-  if (endpointDigits.length === 1 && endpointDigits[0] === digit) {
-    if (type === "r") {
-      const header = /(?:^|:)r([1-9])(?=:)/i.exec(value);
-      const house = header ? Number(header[1]) : endpoints[0].row;
-      return row === house;
-    }
-    if (type === "c") {
-      const header = /(?:^|:)c([1-9])(?=:)/i.exec(value);
-      const house = header ? Number(header[1]) : endpoints[0].column;
-      return column === house;
-    }
-    if (type === "b") {
-      const header = /(?:^|:)b([1-9])(?=:)/i.exec(value);
-      const endpointCell = (endpoints[0].row - 1) * 9 + (endpoints[0].column - 1);
-      const house = header ? Number(header[1]) : tlgSolverBoxIndex(endpointCell);
-      return box === house;
-    }
-  }
-
-  return endpoints.some((point) => point.digit === digit && point.row === row && point.column === column);
-}
-
-function tlgCandidateHouseTypes(items, cellIndex, digit, role) {
-  const row = Math.floor(cellIndex / 9) + 1;
-  const column = (cellIndex % 9) + 1;
-  const box = tlgSolverBoxIndex(cellIndex);
-  const found = new Set();
-
-  for (const rawItem of items || []) {
-    const raw = String(rawItem || "");
-    const value = tlgSolverPrettyValue(raw).toLowerCase();
-    const descriptor = /^([1-9])([rcb])([1-9])$/.exec(value);
-    if (descriptor) {
-      const descriptorDigit = Number(descriptor[1]);
-      const type = descriptor[2];
-      const index = Number(descriptor[3]);
-      if (descriptorDigit !== digit) continue;
-      if ((type === "r" && row === index) ||
-          (type === "c" && column === index) ||
-          (type === "b" && box === index)) {
-        found.add(type);
-      }
-      continue;
-    }
-
-    if (role !== "link") continue;
-
-    if (/^row-link:/i.test(raw) && tlgCandidateBelongsToManualHouseDescriptor(raw, "r", cellIndex, digit)) found.add("r");
-    if (/^column-link:/i.test(raw) && tlgCandidateBelongsToManualHouseDescriptor(raw, "c", cellIndex, digit)) found.add("c");
-    if (/^box-link:/i.test(raw) && tlgCandidateBelongsToManualHouseDescriptor(raw, "b", cellIndex, digit)) found.add("b");
-  }
-
-  return TLG_HOUSE_TYPE_ORDER.filter((type) => found.has(type));
-}
-
-function tlgCellHasDescriptor(items, cellIndex, role) {
-  const row = Math.floor(cellIndex / 9) + 1;
-  const column = (cellIndex % 9) + 1;
-  const canonical = `${row}n${column}`;
-
-  for (const rawItem of items || []) {
-    const raw = String(rawItem || "");
-    const value = tlgSolverPrettyValue(raw).toLowerCase();
-    if (value === canonical) return true;
-
-    if (role === "truth") {
-      const match = /^cell-truth:r([1-9])c([1-9])$/i.exec(raw);
-      if (match && Number(match[1]) === row && Number(match[2]) === column) return true;
-      continue;
-    }
-
-    if (role === "link" && /^cell-link:/i.test(raw)) {
-      const endpoints = tlgCandidateEndpointTokens(raw);
-      if (endpoints.length === 2 && endpoints.every((point) => point.row === row && point.column === column)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function tlgPolarPoint(cx, cy, radius, angle) {
-  return {
-    x: cx + radius * Math.cos(angle),
-    y: cy + radius * Math.sin(angle),
-  };
-}
-
-function tlgCreateSvgElement(tagName, attributes = {}) {
-  const node = document.createElementNS("http://www.w3.org/2000/svg", tagName);
-  Object.entries(attributes).forEach(([name, value]) => node.setAttribute(name, String(value)));
-  return node;
-}
-
-function tlgArcPath(cx, cy, radius, startAngle, sweepAngle, includeCenter = false) {
-  const start = tlgPolarPoint(cx, cy, radius, startAngle);
-  const end = tlgPolarPoint(cx, cy, radius, startAngle + sweepAngle);
-  const largeArc = sweepAngle > Math.PI ? 1 : 0;
-  const prefix = includeCenter ? `M ${cx} ${cy} L ${start.x} ${start.y}` : `M ${start.x} ${start.y}`;
-  return `${prefix} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y}${includeCenter ? " Z" : ""}`;
-}
-
-function tlgAppendSegmentedCircle(svg, types, layer) {
-  if (!types.length) return;
-  const count = types.length;
-  const sweep = (Math.PI * 2) / count;
-  const radius = layer === "truth" ? 42 : 33;
-
-  types.forEach((type, index) => {
-    const color = TLG_HOUSE_TYPE_COLORS[type];
-    if (!color) return;
-    if (count === 1) {
-      svg.appendChild(tlgCreateSvgElement("circle", {
-        cx: 50,
-        cy: 50,
-        r: radius,
-        fill: layer === "link" ? color : "none",
-        "fill-opacity": layer === "link" ? 0.42 : 0,
-        stroke: layer === "truth" ? color : "none",
-        "stroke-width": layer === "truth" ? 8 : 0,
-      }));
-      return;
-    }
-
-    const path = tlgCreateSvgElement("path", {
-      d: tlgArcPath(50, 50, radius, index * sweep, sweep, layer === "link"),
-      fill: layer === "link" ? color : "none",
-      "fill-opacity": layer === "link" ? 0.42 : 0,
-      stroke: layer === "truth" ? color : "none",
-      "stroke-width": layer === "truth" ? 8 : 0,
-      "stroke-linecap": "butt",
-      "stroke-linejoin": "round",
-    });
-    svg.appendChild(path);
-  });
-}
-
-function tlgShouldShowLinkHighlight(cellHasTruth, truthTypes, isElimination) {
-  return !!cellHasTruth || truthTypes.length > 0 || !!isElimination;
-}
-
-function tlgApplyHouseMembershipOverlay(candidate, truthTypes, linkTypes) {
-  if (!truthTypes.length && !linkTypes.length) return;
-  const svg = tlgCreateSvgElement("svg", {
-    viewBox: "0 0 100 100",
-    "aria-hidden": "true",
-    focusable: "false",
-  });
-  svg.classList.add("tlg-house-overlay");
-  // Link membership is the candidate's own background. Truth membership is
-  // the slightly larger outer ring. Both use the same 0° start and stable
-  // R→C→B ordering, so segmented memberships never jump.
-  tlgAppendSegmentedCircle(svg, linkTypes, "link");
-  tlgAppendSegmentedCircle(svg, truthTypes, "truth");
-  candidate.classList.add("tlg-house-membership");
-  candidate.appendChild(svg);
-}
-
 function applyTlgSolverMarksToCellElement(cellNode, cellIndex) {
   if (!tlgSolverEditingActive()) return;
   if (!tlgSolverCellAcceptsInput(cellIndex)) return;
-  const effectiveLinks = tlgSolverEffectiveLinks();
-  const cellHasTruth = tlgCellHasDescriptor(tlgSolverState.truths, cellIndex, "truth");
-  const cellHasLink = tlgCellHasDescriptor(effectiveLinks, cellIndex, "link");
-  if (cellHasLink) {
-    // Cell Links retain their original cell-level meaning: tint the whole cell.
-    // V574's candidate-level Link rendering applies only to row/column/box Links.
-    cellNode.classList.add("tlg-cell-link");
-  }
-  if (cellHasTruth) {
-    cellNode.classList.add("tlg-cell-truth");
-  }
 
   const candidates = [...cellNode.querySelectorAll(".candidate[data-digit]")];
-
   candidates.forEach((candidate) => {
     const digit = Number(candidate.dataset.digit || 0);
     if (!digit || !candidate.textContent.trim()) return;
     const key = tlgSolverCandidateKey(cellIndex, digit);
-    if (tlgSolverState.selectedCandidates.has(key)) candidate.classList.add("tlg-multi-selected");
     if (tlgSolverState.virtualCandidates.has(key)) candidate.classList.add("tlg-virtual-candidate");
-    if (tlgSolverState.aurGroups[0].has(key)) candidate.classList.add("tlg-aur-corner");
-    if (tlgSolverState.aurGroups[1].has(key)) candidate.classList.add("tlg-aur-corner-secondary");
+    if (tlgSolverState.aurGroups[0].has(key)) candidate.classList.add("tlg-aur-group-a");
+    if (tlgSolverState.aurGroups[1].has(key)) candidate.classList.add("tlg-aur-group-b");
     if (tlgSolverState.dynamicAurCandidates.has(key)) candidate.classList.add("tlg-daur-candidate");
     if (tlgSolverState.genericAurCandidates.has(key)) candidate.classList.add("tlg-gur-candidate");
+    if (tlgSolverState.selectedCandidates.has(key)) candidate.classList.add("tlg-selected-candidate");
 
-    const isElimination = tlgSolverState.eliminations.some(
-      (item) => item.cell === cellIndex && item.digit === digit,
-    );
+    const isElimination = tlgSolverState.eliminations.some((item) => {
+      const normalized = normalizeTlgResponseCandidate(item);
+      return normalized && normalized.cell === cellIndex && normalized.digit === digit;
+    });
     if (isElimination) candidate.classList.add("tlg-elimination");
+    if (tlgDiagramRenderer.isCandidateCovered(key)) candidate.classList.add("tlg-diagram-covered");
 
-    const truthTypes = tlgCandidateHouseTypes(tlgSolverState.truths, cellIndex, digit, "truth");
-    let linkTypes = tlgCandidateHouseTypes(effectiveLinks, cellIndex, digit, "link");
-
-    // Row/column/box Links are candidate-level memberships. Show them
-    // only where that candidate is Truth-covered or is a final elimination.
-    if (!tlgShouldShowLinkHighlight(cellHasTruth, truthTypes, isElimination)) {
-      linkTypes = [];
+    const endpoint = tlgSolverState.selectedEndpoint;
+    if (endpoint && endpoint.cellIndex === cellIndex && endpoint.digit === digit) {
+      candidate.classList.add("tlg-selected-endpoint");
     }
+  });
+}
 
-    tlgApplyHouseMembershipOverlay(candidate, truthTypes, linkTypes);
-    const ep = tlgSolverState.selectedEndpoint;
-    if (ep && ep.cellIndex === cellIndex && ep.digit === digit) candidate.classList.add("tlg-selected-endpoint");
+function tlgDiagramRenderState() {
+  return {
+    truths: tlgSolverState.truths,
+    links: tlgSolverEffectiveLinks(),
+    virtualCandidates: tlgSolverState.virtualCandidates,
+    aurGroups: tlgSolverState.aurGroups,
+    dynamicAurCandidates: tlgSolverState.dynamicAurCandidates,
+    genericAurCandidates: tlgSolverState.genericAurCandidates,
+    selectedCandidates: tlgSolverState.selectedCandidates,
+    selectedEndpoint: tlgSolverState.selectedEndpoint,
+    eliminations: tlgSolverState.eliminations,
+    assignments: tlgSolverState.assignments,
+  };
+}
+
+if (APP_DEBUG_MODE) {
+  window.__YZF_TLG_DIAGRAM_TEST__ = Object.freeze({
+    applyFixture(fixture = {}) {
+      const cells = Array.from({ length: 81 }, (_, index) => ({
+        index,
+        value: Number(fixture.cells?.[index]?.value || 0),
+        candidates: [...new Set((fixture.cells?.[index]?.candidates || [9]).map(Number))]
+          .filter((digit) => digit >= 1 && digit <= 9)
+          .sort((a, b) => a - b),
+      }));
+      const snapshot = {
+        board: String(fixture.board || ".".repeat(81)).slice(0, 81).padEnd(81, "."),
+        givens: String(fixture.givens || ".".repeat(81)).slice(0, 81).padEnd(81, "."),
+        cells,
+        revision: "TLG-TEST",
+        source: "tlg-diagram-browser-test",
+      };
+      const activeCandidates = new Set();
+      cells.forEach((cell, index) => cell.candidates.forEach((digit) => activeCandidates.add(tlgSolverCandidateKey(index, digit))));
+      if (tlgSolverEnable) tlgSolverEnable.checked = true;
+      tlgSolverState.candidateGrid = {
+        snapshot,
+        activeCandidates,
+        initialCandidates: new Set(activeCandidates),
+        count: activeCandidates.size,
+        format: "test",
+      };
+      tlgSolverState.truths = [...(fixture.truths || [])];
+      tlgSolverState.links = [...(fixture.links || [])];
+      tlgSolverState.resultLinks = [...(fixture.resultLinks || [])];
+      tlgSolverState.resultLinksAvailable = !!fixture.resultLinksAvailable;
+      tlgSolverState.virtualCandidates = new Set(fixture.virtualCandidates || []);
+      tlgSolverState.aurGroups = [new Set(fixture.aur1 || []), new Set(fixture.aur2 || [])];
+      tlgSolverState.dynamicAurCandidates = new Set(fixture.daur || []);
+      tlgSolverState.genericAurCandidates = new Set(fixture.gur || []);
+      tlgSolverState.selectedCandidates = new Set(fixture.selected || []);
+      tlgSolverState.selectedEndpoint = fixture.endpoint || null;
+      tlgSolverState.eliminations = [...(fixture.eliminations || [])];
+      tlgSolverState.assignments = [...(fixture.assignments || [])];
+      renderBoardSnapshot(currentSnapshot, null);
+      updateTlgSolverUi();
+      return tlgDiagramRenderer.inspect();
+    },
+    disable() {
+      if (tlgSolverEnable) tlgSolverEnable.checked = false;
+      tlgSolverState.candidateGrid = null;
+      renderBoardSnapshot(currentSnapshot, null);
+      updateTlgSolverUi();
+    },
+    async captureStats() {
+      const canvas = await captureBoardStageDomCanvas();
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      const pixels = context?.getImageData(0, 0, canvas.width, canvas.height).data || [];
+      const counts = { blue: 0, red: 0, purple: 0, green: 0, brown: 0 };
+      for (let index = 0; index < pixels.length; index += 16) {
+        const r = pixels[index];
+        const g = pixels[index + 1];
+        const b = pixels[index + 2];
+        const a = pixels[index + 3];
+        if (a < 96) continue;
+        if (b > 145 && b > r * 1.12 && b > g * 1.06) counts.blue += 1;
+        if (r > 155 && r > g * 1.45 && r > b * 1.28) counts.red += 1;
+        if (r > 105 && b > 105 && r > g * 1.18 && b > g * 1.12) counts.purple += 1;
+        if (g > 90 && g > r * 1.18 && g > b * 1.03) counts.green += 1;
+        if (r > 105 && g > 55 && r > g * 1.2 && g > b * 1.2) counts.brown += 1;
+      }
+      return { width: canvas.width, height: canvas.height, ...counts };
+    },
+    render() { renderBoardSnapshot(currentSnapshot, null); },
+    inspect() {
+      return {
+        ...tlgDiagramRenderer.inspect(),
+        endpoint: tlgSolverState.selectedEndpoint ? { ...tlgSolverState.selectedEndpoint } : null,
+      };
+    },
   });
 }
 

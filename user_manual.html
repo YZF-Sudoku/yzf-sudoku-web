@@ -4,6 +4,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
+<link rel="icon" href="data:,"/>
 <title>YZF Sudoku 使用手册 / User Manual</title>
 <style>
     :root {
@@ -464,6 +465,25 @@
     .visual-swatch-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 0; font-size: 12px; }
     .visual-swatch { display: inline-flex; align-items: center; gap: 5px; }
     .visual-swatch::before { content: ""; width: 12px; height: 12px; border-radius: 999px; background: var(--swatch); }
+    .tlg-diagram-demo {
+      width: 88px;
+      height: 88px;
+      overflow: visible;
+    }
+    .tlg-diagram-demo text {
+      font-family: Tahoma, Arial, sans-serif;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+    .tlg-diagram-demo .grid { stroke: #9aa6ac; stroke-width: 1; fill: #fff; }
+    .tlg-diagram-demo .ordinary-candidate { fill: #607d8b; font-size: 11px; font-weight: 600; }
+    .tlg-diagram-demo .badge { fill: #4b88e8; stroke: #244f87; stroke-width: 1.5; }
+    .tlg-diagram-demo .badge-elimination { fill: #df3b31; stroke: #8f211c; stroke-width: 1.5; }
+    .tlg-diagram-demo .badge-label { fill: #fff; font-size: 12px; font-weight: 800; }
+    .tlg-diagram-demo .row-geometry { stroke: #a84bd4; }
+    .tlg-diagram-demo .column-geometry { stroke: #3f9364; }
+    .tlg-diagram-demo .box-geometry { stroke: #b97845; }
+    .tlg-diagram-demo .cell-geometry { stroke: #78aef2; }
     @media (max-width: 820px) {
       .pair > .zh, .pair > .en { min-width: 0; }
       table { display: block; max-width: 100%; overflow-x: auto; }
@@ -481,7 +501,7 @@
 <h1>YZF Sudoku 使用手册 / User Manual</h1>
 <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
 <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-<div class="meta">Version: Manual v3.1 · Updated: 2026-07-21</div>
+<div class="meta">Version: Manual v3.2 · Updated: 2026-07-24</div>
 </div>
 <div aria-label="Manual language view / 手册语言视图" class="manual-language-toolbar" role="group">
 <button aria-pressed="true" data-manual-lang-button="bilingual" type="button">双语 / Bilingual</button>
@@ -1260,6 +1280,7 @@
 <div class="zh">
 <p>TLG Solver 用 Truth、Link 和额外唯一性约束描述一个集合证明，再枚举满足全部约束的投影，从共同结果中得到删数或出数。它不是普通提示器：用户必须明确告诉程序哪些集合和 deadly-pattern 约束属于当前证明。</p>
 <p>勾选“启用 TLG 编辑”后，TLG 独占整个盘面的鼠标、触摸和长按输入以及专属高亮。普通技巧高亮、链路和手工标记只暂时隐藏；关闭 TLG 后恢复。关闭 TLG 会释放临时导入的 TLG 候选盘和计算结果，但保留已输入的 Truth、用户 Link、Virtual Set、AUR、DAUR、GUR 标记。</p>
+<div class="note"><strong>专用图解布局：</strong>TLG 开启时，1～9 候选会切换为横纵坐标都不重复的错切九点布局，便于 Row、Column 与 Box 通道分轨，同时仍保持标准 3×3 的读数方位。蓝色徽标表示结构候选，红色徽标表示最终删数；Cell 淡蓝、Row 紫、Column 绿、Box 褐。颜色只区分对象类型，Truth/Link 由形态区分：Truth 是实心区域，Link 是同一几何的空心轮廓。Virtual Set 使用黑色集合连线；AUR、DAUR、GUR 不再画外框，而是用候选徽标角标着色，同组同色、异组异色。普通候选、提示数和已出数字保持正常对比度；关闭 TLG 后立即恢复普通 3×3 候选布局。</div>
 <div class="note"><strong>输入兜底：</strong>TLG 开启期间，Truths 模式左键轻触空候选位置仍按 Cell Truth 处理；除此之外，空候选位置的右键/长按、固定格、出数格，以及非 Truths 模式的单元格空白点击都会被安全忽略。它们不会回落为普通出数、恢复候选、数字盘输入或手工标记。只有关闭“启用 TLG 编辑”后，普通盘面编辑才会恢复。</div>
 <h3>13.1 先理解四类状态</h3>
 <table>
@@ -1347,18 +1368,73 @@
 </ol>
 <p><strong>什么时候用：</strong>结构中可能存在多个重叠 AUR/DUR，手工逐个指定很麻烦，或你希望程序在已知局部候选池内自动识别。</p>
 <div class="warn">DAUR 会把候选池内找到的<strong>全部</strong>有效约束同时加入证明，并不是自动挑一个“最像的”。池过大会增加运行时间，也可能引入你原本没打算使用的结构。</div>
-<h3>13.10 GUR：怎么选、怎么用</h3>
-<p>GUR 是无固定模板的通用唯一性候选云。它在选定格集合中枚举“一格一个数”的合法局部完成，并寻找在行数字、列数字、宫数字 exact-cover footprint 上等价的完成类。</p>
+<h3>13.10 GUR：具体用途、标准用法与验证案例</h3>
+<p>GUR（Generic Uniqueness Region，通用唯一性区域）用于验证<strong>没有固定模板的可交换 deadly pattern</strong>。程序在用户定义的局部格集合中枚举“一格一个数”的合法完成，再比较每个完成占用的行数字、列数字和宫数字 exact-cover footprint。若两种或多种局部完成拥有相同 footprint，它们可以在不改变外部约束的情况下交换；GUR 会把这些 deadly 完成编译为精确禁止条件，再从剩余完整投影中寻找共同删数和出数。</p>
+<p><strong>适用对象：</strong>不规则 deadly pattern、Qiu Deadly Pattern（QDP）、部分 Reversed Deadly Pattern，以及无法由标准 AUR 或 DAUR 四格/六格模板准确表达的局部唯一性结构。</p>
+<h4>标准工作流</h4>
 <ol>
-<li>切换到 GUR 模式。</li>
-<li>选择目标局部区域中允许参与完成的<strong>全部活动候选</strong>。当前界面维护一组 GUR 云。</li>
-<li>候选云必须覆盖至少 4 个格；安全上限为 16 个格、64 个候选点。每个所选格都要有可用候选。</li>
-<li>严格门控下，初始盘必须存在至少一对 exact-cover 等价局部完成；当前盘必须仍有属于已证明 deadly 等价类的完成。</li>
-<li>查找后阅读 GUR 验证/预算信息。若局部完成数量过大，应缩小格集合或候选字母表。</li>
+<li><strong>准备准确候选盘：</strong>从唯一解题目得到的状态使用“唯一解：核验初始可交换局面”；只有人工构造的训练候选盘才使用训练门控。</li>
+<li><strong>确定局部格边界：</strong>只纳入参与可交换完成的活动格，不把 guardian、预期删数或仅用于外部连接的格混入 GUR。</li>
+<li><strong>每个参与格添加 Cell Truth：</strong>Cell Truth 表示该格在投影中必须选择一个候选。不要误以为只圈 GUR 候选就足够。</li>
+<li><strong>选齐完整 GUR 候选云：</strong>对每个参与格，加入该局部模型允许参与完成的全部活动候选。漏候选会制造假的限制，多选无关候选会扩大完成空间。</li>
+<li><strong>第一次查找先保持用户 Links 为 0：</strong>让后端从 Truth、候选盘和 GUR 自动生成 Links。结果区显示的 Links 是本轮实际使用的只读结果 Links，不会反写为用户 Links。</li>
+<li><strong>点击“查找删数”：</strong>检查 GUR 枚举约束、唯一性门控、预算状态、删数和出数。需要复现指定结构时，才把结果 Links 整理成显式用户 Links。</li>
 </ol>
-<p><strong>什么时候用：</strong>目标 deadly pattern 形状不规则，无法用标准 AUR，且 DAUR 的四格/六格模板也覆盖不了，但你能明确给出局部格集合和允许候选。</p>
-<p><strong>该标什么：</strong>标完整的局部候选云；不要把区域外 guardian、预期删数或仅用于连接的候选混进来。漏掉一个必要候选会改变允许完成，加入无关候选则会扩大完成空间。</p>
-<div class="note">GUR 不是“把一片可疑候选圈起来让程序猜”。它把所选云当作精确定义的局部模型，因此候选边界必须由用户负责。</div>
+<h4>成功判据</h4>
+<ul>
+<li>结果显示至少 1 个 GUR 枚举约束，且没有“初始盘不存在等价完成”“当前盘没有存活 deadly 完成”或预算超限。</li>
+<li>投影搜索完整结束；预算超限时，“0 个删数”不能解释为已经证明无删数。</li>
+<li>预期目标删数或出数出现在结果中。仅看到 GUR 彩色角标不代表逻辑已经验证。</li>
+<li>闭合局部模型可能推出教程没有单独列出的额外删数或出数。这通常表示 TLG 使用的完整投影比手工教程结论更强；仍应核对候选云边界是否准确。</li>
+</ul>
+<div class="warn">当前 GUR 需要覆盖至少 4 个格，安全上限为 16 个格、64 个候选点。典型 18 格 RUR/RUL 超过当前格数上限，不能直接当作已正式支持。</div>
+<h4>实战案例 1：QDP Type 1</h4>
+<p>此例使用 15 个 Cell Truth、覆盖 15 格的 61 个 GUR 候选。程序返回 26 个结果 Links、1 个 GUR 枚举约束、7 个删数和 1 个出数。QDP 的核心结论是 <code>r7c5&lt;&gt;26</code>；完整闭合模型进一步得到 <code>r7c5=3</code>。</p>
+<details><summary>展开完整前端结构与结果</summary>
+<pre><code>:0000:x:.48.163.736...2.4.5..3.....+4.....+1.8...451+7..1.....+4..+7....9..4.2.1...736.478.21.:862 574::
+15 Truths = {46N2 46N3 467N4 467N5 46N6 46N8 6N9}
+26 Result Links = {2369r4 57b4 26c4 3789b5 236c5 5b6 235679r6 236b8 3r7}
+GUR 通用候选云 = {
+3r4c2 5r4c2 7r4c2 9r4c2 2r4c3 3r4c3 5r4c3 6r4c3 7r4c3 9r4c3
+2r4c4 6r4c4 9r4c4 2r4c5 3r4c5 6r4c5 7r4c5 9r4c5 3r4c6 7r4c6
+2r4c8 3r4c8 5r4c8 6r4c8 9r4c8 3r6c2 5r6c2 7r6c2 9r6c2 3r6c3
+2r6c3 5r6c3 6r6c3 7r6c3 9r6c3 2r6c4 6r6c4 8r6c4 9r6c4 2r6c5
+3r6c5 6r6c5 9r6c5 7r6c5 3r6c6 8r6c6 7r6c6 2r6c8 3r6c8 5r6c8
+6r6c8 9r6c8 2r6c9 6r6c9 5r6c9 9r6c9 2r7c4 6r7c4 2r7c5 3r7c5 6r7c5}
+GUR 枚举约束 = 1
+7 个删数 = r7c5&lt;&gt;2, r4c5&lt;&gt;3, r6c5&lt;&gt;3, r7c2&lt;&gt;3,
+             r7c3&lt;&gt;3, r9c6&lt;&gt;3, r7c5&lt;&gt;6
+1 个出数 = r7c5=3</code></pre>
+</details>
+<p><strong>如何读结果：</strong><code>r7c5&lt;&gt;2</code> 与 <code>r7c5&lt;&gt;6</code> 正是 QDP Type 1 的目标结论；由于该格 Cell Truth 仍要求选择一个候选，剩余投影共同确定 <code>r7c5=3</code>。其余删数是同一个闭合局部模型的附加共同结论。</p>
+<h4>实战案例 2：GUR Type 3</h4>
+<p>此例有 17 个 Truth 描述符，展开后仍覆盖 15 个活动格；GUR 云包含 62 个候选。程序返回 31 个结果 Links、1 个 GUR 枚举约束、8 个删数和 1 个出数。核心结论为 <code>r8c3=1</code>，对应地排除 <code>r8c3&lt;&gt;458</code>。</p>
+<details><summary>展开完整前端结构与结果</summary>
+<pre><code>:0000:x:1.2..+6348.4....5+76.6....+9122.6..4....3.6......1..5.+6......+61..9.+2.93.76.6....2..5:324 824 825 925 348 368::
+17 Truths = {235678N1 2356789N3 23N6 1N4 1N5}
+31 Result Links = {389r2 38b1 45789c1 45789c3 8b2 357r3 45789b4 134578b7 1r8}
+GUR 通用候选云 = {
+3r2c1 9r2c1 8r2c1 3r3c1 5r3c1 8r3c1 7r3c1 5r5c1 4r5c1 7r5c1
+8r5c1 9r5c1 4r6c1 7r6c1 8r6c1 9r6c1 3r7c1 5r7c1 7r7c1 4r7c1
+8r7c1 5r8c1 4r8c1 8r8c1 3r2c3 8r2c3 9r2c3 3r3c3 5r3c3 8r3c3
+7r3c3 5r5c3 4r5c3 7r5c3 8r5c3 9r5c3 4r6c3 7r6c3 8r6c3 9r6c3
+3r7c3 5r7c3 4r7c3 7r7c3 8r7c3 1r8c3 4r8c3 5r8c3 8r8c3 1r9c3
+3r9c3 4r9c3 7r9c3 8r9c3 9r9c3 8r2c6 9r2c6 3r2c6 3r3c6 5r3c6
+8r3c6 7r3c6}
+GUR 枚举约束 = 1
+8 个删数 = r8c9&lt;&gt;1, r9c3&lt;&gt;1, r8c3&lt;&gt;4, r3c4&lt;&gt;5,
+             r8c3&lt;&gt;5, r3c4&lt;&gt;7, r3c5&lt;&gt;7, r8c3&lt;&gt;8
+1 个出数 = r8c3=1</code></pre>
+</details>
+<p><strong>如何读结果：</strong>同一格的三个删数 <code>r8c3&lt;&gt;458</code> 与 Cell Truth 合并后给出 <code>r8c3=1</code>。另外五个删数同样是所有剩余合法投影的共同结论，不应仅因教程只关注主结论而忽略。</p>
+<h4>失败时按这个顺序排查</h4>
+<ol>
+<li>确认每个参与格都有 Cell Truth，并且 GUR 云中的格集合与 Truth 覆盖一致。</li>
+<li>逐格核对是否选齐全部允许候选；特别检查目标格是否误删了非目标候选。</li>
+<li>删除全部用户 Links 后重试自动 Links，避免残留显式 Link 把搜索限制到另一套结构。</li>
+<li>检查唯一性门控是否符合候选盘来源，以及初始候选盘是否在编辑前正确固定。</li>
+<li>若预算超限，先缩小局部区域；不要把超限当作“结构无效”。</li>
+</ol>
 <h3>13.11 电脑批选、右键菜单</h3>
 <ol>
 <li>按住 <span class="kbd">Ctrl</span>；macOS 按 <span class="kbd">Command</span>，逐个点击候选。再次点击可取消该候选。</li>
@@ -1387,12 +1463,13 @@
 </ul>
 <h3>13.14 高亮怎么读</h3>
 <ul>
-<li>House 颜色固定为 R 青绿、C 金黄、B 紫色。</li>
-<li><strong>House Truth：</strong>候选外围分色圆环。</li>
-<li><strong>House Link：</strong>候选数字后的分色底色。查找前显示用户 Links；成功查找后显示结果 Links。为减少噪声，只有该候选同时被 Truth 覆盖或属于最终删数时才显示 House Link 底色。</li>
-<li><strong>Cell Truth：</strong>单元格内缩蓝框；<strong>Cell Link：</strong>整格浅蓝底，不受上述候选相关性门槛限制。</li>
-<li><strong>Virtual Set：</strong>紫色实线圈；<strong>AUR 1：</strong>橙色虚线；<strong>AUR 2：</strong>蓝色虚线；<strong>DAUR：</strong>青色点线；<strong>GUR：</strong>棕色双线圈。</li>
-<li><strong>最终删数：</strong>红色候选和红叉，始终在最上层。</li>
+<li><strong>对象颜色：</strong>Cell 淡蓝、Row 紫、Column 绿、Box 褐；结构候选用蓝色徽标，最终删数用红色徽标。</li>
+<li><strong>Truth / Link：</strong>Truth 画成实心区域，Link 画成同一几何的空心轮廓。Row/Column 是连续带，Box 是可转弯、可分叉的正交网络。</li>
+<li><strong>Cell：</strong>区域按该 Cell 约束的活动候选徽标求包围盒，不再整格填色或画整格边框。</li>
+<li><strong>候选布局：</strong>TLG 保留标准 3×3 候选方位，同时在每个传统区域内错开轨道。横坐标从左到右为 <code>1 4 7 | 2 5 8 | 3 6 9</code>，纵坐标从上到下为 <code>3 2 1 | 6 5 4 | 9 8 7</code>；因此 3 仍在右上、7 仍在左下，而 1～9 又各占唯一的横、纵坐标。</li>
+<li><strong>候选：</strong>同一候选即使同时属于多个 Truth/Link，也只显示一个徽标；约束身份由徽标下方的几何区域表达。未进入结构的普通候选、提示数和已出数字保持原有对比度，不再为聚焦 TLG 而整体压灰。</li>
+<li><strong>Virtual Set：</strong>黑色集合连线，和 Box Truth 一样允许转折与分叉；<strong>AUR / DAUR / GUR：</strong>不再使用外围框，改为画在候选徽标角上的彩色角标。同一组使用相同颜色，不同组尽量使用不同颜色。</li>
+<li><strong>结果优先级：</strong>最终删数红徽标覆盖结构蓝色；约束区域在底层，候选徽标和交互强调在上层。</li>
 </ul>
 <h3>13.15 结果表示与预算</h3>
 <p>大写 <code>R/C/B/N</code> 表示 Truth，小写 <code>r/c/b/n</code> 表示 Link，<code>N/n</code> 表示单元格集合。状态区会区分用户 Links 和结果 Links，并显示唯一性门控、活动候选数、AUR/DAUR/GUR 验证信息、删数和出数。</p>
@@ -1450,6 +1527,7 @@
 <div class="en">
 <p>TLG Solver describes a set proof with Truths, Links, and optional uniqueness constraints, enumerates projections satisfying all premises, and derives common eliminations or assignments. It is not an ordinary hint button: the user defines the proof structure.</p>
 <p>Enable TLG Editing gives TLG exclusive ownership of all board mouse, touch, long-press input, and its visual layer. Ordinary technique highlights, chains, and manual marks are hidden rather than deleted. Disabling TLG releases the temporary TLG candidate grid and computed result, while keeping the entered Truths, User Links, Virtual Set, AUR, DAUR, and GUR marks.</p>
+<div class="note"><strong>Dedicated diagram layout:</strong> while TLG is enabled, the familiar 3×3 candidate directions are preserved. The x tracks run left-to-right as <code>1 4 7 | 2 5 8 | 3 6 9</code>, and the y tracks run top-to-bottom as <code>3 2 1 | 6 5 4 | 9 8 7</code>. Thus 3 remains upper-right and 7 remains lower-left, while every digit still receives a unique x/y pair that separates adjacent Row, Column, and Box channels. Blue badges are structure candidates and red badges are final eliminations; Cell is light blue, Row purple, Column green, and Box brown. Color identifies the object type only: a Truth is a filled region, while a Link is the hollow outline of the same geometry. Ordinary candidates, givens, and solved values retain their normal contrast; only candidates replaced by blue/red SVG badges hide their duplicate DOM labels. Disabling TLG immediately restores the ordinary 3×3 pencilmark layout.</div>
 <div class="note"><strong>Input guard:</strong> while TLG is enabled, a plain left tap on an empty candidate slot in Truths mode still acts as the Cell Truth shortcut. Otherwise, right-click/long-press on an empty slot, fixed/solved cells, and cell-background clicks outside Truths mode are safe no-ops. They never fall through to ordinary value entry, candidate restoration, the number pad, or manual marks. Ordinary board editing resumes only after TLG Editing is disabled.</div>
 <h3>13.1 Four Different States</h3>
 <table>
@@ -1537,18 +1615,73 @@
 </ol>
 <p><strong>Use it when:</strong> several overlapping AUR/DUR forms may exist and manually specifying each one is inconvenient.</p>
 <div class="warn">Every valid form found in the pool is added simultaneously. DAUR does not choose one “best-looking” pattern. A broad pool can be slower and can introduce structures you did not intend.</div>
-<h3>13.10 GUR</h3>
-<p>GUR is a template-free generic uniqueness cloud. It enumerates legal one-digit-per-cell local completions and finds completion classes with the same row-digit, column-digit, and box-digit exact-cover footprint.</p>
+<h3>13.10 GUR: Purpose, Standard Workflow, and Verified Cases</h3>
+<p>GUR (Generic Uniqueness Region) validates <strong>template-free swappable deadly patterns</strong>. Within a user-defined local cell set, the engine enumerates legal one-digit-per-cell completions and compares their row-digit, column-digit, and box-digit exact-cover footprints. Two or more completions with the same footprint can be exchanged without changing the external constraints. GUR compiles those deadly completions into exact no-good constraints, then derives eliminations and assignments shared by every remaining full projection.</p>
+<p><strong>Typical uses:</strong> irregular deadly patterns, Qiu Deadly Patterns (QDP), some Reversed Deadly Patterns, and local uniqueness structures that cannot be represented accurately by fixed AUR or DAUR four/six-cell templates.</p>
+<h4>Standard Workflow</h4>
 <ol>
-<li>Select GUR mode.</li>
-<li>Select <strong>all active candidates allowed</strong> in the intended local region. The current UI maintains one GUR cloud.</li>
-<li>The cloud must span at least 4 cells and is limited to 16 cells and 64 candidate points. Every selected cell needs an available candidate.</li>
-<li>Strict mode requires a pair of exact-cover-equivalent local completions in the initial grid and a currently live completion from a proven deadly class.</li>
-<li>Inspect GUR validation and budget output. Reduce the cells or digit alphabet if local enumeration is too large.</li>
+<li><strong>Start from an accurate candidate grid:</strong> use strict initial-swap validation for states derived from a unique puzzle. Use the training-grid gate only for deliberately constructed training candidates.</li>
+<li><strong>Define the local cell boundary:</strong> include only active cells that participate in the swappable completions. Exclude guardians, expected eliminations, and cells used only for external links.</li>
+<li><strong>Add one Cell Truth for every participating cell:</strong> a Cell Truth requires one selected candidate in that cell. Merely marking GUR candidates is not sufficient.</li>
+<li><strong>Select the complete GUR cloud:</strong> in every participating cell, include every active candidate allowed by the local model. Missing candidates create false restrictions; unrelated candidates enlarge the completion space.</li>
+<li><strong>Keep User Links at zero for the first run:</strong> let the backend generate Links from the Truths, candidate grid, and GUR. Links displayed after the run are read-only Result Links and are not written back as User Links.</li>
+<li><strong>Run Find Eliminations:</strong> inspect GUR enumeration constraints, uniqueness-gate status, budgets, eliminations, and assignments. Enter explicit User Links only when reproducing or editing a specified structure.</li>
 </ol>
-<p><strong>Use it when:</strong> an irregular deadly pattern cannot be represented by fixed AUR or DAUR's four/six-cell templates, but the exact local cell set and allowed candidates are known.</p>
-<p>Do not include outside guardians, expected eliminations, or link-only candidates. Missing or extra members change the local completion model.</p>
-<div class="note">GUR does not guess a pattern from a loose circle. The selected cloud is the exact local model, so the user is responsible for its boundary.</div>
+<h4>Success Criteria</h4>
+<ul>
+<li>At least one GUR enumeration constraint is reported, with no missing initial equivalent pair, no missing live deadly completion, and no budget overflow.</li>
+<li>The projection search completes. When a budget is exceeded, “zero eliminations” does not prove that no elimination exists.</li>
+<li>The intended elimination or assignment appears in the result. A colored GUR corner tab alone is only a membership marker, not a successful proof.</li>
+<li>A closed local model can produce additional eliminations or assignments beyond a tutorial's highlighted conclusion. This can be valid because TLG evaluates all complete projections, but the cloud boundary should still be audited.</li>
+</ul>
+<div class="warn">A GUR currently spans at least 4 and at most 16 cells, with at most 64 candidate points. A typical 18-cell RUR/RUL exceeds the current cell limit and is not yet directly supported.</div>
+<h4>Verified Case 1: QDP Type 1</h4>
+<p>This case uses 15 Cell Truths and 61 GUR candidates across 15 cells. The engine returns 26 Result Links, one GUR enumeration constraint, seven eliminations, and one assignment. The core QDP conclusion is <code>r7c5&lt;&gt;26</code>; the closed model further establishes <code>r7c5=3</code>.</p>
+<details><summary>Show the complete frontend structure and result</summary>
+<pre><code>:0000:x:.48.163.736...2.4.5..3.....+4.....+1.8...451+7..1.....+4..+7....9..4.2.1...736.478.21.:862 574::
+15 Truths = {46N2 46N3 467N4 467N5 46N6 46N8 6N9}
+26 Result Links = {2369r4 57b4 26c4 3789b5 236c5 5b6 235679r6 236b8 3r7}
+GUR cloud = {
+3r4c2 5r4c2 7r4c2 9r4c2 2r4c3 3r4c3 5r4c3 6r4c3 7r4c3 9r4c3
+2r4c4 6r4c4 9r4c4 2r4c5 3r4c5 6r4c5 7r4c5 9r4c5 3r4c6 7r4c6
+2r4c8 3r4c8 5r4c8 6r4c8 9r4c8 3r6c2 5r6c2 7r6c2 9r6c2 3r6c3
+2r6c3 5r6c3 6r6c3 7r6c3 9r6c3 2r6c4 6r6c4 8r6c4 9r6c4 2r6c5
+3r6c5 6r6c5 9r6c5 7r6c5 3r6c6 8r6c6 7r6c6 2r6c8 3r6c8 5r6c8
+6r6c8 9r6c8 2r6c9 6r6c9 5r6c9 9r6c9 2r7c4 6r7c4 2r7c5 3r7c5 6r7c5}
+GUR enumeration constraints = 1
+7 eliminations = r7c5&lt;&gt;2, r4c5&lt;&gt;3, r6c5&lt;&gt;3, r7c2&lt;&gt;3,
+                 r7c3&lt;&gt;3, r9c6&lt;&gt;3, r7c5&lt;&gt;6
+1 assignment = r7c5=3</code></pre>
+</details>
+<p><strong>Reading the result:</strong> <code>r7c5&lt;&gt;2</code> and <code>r7c5&lt;&gt;6</code> are the QDP Type 1 target. The Cell Truth still requires one candidate in r7c5, so all remaining projections agree on <code>r7c5=3</code>. The other eliminations are additional common consequences of the same closed local model.</p>
+<h4>Verified Case 2: GUR Type 3</h4>
+<p>This case has 17 Truth descriptors expanding to 15 active cells, with 62 GUR candidates. The engine returns 31 Result Links, one GUR enumeration constraint, eight eliminations, and one assignment. The main conclusion is <code>r8c3=1</code>, corresponding to <code>r8c3&lt;&gt;458</code>.</p>
+<details><summary>Show the complete frontend structure and result</summary>
+<pre><code>:0000:x:1.2..+6348.4....5+76.6....+9122.6..4....3.6......1..5.+6......+61..9.+2.93.76.6....2..5:324 824 825 925 348 368::
+17 Truths = {235678N1 2356789N3 23N6 1N4 1N5}
+31 Result Links = {389r2 38b1 45789c1 45789c3 8b2 357r3 45789b4 134578b7 1r8}
+GUR cloud = {
+3r2c1 9r2c1 8r2c1 3r3c1 5r3c1 8r3c1 7r3c1 5r5c1 4r5c1 7r5c1
+8r5c1 9r5c1 4r6c1 7r6c1 8r6c1 9r6c1 3r7c1 5r7c1 7r7c1 4r7c1
+8r7c1 5r8c1 4r8c1 8r8c1 3r2c3 8r2c3 9r2c3 3r3c3 5r3c3 8r3c3
+7r3c3 5r5c3 4r5c3 7r5c3 8r5c3 9r5c3 4r6c3 7r6c3 8r6c3 9r6c3
+3r7c3 5r7c3 4r7c3 7r7c3 8r7c3 1r8c3 4r8c3 5r8c3 8r8c3 1r9c3
+3r9c3 4r9c3 7r9c3 8r9c3 9r9c3 8r2c6 9r2c6 3r2c6 3r3c6 5r3c6
+8r3c6 7r3c6}
+GUR enumeration constraints = 1
+8 eliminations = r8c9&lt;&gt;1, r9c3&lt;&gt;1, r8c3&lt;&gt;4, r3c4&lt;&gt;5,
+                 r8c3&lt;&gt;5, r3c4&lt;&gt;7, r3c5&lt;&gt;7, r8c3&lt;&gt;8
+1 assignment = r8c3=1</code></pre>
+</details>
+<p><strong>Reading the result:</strong> the three eliminations <code>r8c3&lt;&gt;458</code>, combined with the Cell Truth, establish <code>r8c3=1</code>. The other five eliminations are also common to every remaining legal projection.</p>
+<h4>Troubleshooting Order</h4>
+<ol>
+<li>Confirm that every participating cell has a Cell Truth and that the GUR cell set matches the Truth coverage.</li>
+<li>Audit every cell for all allowed candidates, especially the target cell.</li>
+<li>Delete all User Links and retry automatic Links, so a stale explicit structure cannot restrict the search incorrectly.</li>
+<li>Check that the uniqueness gate matches the candidate-grid source and that the initial candidates were frozen before editing.</li>
+<li>If a budget is exceeded, reduce the local region first; do not interpret the overflow as an invalid pattern.</li>
+</ol>
 <h3>13.11 Desktop Batch Menu</h3>
 <ol>
 <li>Hold <span class="kbd">Ctrl</span> (<span class="kbd">Command</span> on macOS) and click candidates. Click again to deselect.</li>
@@ -1577,12 +1710,12 @@
 </ul>
 <h3>13.14 Highlight Legend</h3>
 <ul>
-<li>House colors: R teal, C amber, B violet.</li>
-<li><strong>House Truth:</strong> segmented outer ring.</li>
-<li><strong>House Link:</strong> segmented digit background. Before Find it reflects User Links; after success it reflects Result Links. To reduce noise, it appears only on a Truth-covered candidate or final elimination.</li>
-<li><strong>Cell Truth:</strong> inset blue border; <strong>Cell Link:</strong> light-blue whole-cell fill, not subject to the candidate relevance gate.</li>
-<li><strong>Virtual Set:</strong> solid violet; <strong>AUR 1:</strong> orange dashed; <strong>AUR 2:</strong> blue dashed; <strong>DAUR:</strong> cyan dotted; <strong>GUR:</strong> brown double ring.</li>
-<li><strong>Final elimination:</strong> red candidate and cross on the top layer.</li>
+<li><strong>Object colors:</strong> Cell light blue, Row purple, Column green, and Box brown; structure candidates use blue badges and final eliminations use red badges.</li>
+<li><strong>Truth / Link:</strong> a Truth is a filled region and a Link is the hollow outline of the same geometry. Rows and Columns are continuous bands; a Box is a turning, branching orthogonal network.</li>
+<li><strong>Cell:</strong> the region wraps the active candidate badges belonging to that Cell constraint rather than filling or outlining the whole cell.</li>
+<li><strong>Candidates:</strong> a candidate shared by several Truths/Links still has one badge; the geometry underneath carries the constraint identities.</li>
+<li><strong>Virtual Set:</strong> solid violet; <strong>AUR 1:</strong> orange dashed; <strong>AUR 2:</strong> blue dashed; <strong>DAUR:</strong> cyan dotted; <strong>GUR:</strong> brown double. These accents surround the unified blue/red badge.</li>
+<li><strong>Result priority:</strong> a final red elimination overrides structure blue; constraint regions are underneath and badges plus interaction accents are on top.</li>
 </ul>
 <h3>13.15 Result Notation and Budgets</h3>
 <p>Uppercase <code>R/C/B/N</code> denotes Truths; lowercase <code>r/c/b/n</code> denotes Links; <code>N/n</code> is a cell set. Status distinguishes User Links from Result Links and reports the gate, active candidates, AUR/DAUR/GUR validation, eliminations, and assignments.</p>
@@ -1640,27 +1773,36 @@
 </div>
 
 <div class="visual-demo-section" id="tlg-highlight-visuals">
-<h3>TLG 高亮效果图 / TLG Highlight Visual Legend</h3>
-<p class="visual-demo-intro"><span class="visual-zh">图例按当前 V475 源码的颜色、线型和叠加层级绘制。House 固定按 R→C→B 排列：行青绿、列金黄、宫紫色。</span><span class="visual-en">The legend follows the current V475 colors, line styles, and stacking order. House membership is always ordered R→C→B: row teal, column amber, box violet.</span></p>
-<div class="visual-swatch-row"><span class="visual-swatch" style="--swatch:#0f9d8b">R / Row</span><span class="visual-swatch" style="--swatch:#d4a017">C / Column</span><span class="visual-swatch" style="--swatch:#8b5cf6">B / Box</span></div>
+<h3>TLG 图解视觉图例 / TLG Diagram Visual Legend</h3>
+<p class="visual-demo-intro"><span class="visual-zh">TLG 使用“颜色＝对象类型、形态＝Truth/Link”的双通道语义。候选徽标始终独立于约束区域；同一候选参与多个约束时也只画一个数字徽标。</span><span class="visual-en">TLG uses two independent visual channels: color identifies the object type, while shape identifies Truth versus Link. Candidate badges remain separate from constraint regions, so a candidate shared by several constraints is still drawn only once.</span></p>
+<div class="visual-swatch-row"><span class="visual-swatch" style="--swatch:#4b88e8">Structure</span><span class="visual-swatch" style="--swatch:#df3b31">Elimination</span><span class="visual-swatch" style="--swatch:#78aef2">Cell</span><span class="visual-swatch" style="--swatch:#a84bd4">Row</span><span class="visual-swatch" style="--swatch:#3f9364">Column</span><span class="visual-swatch" style="--swatch:#b97845">Box</span></div>
 <div class="visual-legend-grid">
-<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate"><span class="demo-house-layer truth"></span><b>4</b></div></div><div class="visual-demo-copy"><strong>House Truth</strong><span class="visual-zh">候选外围分色圆环；同时属于多个 house 时按 R→C→B 分段。</span><span class="visual-en">A segmented outer ring, ordered R→C→B when several memberships overlap.</span></div></div>
-<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate"><span class="demo-house-layer link"></span><b>4</b></div></div><div class="visual-demo-copy"><strong>House Link</strong><span class="visual-zh">数字后的分色底色。用户 Links 与结果 Links 使用相同视觉；只在 Truth 覆盖候选或最终删数上显示。</span><span class="visual-en">Segmented fill behind the digit. User and Result Links look the same and appear only on Truth-covered candidates or final eliminations.</span></div></div>
-<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate"><span class="demo-house-layer link"></span><span class="demo-house-layer truth"></span><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">Truth + Link 叠加</span><span class="visual-en">Truth + Link overlay</span></strong><span class="visual-zh">外圈是 Truth，内部底色是 Link；两层使用同一分段起点，不会跳位。</span><span class="visual-en">Outer ring = Truth, inner fill = Link. Both layers share the same segment origin.</span></div></div>
-<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-sudoku-cell cell-link cell-truth"><div class="demo-candidate-grid"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div></div></div><div class="visual-demo-copy"><strong>Cell Truth + Cell Link</strong><span class="visual-zh">内缩蓝框＝Cell Truth；整格浅蓝底＝Cell Link。Cell Link 不受候选相关性门槛限制。</span><span class="visual-en">Inset blue border = Cell Truth; whole-cell blue fill = Cell Link. Cell Links are not relevance-gated.</span></div></div>
-<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate vset"><b>4</b></div></div><div class="visual-demo-copy"><strong>Virtual Set</strong><span class="visual-zh">紫色实线圈和淡紫底。</span><span class="visual-en">Solid violet ring with a pale violet fill.</span></div></div>
-<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate aur1"><b>4</b></div></div><div class="visual-demo-copy"><strong>AUR 1</strong><span class="visual-zh">橙色虚线圈和淡橙底。</span><span class="visual-en">Orange dashed ring with a pale orange fill.</span></div></div>
-<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate aur2"><b>4</b></div></div><div class="visual-demo-copy"><strong>AUR 2</strong><span class="visual-zh">蓝色虚线圈和淡蓝底。</span><span class="visual-en">Blue dashed ring with a pale blue fill.</span></div></div>
-<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate daur"><b>4</b></div></div><div class="visual-demo-copy"><strong>DAUR</strong><span class="visual-zh">青色点线圈，表示动态 AUR/DUR 本体候选池。</span><span class="visual-en">Cyan dotted ring for the dynamic AUR/DUR body pool.</span></div></div>
-<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate gur"><b>4</b></div></div><div class="visual-demo-copy"><strong>GUR</strong><span class="visual-zh">棕色双线圈和淡橙底，表示通用局部完成候选云。</span><span class="visual-en">Brown double ring with a pale orange fill for the generic local-completion cloud.</span></div></div>
-<div class="visual-demo-card"><div class="visual-demo-stage"><div style="display:flex;gap:5px"><div class="demo-candidate small endpoint"><b>2</b></div><div class="demo-candidate small multi"><b>7</b></div></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">输入端点与批选</span><span class="visual-en">Endpoint and batch selection</span></strong><span class="visual-zh">青色内框＝等待第二端点；淡红底＝Ctrl/长按批选。它们是交互状态，不是逻辑集合。</span><span class="visual-en">Cyan inset = waiting for endpoint two; pale red = Ctrl/long-press batch selection. These are interaction states, not proof sets.</span></div></div>
-<div class="visual-demo-card"><div class="visual-demo-stage"><div class="demo-candidate tlg-elim"><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">最终删数</span><span class="visual-en">Final elimination</span></strong><span class="visual-zh">深红候选和红色 X，始终绘制在最上层。</span><span class="visual-en">Dark-red candidate with a red X, always drawn on top.</span></div></div>
-<div class="visual-demo-card wide"><div class="visual-demo-stage"><div class="demo-candidate gur tlg-elim"><span class="demo-house-layer link"></span><span class="demo-house-layer truth"></span><b>4</b></div></div><div class="visual-demo-copy"><strong><span class="visual-zh">多层叠加优先级</span><span class="visual-en">Stacking priority</span></strong><span class="visual-zh">候选可同时属于 GUR、Truth 和 Link；删数红叉仍在最上层。看不清时应减少输入集合，而不是依赖颜色覆盖来判断成员。</span><span class="visual-en">A candidate may simultaneously belong to GUR, Truth, and Link; the elimination X remains on top. Reduce noisy inputs rather than inferring membership from whichever color seems dominant.</span></div></div>
+
+<div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><rect class="grid" x="4" y="4" width="92" height="92"/><g class="ordinary-candidate"><text x="16" y="33">1</text><text x="41.5" y="24.5">2</text><text x="67" y="16">3</text><text x="24.5" y="58.5">4</text><text x="50" y="50">5</text><text x="75.5" y="41.5">6</text><text x="33" y="84">7</text><text x="58.5" y="75.5">8</text><text x="84" y="67">9</text></g></svg></div><div class="visual-demo-copy"><strong><span class="visual-zh">TLG 标准方位九轨布局</span><span class="visual-en">TLG standard-direction nine-track layout</span></strong><span class="visual-zh">保留标准 3×3 方位：3 在右上、7 在左下；每个传统区域内部再错开三条轨道，使九个数字各有唯一横、纵坐标。点击区域随候选移动，关闭 TLG 后恢复普通 3×3。</span><span class="visual-en">The familiar 3×3 directions remain intact: 3 stays upper-right and 7 stays lower-left. Three tracks are skewed inside each traditional zone so all digits keep unique x/y coordinates. Hit targets follow the candidates, and ordinary 3×3 positions return when TLG is disabled.</span></div></div>
+
+<div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><rect class="badge" x="13" y="35" width="28" height="28" rx="5"/><text class="badge-label" x="27" y="50">4</text><rect class="badge-elimination" x="59" y="35" width="28" height="28" rx="5"/><text class="badge-label" x="73" y="50">5</text></svg></div><div class="visual-demo-copy"><strong><span class="visual-zh">候选徽标</span><span class="visual-en">Candidate badges</span></strong><span class="visual-zh">结构候选为蓝底，最终删数为红底；删数优先，不再使用 TLG 红叉。</span><span class="visual-en">Structure candidates use blue badges; final eliminations use red. Elimination red takes priority, replacing the old TLG X.</span></div></div>
+
+<div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><path class="row-geometry" d="M12 28H88" fill="none" stroke-width="8" stroke-linecap="round"/><path class="row-geometry" d="M12 70H88" fill="none" stroke-width="12" stroke-linecap="round"/><path d="M12 70H88" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/><text x="50" y="13" font-size="9" fill="#64748b">Truth</text><text x="50" y="53" font-size="9" fill="#64748b">Link</text></svg></div><div class="visual-demo-copy"><strong><span class="visual-zh">Truth / Link 形态</span><span class="visual-en">Truth / Link shape</span></strong><span class="visual-zh">Truth 是实心区域；Link 是同一几何的空心轮廓。双线只是空心带的视觉结果，不是两条 Link。</span><span class="visual-en">A Truth is filled; a Link is the hollow outline of the same region. The apparent double line is one hollow band, not two Links.</span></div></div>
+
+<div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><rect x="5" y="8" width="40" height="84" class="grid"/><rect x="12" y="24" width="27" height="48" rx="7" fill="#78aef2" fill-opacity=".45" stroke="#78aef2" stroke-width="1.5"/><rect class="badge" x="17" y="30" width="16" height="16" rx="3"/><rect class="badge" x="17" y="51" width="16" height="16" rx="3"/><text class="badge-label" x="25" y="38" font-size="9">2</text><text class="badge-label" x="25" y="59" font-size="9">7</text><rect x="55" y="8" width="40" height="84" class="grid"/><rect x="62" y="24" width="27" height="48" rx="7" fill="none" stroke="#78aef2" stroke-width="4"/><rect class="badge" x="67" y="30" width="16" height="16" rx="3"/><rect class="badge" x="67" y="51" width="16" height="16" rx="3"/><text class="badge-label" x="75" y="38" font-size="9">2</text><text class="badge-label" x="75" y="59" font-size="9">7</text></svg></div><div class="visual-demo-copy"><strong>Cell Truth / Cell Link</strong><span class="visual-zh">淡蓝区域只包住该 Cell 约束的活动候选徽标，不再整格涂色。左为 Truth，右为 Link。</span><span class="visual-en">The light-blue region wraps the active badges of that Cell constraint rather than painting the whole cell. Truth is left; Link is right.</span></div></div>
+
+<div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><path class="row-geometry" d="M10 30H90" fill="none" stroke-width="7" stroke-linecap="round"/><path class="column-geometry" d="M64 10V90" fill="none" stroke-width="11" stroke-linecap="round"/><path d="M64 10V90" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"/><rect class="badge" x="8" y="21" width="18" height="18" rx="3"/><rect class="badge" x="55" y="21" width="18" height="18" rx="3"/><rect class="badge" x="81" y="21" width="18" height="18" rx="3"/><rect class="badge" x="55" y="70" width="18" height="18" rx="3"/><text class="badge-label" x="17" y="30" font-size="9">5</text><text class="badge-label" x="64" y="30" font-size="9">5</text><text class="badge-label" x="90" y="30" font-size="9">5</text><text class="badge-label" x="64" y="79" font-size="9">1</text></svg></div><div class="visual-demo-copy"><strong>Row / Column</strong><span class="visual-zh">Row 为紫色横向区域，Column 为绿色纵向区域。图中 Row 是 Truth，Column 是 Link。</span><span class="visual-en">Rows are purple horizontal regions; Columns are green vertical regions. Here the Row is a Truth and the Column is a Link.</span></div></div>
+
+<div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><path class="box-geometry" d="M15 17H50V50 M85 17H50 M15 83H50V50 M85 83H50" fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 17H50V50 M85 17H50 M15 83H50V50 M85 83H50" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><g><rect class="badge" x="7" y="9" width="16" height="16" rx="3"/><rect class="badge" x="77" y="9" width="16" height="16" rx="3"/><rect class="badge" x="7" y="75" width="16" height="16" rx="3"/><rect class="badge" x="77" y="75" width="16" height="16" rx="3"/><text class="badge-label" x="15" y="17" font-size="9">7</text><text class="badge-label" x="85" y="17" font-size="9">7</text><text class="badge-label" x="15" y="83" font-size="9">7</text><text class="badge-label" x="85" y="83" font-size="9">7</text></g></svg></div><div class="visual-demo-copy"><strong><span class="visual-zh">Box 分叉网络</span><span class="visual-en">Branching Box network</span></strong><span class="visual-zh">Box 使用可合并的正交通道，允许 L、T、U、十字和多支路。图中为空心 Box Link。</span><span class="visual-en">Boxes use mergeable orthogonal channels and may form L, T, U, cross, or multi-branch shapes. This example is a hollow Box Link.</span></div></div>
+
+<div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><path d="M16 25H50V50 M84 25H50 M50 50V78" fill="none" stroke="#111111" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect class="badge" x="8" y="17" width="16" height="16" rx="3"/><rect class="badge" x="76" y="17" width="16" height="16" rx="3"/><rect class="badge" x="42" y="70" width="16" height="16" rx="3"/><text class="badge-label" x="16" y="25" font-size="9">1</text><text class="badge-label" x="84" y="25" font-size="9">3</text><text class="badge-label" x="50" y="78" font-size="9">8</text></svg></div><div class="visual-demo-copy"><strong>Virtual Set</strong><span class="visual-zh">Virtual Set 改为黑色集合连线，不要求成员共线，可像 Box Truth 一样转折或分叉。</span><span class="visual-en">Virtual Sets now use black set-link geometry. Members need not be collinear and may branch or turn like Box Truths.</span></div></div>
+
+<div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><rect class="badge" x="11" y="39" width="16" height="16" rx="3"/><text class="badge-label" x="19" y="47" font-size="9">2</text><rect x="22" y="40" width="5" height="5" rx="1.3" fill="#ea580c" stroke="#fff" stroke-width="0.9"/><rect class="badge" x="42" y="39" width="16" height="16" rx="3"/><text class="badge-label" x="50" y="47" font-size="9">7</text><rect x="53" y="40" width="5" height="5" rx="1.3" fill="#2563eb" stroke="#fff" stroke-width="0.9"/><rect class="badge" x="73" y="39" width="16" height="16" rx="3"/><text class="badge-label" x="81" y="47" font-size="9">9</text><rect x="84" y="40" width="5" height="5" rx="1.3" fill="#0891b2" stroke="#fff" stroke-width="0.9"/></svg></div><div class="visual-demo-copy"><strong>AUR 1 / AUR 2 / DAUR</strong><span class="visual-zh">这些集合不再画外围框，只在候选徽标角上放彩色角标。同一组同色，不同组异色。</span><span class="visual-en">These sets no longer use outer frames. Instead, small colored corner tabs identify membership; the same group shares one color.</span></div></div>
+
+<div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><rect class="badge" x="38" y="38" width="24" height="24" rx="5"/><text class="badge-label" x="50" y="50">6</text><rect x="56" y="39" width="7" height="7" rx="1.8" fill="#7c2d12" stroke="#fff" stroke-width="1"/></svg></div><div class="visual-demo-copy"><strong>GUR</strong><span class="visual-zh">GUR 也改为角标着色，不再使用双框。角标颜色只表示该候选属于某个 GUR 云。</span><span class="visual-en">GUR also uses colored corner tabs instead of a double frame. The tab simply marks membership in a GUR cloud.</span></div></div>
+
+<div class="visual-demo-card wide"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><path class="row-geometry" d="M8 50H92" fill="none" stroke-width="8" stroke-linecap="round"/><rect class="badge-elimination" x="38" y="38" width="24" height="24" rx="5"/><text class="badge-label" x="50" y="50">5</text><rect x="56" y="39" width="7" height="7" rx="1.8" fill="#7c2d12" stroke="#fff" stroke-width="1"/></svg></div><div class="visual-demo-copy"><strong><span class="visual-zh">叠加与优先级</span><span class="visual-en">Layering and priority</span></strong><span class="visual-zh">约束区域在底层，Cell 区域居中，候选徽标、角标和选择强调在上层；最终删数红徽标优先于结构蓝色。同一候选只出现一次。</span><span class="visual-en">Constraint regions are underneath, Cell regions sit above them, and badges, corner tabs, plus selection accents are on top. A final red elimination overrides structure blue, and the candidate is still drawn once.</span></div></div>
+
 </div>
 <div class="pattern-demo-wrap">
 <h3>TLG 对象怎么选：示意图 / How to Select TLG Objects</h3>
 <div class="pattern-demo-grid">
-<div class="pattern-demo-card"><strong>Virtual Set：精确基数 / Exact cardinality</strong><div class="pattern-board two-by-three"><div class="pattern-cell"><div class="demo-candidate small vset"><b>2</b></div></div><div class="pattern-cell"><div class="demo-candidate small vset"><b>5</b></div></div><div class="pattern-cell"><div class="demo-candidate small vset"><b>8</b></div></div><span class="cardinality-badge">k = 2</span></div><span class="visual-zh">把全部成员标成紫圈，并填写“恰好 k 个为真”。不是“至少 k 个”或“至多 k 个”。</span><span class="visual-en">Mark every member in violet and set “exactly k are true,” not at least or at most k.</span></div>
+<div class="pattern-demo-card"><strong>Virtual Set：精确基数 / Exact cardinality</strong><div class="pattern-board two-by-three"><div class="pattern-cell"><div class="demo-candidate small vset"><b>2</b></div></div><div class="pattern-cell"><div class="demo-candidate small vset"><b>5</b></div></div><div class="pattern-cell"><div class="demo-candidate small vset"><b>8</b></div></div><span class="cardinality-badge">k = 2</span></div><span class="visual-zh">把全部成员加入同一个 Virtual Set，并填写“恰好 k 个为真”。界面用黑色集合连线表示它，不是紫色外框。</span><span class="visual-en">Add every member to the same Virtual Set and set “exactly k are true.” The UI now shows it with black set-link geometry instead of a purple outer frame.</span></div>
 <div class="pattern-demo-card"><strong>定式 AUR / Fixed AUR</strong><div class="pattern-board two-by-two"><div class="pattern-cell"><div class="demo-candidate small aur1"><b>2</b></div><span>7</span></div><div class="pattern-cell"><span>2 7</span></div><div class="pattern-cell"><span>2 7</span></div><div class="pattern-cell"><span>2</span><div class="demo-candidate small aur1"><b>7</b></div></div></div><span class="visual-zh">标准四格只选两个对角、异数字候选点；两行、两列和本体数对由这两个点推定。</span><span class="visual-en">For a standard rectangle, select exactly two diagonal points with different digits; those points define rows, columns, and body pair.</span></div>
 <div class="pattern-demo-card"><strong>DAUR：小而准确的池 / Small precise pool</strong><div class="pattern-board two-by-three"><div class="pattern-cell"><div class="demo-candidate small daur"><b>1</b></div><div class="demo-candidate small daur"><b>6</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>1</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>6</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>1</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>6</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>1</b></div><div class="demo-candidate small daur"><b>6</b></div></div></div><span class="visual-zh">只放可能属于本体的活动候选；程序会把池内找到的全部有效 AUR/DUR 同时展开。</span><span class="visual-en">Include only active candidates that may be body members; every valid AUR/DUR found in the pool is expanded together.</span></div>
 <div class="pattern-demo-card"><strong>GUR：完整局部模型 / Complete local model</strong><div class="pattern-board three-by-three"><div class="pattern-cell"><div class="demo-candidate small gur"><b>1</b></div><div class="demo-candidate small gur"><b>4</b></div></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>4</b></div></div><div class="pattern-cell empty"></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>1</b></div></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>7</b></div></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>4</b></div><div class="demo-candidate small gur"><b>7</b></div></div><div class="pattern-cell empty"></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>1</b></div><div class="demo-candidate small gur"><b>7</b></div></div><div class="pattern-cell empty"></div></div><span class="visual-zh">不规则形状也可以，但必须选齐局部每个格允许参与完成的全部候选；GUR 不会替你猜边界。</span><span class="visual-en">Irregular shapes are allowed, but include every allowed candidate in every local cell; GUR does not infer the boundary.</span></div>
