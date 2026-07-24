@@ -21,7 +21,7 @@ import {
 import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-4c2e94ce3029";
 
 const APP_VERSION = "wasm-19430ca264fcc1f4";
-const MANUAL_VERSION = "manual-05521cf4ada9";
+const MANUAL_VERSION = "manual-1e5fbbf0bdb1";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
@@ -147,8 +147,16 @@ let pwaRegistration = null;
 let pwaInstallPrompt = null;
 let pwaCacheReady = false;
 let pwaReloadRequested = false;
-let pwaTargetVersion = "";
 let pwaLastFailure = null;
+const PWA_APPLY_PENDING_STORAGE_KEY = "yzf-pwa-apply-pending-v1";
+let pwaPendingVersion = (() => {
+  try { return sessionStorage.getItem(PWA_APPLY_PENDING_STORAGE_KEY) || ""; } catch { return ""; }
+})();
+let pwaActivationRequested = !!pwaPendingVersion;
+let pwaTargetVersion = pwaPendingVersion && pwaPendingVersion !== "1" ? pwaPendingVersion : "";
+let pwaActivationTimer = 0;
+let pwaWaitingSyncTimer = 0;
+let pwaObservedInstallingWorker = null;
 let transientStatus = { state: "", values: {} };
 let transientStatusTimer = 0;
 let appBackGuardInstalled = false;
@@ -1057,6 +1065,9 @@ for (const [key, zh, en] of [
   ["tlgToggleAurBatch", "切换 AUR 角候选", "Toggle AUR Corner"],
   ["tlgToggleDaurBatch", "切换 DAUR 候选池", "Toggle DAUR Candidate Pool"],
   ["tlgToggleGurBatch", "切换 GUR 通用候选云", "Toggle GUR Candidate Cloud"],
+  ["tlgToggleGurCells", "切换 GUR 通用格", "Toggle GUR Cells"],
+  ["tlgGurCellsToggledOn", "已将 {cells} 个格的 {count} 个当前候选加入 GUR 通用候选云。", "Added {count} current candidates from {cells} cells to the GUR candidate cloud."],
+  ["tlgGurCellsToggledOff", "已从 GUR 通用候选云移除 {cells} 个格的 {count} 个当前候选。", "Removed {count} current candidates from {cells} cells from the GUR candidate cloud."],
   ["tlgClearAurBatch", "清空 AUR 角候选", "Clear AUR Corners"],
   ["tlgClearAllLogic", "清空全部逻辑", "Clear All Logic"],
   ["tlgCandidatesSelected", "已选择 {count} 个候选数；电脑右键或手机长按可打开 TLG 菜单。", "{count} candidates selected; right-click on desktop or long-press on touch to open the TLG menu."],
@@ -1588,15 +1599,122 @@ function installAppBackNavigation() {
   updateAppBackStatus();
 }
 
-async function activatePwaUpdate() {
-  const waiting = pwaRegistration?.waiting;
-  if (!waiting) {
-    showAppStatusToast("pwa", pwaStatus.state, pwaStatus.values);
-    return;
-  }
+function setPwaActivationPending(pending, version = pwaTargetVersion) {
+  pwaActivationRequested = !!pending;
+  pwaPendingVersion = pending ? (String(version || "") || "1") : "";
+  try {
+    if (pending) sessionStorage.setItem(PWA_APPLY_PENDING_STORAGE_KEY, pwaPendingVersion);
+    else sessionStorage.removeItem(PWA_APPLY_PENDING_STORAGE_KEY);
+  } catch {}
+}
+
+function clearPwaActivationTimer() {
+  if (pwaActivationTimer) window.clearTimeout(pwaActivationTimer);
+  pwaActivationTimer = 0;
+}
+
+function schedulePwaActivationTimeout() {
+  clearPwaActivationTimer();
+  pwaActivationTimer = window.setTimeout(() => {
+    pwaActivationTimer = 0;
+    if (!pwaActivationRequested) return;
+    const waiting = pwaRegistration?.waiting;
+    setPwaActivationPending(false);
+    pwaReloadRequested = false;
+    if (waiting) {
+      pwaCacheReady = true;
+      setPwaStatus("updateReady");
+    } else {
+      setPwaStatus("updateError", { message: "Service Worker activation timed out", asset: "" });
+    }
+  }, 15000);
+}
+
+function requestPwaWorkerActivation(worker) {
+  if (!worker) return false;
+  setPwaActivationPending(true);
   pwaReloadRequested = true;
   setPwaStatus("updating");
-  waiting.postMessage({ type: "YZF_PWA_SKIP_WAITING" });
+  worker.postMessage({ type: "YZF_PWA_SKIP_WAITING" });
+  schedulePwaActivationTimeout();
+  return true;
+}
+
+function syncPwaWaitingState({ activateIfRequested = true } = {}) {
+  const waiting = pwaRegistration?.waiting;
+  if (!waiting) return false;
+  pwaLastFailure = null;
+  pwaCacheReady = true;
+  if (activateIfRequested && pwaActivationRequested) requestPwaWorkerActivation(waiting);
+  else setPwaStatus("updateReady");
+  return true;
+}
+
+function schedulePwaWaitingSync(attempt = 0) {
+  if (pwaWaitingSyncTimer) window.clearTimeout(pwaWaitingSyncTimer);
+  pwaWaitingSyncTimer = window.setTimeout(() => {
+    pwaWaitingSyncTimer = 0;
+    if (syncPwaWaitingState()) return;
+    const installing = pwaRegistration?.installing;
+    if (installing && !["redundant", "activated"].includes(installing.state) && attempt < 40) {
+      schedulePwaWaitingSync(attempt + 1);
+    }
+  }, attempt === 0 ? 0 : 50);
+}
+
+function observePwaInstallingWorker(worker) {
+  if (!worker || worker === pwaObservedInstallingWorker) return;
+  pwaObservedInstallingWorker = worker;
+  const sync = () => {
+    if (worker.state === "installed") {
+      // registration.waiting is assigned at the end of installation. Poll for
+      // that authoritative state instead of turning the cloud purple from an
+      // earlier worker message.
+      schedulePwaWaitingSync();
+    } else if (worker.state === "redundant" && ["checking", "downloading", "updating"].includes(pwaStatus.state)) {
+      setPwaActivationPending(false);
+      clearPwaActivationTimer();
+      const message = pwaLastFailure?.message || "Service Worker installation was interrupted";
+      setPwaStatus(pwaCacheReady ? "updateError" : "error", {
+        message,
+        asset: pwaLastFailure?.asset || "",
+      });
+    }
+  };
+  worker.addEventListener("statechange", sync);
+  sync();
+}
+
+async function waitForPwaWaitingWorker(timeoutMs = 3000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const waiting = pwaRegistration?.waiting;
+    if (waiting) return waiting;
+    const installing = pwaRegistration?.installing;
+    if (!installing || installing.state === "redundant") break;
+    await new Promise((resolve) => window.setTimeout(resolve, 50));
+  }
+  return pwaRegistration?.waiting || null;
+}
+
+async function activatePwaUpdate() {
+  setPwaActivationPending(true);
+  pwaReloadRequested = true;
+  setPwaStatus("updating");
+  let waiting = pwaRegistration?.waiting || null;
+  if (!waiting && pwaRegistration) {
+    observePwaInstallingWorker(pwaRegistration.installing);
+    schedulePwaWaitingSync();
+    try { await pwaRegistration.update(); } catch {}
+    waiting = await waitForPwaWaitingWorker();
+  }
+  if (waiting) {
+    requestPwaWorkerActivation(waiting);
+    return;
+  }
+  setPwaActivationPending(false);
+  pwaReloadRequested = false;
+  setPwaStatus("updateError", { message: "The new Service Worker is not waiting yet", asset: "" });
 }
 
 async function promptPwaInstall() {
@@ -1689,17 +1807,35 @@ function handlePwaWorkerMessage(event) {
     });
     return;
   }
-  if (data.type === "YZF_PWA_UPDATE_READY") {
+  if (data.type === "YZF_PWA_STAGED" || data.type === "YZF_PWA_UPDATE_READY") {
     pwaTargetVersion = String(data.version || pwaTargetVersion || "");
     pwaLastFailure = null;
     pwaCacheReady = true;
-    setPwaStatus("updateReady");
+    // UPDATE_READY from V6 may arrive before registration.waiting exists. The
+    // cloud becomes purple only after the browser confirms a waiting worker.
+    schedulePwaWaitingSync();
+    return;
+  }
+  if (data.type === "YZF_PWA_ACTIVATING") {
+    pwaTargetVersion = String(data.version || pwaTargetVersion || "");
+    setPwaActivationPending(true);
+    pwaReloadRequested = true;
+    setPwaStatus("updating");
+    schedulePwaActivationTimeout();
     return;
   }
   if (data.type === "YZF_PWA_READY") {
-    pwaTargetVersion = String(data.version || pwaTargetVersion || "");
+    const readyVersion = String(data.version || "");
+    pwaTargetVersion = readyVersion || pwaTargetVersion || "";
     pwaLastFailure = null;
     pwaCacheReady = true;
+    if (pwaActivationRequested) {
+      const targetMatches = !pwaPendingVersion || pwaPendingVersion === "1" || !readyVersion || readyVersion === pwaPendingVersion;
+      if (!targetMatches) return;
+      clearPwaActivationTimer();
+      setPwaActivationPending(false);
+      pwaReloadRequested = false;
+    }
     setPwaStatus(effectiveReadyPwaState());
     return;
   }
@@ -1740,7 +1876,11 @@ async function installPwaSupport() {
   navigator.serviceWorker.addEventListener("message", handlePwaWorkerMessage);
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     pwaCacheReady = true;
-    if (pwaReloadRequested) {
+    clearPwaActivationTimer();
+    const shouldReload = pwaReloadRequested || pwaActivationRequested;
+    setPwaActivationPending(false);
+    pwaReloadRequested = false;
+    if (shouldReload) {
       setTransientStatus("updateComplete", {}, { duration: 1200 });
       window.setTimeout(() => window.location.reload(), 80);
     } else {
@@ -1771,28 +1911,16 @@ async function installPwaSupport() {
           loaded: "0.0", total: "?", network: "0.0", reused: "0.0", resumed: "0.0", done: 0, count: 0,
         });
       }
-      worker.addEventListener("statechange", () => {
-        if (worker.state === "installed" && navigator.serviceWorker.controller) {
-          pwaLastFailure = null;
-          setPwaStatus("updateReady");
-        } else if (worker.state === "redundant" && ["checking", "downloading"].includes(pwaStatus.state)) {
-          const message = pwaLastFailure?.message || "Service Worker installation was interrupted";
-          setPwaStatus(pwaCacheReady ? "updateError" : "error", {
-            message,
-            asset: pwaLastFailure?.asset || "",
-          });
-        }
-      });
+      observePwaInstallingWorker(worker);
     });
-    if (pwaRegistration.waiting) {
-      pwaCacheReady = true;
-      setPwaStatus("updateReady");
-      return;
-    }
+    observePwaInstallingWorker(pwaRegistration.installing);
+    if (syncPwaWaitingState()) return;
     const statusWorker = navigator.serviceWorker.controller || pwaRegistration.active;
     if (statusWorker) statusWorker.postMessage({ type: "YZF_PWA_GET_STATUS" });
     navigator.serviceWorker.ready.then((registration) => {
       pwaRegistration = registration;
+      observePwaInstallingWorker(registration.installing);
+      if (syncPwaWaitingState()) return;
       const worker = navigator.serviceWorker.controller || registration.active;
       if (worker) worker.postMessage({ type: "YZF_PWA_GET_STATUS" });
     }).catch(() => {});
@@ -12227,6 +12355,40 @@ function tlgBatchToggleCandidateSet(target, label) {
   updateTlgSolverUi();
 }
 
+function tlgActiveCandidateKeysForCell(cellIndex) {
+  const prefix = `${cellIndex}:`;
+  if (tlgSolverState.candidateGrid?.activeCandidates) {
+    return [...tlgSolverState.candidateGrid.activeCandidates].filter((key) => String(key).startsWith(prefix));
+  }
+  const cell = tlgSolverEffectiveSnapshot()?.cells?.[cellIndex];
+  if (!cell || Number(cell.value || 0) > 0) return [];
+  return [...new Set(cell.candidates || [])]
+    .map(Number)
+    .filter((digit) => digit >= 1 && digit <= 9)
+    .map((digit) => tlgSolverCandidateKey(cellIndex, digit));
+}
+
+function tlgBatchToggleGurCells() {
+  const cells = [...new Set([...tlgSolverState.selectedCandidates].map((key) => Number(String(key).split(":")[0])))]
+    .filter((cellIndex) => Number.isInteger(cellIndex) && tlgSolverCellAcceptsInput(cellIndex));
+  if (!cells.length) return;
+  const keys = [...new Set(cells.flatMap(tlgActiveCandidateKeysForCell))];
+  if (!keys.length) return;
+  const remove = keys.every((key) => tlgSolverState.genericAurCandidates.has(key));
+  for (const key of keys) {
+    if (remove) tlgSolverState.genericAurCandidates.delete(key);
+    else tlgSolverState.genericAurCandidates.add(key);
+  }
+  tlgSolverState.selectedEndpoint = null;
+  tlgSolverState.selectedCandidates.clear();
+  announceTlgSolver(uif(remove ? "tlgGurCellsToggledOff" : "tlgGurCellsToggledOn", {
+    cells: cells.length,
+    count: keys.length,
+  }));
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  updateTlgSolverUi();
+}
+
 function clearTlgSolverLogicOnly(messageKey = "tlgLogicCleared") {
   tlgSolverState.selectedEndpoint = null;
   tlgSolverState.selectedCandidates.clear();
@@ -12372,6 +12534,9 @@ function openTlgSolverContextMenu(cellIndex, digit, event, candidate) {
   }));
   root.appendChild(tlgMenuButton(ui("tlgToggleDaurBatch"), () => {
     tlgBatchToggleCandidateSet(tlgSolverState.dynamicAurCandidates, ui("tlgDaurCandidates"));
+  }));
+  root.appendChild(tlgMenuButton(ui("tlgToggleGurCells"), () => {
+    tlgBatchToggleGurCells();
   }));
   root.appendChild(tlgMenuButton(ui("tlgToggleGurBatch"), () => {
     tlgBatchToggleCandidateSet(tlgSolverState.genericAurCandidates, ui("tlgGurCandidates"));

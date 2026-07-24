@@ -206,3 +206,12 @@ python tools/build_standalone_html.py
 ```
 
 The browser retry path must call `ServiceWorkerRegistration.update()` before messaging the active worker. A failed installing worker is redundant and cannot be resumed by sending a repair message to the previous active release; the new installer must be recreated so it can reopen the same staging cache.
+
+### Waiting/activation handshake
+
+The update-ready UI must be driven by `ServiceWorkerRegistration.waiting`, not by an early message sent near the end of the install event. The worker reports `YZF_PWA_STAGED` after download/verification; the page turns the cloud purple only after the browser has promoted that worker to `waiting`. Applying the update uses a confirmed handshake:
+
+1. the page persists an apply-pending flag and sends `YZF_PWA_SKIP_WAITING` to the waiting worker;
+2. the worker verifies the release, broadcasts `YZF_PWA_ACTIVATING`, and calls `skipWaiting()` inside `event.waitUntil()`;
+3. the page reloads only after `controllerchange` and clears the pending flag;
+4. a manual refresh during this interval resumes the pending activation instead of returning to a permanently purple cloud.

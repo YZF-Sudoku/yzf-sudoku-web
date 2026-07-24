@@ -503,9 +503,12 @@ self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     try {
       const stats = await cacheRelease();
-      const hasPrevious = Boolean(self.registration.active);
       await broadcast({
-        type: hasPrevious ? "YZF_PWA_UPDATE_READY" : "YZF_PWA_READY",
+        // Installation has finished downloading and verification, but the
+        // browser has not necessarily promoted this worker to registration.waiting
+        // yet. The page must wait for that authoritative state before showing
+        // the purple update-ready cloud.
+        type: "YZF_PWA_STAGED",
         version: manifest.version,
         totalBytes: manifest.totalBytes,
         count: manifest.assets.length,
@@ -600,7 +603,11 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("message", (event) => {
   const data = event.data || {};
   if (data.type === "YZF_PWA_SKIP_WAITING") {
-    self.skipWaiting();
+    event.waitUntil((async () => {
+      if (!(await releaseIsComplete())) throw new Error("cannot activate an incomplete offline release");
+      await broadcast({ type: "YZF_PWA_ACTIVATING", version: manifest.version });
+      await self.skipWaiting();
+    })());
     return;
   }
   if (data.type === "YZF_PWA_GET_STATUS") {
