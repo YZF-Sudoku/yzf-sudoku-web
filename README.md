@@ -186,3 +186,23 @@ puzzle.
 For local PWA testing use `http://localhost` (treated as a secure context) or
 HTTPS. Direct `file://` opening remains the job of `index_standalone.html` and
 does not register a service worker.
+
+## Incremental and resumable PWA releases
+
+`sw.js` keeps each release atomic while avoiding full-package downloads on every update:
+
+- `pwa-assets.js` records the full SHA-256 and byte size of every offline asset.
+- Unchanged assets are copied from the previous verified release cache.
+- A failed target release keeps its verified files in the versioned staging cache.
+- Large `.wasm` and `.ort` assets use 1 MiB HTTP Range chunks when supported; cached chunks survive a failed installation and are reused by the next update check.
+- If Range is unavailable, the worker falls back to whole-file download.
+- The previous complete release is deleted only after the new release has fully verified and activated.
+
+When changing any published web asset, regenerate the manifest and standalone build:
+
+```bash
+python tools/generate_pwa_assets.py
+python tools/build_standalone_html.py
+```
+
+The browser retry path must call `ServiceWorkerRegistration.update()` before messaging the active worker. A failed installing worker is redundant and cannot be resumed by sending a repair message to the previous active release; the new installer must be recreated so it can reopen the same staging cache.

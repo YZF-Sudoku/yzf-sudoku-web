@@ -2010,10 +2010,13 @@ GUR enumeration constraints = 1
 </ol>
 <h3>缓存与更新规则</h3>
 <ul>
-<li>Service Worker 只有在全部资源下载成功后才激活新版本，避免新 <code>app.js</code> 与旧 Worker/WASM 混用。</li>
+<li>Service Worker 只有在全部资源校验成功后才激活新版本，避免新 <code>app.js</code> 与旧 Worker/WASM 混用。升级中断时仍继续使用完整旧版本。</li>
+<li><strong>按需更新：</strong>程序按文件大小和 SHA-256 比较新旧清单。未变化的文件直接从旧离线缓存复制，不再访问网络；普通的小改版通常只下载发生变化的 JS、HTML 或手册。</li>
+<li><strong>断点续传：</strong>大型 <code>.wasm</code> 和 <code>.ort</code> 以 1 MiB 分块暂存。网络中断、页面关闭或安装失败后，已完成文件和分块不会删除；重新联网点击云朵或再次检查更新时，从第一个缺失分块继续。</li>
+<li>若托管服务器不支持 HTTP Range，程序会自动回退到整文件下载；未变化文件的缓存复用仍然有效。</li>
 <li>分享链接中的 <code>?p=s1.…</code> 不会为每道题重复缓存页面；离线打开时仍由同一份缓存入口恢复题面。</li>
 <li>发现更新时云朵变紫并提示“新版本已准备完成”。点击后页面刷新到完整新版本；正在评分或生成时可稍后再点。</li>
-<li>清除浏览器“缓存文件”会要求重新下载离线资源；程序会检测缺失项并把云朵变黄，联网点击即可重新补齐。清除“站点数据”还会删除现场、设置和 IndexedDB 中的 TLG 用户题库。</li>
+<li>清除浏览器“缓存文件”会要求重新准备被清除的资源；程序会检测缺失项并把云朵变黄，联网点击即可继续补齐。清除“站点数据”会同时删除升级断点、现场、设置和 IndexedDB 中的 TLG 用户题库。</li>
 </ul>
 <h3>状态图标与操作</h3>
 <table><thead><tr><th>图标</th><th>含义</th><th>点击行为</th></tr></thead><tbody>
@@ -2035,10 +2038,13 @@ GUR enumeration constraints = 1
 </ol>
 <h3>Cache and Update Rules</h3>
 <ul>
-<li>A new Service Worker activates only after every resource has downloaded, preventing a new <code>app.js</code> from being mixed with old Workers or WASM.</li>
+<li>A new Service Worker activates only after every resource has passed verification, preventing a new <code>app.js</code> from being mixed with old Workers or WASM. If preparation is interrupted, the complete previous release remains active.</li>
+<li><strong>Incremental updates:</strong> files are compared by size and SHA-256. Unchanged files are copied from the previous offline cache without network access, so a small release normally downloads only changed JS, HTML, or Manual files.</li>
+<li><strong>Resumable downloads:</strong> large <code>.wasm</code> and <code>.ort</code> files are checkpointed in 1 MiB chunks. Completed files and chunks survive an interrupted connection, closed page, or failed installation; reconnect and tap the cloud to continue from the first missing chunk.</li>
+<li>If the host does not support HTTP Range, the app automatically falls back to a whole-file download; unchanged-file reuse still applies.</li>
 <li>Shared <code>?p=s1.…</code> URLs reuse the same cached app shell instead of creating one cached page per puzzle, and still restore the puzzle offline.</li>
 <li>When an update is ready, the cloud turns purple. Tap it to reload the complete new release; during rating or generation, simply wait and tap later.</li>
-<li>Clearing browser cache requires downloading offline resources again. The app detects missing files, turns the cloud yellow, and repairs the package when you tap it online. Clearing site data also removes the saved session, settings, and the IndexedDB TLG user library.</li>
+<li>Clearing browser cache requires preparing whichever resources were removed. The app detects missing files, turns the cloud yellow, and continues when tapped online. Clearing site data also removes update checkpoints, the saved session, settings, and the IndexedDB TLG user library.</li>
 </ul>
 <h3>Status Icons and Actions</h3>
 <table><thead><tr><th>Icon</th><th>Meaning</th><th>Tap action</th></tr></thead><tbody>
@@ -2082,6 +2088,7 @@ GUR enumeration constraints = 1
 </thead>
 <tbody>
 <tr><td>云朵一直显示下载中或变黄</td><td>网络中断、静态托管返回错误、缓存文件被清理，或浏览器存储空间不足。</td><td>保持页面前台联网；恢复网络或释放空间后点击云朵，程序会检查并补齐缺失资源。</td></tr>
+<tr><td>离线资源准备失败或升级中断</td><td>网络中断、托管文件暂未同步、Range 请求失败，或浏览器暂停了后台下载。</td><td>旧版本不会被破坏。保持联网并点击云朵继续；未变化文件和已完成分块不会重复下载。若总在同一文件失败，检查托管端是否缺文件或返回 404。</td></tr>
 <tr><td>离线打开分享链接显示空白或旧题</td><td>离线包尚未完整就绪，或旧 Service Worker 仍在等待更新。</td><td>联网打开一次，等待绿色云朵；若云朵为紫色，点击应用新版本后再断网测试。</td></tr>
 <tr><td>安卓返回键直接退出应用</td><td>页面未加载本版返回层级守卫，或浏览器仍使用旧缓存。</td><td>联网打开并应用紫色更新；新版会先关闭弹窗、抽屉、标记和做题模式。</td></tr>
 <tr><td>软盘长期为橙色或红色</td><td>本地存储被禁用、空间不足，或隐私模式阻止保存。</td><td>点击软盘立即重试；允许站点存储并退出隐私模式。重要题面先手工导出。</td></tr>

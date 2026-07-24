@@ -17,11 +17,11 @@ import {
   appStatusDescriptor,
   difficultyDescriptor,
   difficultyLevels,
-} from "./ui-localization.js?v=20260717-pwa-wakelock-icon-v2";
+} from "./ui-localization.js?v=ui-d4758a9cc5df";
 import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-4c2e94ce3029";
 
 const APP_VERSION = "wasm-19430ca264fcc1f4";
-const MANUAL_VERSION = "manual-4286f000384d";
+const MANUAL_VERSION = "manual-05521cf4ada9";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
@@ -147,6 +147,8 @@ let pwaRegistration = null;
 let pwaInstallPrompt = null;
 let pwaCacheReady = false;
 let pwaReloadRequested = false;
+let pwaTargetVersion = "";
+let pwaLastFailure = null;
 let transientStatus = { state: "", values: {} };
 let transientStatusTimer = 0;
 let appBackGuardInstalled = false;
@@ -1611,6 +1613,44 @@ async function promptPwaInstall() {
   setPwaStatus(effectiveReadyPwaState());
 }
 
+async function retryPwaPreparation() {
+  if (!pwaRegistration || !navigator.onLine) return false;
+  setPwaStatus("checking");
+  try {
+    // Always perform an update check first. A failed installing worker becomes
+    // redundant, so messaging the old active worker cannot resume that new
+    // release. registration.update() recreates the installer, which reopens
+    // the same versioned staging cache and continues from its checkpoints.
+    await pwaRegistration.update();
+    if (pwaRegistration.waiting) {
+      pwaCacheReady = true;
+      setPwaStatus("updateReady");
+      return true;
+    }
+    if (pwaRegistration.installing) {
+      setPwaStatus("downloading", {
+        loaded: "0.0", total: "?", network: "0.0", reused: "0.0", resumed: "0.0", done: 0, count: 0,
+      });
+      return true;
+    }
+    // No newer worker was found. Repair the currently active release instead;
+    // this covers cleared or partially evicted Cache Storage entries.
+    const worker = navigator.serviceWorker.controller || pwaRegistration.active;
+    if (worker) {
+      worker.postMessage({ type: "YZF_PWA_REPAIR" });
+      return true;
+    }
+    throw new Error("No active or installing Service Worker is available");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    setPwaStatus(pwaCacheReady ? "updateError" : "error", {
+      message,
+      asset: pwaLastFailure?.asset || "",
+    });
+    return false;
+  }
+}
+
 async function handlePwaStatusAction() {
   if (pwaStatus.state === "updateReady") {
     await activatePwaUpdate();
@@ -1620,19 +1660,12 @@ async function handlePwaStatusAction() {
     await promptPwaInstall();
     return;
   }
-  if (["incomplete", "error"].includes(pwaStatus.state) && pwaRegistration) {
+  if (["incomplete", "error", "updateError"].includes(pwaStatus.state) && pwaRegistration) {
     if (!navigator.onLine) {
       showAppStatusToast("pwa", pwaStatus.state, pwaStatus.values, { duration: 3600 });
       return;
     }
-    setPwaStatus("checking");
-    const worker = navigator.serviceWorker.controller || pwaRegistration.active;
-    if (worker) worker.postMessage({ type: "YZF_PWA_REPAIR" });
-    else {
-      try { await pwaRegistration.update(); } catch (error) {
-        setPwaStatus("error", { message: error instanceof Error ? error.message : String(error) });
-      }
-    }
+    await retryPwaPreparation();
     return;
   }
   showAppStatusToast("pwa", pwaStatus.state, pwaStatus.values, { duration: 3600 });
@@ -1642,20 +1675,30 @@ function handlePwaWorkerMessage(event) {
   const data = event.data || {};
   if (!String(data.type || "").startsWith("YZF_PWA_")) return;
   if (data.type === "YZF_PWA_PROGRESS") {
+    pwaTargetVersion = String(data.version || pwaTargetVersion || "");
     setPwaStatus("downloading", {
       loaded: megabytes(data.loadedBytes),
       total: megabytes(data.totalBytes),
+      network: megabytes(data.networkBytes),
+      reused: megabytes(data.reusedBytes),
+      resumed: megabytes(data.resumedBytes),
       done: Number(data.done || 0),
       count: Number(data.count || 0),
+      asset: String(data.asset || ""),
+      phase: String(data.phase || ""),
     });
     return;
   }
   if (data.type === "YZF_PWA_UPDATE_READY") {
+    pwaTargetVersion = String(data.version || pwaTargetVersion || "");
+    pwaLastFailure = null;
     pwaCacheReady = true;
     setPwaStatus("updateReady");
     return;
   }
   if (data.type === "YZF_PWA_READY") {
+    pwaTargetVersion = String(data.version || pwaTargetVersion || "");
+    pwaLastFailure = null;
     pwaCacheReady = true;
     setPwaStatus(effectiveReadyPwaState());
     return;
@@ -1666,7 +1709,21 @@ function handlePwaWorkerMessage(event) {
     return;
   }
   if (data.type === "YZF_PWA_ERROR") {
-    setPwaStatus("error", { message: data.message || "unknown error" });
+    pwaTargetVersion = String(data.version || pwaTargetVersion || "");
+    pwaLastFailure = {
+      version: pwaTargetVersion,
+      asset: String(data.asset || ""),
+      message: String(data.message || "unknown error"),
+    };
+    setPwaStatus(pwaCacheReady ? "updateError" : "error", {
+      message: pwaLastFailure.message,
+      asset: pwaLastFailure.asset,
+      loaded: megabytes(data.loadedBytes),
+      total: megabytes(data.totalBytes),
+      network: megabytes(data.networkBytes),
+      reused: megabytes(data.reusedBytes),
+      resumed: megabytes(data.resumedBytes),
+    });
   }
 }
 
@@ -1709,9 +1766,22 @@ async function installPwaSupport() {
     pwaRegistration.addEventListener("updatefound", () => {
       const worker = pwaRegistration.installing;
       if (!worker) return;
-      if (navigator.serviceWorker.controller) setPwaStatus("downloading", { loaded: "0.0", total: "?", done: 0, count: 0 });
+      if (navigator.serviceWorker.controller) {
+        setPwaStatus("downloading", {
+          loaded: "0.0", total: "?", network: "0.0", reused: "0.0", resumed: "0.0", done: 0, count: 0,
+        });
+      }
       worker.addEventListener("statechange", () => {
-        if (worker.state === "installed" && navigator.serviceWorker.controller) setPwaStatus("updateReady");
+        if (worker.state === "installed" && navigator.serviceWorker.controller) {
+          pwaLastFailure = null;
+          setPwaStatus("updateReady");
+        } else if (worker.state === "redundant" && ["checking", "downloading"].includes(pwaStatus.state)) {
+          const message = pwaLastFailure?.message || "Service Worker installation was interrupted";
+          setPwaStatus(pwaCacheReady ? "updateError" : "error", {
+            message,
+            asset: pwaLastFailure?.asset || "",
+          });
+        }
       });
     });
     if (pwaRegistration.waiting) {
