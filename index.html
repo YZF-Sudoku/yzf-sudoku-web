@@ -1715,6 +1715,33 @@
       height: 100%;
       z-index: 0;
     }
+    /* The normal 3x3 pencilmark grid remains untouched. TLG preserves the
+       familiar top/middle/bottom and left/centre/right candidate zones, while
+       skewing three evenly spaced tracks inside each zone so all digits own a
+       unique x/y pair and adjacent Truth/Link channels remain separated. */
+    .board-stage.tlg-diagram-layout .candidate-grid {
+      position: relative;
+      display: block;
+      padding: 0;
+    }
+    .board-stage.tlg-diagram-layout .candidate {
+      position: absolute;
+      left: var(--tlg-candidate-x, 50%);
+      top: var(--tlg-candidate-y, 50%);
+      width: 26%;
+      height: 26%;
+      transform: translate(-50%, -50%);
+      touch-action: manipulation;
+    }
+    .board-stage.tlg-diagram-layout .candidate.tlg-diagram-covered {
+      color: transparent !important;
+      opacity: 1;
+      text-shadow: none !important;
+    }
+    .board-stage.tlg-diagram-layout .candidate.tlg-elimination::before,
+    .board-stage.tlg-diagram-layout .candidate.tlg-elimination::after {
+      display: none;
+    }
     .candidate.bkclr::before,
     .candidate.link::before,
     .candidate.als::before,
