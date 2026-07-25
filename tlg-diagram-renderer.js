@@ -329,6 +329,14 @@ export function createTlgDiagramRenderer({
     return freezeModel(next);
   }
 
+  function candidateIsRenderNode(candidate) {
+    if (!candidate) return false;
+    for (const role of candidate.roles || []) {
+      if (role !== "link") return true;
+    }
+    return false;
+  }
+
   function prepare({ enabled, snapshot, state }) {
     const wasActive = active;
     active = !!enabled;
@@ -448,7 +456,8 @@ export function createTlgDiagramRenderer({
 
   function appendCornerTags(group, candidate, metrics) {
     if (!candidate.cornerTags.length) return;
-    const tagSize = Math.max(4.8, metrics.size * 0.26);
+    const hasNumberedAurTag = candidate.cornerTags.some((tag) => tag.type === "aur");
+    const tagSize = Math.max(hasNumberedAurTag ? 6.4 : 4.8, metrics.size * (hasNumberedAurTag ? 0.31 : 0.26));
     const gap = Math.max(1.1, metrics.size * 0.05);
     candidate.cornerTags.forEach((tag, index) => {
       const column = index % 2;
@@ -461,6 +470,18 @@ export function createTlgDiagramRenderer({
         fill: tag.color, stroke: "#ffffff", "stroke-width": 0.9, opacity: 0.98,
         "data-tlg-tag": `${tag.type}${tag.groupIndex}`,
       }));
+      if (tag.type === "aur") {
+        const label = svgElement("text", {
+          x: x + tagSize / 2, y: y + tagSize * 0.53,
+          fill: "#ffffff", "font-family": "Tahoma, Arial, sans-serif",
+          "font-size": tagSize * 0.68, "font-weight": 800,
+          "text-anchor": "middle", "dominant-baseline": "middle",
+          "pointer-events": "none",
+          "data-tlg-tag-label": `${tag.type}${tag.groupIndex}`,
+        });
+        label.textContent = String(tag.groupIndex + 1);
+        group.appendChild(label);
+      }
     });
   }
 
@@ -585,6 +606,7 @@ export function createTlgDiagramRenderer({
     }
 
     for (const candidate of [...model.candidates.values()].sort((a, b) => a.cell - b.cell || a.digit - b.digit)) {
+      if (!candidateIsRenderNode(candidate)) continue;
       appendCandidateBadge(candidateLayer, candidate, metricsByKey.get(candidate.key));
     }
     overlay.append(defs, houseTruthLayer, houseLinkLayer, cellTruthLayer, cellLinkLayer, virtualTruthLayer, candidateLayer);
@@ -597,11 +619,19 @@ export function createTlgDiagramRenderer({
   }
 
   function isCandidateCovered(key) {
-    return !!model?.candidates?.has(key);
+    return candidateIsRenderNode(model?.candidates?.get(key));
   }
 
   function inspect() {
-    return { active, candidates: model?.candidates?.size || 0, constraints: model?.constraints?.length || 0 };
+    const renderNodes = model
+      ? [...model.candidates.values()].filter(candidateIsRenderNode).length
+      : 0;
+    return {
+      active,
+      candidates: renderNodes,
+      geometryCandidates: model?.candidates?.size || 0,
+      constraints: model?.constraints?.length || 0,
+    };
   }
 
   window.addEventListener("resize", scheduleRender, { passive: true });

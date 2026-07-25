@@ -1,4 +1,4 @@
-import createModule from "./sudoku_wasm.js?v=wasm-8df25fa8a72d042f";
+import createModule from "./sudoku_wasm.js?v=wasm-a33fe8b22cb55aa9";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -20,7 +20,7 @@ import {
 } from "./ui-localization.js?v=ui-d5a841241e91";
 import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-4c2e94ce3029";
 
-const APP_VERSION = "wasm-8df25fa8a72d042f";
+const APP_VERSION = "wasm-a33fe8b22cb55aa9";
 const MANUAL_VERSION = "manual-5275ef564eeb";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
@@ -1076,6 +1076,8 @@ for (const [key, zh, en] of [
   ["tlgToggleVirtualSet2Batch", "切换 Virtual Set 2", "Toggle Virtual Set 2"],
   ["tlgClearVirtualBatch", "清空 Virtual Set", "Clear the Virtual Set"],
   ["tlgToggleAurBatch", "切换 AUR 角候选", "Toggle AUR Corner"],
+  ["tlgToggleAur1Batch", "切换 AUR 1 角候选", "Toggle AUR 1 Corners"],
+  ["tlgToggleAur2Batch", "切换 AUR 2 角候选", "Toggle AUR 2 Corners"],
   ["tlgToggleDaurBatch", "切换 DAUR 候选池", "Toggle DAUR Candidate Pool"],
   ["tlgToggleGurBatch", "切换 GUR 通用候选云", "Toggle GUR Candidate Cloud"],
   ["tlgToggleGurCells", "切换 GUR 通用格", "Toggle GUR Cells"],
@@ -12705,9 +12707,11 @@ function openTlgSolverContextMenu(cellIndex, digit, event, candidate) {
     tlgBatchToggleCandidateSet(tlgSolverState.virtualSets[0], ui("tlgVirtualSet1"))));
   root.appendChild(tlgMenuButton(ui("tlgToggleVirtualSet2Batch"), () =>
     tlgBatchToggleCandidateSet(tlgSolverState.virtualSets[1], ui("tlgVirtualSet2"))));
-  root.appendChild(tlgMenuButton(ui("tlgToggleAurBatch"), () => {
-    const groupIndex = Math.max(0, Math.min(1, Number(tlgSolverAurGroup?.value || 0) || 0));
-    tlgBatchToggleCandidateSet(tlgSolverState.aurGroups[groupIndex], ui(groupIndex === 0 ? "tlgAurGroup1" : "tlgAurGroup2"));
+  root.appendChild(tlgMenuButton(ui("tlgToggleAur1Batch"), () => {
+    tlgBatchToggleCandidateSet(tlgSolverState.aurGroups[0], ui("tlgAurGroup1"));
+  }));
+  root.appendChild(tlgMenuButton(ui("tlgToggleAur2Batch"), () => {
+    tlgBatchToggleCandidateSet(tlgSolverState.aurGroups[1], ui("tlgAurGroup2"));
   }));
   root.appendChild(tlgMenuButton(ui("tlgToggleDaurBatch"), () => {
     tlgBatchToggleCandidateSet(tlgSolverState.dynamicAurCandidates, ui("tlgDaurCandidates"));
