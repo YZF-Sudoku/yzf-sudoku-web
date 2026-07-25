@@ -1279,8 +1279,8 @@
 <div class="pair">
 <div class="zh">
 <p>TLG Solver 用 Truth、Link 和额外唯一性约束描述一个集合证明，再枚举满足全部约束的投影，从共同结果中得到删数或出数。它不是普通提示器：用户必须明确告诉程序哪些集合和 deadly-pattern 约束属于当前证明。</p>
-<p>勾选“启用 TLG 编辑”后，TLG 独占整个盘面的鼠标、触摸和长按输入以及专属高亮。普通技巧高亮、链路和手工标记只暂时隐藏；关闭 TLG 后恢复。关闭 TLG 会释放临时导入的 TLG 候选盘和计算结果，但保留已输入的 Truth、用户 Link、Virtual Set、AUR、DAUR、GUR 标记。</p>
-<div class="note"><strong>专用图解布局：</strong>TLG 开启时，1～9 候选会切换为横纵坐标都不重复的错切九点布局，便于 Row、Column 与 Box 通道分轨，同时仍保持标准 3×3 的读数方位。蓝色徽标表示结构候选，红色徽标表示最终删数；Cell 淡蓝、Row 紫、Column 绿、Box 褐。颜色只区分对象类型，Truth/Link 由形态区分：Truth 是实心区域，Link 是同一几何的空心轮廓。Virtual Set 使用黑色集合连线；AUR、DAUR、GUR 不再画外框，而是用候选徽标角标着色，同组同色、异组异色。普通候选、提示数和已出数字保持正常对比度；关闭 TLG 后立即恢复普通 3×3 候选布局。</div>
+<p>勾选“启用 TLG 编辑”后，TLG 独占整个盘面的鼠标、触摸和长按输入以及专属高亮。普通技巧高亮、链路和手工标记只暂时隐藏；关闭 TLG 后恢复。关闭 TLG 会释放临时导入的 TLG 候选盘和计算结果，但保留已输入的 Truth、用户 Link、两组 Virtual Set、AUR、DAUR、GUR 标记。</p>
+<div class="note"><strong>专用图解布局：</strong>TLG 开启时，1～9 候选会切换为横纵坐标都不重复的错切九点布局，便于 Row、Column 与 Box 通道分轨，同时仍保持标准 3×3 的读数方位。蓝色徽标表示结构候选，红色徽标表示最终删数；Cell 淡蓝、Row 紫、Column 绿、Box 褐。颜色只区分对象类型，Truth/Link 由形态区分：Truth 是实心区域，Link 是同一几何的空心轮廓。两组 Virtual Set 使用黑色集合连线并以 1/2 角标区分；AUR、DAUR、GUR 不再画外框，而是用候选徽标角标着色，同组同色、异组异色。普通候选、提示数和已出数字保持正常对比度；关闭 TLG 后立即恢复普通 3×3 候选布局。</div>
 <div class="note"><strong>输入兜底：</strong>TLG 开启期间，Truths 模式左键轻触空候选位置仍按 Cell Truth 处理；除此之外，空候选位置的右键/长按、固定格、出数格，以及非 Truths 模式的单元格空白点击都会被安全忽略。它们不会回落为普通出数、恢复候选、数字盘输入或手工标记。只有关闭“启用 TLG 编辑”后，普通盘面编辑才会恢复。</div>
 <h3>13.1 先理解四类状态</h3>
 <table>
@@ -1337,15 +1337,17 @@
 <li>只要存在一个用户 Link，本轮查找就不会自动混入其它 Links。需要自动模式时必须把用户 Links 删到 0。</li>
 </ul>
 <h3>13.7 Virtual Set：怎么用</h3>
-<p>Virtual Set 用于表达一个不能方便写成普通 R/C/B/N Truth 的<strong>精确基数</strong>约束：在所选候选中，恰好有 <code>k</code> 个会被选中。</p>
+<p>Virtual Set 用于表达不能方便写成普通 R/C/B/N Truth 的<strong>精确基数</strong>约束：在一组候选中，恰好有 <code>k</code> 个会被选中。当前支持 <strong>Virtual Set 1 和 Virtual Set 2</strong> 两个相互独立的集合，每组都有自己的成员与基数。</p>
 <ol>
-<li>把输入模式切换为 Virtual Set。</li>
-<li>逐个点击该虚拟集合的全部成员候选，或批选后选择“切换到 Virtual Set”。</li>
-<li>在“应用 Truths 数”填写精确基数 <code>k</code>。后端当前只接受 1–4；填写 0 会按 1 处理。</li>
-<li>确认成员都是真实活动候选，并且你有外部逻辑证明“恰好 k 个为真”，再查找删数。</li>
+<li>把输入模式切换为 Virtual Set，再从“Virtual Set 分组”选择 1 或 2。</li>
+<li>逐个点击当前组的成员候选，或批选后从右键/长按菜单选择“切换 Virtual Set 1/2”。</li>
+<li>在“应用 Truths 数”填写当前所选组的精确基数 <code>k</code>。每组分别支持 1–4；切换分组时输入框显示该组自己的数值。</li>
+<li>确认每组成员都是真实活动候选，并且外部逻辑分别证明“该组恰好 k 个为真”，再查找删数。</li>
 </ol>
-<p><strong>适用场景：</strong>已经由别的结构推得一个候选云具有精确 1、2、3 或 4 个真值，但它不对应单一行、列、宫或单元格 Truth。</p>
-<p><strong>不要这样用：</strong>不要把“至少一个”“至多两个”或只是怀疑相关的候选随意塞进 Virtual Set。它会被当作严格等式前提，错误基数会直接污染证明。</p>
+<p><strong>两组关系：</strong>两组可以完全分离，也允许共享候选。若某个候选同时属于两组，它被选中时会同时计入两组基数；这不是复制候选，而是两个独立等式共同约束同一个布尔变量。</p>
+<p><strong>图解：</strong>两组都使用黑色集合网络，候选徽标上的小角标 <code>1</code>/<code>2</code> 区分归属；同时属于两组时会显示两个角标。</p>
+<p><strong>适用场景：</strong>已经由别的结构推得一个或两个候选云分别具有精确 1、2、3 或 4 个真值，但它们不对应单一行、列、宫或单元格 Truth。</p>
+<p><strong>不要这样用：</strong>不要把“至少一个”“至多两个”或只是怀疑相关的候选随意放入任一组。后端会把每组都当作严格等式前提，错误成员或错误基数会直接污染证明。</p>
 <h3>13.8 定式 AUR：怎么选、怎么用</h3>
 <p>定式 AUR 用一个已知的可交换唯一矩形/唯一性结构，强制其本体不能全部按 deadly completion 占满。标准四格 AUR 编译为 <code>maxBodyFootprint ≤ 3</code>。</p>
 <h4>标准四格 AUR（推荐日常用法）</h4>
@@ -1488,8 +1490,8 @@ GUR 枚举约束 = 1
 <ul>
 <li>原始给定数、当前大数、初始候选盘和当前活动候选盘；</li>
 <li>324 位 Truths、324 位用户 Links，以及计算后的结果 Links；</li>
-<li>两组 AUR、DAUR、GUR、Virtual Set，各使用 729 位候选位图；</li>
-<li>Virtual Set 的精确基数、唯一性门控、输入模式和 Link 类型；</li>
+<li>两组 AUR、DAUR、GUR，以及两组 Virtual Set；每组候选云均使用 729 位候选位图；</li>
+<li>两组 Virtual Set 各自的精确基数、当前选中的 Virtual Set 分组、唯一性门控、输入模式和 Link 类型；</li>
 <li>最近一次删数、出数结果，以及标题、标签、来源和学习笔记。</li>
 </ul>
 <div class="note">题库保存结构化数据，不保存依赖界面语言的结果长文本。读取后，程序会按当前中英文设置重新生成状态和结果说明。</div>
@@ -1501,7 +1503,7 @@ GUR 枚举约束 = 1
 <li><strong>追加：</strong>把当前 TLG 保存到题库末尾，生成新的记录 ID。</li>
 <li><strong>删除：</strong>删除所选记录；执行前会要求确认。</li>
 </ul>
-<p>标题、标签、来源和笔记来自题库窗口右侧。由于记录定长，各字段按 UTF-8 字节限制：标题 128、标签 96、来源 128、笔记 512 字节。中文通常占 3 个字节；超过上限会明确报错，不会静默截断。</p>
+<p>标题、标签、来源和笔记来自题库窗口右侧。题库 v2 仍保持每条 2048 字节，为第二组 Virtual Set 预留位图后，各字段按 UTF-8 字节限制：标题 128、标签 96、来源 128、笔记 507 字节。导入旧版 v1 记录时仍兼容原来的 512 字节笔记。中文通常占 3 个字节；超过当前版本上限会明确报错，不会静默截断。</p>
 <h4>二进制题库导入与导出</h4>
 <ul>
 <li><strong>导出选中：</strong>生成只含所选记录的 <code>.tlgdb</code> 文件。</li>
@@ -1513,20 +1515,20 @@ GUR 枚举约束 = 1
 <h4>分享单个 TLG 文字样例</h4>
 <p>二进制题库适合长期保存和批量管理；论坛、聊天、Issue 或个人笔记中分享一个案例时，可使用 <code>.tlg.txt</code> 文字样例。文字操作针对<strong>当前 TLG 工作区</strong>以及题库窗口右侧填写的标题、标签、来源和笔记，因此案例尚未存入题库时也能直接分享。</p>
 <ul>
-<li><strong>复制样例：</strong>复制可阅读的多行 <code>YZF-TLG-CASE:1</code> 格式。字段名固定为英文标识，不随界面语言变化；标题和笔记保持原文。</li>
-<li><strong>复制单行：</strong>复制以 <code>YZFTLG1</code> 开头的紧凑单行格式，适合不便保留换行的聊天框或论坛输入框。</li>
+<li><strong>复制样例：</strong>复制可阅读的多行 <code>YZF-TLG-CASE:2</code> 格式，其中 <code>VIRTUAL1[k]</code> 和 <code>VIRTUAL2[k]</code> 分别保存两组；字段名固定为英文标识，不随界面语言变化。程序仍可读取旧版 <code>YZF-TLG-CASE:1</code>。</li>
+<li><strong>复制单行：</strong>复制以 <code>YZFTLG2</code> 开头的紧凑单行格式，使用 <code>W1=</code>/<code>W2=</code> 保存两组；旧版 <code>YZFTLG1</code> 仍可导入。</li>
 <li><strong>粘贴样例：</strong>尝试读取剪贴板并展开文字框；浏览器拒绝剪贴板权限时，可在框内手动粘贴。</li>
 <li><strong>导入文本：</strong>读取 <code>.tlg.txt</code> 或普通 <code>.txt</code> 文件到文字框。</li>
 <li><strong>导出文本：</strong>把当前 TLG 工作区保存为 <code>标题.tlg.txt</code>。</li>
 <li><strong>载入样例：</strong>解析成功后先显示标题、类型、Truth/Link 数、活动候选和结论摘要；确认后才替换当前临时 TLG 状态，不会自动写入题库。需要长期保存时，再使用“插入、替换或追加”。</li>
 </ul>
-<p>文字样例无损保存原题、当前大数、两套候选位图、Truths、Links、AUR 1/2、DAUR、GUR、Virtual Set 及其 Truth 数、结果 Links、删数、出数、操作选项和元数据。多行版使用可读的 <code>7r3c4</code> 候选和 <code>1r3</code> 约束表示；两套完整候选盘采用 Base64URL 位图，以免一条案例膨胀为两份 729 字符串。程序导出的文字包含 CRC32，复制被截断或意外改动时会拒绝载入。</p>
+<p>文字样例无损保存原题、当前大数、两套候选位图、Truths、Links、AUR 1/2、DAUR、GUR、Virtual Set 1/2 及各自基数、结果 Links、删数、出数、操作选项和元数据。多行版使用可读的 <code>7r3c4</code> 候选和 <code>1r3</code> 约束表示；两套完整候选盘采用 Base64URL 位图。程序导出的文字包含 CRC32，复制被截断或意外改动时会拒绝载入。</p>
 <div class="note"><code>.tlg.txt</code> 适合分享单例，但不替代整库备份。多行版和单行版都能重新导入，并恢复为同一套结构化 TLG 状态。</div>
 <div class="warn">浏览器清理站点数据、无痕模式结束、重装系统或更换设备，都可能丢失 IndexedDB 中的本地题库。完成重要逻辑后应立即导出 <code>.tlgdb</code>；需要公开讨论的单个案例再同时导出或复制 <code>.tlg.txt</code>。</div>
 </div>
 <div class="en">
 <p>TLG Solver describes a set proof with Truths, Links, and optional uniqueness constraints, enumerates projections satisfying all premises, and derives common eliminations or assignments. It is not an ordinary hint button: the user defines the proof structure.</p>
-<p>Enable TLG Editing gives TLG exclusive ownership of all board mouse, touch, long-press input, and its visual layer. Ordinary technique highlights, chains, and manual marks are hidden rather than deleted. Disabling TLG releases the temporary TLG candidate grid and computed result, while keeping the entered Truths, User Links, Virtual Set, AUR, DAUR, and GUR marks.</p>
+<p>Enable TLG Editing gives TLG exclusive ownership of all board mouse, touch, long-press input, and its visual layer. Ordinary technique highlights, chains, and manual marks are hidden rather than deleted. Disabling TLG releases the temporary TLG candidate grid and computed result, while keeping the entered Truths, User Links, both Virtual Sets, AUR, DAUR, and GUR marks.</p>
 <div class="note"><strong>Dedicated diagram layout:</strong> while TLG is enabled, the familiar 3×3 candidate directions are preserved. The x tracks run left-to-right as <code>1 4 7 | 2 5 8 | 3 6 9</code>, and the y tracks run top-to-bottom as <code>3 2 1 | 6 5 4 | 9 8 7</code>. Thus 3 remains upper-right and 7 remains lower-left, while every digit still receives a unique x/y pair that separates adjacent Row, Column, and Box channels. Blue badges are structure candidates and red badges are final eliminations; Cell is light blue, Row purple, Column green, and Box brown. Color identifies the object type only: a Truth is a filled region, while a Link is the hollow outline of the same geometry. Ordinary candidates, givens, and solved values retain their normal contrast; only candidates replaced by blue/red SVG badges hide their duplicate DOM labels. Disabling TLG immediately restores the ordinary 3×3 pencilmark layout.</div>
 <div class="note"><strong>Input guard:</strong> while TLG is enabled, a plain left tap on an empty candidate slot in Truths mode still acts as the Cell Truth shortcut. Otherwise, right-click/long-press on an empty slot, fixed/solved cells, and cell-background clicks outside Truths mode are safe no-ops. They never fall through to ordinary value entry, candidate restoration, the number pad, or manual marks. Ordinary board editing resumes only after TLG Editing is disabled.</div>
 <h3>13.1 Four Different States</h3>
@@ -1584,15 +1586,17 @@ GUR 枚举约束 = 1
 <li>One User Link is enough to disable automatic Link mixing for that Find. Delete all User Links to restore automatic mode.</li>
 </ul>
 <h3>13.7 Virtual Set</h3>
-<p>A Virtual Set expresses an <strong>exact cardinality</strong> that cannot conveniently be represented by one ordinary R/C/B/N Truth: exactly <code>k</code> selected candidates are true.</p>
+<p>A Virtual Set expresses an <strong>exact cardinality</strong> that cannot conveniently be represented by one ordinary R/C/B/N Truth: exactly <code>k</code> selected candidates are true. TLG now supports two independent groups, Virtual Set 1 and Virtual Set 2, each with its own members and cardinality.</p>
 <ol>
-<li>Select Virtual Set mode.</li>
-<li>Toggle every member candidate, or batch-toggle them through the menu.</li>
-<li>Set Truths to Apply to the exact cardinality <code>k</code>. The backend currently clamps it to 1–4; zero becomes one.</li>
-<li>Verify that all members are active and that external logic proves exactly <code>k</code>, then run Find.</li>
+<li>Select Virtual Set mode, then choose group 1 or 2 from Virtual Set Group.</li>
+<li>Toggle member candidates for that group, or batch-toggle them through the right-click/long-press menu.</li>
+<li>Set Truths to Apply to that group's exact cardinality <code>k</code>. Each group independently accepts 1–4.</li>
+<li>Verify that every member is active and that external logic proves the exact cardinality of each active group, then run Find.</li>
 </ol>
-<p><strong>Use it when:</strong> another argument proves an exact 1–4 truths inside a candidate cloud that is not a single house/cell set.</p>
-<p><strong>Do not use it for:</strong> “at least one,” “at most two,” or a speculative group. TLG treats the cardinality as a strict premise.</p>
+<p><strong>Relationship between groups:</strong> the two groups may be disjoint or may overlap. A selected candidate shared by both groups contributes to both cardinality equations.</p>
+<p><strong>Diagram:</strong> both groups use black set networks; small <code>1</code>/<code>2</code> tabs on candidate badges identify membership. A shared candidate displays both tabs.</p>
+<p><strong>Use it when:</strong> another argument proves exact 1–4 truths in one or two candidate clouds that are not ordinary house/cell sets.</p>
+<p><strong>Do not use it for:</strong> “at least one,” “at most two,” or speculative groups. Each group is a strict equality premise.</p>
 <h3>13.8 Fixed AUR</h3>
 <p>A fixed AUR supplies a proven swappable uniqueness structure. A standard four-cell AUR is compiled as <code>maxBodyFootprint ≤ 3</code>.</p>
 <h4>Standard Four-Cell AUR</h4>
@@ -1714,7 +1718,7 @@ GUR enumeration constraints = 1
 <li><strong>Truth / Link:</strong> a Truth is a filled region and a Link is the hollow outline of the same geometry. Rows and Columns are continuous bands; a Box is a turning, branching orthogonal network.</li>
 <li><strong>Cell:</strong> the region wraps the active candidate badges belonging to that Cell constraint rather than filling or outlining the whole cell.</li>
 <li><strong>Candidates:</strong> a candidate shared by several Truths/Links still has one badge; the geometry underneath carries the constraint identities.</li>
-<li><strong>Virtual Set:</strong> solid violet; <strong>AUR 1:</strong> orange dashed; <strong>AUR 2:</strong> blue dashed; <strong>DAUR:</strong> cyan dotted; <strong>GUR:</strong> brown double. These accents surround the unified blue/red badge.</li>
+<li><strong>Virtual Sets 1/2:</strong> black branching networks with small 1/2 membership tabs; <strong>AUR / DAUR / GUR:</strong> colored corner tabs rather than outer frames. Candidates shared by both Virtual Sets show both group tabs.</li>
 <li><strong>Result priority:</strong> a final red elimination overrides structure blue; constraint regions are underneath and badges plus interaction accents are on top.</li>
 </ul>
 <h3>13.15 Result Notation and Budgets</h3>
@@ -1734,8 +1738,8 @@ GUR enumeration constraints = 1
 <ul>
 <li>original givens, current placed digits, the initial candidate grid, and the current active candidate grid;</li>
 <li>324-bit Truths, 324-bit User Links, and computed Result Links;</li>
-<li>two AUR groups, DAUR, GUR, and Virtual Set, each as a 729-bit candidate bitmap;</li>
-<li>Virtual Set cardinality, uniqueness gate, input mode, and Link type;</li>
+<li>two AUR groups, DAUR, GUR, and two Virtual Sets, each candidate cloud stored as a 729-bit bitmap;</li>
+<li>the independent cardinality of both Virtual Sets, the selected Virtual Set group, uniqueness gate, input mode, and Link type;</li>
 <li>the latest eliminations and assignments, plus title, tags, source, and study notes.</li>
 </ul>
 <div class="note">The library stores structured data rather than language-dependent result prose. After a record is read, status and result text are regenerated in the current UI language.</div>
@@ -1747,7 +1751,7 @@ GUR enumeration constraints = 1
 <li><strong>Append:</strong> saves the current TLG at the end with a new record ID.</li>
 <li><strong>Delete:</strong> removes the selected record after confirmation.</li>
 </ul>
-<p>Title, tags, source, and notes come from the editor on the right. Because the record is fixed-size, UTF-8 byte limits apply: 128 for title, 96 for tags, 128 for source, and 512 for notes. Text beyond a limit is rejected explicitly and is never silently truncated.</p>
+<p>Title, tags, source, and notes come from the editor on the right. Binary schema v2 remains fixed at 2048 bytes; after reserving the second Virtual Set bitmap, UTF-8 limits are 128 bytes for title, 96 for tags, 128 for source, and 507 for notes. Legacy v1 records with 512-byte notes remain importable. Text beyond the current limit is rejected explicitly.</p>
 <h4>Binary Library Import and Export</h4>
 <ul>
 <li><strong>Export Selected:</strong> creates a <code>.tlgdb</code> containing only the selected record.</li>
@@ -1759,14 +1763,14 @@ GUR enumeration constraints = 1
 <h4>Sharing One TLG Case as Text</h4>
 <p>The binary library is for durable storage and bulk management. To share one case in a forum, chat, issue, or notebook, use a <code>.tlg.txt</code> text case. Text actions use the <strong>current TLG workspace</strong> plus the title, tags, source, and notes currently shown in the library editor, so an unsaved case can be shared directly.</p>
 <ul>
-<li><strong>Copy Case:</strong> copies the readable multiline <code>YZF-TLG-CASE:1</code> format. Field names are stable English identifiers independent of UI language; titles and notes remain unchanged.</li>
-<li><strong>Copy One Line:</strong> copies the compact <code>YZFTLG1</code> form for chat or forum fields that do not preserve line breaks.</li>
+<li><strong>Copy Case:</strong> copies the readable multiline <code>YZF-TLG-CASE:2</code> format. <code>VIRTUAL1[k]</code> and <code>VIRTUAL2[k]</code> store the two groups. Legacy <code>YZF-TLG-CASE:1</code> remains importable.</li>
+<li><strong>Copy One Line:</strong> copies compact <code>YZFTLG2</code>, using <code>W1=</code>/<code>W2=</code> for the two groups. Legacy <code>YZFTLG1</code> remains importable.</li>
 <li><strong>Paste Case:</strong> attempts to read the clipboard and opens the text box. If browser permission blocks clipboard access, paste into the box manually.</li>
 <li><strong>Import Text:</strong> reads a <code>.tlg.txt</code> or ordinary <code>.txt</code> file into the text box.</li>
 <li><strong>Export Text:</strong> saves the current TLG workspace as <code>title.tlg.txt</code>.</li>
 <li><strong>Load Case:</strong> first shows a parsed summary of title, type, Truth/Link counts, active candidates, and conclusions. Only after confirmation does it replace the temporary TLG state. It does not save into the library automatically; use Insert, Replace, or Append afterward for durable storage.</li>
 </ul>
-<p>A text case losslessly stores givens, current placed digits, both candidate bitmaps, Truths, Links, AUR 1/2, DAUR, GUR, Virtual Set and its cardinality, Result Links, eliminations, assignments, options, and metadata. The multiline form uses readable candidate notation such as <code>7r3c4</code> and descriptor notation such as <code>1r3</code>. The two complete candidate grids use Base64URL bitmaps instead of two 729-character strings. Exported text includes CRC32, so truncated or unintentionally modified content is rejected.</p>
+<p>A text case losslessly stores givens, current placed digits, both candidate bitmaps, Truths, Links, AUR 1/2, DAUR, GUR, Virtual Sets 1/2 with their independent cardinalities, Result Links, eliminations, assignments, options, and metadata. The multiline form uses readable candidate notation such as <code>7r3c4</code> and descriptor notation such as <code>1r3</code>. The complete candidate grids use Base64URL bitmaps. Exported text includes CRC32, so truncated or unintentionally modified content is rejected.</p>
 <div class="note"><code>.tlg.txt</code> is convenient for sharing one case, but it does not replace a full-library backup. Both the multiline and one-line forms import into the same structured TLG state.</div>
 <div class="warn">Clearing site data, ending a private-browsing session, reinstalling the system, or moving to another device can remove the IndexedDB library. Export a <code>.tlgdb</code> after preserving important logic, and additionally copy or export <code>.tlg.txt</code> for individual cases you want to discuss publicly.</div>
 </div>
@@ -1790,7 +1794,7 @@ GUR enumeration constraints = 1
 
 <div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><path class="box-geometry" d="M15 17H50V50 M85 17H50 M15 83H50V50 M85 83H50" fill="none" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 17H50V50 M85 17H50 M15 83H50V50 M85 83H50" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><g><rect class="badge" x="7" y="9" width="16" height="16" rx="3"/><rect class="badge" x="77" y="9" width="16" height="16" rx="3"/><rect class="badge" x="7" y="75" width="16" height="16" rx="3"/><rect class="badge" x="77" y="75" width="16" height="16" rx="3"/><text class="badge-label" x="15" y="17" font-size="9">7</text><text class="badge-label" x="85" y="17" font-size="9">7</text><text class="badge-label" x="15" y="83" font-size="9">7</text><text class="badge-label" x="85" y="83" font-size="9">7</text></g></svg></div><div class="visual-demo-copy"><strong><span class="visual-zh">Box 分叉网络</span><span class="visual-en">Branching Box network</span></strong><span class="visual-zh">Box 使用可合并的正交通道，允许 L、T、U、十字和多支路。图中为空心 Box Link。</span><span class="visual-en">Boxes use mergeable orthogonal channels and may form L, T, U, cross, or multi-branch shapes. This example is a hollow Box Link.</span></div></div>
 
-<div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><path d="M16 25H50V50 M84 25H50 M50 50V78" fill="none" stroke="#111111" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect class="badge" x="8" y="17" width="16" height="16" rx="3"/><rect class="badge" x="76" y="17" width="16" height="16" rx="3"/><rect class="badge" x="42" y="70" width="16" height="16" rx="3"/><text class="badge-label" x="16" y="25" font-size="9">1</text><text class="badge-label" x="84" y="25" font-size="9">3</text><text class="badge-label" x="50" y="78" font-size="9">8</text></svg></div><div class="visual-demo-copy"><strong>Virtual Set</strong><span class="visual-zh">Virtual Set 改为黑色集合连线，不要求成员共线，可像 Box Truth 一样转折或分叉。</span><span class="visual-en">Virtual Sets now use black set-link geometry. Members need not be collinear and may branch or turn like Box Truths.</span></div></div>
+<div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><path d="M16 25H50V50 M84 25H50 M50 50V78" fill="none" stroke="#111111" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect class="badge" x="8" y="17" width="16" height="16" rx="3"/><rect class="badge" x="76" y="17" width="16" height="16" rx="3"/><rect class="badge" x="42" y="70" width="16" height="16" rx="3"/><text class="badge-label" x="16" y="25" font-size="9">1</text><text class="badge-label" x="84" y="25" font-size="9">3</text><text class="badge-label" x="50" y="78" font-size="9">8</text></svg></div><div class="visual-demo-copy"><strong>Virtual Set</strong><span class="visual-zh">Virtual Set 1/2 分别使用黑色集合连线和 1/2 角标；成员不要求共线，两组也允许重叠。</span><span class="visual-en">Virtual Sets 1 and 2 use independent black set-link networks with 1/2 membership tabs. Members need not be collinear, and the two groups may overlap.</span></div></div>
 
 <div class="visual-demo-card"><div class="visual-demo-stage"><svg class="tlg-diagram-demo" viewBox="0 0 100 100" aria-hidden="true"><rect class="badge" x="11" y="39" width="16" height="16" rx="3"/><text class="badge-label" x="19" y="47" font-size="9">2</text><rect x="22" y="40" width="5" height="5" rx="1.3" fill="#ea580c" stroke="#fff" stroke-width="0.9"/><rect class="badge" x="42" y="39" width="16" height="16" rx="3"/><text class="badge-label" x="50" y="47" font-size="9">7</text><rect x="53" y="40" width="5" height="5" rx="1.3" fill="#2563eb" stroke="#fff" stroke-width="0.9"/><rect class="badge" x="73" y="39" width="16" height="16" rx="3"/><text class="badge-label" x="81" y="47" font-size="9">9</text><rect x="84" y="40" width="5" height="5" rx="1.3" fill="#0891b2" stroke="#fff" stroke-width="0.9"/></svg></div><div class="visual-demo-copy"><strong>AUR 1 / AUR 2 / DAUR</strong><span class="visual-zh">这些集合不再画外围框，只在候选徽标角上放彩色角标。同一组同色，不同组异色。</span><span class="visual-en">These sets no longer use outer frames. Instead, small colored corner tabs identify membership; the same group shares one color.</span></div></div>
 
@@ -1802,7 +1806,7 @@ GUR enumeration constraints = 1
 <div class="pattern-demo-wrap">
 <h3>TLG 对象怎么选：示意图 / How to Select TLG Objects</h3>
 <div class="pattern-demo-grid">
-<div class="pattern-demo-card"><strong>Virtual Set：精确基数 / Exact cardinality</strong><div class="pattern-board two-by-three"><div class="pattern-cell"><div class="demo-candidate small vset"><b>2</b></div></div><div class="pattern-cell"><div class="demo-candidate small vset"><b>5</b></div></div><div class="pattern-cell"><div class="demo-candidate small vset"><b>8</b></div></div><span class="cardinality-badge">k = 2</span></div><span class="visual-zh">把全部成员加入同一个 Virtual Set，并填写“恰好 k 个为真”。界面用黑色集合连线表示它，不是紫色外框。</span><span class="visual-en">Add every member to the same Virtual Set and set “exactly k are true.” The UI now shows it with black set-link geometry instead of a purple outer frame.</span></div>
+<div class="pattern-demo-card"><strong>Virtual Set：精确基数 / Exact cardinality</strong><div class="pattern-board two-by-three"><div class="pattern-cell"><div class="demo-candidate small vset"><b>2</b></div></div><div class="pattern-cell"><div class="demo-candidate small vset"><b>5</b></div></div><div class="pattern-cell"><div class="demo-candidate small vset"><b>8</b></div></div><span class="cardinality-badge">k = 2</span></div><span class="visual-zh">先选择 Virtual Set 1 或 2，把该组全部成员加入并填写“恰好 k 个为真”。两组可重叠，界面以黑线和 1/2 角标区分。</span><span class="visual-en">Choose Virtual Set 1 or 2, add every member of that group, and set “exactly k are true.” Groups may overlap; black networks and 1/2 tabs distinguish them.</span></div>
 <div class="pattern-demo-card"><strong>定式 AUR / Fixed AUR</strong><div class="pattern-board two-by-two"><div class="pattern-cell"><div class="demo-candidate small aur1"><b>2</b></div><span>7</span></div><div class="pattern-cell"><span>2 7</span></div><div class="pattern-cell"><span>2 7</span></div><div class="pattern-cell"><span>2</span><div class="demo-candidate small aur1"><b>7</b></div></div></div><span class="visual-zh">标准四格只选两个对角、异数字候选点；两行、两列和本体数对由这两个点推定。</span><span class="visual-en">For a standard rectangle, select exactly two diagonal points with different digits; those points define rows, columns, and body pair.</span></div>
 <div class="pattern-demo-card"><strong>DAUR：小而准确的池 / Small precise pool</strong><div class="pattern-board two-by-three"><div class="pattern-cell"><div class="demo-candidate small daur"><b>1</b></div><div class="demo-candidate small daur"><b>6</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>1</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>6</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>1</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>6</b></div></div><div class="pattern-cell"><div class="demo-candidate small daur"><b>1</b></div><div class="demo-candidate small daur"><b>6</b></div></div></div><span class="visual-zh">只放可能属于本体的活动候选；程序会把池内找到的全部有效 AUR/DUR 同时展开。</span><span class="visual-en">Include only active candidates that may be body members; every valid AUR/DUR found in the pool is expanded together.</span></div>
 <div class="pattern-demo-card"><strong>GUR：完整局部模型 / Complete local model</strong><div class="pattern-board three-by-three"><div class="pattern-cell"><div class="demo-candidate small gur"><b>1</b></div><div class="demo-candidate small gur"><b>4</b></div></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>4</b></div></div><div class="pattern-cell empty"></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>1</b></div></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>7</b></div></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>4</b></div><div class="demo-candidate small gur"><b>7</b></div></div><div class="pattern-cell empty"></div><div class="pattern-cell"><div class="demo-candidate small gur"><b>1</b></div><div class="demo-candidate small gur"><b>7</b></div></div><div class="pattern-cell empty"></div></div><span class="visual-zh">不规则形状也可以，但必须选齐局部每个格允许参与完成的全部候选；GUR 不会替你猜边界。</span><span class="visual-en">Irregular shapes are allowed, but include every allowed candidate in every local cell; GUR does not infer the boundary.</span></div>
@@ -2127,7 +2131,7 @@ GUR enumeration constraints = 1
 <tr><td>DAUR 展开数量很多、运行很慢</td><td>候选池太宽，程序把其中全部有效 AUR/DUR 同时加入证明。</td><td>按目标局部结构缩小候选池，移除 guardian、删数目标和无关候选。</td></tr>
 <tr><td>GUR 报没有合法完成或没有等价完成对</td><td>候选云漏候选、混入区域外候选，或该局部结构本身不是可证明 deadly 等价类。</td><td>重新定义精确格集合和每格允许候选；严格模式还要核对初始候选前提。</td></tr>
 <tr><td>GUR 超过预算</td><td>格数、候选字母表或局部完成数过大。</td><td>缩小到目标局部区域；上限为 16 格、64 候选点，实际可用规模通常应更小。</td></tr>
-<tr><td>Virtual Set 结果不合理</td><td>把“至少/至多”条件误填成精确基数，或“应用 Truths 数”填错。</td><td>Virtual Set 必须是恰好 <code>k</code> 个真值；当前 <code>k</code> 只支持 1–4，0 会按 1。</td></tr>
+<tr><td>Virtual Set 结果不合理</td><td>把“至少/至多”条件误填成精确基数、当前选择了错误分组，或某个共享候选是否应同时属于两组没有确认。</td><td>分别检查 Virtual Set 1/2 的成员和基数；每组必须是恰好 <code>k</code> 个真值，<code>k</code> 支持 1–4。共享候选若为真会同时计入两组。</td></tr>
 <tr><td>“清空全部逻辑”后候选盘还在</td><td>右键/长按菜单命令设计为保留临时 TLG 候选盘。</td><td>要连候选盘一起清除，使用面板“清空 TLG 状态”。</td></tr>
 </tbody>
 </table>

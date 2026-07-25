@@ -218,3 +218,24 @@ The update-ready UI must be driven by `ServiceWorkerRegistration.waiting`, not b
 5. a manual refresh during this interval resumes the pending activation instead of returning to a permanently purple cloud.
 
 `sw.js` itself is intentionally excluded from `pwa-assets.js`: the browser owns Service Worker script update checks (`updateViaCache: "none"`), while the offline manifest covers only runtime assets that the active release must serve.
+
+## TLG dual Virtual Sets
+
+TLG supports two independent exact-cardinality Virtual Sets. Each group has its
+own candidate bitmap and cardinality (`1..4`), and the two groups may overlap.
+A candidate shared by both groups contributes to both cardinality equations.
+
+Frontend and backend compatibility rules:
+
+- Requests use `virtualSets: [{ candidates, cardinality }, ...]` with at most two groups.
+- When only one group is active the frontend also emits the legacy `virtualSet`
+  field so older readers can still inspect the request.
+- Binary TLG library records use schema v2 while remaining exactly 2048 bytes;
+  schema v1 imports as Virtual Set 1 with an empty Virtual Set 2.
+- Text sharing uses `YZF-TLG-CASE:2` / `YZFTLG2` and stores the groups as
+  `VIRTUAL1[k]`, `VIRTUAL2[k]` / `W1=`, `W2=`. Version 1 text remains importable.
+- The renderer draws two independent black networks and adds small `1` / `2`
+  membership tabs to candidate badges. Overlapping members display both tabs.
+
+Any change to the dual-set state, binary/text serialization, renderer, WASM
+request schema, or localized UI must keep all of the above layers synchronized.

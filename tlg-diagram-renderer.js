@@ -95,6 +95,7 @@ function freezeModel(model) {
       constraintTypes: Object.freeze([...candidate.constraintTypes]),
       accents: Object.freeze([...candidate.accents]),
       cornerTags: Object.freeze(candidate.cornerTags.map((tag) => Object.freeze({ ...tag }))),
+      virtualGroups: Object.freeze([...candidate.virtualGroups]),
     }));
   }
   model.constraints.forEach(Object.freeze);
@@ -203,6 +204,7 @@ export function createTlgDiagramRenderer({
           constraintTypes: new Set(),
           accents: new Set(),
           cornerTags: [],
+          virtualGroups: new Set(),
         });
       }
       return next.candidates.get(key);
@@ -237,32 +239,37 @@ export function createTlgDiagramRenderer({
     (state.truths || []).forEach((value) => addConstraint(value, "truth"));
     (state.links || []).forEach((value) => addConstraint(value, "link"));
 
-    const virtualMembers = [...new Set([...(state.virtualCandidates || [])])].filter((key) => {
-      const [cellText, digitText] = String(key).split(":");
-      const cell = Number(cellText);
-      const digit = Number(digitText);
-      return snapshot?.cells?.[cell]?.candidates?.includes(digit);
-    });
-    if (virtualMembers.length > 1) {
-      next.constraints.push({
-        key: "virtual-set:0",
-        role: "truth",
-        raw: "virtual-set",
-        canonical: "virtual-set",
-        type: "v",
-        digit: 0,
-        house: 0,
-        cell: -1,
-        members: Object.freeze(virtualMembers),
+    const virtualSets = Array.isArray(state.virtualSets)
+      ? state.virtualSets
+      : [state.virtualCandidates || []];
+    virtualSets.slice(0, 2).forEach((values, groupIndex) => {
+      const virtualMembers = [...new Set([...(values || [])])].filter((key) => {
+        const [cellText, digitText] = String(key).split(":");
+        const cell = Number(cellText);
+        const digit = Number(digitText);
+        return snapshot?.cells?.[cell]?.candidates?.includes(digit);
       });
+      if (virtualMembers.length > 1) {
+        next.constraints.push({
+          key: `virtual-set:${groupIndex}`,
+          role: "truth",
+          raw: `virtual-set-${groupIndex + 1}`,
+          canonical: `virtual-set-${groupIndex + 1}`,
+          type: "v",
+          groupIndex,
+          digit: 0,
+          house: 0,
+          cell: -1,
+          members: Object.freeze(virtualMembers),
+        });
+      }
       for (const key of virtualMembers) {
         const candidate = ensureCandidate(key);
         candidate.roles.add("structure");
         candidate.constraintTypes.add("v");
+        candidate.virtualGroups.add(groupIndex);
       }
-    } else if (virtualMembers.length === 1) {
-      ensureCandidate(virtualMembers[0]).roles.add("structure");
-    }
+    });
 
     const addCornerTagGroups = (groups, tagType, fallbackColorList) => {
       const normalizedGroups = Array.isArray(groups) ? groups : [groups];
@@ -457,6 +464,30 @@ export function createTlgDiagramRenderer({
     });
   }
 
+  function appendVirtualGroupMarkers(group, candidate, metrics) {
+    if (!candidate.virtualGroups.length) return;
+    const diameter = Math.max(6.4, metrics.size * 0.31);
+    const radius = diameter / 2;
+    candidate.virtualGroups.forEach((groupIndex, index) => {
+      const x = metrics.left + radius + 1.2 + index * (diameter + 1.4);
+      const y = metrics.top + metrics.size - radius - 1.2;
+      group.appendChild(svgElement("circle", {
+        cx: x, cy: y, r: radius,
+        fill: "#111111", stroke: "#ffffff", "stroke-width": 0.9,
+        "data-tlg-virtual-group": String(groupIndex + 1),
+      }));
+      const label = svgElement("text", {
+        x, y: y + diameter * 0.03,
+        fill: "#ffffff", "font-family": "Tahoma, Arial, sans-serif",
+        "font-size": diameter * 0.64, "font-weight": 800,
+        "text-anchor": "middle", "dominant-baseline": "middle",
+        "pointer-events": "none",
+      });
+      label.textContent = String(groupIndex + 1);
+      group.appendChild(label);
+    });
+  }
+
   function appendCandidateBadge(layer, candidate, metrics) {
     const isElimination = candidate.roles.includes("elimination");
     const group = svgElement("g", {
@@ -496,6 +527,7 @@ export function createTlgDiagramRenderer({
     label.textContent = String(candidate.digit);
     group.appendChild(label);
     appendCornerTags(group, candidate, metrics);
+    appendVirtualGroupMarkers(group, candidate, metrics);
     layer.appendChild(group);
   }
 
@@ -533,6 +565,7 @@ export function createTlgDiagramRenderer({
           d: pathD, fill: "none", stroke: color,
           "stroke-width": 5.4, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: 0.95,
           "data-tlg-role": "virtual", "data-tlg-type": "v", "data-tlg-key": constraint.key,
+          "data-tlg-virtual-group": String((constraint.groupIndex ?? 0) + 1),
         }));
         continue;
       }

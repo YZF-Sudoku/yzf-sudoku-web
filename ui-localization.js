@@ -200,6 +200,7 @@ const TLG_EXACT_ZH = new Map(Object.entries({
   "active candidates were normalized by dropping invalid entries and duplicates": "活动候选已规范化：无效项和重复项已移除。",
   "TLG manual validation supports at most two AUR records": "手工 TLG 校验最多支持两条 AUR 记录。",
   "TLG GUR supports at most eight independent groups": "TLG GUR 最多支持八个相互独立的分组。",
+  "at most two Virtual Sets are supported": "最多支持两组 Virtual Set。",
   "Virtual Set cardinality must be in 1..4": "Virtual Set 的基数必须为 1～4。",
   "Virtual Set member is outside the 1..9 Sudoku domain": "Virtual Set 成员超出数独的 1～9 范围。",
   "active Virtual Set requires at least one member": "启用 Virtual Set 时至少需要一个成员。",
@@ -209,6 +210,7 @@ const TLG_EXACT_ZH = new Map(Object.entries({
   "normalized plan contains an invalid active candidate": "规范化方案中包含无效的活动候选数。",
   "normalized Virtual Set cardinality is inconsistent with its members": "规范化后的 Virtual Set 基数与成员数量不一致。",
   "synthetic Virtual Set descriptor collides with an ordinary descriptor": "合成的 Virtual Set 描述符与普通描述符冲突。",
+  "synthetic Virtual Set descriptor collides with another descriptor": "合成的 Virtual Set 描述符与另一描述符冲突。",
   "normalized standard AUR constraint is malformed": "规范化后的标准 AUR 约束格式错误。",
   "normalized six-cell DUR constraint is malformed": "规范化后的六格 DUR 约束格式错误。",
   "normalized rotating AUR constraint is malformed": "规范化后的旋转 AUR 约束格式错误。",
@@ -233,6 +235,8 @@ const TLG_EXACT_ZH = new Map(Object.entries({
 
 const TLG_PATTERNS_ZH = [
   [/^unsupported TLG action:\s*(.+)$/i, (_, action) => `不支持的 TLG 操作：${action}。`],
+  [/^Virtual Set\s+#?(\d+)\s*:\s*(.*)$/i, (_, index, rest) => `Virtual Set ${index}：${translateTlgTail(rest)}`],
+  [/^normalized Virtual Set\s+(\d+)\s+(.*)$/i, (_, index, rest) => `规范化后的 Virtual Set ${index}：${translateTlgTail(rest)}`],
   [/^(AUR|GUR|DUR)\s*#?(\d+)?\s*(.*)$/i, (_, family, index, rest) => `${family.toUpperCase()}${index ? ` #${index}` : ""}：${translateTlgTail(rest)}`],
   [/^(.+?) is not active:\s*(.+)$/i, (_, subject, item) => `${translateTlgSubject(subject)}未处于活动状态：${item}`],
   [/^(.+?) is outside the 1\.\.9 Sudoku domain$/i, (_, subject) => `${translateTlgSubject(subject)}超出数独的 1～9 范围。`],
@@ -263,6 +267,12 @@ function translateTlgTail(value) {
     [/^duplicates another AUR record$/i, "与另一条 AUR 记录重复。"],
     [/^duplicate fixed AUR form was ignored$/i, "重复的固定 AUR 形态已忽略。"],
     [/^duplicate six-cell DUR swap form was ignored$/i, "重复的六格 DUR 交换形态已忽略。"],
+    [/^cardinality must be in 1\.\.4$/i, "基数必须为 1～4。"],
+    [/^member is outside the 1\.\.9 Sudoku domain$/i, "成员超出数独的 1～9 范围。"],
+    [/^active set requires at least one member$/i, "启用该组时至少需要一个成员。"],
+    [/^cardinality exceeds its distinct member count$/i, "基数不能超过该组不同成员的数量。"],
+    [/^member is not active:\s*(.+)$/i, "成员未处于活动状态：$1"],
+    [/^cardinality is inconsistent with its members$/i, "基数与成员数量不一致。"],
     [/^Corner is not active:\s*(.+)$/i, "角候选未处于活动状态：$1"],
     [/^Corner is outside the 1\.\.9 Sudoku domain$/i, "角候选超出数独的 1～9 范围。"],
   ];

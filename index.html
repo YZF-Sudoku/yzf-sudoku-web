@@ -5856,6 +5856,12 @@
                       <option value="1">AUR 2</option>
                     </select>
                   </label>
+                  <label id="tlgSolverVirtualGroupWrap" hidden><span id="tlgSolverVirtualGroupLabel">Virtual Set 分组</span>
+                    <select id="tlgSolverVirtualGroup">
+                      <option value="0">Virtual Set 1</option>
+                      <option value="1">Virtual Set 2</option>
+                    </select>
+                  </label>
                   <label><span id="tlgSolverLinkTypeLabel">Link 类型</span>
                     <select id="tlgSolverLinkType">
                       <option value="auto">自动</option>
@@ -5864,8 +5870,8 @@
                       <option value="cell">单元格</option>
                     </select>
                   </label>
-                  <label><span id="tlgSolverTruthsToApplyLabel">应用 Truths 数</span>
-                    <input id="tlgSolverTruthsToApply" type="number" min="0" max="81" value="0" />
+                  <label id="tlgSolverTruthsToApplyWrap" hidden><span id="tlgSolverTruthsToApplyLabel">应用 Truths 数</span>
+                    <input id="tlgSolverTruthsToApply" type="number" min="1" max="4" value="1" />
                   </label>
                   <label><span id="tlgSolverAurPremiseModeLabel">唯一性门控</span>
                     <select id="tlgSolverAurPremiseMode">
@@ -5933,7 +5939,7 @@
                   </div>
                   <div id="tlgLibrarySharePanel" class="tlg-library-share-panel" hidden>
                     <label><span id="tlgLibraryShareTextLabel">文字样例</span>
-                      <textarea id="tlgLibraryShareText" spellcheck="false" placeholder="粘贴 YZF-TLG-CASE:1 多行样例，或 YZFTLG1 单行样例。"></textarea>
+                      <textarea id="tlgLibraryShareText" spellcheck="false" placeholder="粘贴 YZF-TLG-CASE:2 多行样例，或 YZFTLG2 单行样例；兼容旧版 v1。"></textarea>
                     </label>
                     <div class="tlg-library-share-actions">
                       <button id="btnTlgLibraryLoadText" type="button" class="compact primary">载入样例</button>
@@ -6138,6 +6144,6 @@
   <div id="appStatusToast" class="app-status-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=v9-a2a4b0716c80"></script>
+    <script type="module" src="./app.js?v=wasm-a33fe8b22cb55aa9"></script>
   </body>
 </html>

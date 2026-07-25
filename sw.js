@@ -13,6 +13,10 @@
 */
 importScripts("./pwa-assets.js");
 
+// One-release repair marker. This release auto-activates only after every asset
+// in its regenerated manifest has been downloaded and SHA-256 verified.
+const FORCE_ACTIVATE_RELEASE = "e0f2bb1a95d80ae1e0ef";
+
 const manifest = self.YZF_PWA_ASSET_MANIFEST || { version: "missing", totalBytes: 0, assets: [] };
 
 function manifestValidationError(value) {
@@ -566,6 +570,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     try {
       const stats = await cacheRelease();
+      if (manifest.version === FORCE_ACTIVATE_RELEASE) await self.skipWaiting();
       await broadcast({
         // Installation has finished downloading and verification, but the
         // browser has not necessarily promoted this worker to registration.waiting
@@ -647,6 +652,27 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (!pathWithinScope(url) || url.href.startsWith(INTERNAL_ROOT)) return;
+
+  // Local source-tree development must honor F12 hard reloads. The previous
+  // cache-first path ignored query cache keys and could keep an old app/Worker/
+  // WASM trio alive even after files on disk had been replaced. Hosted/PWA
+  // releases retain the existing atomic cache-first behavior.
+  const localDevelopment = url.hostname === "127.0.0.1" || url.hostname === "localhost";
+  const versionedRuntimeAsset = url.searchParams.has("v") && /\.(?:js|mjs|wasm)$/i.test(url.pathname);
+  const forceNetwork = localDevelopment &&
+    (request.cache === "reload" || request.cache === "no-cache" || versionedRuntimeAsset);
+  if (forceNetwork) {
+    event.respondWith((async () => {
+      try {
+        return await fetch(new Request(request, { cache: "no-store" }));
+      } catch {
+        const fallback = await cachedResponse(request);
+        if (fallback) return fallback;
+        throw new Error("local runtime asset is unavailable from both network and cache");
+      }
+    })());
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith((async () => {

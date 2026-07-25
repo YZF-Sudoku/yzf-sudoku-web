@@ -1,4 +1,4 @@
-import createModule from "./sudoku_wasm.js?v=wasm-19430ca264fcc1f4";
+import createModule from "./sudoku_wasm.js?v=wasm-a33fe8b22cb55aa9";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -20,7 +20,7 @@ import {
 } from "./ui-localization.js?v=ui-d5a841241e91";
 import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-4c2e94ce3029";
 
-const APP_VERSION = "wasm-19430ca264fcc1f4";
+const APP_VERSION = "wasm-a33fe8b22cb55aa9";
 const MANUAL_VERSION = "manual-5275ef564eeb";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
@@ -67,7 +67,10 @@ const tlgSolverEnable = document.getElementById("tlgSolverEnable");
 const tlgSolverMode = document.getElementById("tlgSolverMode");
 const tlgSolverAurGroupWrap = document.getElementById("tlgSolverAurGroupWrap");
 const tlgSolverAurGroup = document.getElementById("tlgSolverAurGroup");
+const tlgSolverVirtualGroupWrap = document.getElementById("tlgSolverVirtualGroupWrap");
+const tlgSolverVirtualGroup = document.getElementById("tlgSolverVirtualGroup");
 const tlgSolverLinkType = document.getElementById("tlgSolverLinkType");
+const tlgSolverTruthsToApplyWrap = document.getElementById("tlgSolverTruthsToApplyWrap");
 const tlgSolverTruthsToApply = document.getElementById("tlgSolverTruthsToApply");
 const tlgSolverAurPremiseMode = document.getElementById("tlgSolverAurPremiseMode");
 const btnTlgImportCandidates = document.getElementById("btnTlgImportCandidates");
@@ -846,6 +849,9 @@ for (const [key, zh, en] of [
   ["tlgAurGroupLabel", "AUR 分组", "AUR Group"],
   ["tlgAurGroup1", "AUR 1", "AUR 1"],
   ["tlgAurGroup2", "AUR 2", "AUR 2"],
+  ["tlgVirtualGroupLabel", "Virtual Set 分组", "Virtual Set Group"],
+  ["tlgVirtualSet1", "Virtual Set 1", "Virtual Set 1"],
+  ["tlgVirtualSet2", "Virtual Set 2", "Virtual Set 2"],
   ["tlgSolverLinkTypeLabel", "Link 类型", "Link Type"],
   ["tlgLinkAuto", "自动", "Auto"],
   ["tlgLinkRowColumn", "行/列", "Row/Column"],
@@ -881,7 +887,7 @@ for (const [key, zh, en] of [
   ["tlgLibraryExportTextAction", "导出文本", "Export Text"],
   ["tlgLibraryShareToolbarAria", "TLG 文字样例操作", "TLG text-case actions"],
   ["tlgLibraryShareTextLabel", "文字样例", "Text Case"],
-  ["tlgLibraryShareTextPlaceholder", "粘贴 YZF-TLG-CASE:1 多行样例，或 YZFTLG1 单行样例。", "Paste a multiline YZF-TLG-CASE:1 case or a one-line YZFTLG1 case."],
+  ["tlgLibraryShareTextPlaceholder", "粘贴 YZF-TLG-CASE:2 多行样例，或 YZFTLG2 单行样例；兼容旧版 v1。", "Paste a multiline YZF-TLG-CASE:2 case or a one-line YZFTLG2 case; legacy v1 remains supported."],
   ["tlgLibraryLoadTextAction", "载入样例", "Load Case"],
   ["tlgLibraryClearTextAction", "清空", "Clear"],
   ["tlgLibraryCloseTextAction", "收起", "Collapse"],
@@ -1031,6 +1037,7 @@ for (const [key, zh, en] of [
   ["tlgSummaryEndpoint", "端点={value}", "Endpoint={value}"],
   ["tlgSolutionTruths", "{count} Truths = {{body}}", "{count} Truths = {{body}}"],
   ["tlgSolutionLinks", "{count} Links = {{body}}", "{count} Links = {{body}}"],
+  ["tlgSolutionVirtualSet", "Virtual Set {group}[k={cardinality}] = {{body}}", "Virtual Set {group}[k={cardinality}] = {{body}}"],
   ["tlgSolutionAurs", "{count} 个定式 AUR = {body}", "{count} Fixed AURs = {body}"],
   ["tlgSolutionDaurPool", "DAUR 候选池 = {{body}}", "DAUR Pool = {{body}}"],
   ["tlgSolutionDaurExpanded", "DAUR 展开 AUR/DUR 约束 = {count}", "DAUR Expanded AUR/DUR Constraints = {count}"],
@@ -1065,6 +1072,8 @@ for (const [key, zh, en] of [
   ["tlgMenuBox", "宫", "Box"],
   ["tlgMenuClearAll", "全部清除", "Clear All"],
   ["tlgToggleVirtualBatch", "切换到 Virtual Set", "Toggle in Virtual Set"],
+  ["tlgToggleVirtualSet1Batch", "切换 Virtual Set 1", "Toggle Virtual Set 1"],
+  ["tlgToggleVirtualSet2Batch", "切换 Virtual Set 2", "Toggle Virtual Set 2"],
   ["tlgClearVirtualBatch", "清空 Virtual Set", "Clear the Virtual Set"],
   ["tlgToggleAurBatch", "切换 AUR 角候选", "Toggle AUR Corner"],
   ["tlgToggleDaurBatch", "切换 DAUR 候选池", "Toggle DAUR Candidate Pool"],
@@ -3940,7 +3949,7 @@ function applyStaticLanguage() {
   updateTrainingTextFilterButton();
   setLocalizedTexts([
     "tlgSolverTitle", ["tlgSolverEnableLabel", "tlgSolverEnable"], "tlgSolverModeLabel",
-    ["tlgSolverAurGroupLabel", "tlgAurGroupLabel"], "tlgSolverLinkTypeLabel",
+    ["tlgSolverAurGroupLabel", "tlgAurGroupLabel"], ["tlgSolverVirtualGroupLabel", "tlgVirtualGroupLabel"], "tlgSolverLinkTypeLabel",
     ["tlgSolverTruthsToApplyLabel", "tlgTruthsToApply"], ["tlgSolverAurPremiseModeLabel", "tlgAurPremiseModeLabel"],
     ["btnTlgImportCandidates", "tlgImportCandidates"], ["btnTlgFindEliminations", "tlgFindEliminations"],
     ["btnTlgConvertTruths", "tlgConvertTruths"], ["btnTlgRemoveUnused", "tlgRemoveUnused"],
@@ -3995,6 +4004,7 @@ function applyStaticLanguage() {
     aur: "tlgModeAur", daur: "tlgModeDaur", gur: "tlgModeGur",
   });
   setLocalizedSelectOptions(tlgSolverAurGroup, { "0": "tlgAurGroup1", "1": "tlgAurGroup2" });
+  setLocalizedSelectOptions(tlgSolverVirtualGroup, { "0": "tlgVirtualSet1", "1": "tlgVirtualSet2" });
   setLocalizedSelectOptions(tlgSolverLinkType, {
     auto: "tlgLinkAuto", rowColumn: "tlgLinkRowColumn", box: "tlgLinkBox", cell: "tlgLinkCell",
   });
@@ -11615,7 +11625,8 @@ const tlgSolverState = {
   // highlighting and follow-up structure-mutation actions.
   resultLinks: [],
   resultLinksAvailable: false,
-  virtualCandidates: new Set(),
+  virtualSets: [new Set(), new Set()],
+  virtualSetCardinalities: [1, 1],
   aurGroups: [new Set(), new Set()],
   dynamicAurCandidates: new Set(),
   genericAurCandidates: new Set(),
@@ -11648,6 +11659,27 @@ function tlgSolverBoxIndex(cellIndex) {
 
 function tlgSolverEditingActive() {
   return !!tlgSolverEnable?.checked;
+}
+
+function tlgSelectedVirtualSetIndex() {
+  return Math.max(0, Math.min(1, Number(tlgSolverVirtualGroup?.value || 0) || 0));
+}
+
+function tlgSelectedVirtualSet() {
+  return tlgSolverState.virtualSets[tlgSelectedVirtualSetIndex()];
+}
+
+function tlgSyncVirtualCardinalityInput() {
+  if (!tlgSolverTruthsToApply) return;
+  const index = tlgSelectedVirtualSetIndex();
+  tlgSolverTruthsToApply.value = String(tlgSolverState.virtualSetCardinalities[index] || 1);
+}
+
+function tlgStoreVirtualCardinalityInput() {
+  const index = tlgSelectedVirtualSetIndex();
+  const value = Math.max(1, Math.min(4, Number(tlgSolverTruthsToApply?.value || 1) || 1));
+  tlgSolverState.virtualSetCardinalities[index] = value;
+  if (tlgSolverTruthsToApply) tlgSolverTruthsToApply.value = String(value);
 }
 
 function tlgSolverEffectiveSnapshot(snapshot = currentSnapshot) {
@@ -11924,6 +11956,14 @@ function buildTlgSolutionText(response) {
   const lines = [];
   lines.push(`     ${uif("tlgSolutionTruths", { count: truthItems.length, body: truths.join(" ") })}`);
   lines.push(`     ${uif("tlgSolutionLinks", { count: linkItems.length, body: links.join(" ") })}`);
+  tlgSolverState.virtualSets.forEach((group, index) => {
+    if (!group.size) return;
+    lines.push(`     ${uif("tlgSolutionVirtualSet", {
+      group: index + 1,
+      cardinality: tlgSolverState.virtualSetCardinalities[index] || 1,
+      body: [...group].map(tlgSolverCandidateKeyToNrc).join(" "),
+    })}`);
+  });
   if (activeAurGroups.length > 0) {
     lines.push(`     ${uif("tlgSolutionAurs", {
       count: activeAurGroups.length,
@@ -11970,7 +12010,8 @@ function renderTlgSolverStateList() {
   const parts = [];
   parts.push(renderTlgSolverChipList(ui("tlgTruths"), tlgSolverState.truths, "truths", tlgSolverPrettyValue));
   parts.push(renderTlgSolverChipList(ui("tlgUserLinks"), tlgSolverState.links, "links", tlgSolverPrettyValue));
-  parts.push(renderTlgSolverChipList(ui("tlgVirtualSet"), [...tlgSolverState.virtualCandidates], "virtual", tlgSolverCandidateKeyToNrc));
+  parts.push(renderTlgSolverChipList(ui("tlgVirtualSet1"), [...tlgSolverState.virtualSets[0]], "virtual0", tlgSolverCandidateKeyToNrc));
+  parts.push(renderTlgSolverChipList(ui("tlgVirtualSet2"), [...tlgSolverState.virtualSets[1]], "virtual1", tlgSolverCandidateKeyToNrc));
   parts.push(renderTlgSolverChipList(`${ui("tlgAurCorners")} 1`, [...tlgSolverState.aurGroups[0]], "aur0", tlgSolverCandidateKeyToNrc));
   parts.push(renderTlgSolverChipList(`${ui("tlgAurCorners")} 2`, [...tlgSolverState.aurGroups[1]], "aur1", tlgSolverCandidateKeyToNrc));
   parts.push(renderTlgSolverChipList(ui("tlgDaurCandidates"), [...tlgSolverState.dynamicAurCandidates], "daur", tlgSolverCandidateKeyToNrc));
@@ -11982,17 +12023,19 @@ function renderTlgSolverStateList() {
 function removeTlgSolverStateItem(category, value) {
   if (category === "truths") tlgSolverState.truths = tlgSolverState.truths.filter((item) => item !== value);
   else if (category === "links") tlgSolverState.links = tlgSolverState.links.filter((item) => item !== value);
-  else if (category === "virtual") tlgSolverState.virtualCandidates.delete(value);
+  else if (category === "virtual0") tlgSolverState.virtualSets[0].delete(value);
+  else if (category === "virtual1") tlgSolverState.virtualSets[1].delete(value);
   else if (category === "aur0") tlgSolverState.aurGroups[0].delete(value);
   else if (category === "aur1") tlgSolverState.aurGroups[1].delete(value);
   else if (category === "daur") tlgSolverState.dynamicAurCandidates.delete(value);
   else if (category === "gur") tlgSolverState.genericAurCandidates.delete(value);
   tlgSolverState.selectedEndpoint = null;
-  const candidateCategory = category === "virtual" || category === "aur0" || category === "aur1" || category === "daur" || category === "gur";
+  const candidateCategory = category === "virtual0" || category === "virtual1" || category === "aur0" || category === "aur1" || category === "daur" || category === "gur";
   const categoryLabels = {
     truths: ui("tlgTruths"),
     links: ui("tlgUserLinks"),
-    virtual: ui("tlgVirtualSet"),
+    virtual0: ui("tlgVirtualSet1"),
+    virtual1: ui("tlgVirtualSet2"),
     aur0: ui("tlgAurGroup1"),
     aur1: ui("tlgAurGroup2"),
     daur: ui("tlgDaurCandidates"),
@@ -12028,7 +12071,8 @@ function summarizeTlgSolverState(prefix = "") {
   if (tlgSolverState.resultLinksAvailable) {
     parts.push(uif("tlgSummaryResultLinks", { count: tlgSolverState.resultLinks.length }));
   }
-  parts.push(uif("tlgSummaryVirtual", { count: tlgSolverState.virtualCandidates.size }));
+  parts.push(`${ui("tlgVirtualSet1")}: ${tlgSolverState.virtualSets[0].size}`);
+  parts.push(`${ui("tlgVirtualSet2")}: ${tlgSolverState.virtualSets[1].size}`);
   const activeAurGroups = tlgSolverState.aurGroups.filter((group) => group.size > 0);
   const aurCorners = activeAurGroups.reduce((sum, group) => sum + group.size, 0);
   parts.push(uif("tlgSummaryAurs", { count: activeAurGroups.length }));
@@ -12061,9 +12105,15 @@ function updateTlgSolverUi() {
   if (tlgSolverMode) tlgSolverMode.disabled = !enabled || busy;
   if (tlgSolverAurPremiseMode) tlgSolverAurPremiseMode.disabled = !enabled || busy;
   if (btnTlgImportCandidates) btnTlgImportCandidates.disabled = !enabled || busy;
-  const aurMode = (tlgSolverMode?.value || "truths") === "aur";
+  const mode = tlgSolverMode?.value || "truths";
+  const aurMode = mode === "aur";
+  const virtualMode = mode === "virtualSet";
   if (tlgSolverAurGroupWrap) tlgSolverAurGroupWrap.hidden = !aurMode;
   if (tlgSolverAurGroup) tlgSolverAurGroup.disabled = !enabled || !aurMode || busy;
+  if (tlgSolverVirtualGroupWrap) tlgSolverVirtualGroupWrap.hidden = !virtualMode;
+  if (tlgSolverVirtualGroup) tlgSolverVirtualGroup.disabled = !enabled || !virtualMode || busy;
+  if (tlgSolverTruthsToApplyWrap) tlgSolverTruthsToApplyWrap.hidden = !virtualMode;
+  if (tlgSolverTruthsToApply) tlgSolverTruthsToApply.disabled = !enabled || !virtualMode || busy;
   if (tlgSolverLinkType) tlgSolverLinkType.disabled = !enabled || busy;
   if (btnTlgFindEliminations) {
     btnTlgFindEliminations.disabled = !enabled || busy;
@@ -12102,7 +12152,8 @@ function applyTlgSolverMarksToCellElement(cellNode, cellIndex) {
     const digit = Number(candidate.dataset.digit || 0);
     if (!digit || !candidate.textContent.trim()) return;
     const key = tlgSolverCandidateKey(cellIndex, digit);
-    if (tlgSolverState.virtualCandidates.has(key)) candidate.classList.add("tlg-virtual-candidate");
+    if (tlgSolverState.virtualSets[0].has(key)) candidate.classList.add("tlg-virtual-candidate", "tlg-virtual-candidate-a");
+    if (tlgSolverState.virtualSets[1].has(key)) candidate.classList.add("tlg-virtual-candidate", "tlg-virtual-candidate-b");
     if (tlgSolverState.aurGroups[0].has(key)) candidate.classList.add("tlg-aur-group-a");
     if (tlgSolverState.aurGroups[1].has(key)) candidate.classList.add("tlg-aur-group-b");
     if (tlgSolverState.dynamicAurCandidates.has(key)) candidate.classList.add("tlg-daur-candidate");
@@ -12127,7 +12178,7 @@ function tlgDiagramRenderState() {
   return {
     truths: tlgSolverState.truths,
     links: tlgSolverEffectiveLinks(),
-    virtualCandidates: tlgSolverState.virtualCandidates,
+    virtualSets: tlgSolverState.virtualSets,
     aurGroups: tlgSolverState.aurGroups,
     dynamicAurCandidates: tlgSolverState.dynamicAurCandidates,
     genericAurCandidates: tlgSolverState.genericAurCandidates,
@@ -12169,7 +12220,14 @@ if (APP_DEBUG_MODE) {
       tlgSolverState.links = [...(fixture.links || [])];
       tlgSolverState.resultLinks = [...(fixture.resultLinks || [])];
       tlgSolverState.resultLinksAvailable = !!fixture.resultLinksAvailable;
-      tlgSolverState.virtualCandidates = new Set(fixture.virtualCandidates || []);
+      tlgSolverState.virtualSets = [
+        new Set(fixture.virtual1 || fixture.virtualCandidates || []),
+        new Set(fixture.virtual2 || []),
+      ];
+      tlgSolverState.virtualSetCardinalities = [
+        Math.max(1, Math.min(4, Number(fixture.virtualCardinality1 || 1) || 1)),
+        Math.max(1, Math.min(4, Number(fixture.virtualCardinality2 || 1) || 1)),
+      ];
       tlgSolverState.aurGroups = [new Set(fixture.aur1 || []), new Set(fixture.aur2 || [])];
       tlgSolverState.dynamicAurCandidates = new Set(fixture.daur || []);
       tlgSolverState.genericAurCandidates = new Set(fixture.gur || []);
@@ -12511,7 +12569,8 @@ function clearTlgSolverLogicOnly(messageKey = "tlgLogicCleared") {
   tlgSolverState.links = [];
   tlgSolverState.resultLinks = [];
   tlgSolverState.resultLinksAvailable = false;
-  tlgSolverState.virtualCandidates.clear();
+  tlgSolverState.virtualSets.forEach((group) => group.clear());
+  tlgSolverState.virtualSetCardinalities = [1, 1];
   tlgSolverState.aurGroups.forEach((group) => group.clear());
   tlgSolverState.dynamicAurCandidates.clear();
   tlgSolverState.genericAurCandidates.clear();
@@ -12642,7 +12701,10 @@ function openTlgSolverContextMenu(cellIndex, digit, event, candidate) {
   separator1.className = "tlg-context-separator";
   separator1.setAttribute("role", "separator");
   root.appendChild(separator1);
-  root.appendChild(tlgMenuButton(ui("tlgToggleVirtualBatch"), () => tlgBatchToggleCandidateSet(tlgSolverState.virtualCandidates, ui("tlgVirtualSet"))));
+  root.appendChild(tlgMenuButton(ui("tlgToggleVirtualSet1Batch"), () =>
+    tlgBatchToggleCandidateSet(tlgSolverState.virtualSets[0], ui("tlgVirtualSet1"))));
+  root.appendChild(tlgMenuButton(ui("tlgToggleVirtualSet2Batch"), () =>
+    tlgBatchToggleCandidateSet(tlgSolverState.virtualSets[1], ui("tlgVirtualSet2"))));
   root.appendChild(tlgMenuButton(ui("tlgToggleAurBatch"), () => {
     const groupIndex = Math.max(0, Math.min(1, Number(tlgSolverAurGroup?.value || 0) || 0));
     tlgBatchToggleCandidateSet(tlgSolverState.aurGroups[groupIndex], ui(groupIndex === 0 ? "tlgAurGroup1" : "tlgAurGroup2"));
@@ -12764,9 +12826,10 @@ function handleTlgSolverCandidateClick(cellIndex, digit, event, candidate) {
   }
   if (tlgSolverState.selectedCandidates.size) tlgSolverState.selectedCandidates.clear();
   if (mode === "virtualSet") {
-    const added = !tlgSolverState.virtualCandidates.has(key);
-    if (added) tlgSolverState.virtualCandidates.add(key);
-    else tlgSolverState.virtualCandidates.delete(key);
+    const virtualSet = tlgSelectedVirtualSet();
+    const added = !virtualSet.has(key);
+    if (added) virtualSet.add(key);
+    else virtualSet.delete(key);
     tlgSolverState.selectedEndpoint = null;
     announceTlgSolver(uif(added ? "tlgVirtualCandidateAdded" : "tlgVirtualCandidateRemoved", { value: tlgSolverNrc(cellIndex, digit) }));
     renderBoardSnapshot(currentSnapshot, currentHint);
@@ -12908,7 +12971,12 @@ function tlgSolverInitialCandidatePayload() {
 }
 
 function buildTlgSolverRequestV440(action = "findAllEliminations") {
-  const virtualCandidates = tlgCandidateKeysToPayload(tlgSolverState.virtualCandidates);
+  tlgStoreVirtualCardinalityInput();
+  const virtualSets = tlgSolverState.virtualSets.map((group, index) => ({
+    candidates: tlgCandidateKeysToPayload(group),
+    cardinality: tlgSolverState.virtualSetCardinalities[index] || 1,
+  })).filter((group) => group.candidates.length > 0);
+  const legacyVirtualCandidates = virtualSets.length === 1 ? virtualSets[0].candidates : [];
   const aurGroups = tlgSolverState.aurGroups
     .map((group) => tlgCandidateKeysToPayload(group))
     .filter((corners) => corners.length > 0)
@@ -12935,12 +13003,13 @@ function buildTlgSolverRequestV440(action = "findAllEliminations") {
     linkType: tlgSolverLinkType?.value || "auto",
     truths: tlgCanonicalDescriptorState(tlgSolverState.truths, "truths"),
     links: tlgCanonicalDescriptorState(tlgSolverRequestLinks(action), "links"),
-    virtualSet: { candidates: virtualCandidates },
+    virtualSets,
+    ...(legacyVirtualCandidates.length ? { virtualSet: { candidates: legacyVirtualCandidates } } : {}),
     aurs: aurGroups,
     daurs: dynamicAurCandidates.length ? [{ candidates: dynamicAurCandidates }] : [],
     gurs: genericAurCandidates.length ? [{ candidates: genericAurCandidates }] : [],
     ...(legacyAur ? { aur: legacyAur } : {}),
-    assumptions: { truthsToApply: Number(tlgSolverTruthsToApply?.value || 0) || 0 },
+    assumptions: { truthsToApply: virtualSets[0]?.cardinality || 1 },
     debugImportText: String(tlgSolverImportText?.value || ""),
     pipeline: ["find-all-eliminations", "convert-redundant-truths-to-links", "remove-unused-links"],
     actionGate: { convertAndRemoveRequireEliminationsOrAssignments: true },
@@ -13120,7 +13189,8 @@ function clearTlgSolverState() {
   tlgSolverState.busyTask = "";
   tlgSolverState.truths = [];
   tlgSolverState.links = [];
-  tlgSolverState.virtualCandidates.clear();
+  tlgSolverState.virtualSets.forEach((group) => group.clear());
+  tlgSolverState.virtualSetCardinalities = [1, 1];
   tlgSolverState.aurGroups.forEach((group) => group.clear());
   tlgSolverState.dynamicAurCandidates.clear();
   tlgSolverState.genericAurCandidates.clear();
@@ -13171,11 +13241,22 @@ function initTlgSolverControls() {
     closeTlgSolverContextMenu();
     tlgSolverState.selectedEndpoint = null;
     tlgSolverState.selectedCandidates.clear();
+    if ((tlgSolverMode?.value || "truths") === "virtualSet") tlgSyncVirtualCardinalityInput();
     renderBoardSnapshot(currentSnapshot, currentHint);
     updateTlgSolverUi();
   });
   tlgSolverAurGroup?.addEventListener("change", () => {
     tlgSolverState.selectedEndpoint = null;
+    updateTlgSolverUi();
+  });
+  tlgSolverVirtualGroup?.addEventListener("change", () => {
+    tlgSolverState.selectedEndpoint = null;
+    tlgSyncVirtualCardinalityInput();
+    updateTlgSolverUi();
+  });
+  tlgSolverTruthsToApply?.addEventListener("change", () => {
+    tlgStoreVirtualCardinalityInput();
+    clearTlgSolverComputedResult();
     updateTlgSolverUi();
   });
   tlgSolverLinkType?.addEventListener("change", updateTlgSolverUi);
@@ -13199,6 +13280,7 @@ function initTlgSolverControls() {
   installTlgContextMenuListeners();
   initTlgLibraryControls();
   if (tlgSolverDebug) tlgSolverDebug.hidden = !APP_DEBUG_MODE;
+  tlgSyncVirtualCardinalityInput();
   updateTlgSolverUi();
 }
 
@@ -13208,9 +13290,11 @@ const TLG_LIBRARY_FILE_MAGIC = "YZFTLGDB";
 const TLG_LIBRARY_RECORD_MAGIC = "TLGR";
 const TLG_LIBRARY_FILE_HEADER_SIZE = 64;
 const TLG_LIBRARY_RECORD_SIZE = 2048;
-const TLG_LIBRARY_SCHEMA_VERSION = 1;
+const TLG_LIBRARY_SCHEMA_VERSION = 2;
+const TLG_LIBRARY_SUPPORTED_SCHEMA_VERSIONS = Object.freeze(new Set([1, 2]));
 const TLG_LIBRARY_ORDER_STEP = 1024;
-const TLG_LIBRARY_TEXT_LIMITS = Object.freeze({ title: 128, tags: 96, source: 128, notes: 512 });
+const TLG_LIBRARY_TEXT_LIMITS_V1 = Object.freeze({ title: 128, tags: 96, source: 128, notes: 512 });
+const TLG_LIBRARY_TEXT_LIMITS = Object.freeze({ title: 128, tags: 96, source: 128, notes: 507 });
 const TLG_LIBRARY_OFFSETS = Object.freeze({
   givens: 64,
   values: 105,
@@ -13223,6 +13307,7 @@ const TLG_LIBRARY_OFFSETS = Object.freeze({
   daur: 596,
   gur: 688,
   virtual: 780,
+  virtual1: 780,
   resultLinks: 872,
   eliminations: 913,
   assignments: 1005,
@@ -13230,7 +13315,7 @@ const TLG_LIBRARY_OFFSETS = Object.freeze({
   tags: 1225,
   source: 1321,
   notes: 1449,
-  reserved: 1961,
+  virtual2: 1956,
 });
 const TLG_LIBRARY_MODE_VALUES = Object.freeze(["truths", "links", "virtualSet", "aur", "daur", "gur"]);
 const TLG_LIBRARY_LINK_TYPE_VALUES = Object.freeze(["auto", "rowColumn", "box", "cell"]);
@@ -13470,14 +13555,19 @@ function tlgLibraryCaptureState(meta, identity = {}) {
     aur2: new Set(tlgSolverState.aurGroups[1]),
     daur: new Set(tlgSolverState.dynamicAurCandidates),
     gur: new Set(tlgSolverState.genericAurCandidates),
-    virtual: new Set(tlgSolverState.virtualCandidates),
+    virtual1: new Set(tlgSolverState.virtualSets[0]),
+    virtual2: new Set(tlgSolverState.virtualSets[1]),
+    // Legacy aliases keep old in-memory consumers and v1 import paths safe.
+    virtual: new Set(tlgSolverState.virtualSets[0]),
     resultLinks,
     eliminations: tlgLibraryCandidateKeysFromPayload(tlgSolverState.eliminations),
     assignments: tlgLibraryCandidateKeysFromPayload(tlgSolverState.assignments),
-    truthsToApply: Math.max(0, Math.min(255, Number(tlgSolverTruthsToApply?.value || 0) || 0)),
+    virtualCardinalities: [...tlgSolverState.virtualSetCardinalities],
+    truthsToApply: tlgSolverState.virtualSetCardinalities[0] || 1,
     premiseMode: tlgSolverAurPremiseMode?.value || "unique-puzzle-derived",
     inputMode: tlgSolverMode?.value || "truths",
     aurGroup: Math.max(0, Math.min(1, Number(tlgSolverAurGroup?.value || 0) || 0)),
+    virtualGroup: tlgSelectedVirtualSetIndex(),
     linkType: tlgSolverLinkType?.value || "auto",
     hasCandidateGrid: !!tlgSolverState.candidateGrid,
     resultLinksAvailable: !!tlgSolverState.resultLinksAvailable,
@@ -13492,6 +13582,16 @@ function tlgLibraryEncodeRecord(record) {
   const tags = tlgLibraryEncodeText(record.meta?.tags, TLG_LIBRARY_TEXT_LIMITS.tags, "tlgLibraryTagsLabel");
   const source = tlgLibraryEncodeText(record.meta?.source, TLG_LIBRARY_TEXT_LIMITS.source, "tlgLibrarySourceLabel");
   const notes = tlgLibraryEncodeText(record.meta?.notes, TLG_LIBRARY_TEXT_LIMITS.notes, "tlgLibraryNotesLabel");
+  const virtual1 = record.virtual1 || record.virtual || new Set();
+  const virtual2 = record.virtual2 || new Set();
+  const cardinalities = Array.isArray(record.virtualCardinalities)
+    ? record.virtualCardinalities
+    : [record.truthsToApply || 1, 1];
+  const virtualCardinality1 = Math.max(1, Math.min(4, Number(cardinalities[0] || 1) || 1));
+  const virtualCardinality2 = Math.max(1, Math.min(4, Number(cardinalities[1] || 1) || 1));
+  const aurGroup = Math.max(0, Math.min(1, Number(record.aurGroup || 0) || 0));
+  const virtualGroup = Math.max(0, Math.min(1, Number(record.virtualGroup || 0) || 0));
+
   tlgLibraryAsciiWrite(bytes, 0, TLG_LIBRARY_RECORD_MAGIC, 4);
   view.setUint16(4, TLG_LIBRARY_SCHEMA_VERSION, true);
   let flags = 0;
@@ -13506,16 +13606,16 @@ function tlgLibraryEncodeRecord(record) {
   view.setUint32(20, 0, true);
   view.setUint32(24, 0, true);
   view.setUint32(28, tlgLibraryCrc32(new TextEncoder().encode(APP_VERSION)), true);
-  view.setUint8(32, Number(record.truthsToApply || 0) & 0xff);
+  view.setUint8(32, (virtualCardinality1 & 0x0f) | ((virtualCardinality2 & 0x0f) << 4));
   view.setUint8(33, Math.max(0, TLG_LIBRARY_MODE_VALUES.indexOf(record.inputMode)));
-  view.setUint8(34, Number(record.aurGroup || 0) & 0xff);
+  view.setUint8(34, aurGroup | (virtualGroup << 1));
   view.setUint8(35, Math.max(0, TLG_LIBRARY_LINK_TYPE_VALUES.indexOf(record.linkType)));
   view.setUint16(36, record.truths.size ?? record.truths.length ?? 0, true);
   view.setUint16(38, record.links.size ?? record.links.length ?? 0, true);
   view.setUint16(40, record.resultLinks.size ?? record.resultLinks.length ?? 0, true);
   view.setUint16(42, record.eliminations.size ?? record.eliminations.length ?? 0, true);
   view.setUint16(44, record.assignments.size ?? record.assignments.length ?? 0, true);
-  view.setUint16(46, record.virtual.size ?? record.virtual.length ?? 0, true);
+  view.setUint16(46, virtual1.size ?? virtual1.length ?? 0, true);
   view.setUint16(48, record.aur1.size ?? record.aur1.length ?? 0, true);
   view.setUint16(50, record.aur2.size ?? record.aur2.length ?? 0, true);
   view.setUint16(52, record.daur.size ?? record.daur.length ?? 0, true);
@@ -13534,7 +13634,7 @@ function tlgLibraryEncodeRecord(record) {
   bytes.set(tlgLibraryPackCandidateKeys(record.aur2), TLG_LIBRARY_OFFSETS.aur2);
   bytes.set(tlgLibraryPackCandidateKeys(record.daur), TLG_LIBRARY_OFFSETS.daur);
   bytes.set(tlgLibraryPackCandidateKeys(record.gur), TLG_LIBRARY_OFFSETS.gur);
-  bytes.set(tlgLibraryPackCandidateKeys(record.virtual), TLG_LIBRARY_OFFSETS.virtual);
+  bytes.set(tlgLibraryPackCandidateKeys(virtual1), TLG_LIBRARY_OFFSETS.virtual1);
   bytes.set(tlgLibraryPackDescriptors(record.resultLinks), TLG_LIBRARY_OFFSETS.resultLinks);
   bytes.set(tlgLibraryPackCandidateKeys(record.eliminations), TLG_LIBRARY_OFFSETS.eliminations);
   bytes.set(tlgLibraryPackCandidateKeys(record.assignments), TLG_LIBRARY_OFFSETS.assignments);
@@ -13542,8 +13642,13 @@ function tlgLibraryEncodeRecord(record) {
   tlgLibraryWriteText(bytes, TLG_LIBRARY_OFFSETS.tags, TLG_LIBRARY_TEXT_LIMITS.tags, tags);
   tlgLibraryWriteText(bytes, TLG_LIBRARY_OFFSETS.source, TLG_LIBRARY_TEXT_LIMITS.source, source);
   tlgLibraryWriteText(bytes, TLG_LIBRARY_OFFSETS.notes, TLG_LIBRARY_TEXT_LIMITS.notes, notes);
-  const contentHash = tlgLibraryCrc32(bytes.subarray(TLG_LIBRARY_OFFSETS.givens, TLG_LIBRARY_OFFSETS.title));
-  view.setUint32(24, contentHash, true);
+  bytes.set(tlgLibraryPackCandidateKeys(virtual2), TLG_LIBRARY_OFFSETS.virtual2);
+
+  const structuralMain = bytes.subarray(TLG_LIBRARY_OFFSETS.givens, TLG_LIBRARY_OFFSETS.title);
+  const structural = new Uint8Array(structuralMain.length + 92);
+  structural.set(structuralMain, 0);
+  structural.set(bytes.subarray(TLG_LIBRARY_OFFSETS.virtual2, TLG_LIBRARY_OFFSETS.virtual2 + 92), structuralMain.length);
+  view.setUint32(24, tlgLibraryCrc32(structural), true);
   const crcBytes = bytes.slice();
   new DataView(crcBytes.buffer).setUint32(20, 0, true);
   view.setUint32(20, tlgLibraryCrc32(crcBytes), true);
@@ -13556,20 +13661,35 @@ function tlgLibraryDecodeRecord(input, { skipCrc = false } = {}) {
   if (tlgLibraryAsciiRead(bytes, 0, 4) !== TLG_LIBRARY_RECORD_MAGIC) throw new Error(ui("tlgLibraryInvalidRecordMagic"));
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const version = view.getUint16(4, true);
-  if (version !== TLG_LIBRARY_SCHEMA_VERSION) throw new Error(uif("tlgLibraryUnsupportedRecordVersion", { version }));
+  if (!TLG_LIBRARY_SUPPORTED_SCHEMA_VERSIONS.has(version)) {
+    throw new Error(uif("tlgLibraryUnsupportedRecordVersion", { version }));
+  }
   if (!skipCrc) {
     const expected = view.getUint32(20, true);
     const copy = bytes.slice();
     new DataView(copy.buffer).setUint32(20, 0, true);
     if (tlgLibraryCrc32(copy) !== expected) throw new Error(ui("tlgLibraryRecordCrcFailed"));
   }
+  const limits = version === 1 ? TLG_LIBRARY_TEXT_LIMITS_V1 : TLG_LIBRARY_TEXT_LIMITS;
   const lengths = {
     title: view.getUint16(56, true), tags: view.getUint16(58, true), source: view.getUint16(60, true), notes: view.getUint16(62, true),
   };
   for (const [key, length] of Object.entries(lengths)) {
-    if (length > TLG_LIBRARY_TEXT_LIMITS[key]) throw new Error(ui("tlgLibraryInvalidTextLength"));
+    if (length > limits[key]) throw new Error(ui("tlgLibraryInvalidTextLength"));
   }
   const flags = view.getUint16(6, true);
+  const packedCardinalities = view.getUint8(32);
+  const virtualCardinality1 = version === 1
+    ? Math.max(1, Math.min(4, packedCardinalities || 1))
+    : Math.max(1, Math.min(4, packedCardinalities & 0x0f || 1));
+  const virtualCardinality2 = version === 1
+    ? 1
+    : Math.max(1, Math.min(4, (packedCardinalities >> 4) & 0x0f || 1));
+  const packedGroups = view.getUint8(34);
+  const virtual1 = tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.virtual1, TLG_LIBRARY_OFFSETS.virtual1 + 92));
+  const virtual2 = version === 1
+    ? new Set()
+    : tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.virtual2, TLG_LIBRARY_OFFSETS.virtual2 + 92));
   return {
     bytes: bytes.slice(),
     version,
@@ -13582,9 +13702,11 @@ function tlgLibraryDecodeRecord(input, { skipCrc = false } = {}) {
     premiseMode: (flags & 2) !== 0 ? "candidate-grid-asserted" : "unique-puzzle-derived",
     resultLinksAvailable: (flags & 4) !== 0,
     hasResult: (flags & 8) !== 0,
-    truthsToApply: view.getUint8(32),
+    truthsToApply: virtualCardinality1,
+    virtualCardinalities: [virtualCardinality1, virtualCardinality2],
     inputMode: TLG_LIBRARY_MODE_VALUES[view.getUint8(33)] || "truths",
-    aurGroup: Math.min(1, view.getUint8(34)),
+    aurGroup: Math.min(1, packedGroups & 1),
+    virtualGroup: version === 1 ? 0 : Math.min(1, (packedGroups >> 1) & 1),
     linkType: TLG_LIBRARY_LINK_TYPE_VALUES[view.getUint8(35)] || "auto",
     givens: tlgLibraryUnpackDigits(bytes.subarray(TLG_LIBRARY_OFFSETS.givens, TLG_LIBRARY_OFFSETS.givens + 41)),
     values: tlgLibraryUnpackDigits(bytes.subarray(TLG_LIBRARY_OFFSETS.values, TLG_LIBRARY_OFFSETS.values + 41)),
@@ -13596,7 +13718,9 @@ function tlgLibraryDecodeRecord(input, { skipCrc = false } = {}) {
     aur2: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.aur2, TLG_LIBRARY_OFFSETS.aur2 + 92)),
     daur: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.daur, TLG_LIBRARY_OFFSETS.daur + 92)),
     gur: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.gur, TLG_LIBRARY_OFFSETS.gur + 92)),
-    virtual: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.virtual, TLG_LIBRARY_OFFSETS.virtual + 92)),
+    virtual: virtual1,
+    virtual1,
+    virtual2,
     resultLinks: tlgLibraryUnpackDescriptors(bytes.subarray(TLG_LIBRARY_OFFSETS.resultLinks, TLG_LIBRARY_OFFSETS.resultLinks + 41), "links"),
     eliminations: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.eliminations, TLG_LIBRARY_OFFSETS.eliminations + 92)),
     assignments: tlgLibraryUnpackCandidateKeys(bytes.subarray(TLG_LIBRARY_OFFSETS.assignments, TLG_LIBRARY_OFFSETS.assignments + 92)),
@@ -13654,7 +13778,7 @@ function tlgLibraryParseFile(input) {
   const recordSize = view.getUint16(10, true);
   const count = view.getUint32(12, true);
   const headerSize = view.getUint16(16, true);
-  if (version !== TLG_LIBRARY_SCHEMA_VERSION) throw new Error(uif("tlgLibraryUnsupportedFileVersion", { version }));
+  if (!TLG_LIBRARY_SUPPORTED_SCHEMA_VERSIONS.has(version)) throw new Error(uif("tlgLibraryUnsupportedFileVersion", { version }));
   if (recordSize !== TLG_LIBRARY_RECORD_SIZE || headerSize !== TLG_LIBRARY_FILE_HEADER_SIZE) throw new Error(ui("tlgLibraryIncompatibleLayout"));
   const expectedLength = headerSize + count * recordSize;
   if (bytes.length !== expectedLength) throw new Error(uif("tlgLibraryFileLengthMismatch", { expected: expectedLength, actual: bytes.length }));
@@ -13677,8 +13801,9 @@ function tlgLibraryParseFile(input) {
 }
 
 
-const TLG_TEXT_CASE_HEADER = "YZF-TLG-CASE:1";
-const TLG_TEXT_COMPACT_HEADER = "YZFTLG1";
+const TLG_TEXT_CASE_VERSION = 2;
+const TLG_TEXT_CASE_HEADER = `YZF-TLG-CASE:${TLG_TEXT_CASE_VERSION}`;
+const TLG_TEXT_COMPACT_HEADER = `YZFTLG${TLG_TEXT_CASE_VERSION}`;
 
 function tlgTextBase64UrlEncodeBytes(input) {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input || 0);
@@ -13801,7 +13926,7 @@ function tlgTextRecordFlags(record) {
   return flags;
 }
 
-function tlgTextRecordFromFields(fields) {
+function tlgTextRecordFromFields(fields, version = TLG_TEXT_CASE_VERSION) {
   for (const key of ["GIVENS", "VALUES", "INITIAL-BITS", "ACTIVE-BITS"]) {
     if (!fields.has(key)) throw new Error(uif("tlgLibraryTextMissingField", { field: key }));
   }
@@ -13831,8 +13956,12 @@ function tlgTextRecordFromFields(fields) {
       throw new Error(uif("tlgLibraryTextInvalidField", { field: key }));
     }
   };
-  const truthsToApply = Math.max(0, Math.min(255, Number(options.get("truths") || 0) || 0));
+  const card1 = Math.max(1, Math.min(4, Number(options.get("v1") || options.get("truths") || 1) || 1));
+  const card2 = Math.max(1, Math.min(4, Number(options.get("v2") || 1) || 1));
   const aurGroup = Math.max(0, Math.min(1, Number(options.get("aur") || 0) || 0));
+  const virtualGroup = version === 1 ? 0 : Math.max(0, Math.min(1, Number(options.get("vgroup") || 0) || 0));
+  const virtual1 = tlgTextParseCandidateSet(fields.get("VIRTUAL1") ?? fields.get("VIRTUAL"));
+  const virtual2 = tlgTextParseCandidateSet(fields.get("VIRTUAL2"));
   const record = {
     id: Math.max(0, Number(fields.get("ID") || 0) || 0) >>> 0,
     createdAt: Math.max(0, Number(fields.get("CREATED") || 0) || 0) >>> 0,
@@ -13853,14 +13982,18 @@ function tlgTextRecordFromFields(fields) {
     aur2: tlgTextParseCandidateSet(fields.get("AUR2")),
     daur: tlgTextParseCandidateSet(fields.get("DAUR")),
     gur: tlgTextParseCandidateSet(fields.get("GUR")),
-    virtual: tlgTextParseCandidateSet(fields.get("VIRTUAL")),
+    virtual: virtual1,
+    virtual1,
+    virtual2,
     resultLinks: tlgTextParseDescriptors(fields.get("RESULT-LINKS"), "links"),
     eliminations: tlgTextParseCandidateSet(fields.get("ELIM")),
     assignments: tlgTextParseCandidateSet(fields.get("SET")),
-    truthsToApply,
+    truthsToApply: card1,
+    virtualCardinalities: [card1, card2],
     premiseMode,
     inputMode,
     aurGroup,
+    virtualGroup,
     linkType,
     hasCandidateGrid: (flags & 1) !== 0 || activeBytes.some((value) => value !== 0),
     resultLinksAvailable: (flags & 4) !== 0 || !!String(fields.get("RESULT-LINKS") || "").trim(),
@@ -13874,6 +14007,12 @@ function tlgTextRecordFromFields(fields) {
 
 function tlgLibrarySerializeTextCase(record, { compact = false } = {}) {
   const flags = tlgTextRecordFlags(record);
+  const virtual1 = record.virtual1 || record.virtual || new Set();
+  const virtual2 = record.virtual2 || new Set();
+  const cards = Array.isArray(record.virtualCardinalities) ? record.virtualCardinalities : [record.truthsToApply || 1, 1];
+  const card1 = Math.max(1, Math.min(4, Number(cards[0] || 1) || 1));
+  const card2 = Math.max(1, Math.min(4, Number(cards[1] || 1) || 1));
+  const virtualGroup = Math.max(0, Math.min(1, Number(record.virtualGroup || 0) || 0));
   if (compact) {
     const metadata = tlgTextBase64UrlEncodeUtf8(JSON.stringify(tlgLibraryNormalizeMeta(record.meta)));
     const optionValues = [
@@ -13881,12 +14020,11 @@ function tlgLibrarySerializeTextCase(record, { compact = false } = {}) {
       Math.max(0, TLG_LIBRARY_MODE_VALUES.indexOf(record.inputMode)),
       Math.max(0, Math.min(1, Number(record.aurGroup || 0) || 0)),
       Math.max(0, TLG_LIBRARY_LINK_TYPE_VALUES.indexOf(record.linkType)),
-      Math.max(0, Math.min(255, Number(record.truthsToApply || 0) || 0)),
       flags,
       Number(record.createdAt || 0) >>> 0,
       Number(record.updatedAt || 0) >>> 0,
+      virtualGroup,
     ].join(",");
-    const virtual = `${Math.max(0, Math.min(255, Number(record.truthsToApply || 0) || 0))},${tlgTextSerializeCandidateSet(record.virtual, true)}`;
     const parts = [
       TLG_TEXT_COMPACT_HEADER,
       `M=${metadata}`,
@@ -13900,7 +14038,8 @@ function tlgLibrarySerializeTextCase(record, { compact = false } = {}) {
       `A2=${tlgTextSerializeCandidateSet(record.aur2, true)}`,
       `D=${tlgTextSerializeCandidateSet(record.daur, true)}`,
       `GUR=${tlgTextSerializeCandidateSet(record.gur, true)}`,
-      `W=${virtual}`,
+      `W1=${card1},${tlgTextSerializeCandidateSet(virtual1, true)}`,
+      `W2=${card2},${tlgTextSerializeCandidateSet(virtual2, true)}`,
       `R=${tlgTextSerializeDescriptors(record.resultLinks, true)}`,
       `E=${tlgTextSerializeCandidateSet(record.eliminations, true)}`,
       `S=${tlgTextSerializeCandidateSet(record.assignments, true)}`,
@@ -13924,11 +14063,12 @@ function tlgLibrarySerializeTextCase(record, { compact = false } = {}) {
     `AUR2:${tlgTextSerializeCandidateSet(record.aur2)}`,
     `DAUR:${tlgTextSerializeCandidateSet(record.daur)}`,
     `GUR:${tlgTextSerializeCandidateSet(record.gur)}`,
-    `VIRTUAL[${Math.max(0, Math.min(255, Number(record.truthsToApply || 0) || 0))}]:${tlgTextSerializeCandidateSet(record.virtual)}`,
+    `VIRTUAL1[${card1}]:${tlgTextSerializeCandidateSet(virtual1)}`,
+    `VIRTUAL2[${card2}]:${tlgTextSerializeCandidateSet(virtual2)}`,
     `RESULT-LINKS:${tlgTextSerializeDescriptors(record.resultLinks)}`,
     `ELIM:${tlgTextSerializeCandidateSet(record.eliminations)}`,
     `SET:${tlgTextSerializeCandidateSet(record.assignments)}`,
-    `OPTIONS:premise=${record.premiseMode || "unique-puzzle-derived"};mode=${record.inputMode || "truths"};aur=${Math.max(0, Math.min(1, Number(record.aurGroup || 0) || 0))};link=${record.linkType || "auto"};truths=${Math.max(0, Math.min(255, Number(record.truthsToApply || 0) || 0))}`,
+    `OPTIONS:premise=${record.premiseMode || "unique-puzzle-derived"};mode=${record.inputMode || "truths"};aur=${Math.max(0, Math.min(1, Number(record.aurGroup || 0) || 0))};link=${record.linkType || "auto"};vgroup=${virtualGroup}`,
     `FLAGS:${flags}`,
     `ID:${Number(record.id || 0) >>> 0}`,
     `CREATED:${Number(record.createdAt || 0) >>> 0}`,
@@ -13945,8 +14085,10 @@ function tlgLibraryParseMultilineTextCase(text) {
   const header = String(lines.shift() || "").trim();
   const match = /^YZF-TLG-CASE:(\d+)$/.exec(header);
   if (!match) throw new Error(ui("tlgLibraryTextInvalidHeader"));
-  if (Number(match[1]) !== 1) throw new Error(uif("tlgLibraryTextUnsupportedVersion", { version: match[1] }));
+  const version = Number(match[1]);
+  if (![1, 2].includes(version)) throw new Error(uif("tlgLibraryTextUnsupportedVersion", { version: match[1] }));
   const fields = new Map();
+  const virtualOptions = [];
   let crcValue = "";
   const bodyLines = [header];
   for (const line of lines) {
@@ -13960,11 +14102,14 @@ function tlgLibraryParseMultilineTextCase(text) {
       continue;
     }
     bodyLines.push(line);
-    const virtualMatch = /^VIRTUAL\[(\d+)\]$/.exec(rawKey);
-    if (virtualMatch) {
-      fields.set("VIRTUAL", value);
-      const current = fields.get("OPTIONS") || "";
-      fields.set("OPTIONS", `${current}${current ? ";" : ""}truths=${virtualMatch[1]}`);
+    const v1Match = /^VIRTUAL\[(\d+)\]$/.exec(rawKey);
+    const v2Match = /^VIRTUAL([12])\[(\d+)\]$/.exec(rawKey);
+    if (v1Match) {
+      fields.set("VIRTUAL1", value);
+      virtualOptions.push(`v1=${v1Match[1]}`);
+    } else if (v2Match) {
+      fields.set(`VIRTUAL${v2Match[1]}`, value);
+      virtualOptions.push(`v${v2Match[1]}=${v2Match[2]}`);
     } else {
       fields.set(rawKey, value);
     }
@@ -13973,7 +14118,11 @@ function tlgLibraryParseMultilineTextCase(text) {
     const body = `${bodyLines.join("\n")}\n`;
     if (tlgTextHexCrc(body) !== crcValue) throw new Error(ui("tlgLibraryTextCrcFailed"));
   }
-  return tlgTextRecordFromFields(fields);
+  if (virtualOptions.length) {
+    const current = fields.get("OPTIONS") || "";
+    fields.set("OPTIONS", `${current}${current ? ";" : ""}${virtualOptions.join(";")}`);
+  }
+  return tlgTextRecordFromFields(fields, version);
 }
 
 function tlgLibraryParseCompactTextCase(text) {
@@ -13982,7 +14131,8 @@ function tlgLibraryParseCompactTextCase(text) {
   const header = parts.shift();
   const match = /^YZFTLG(\d+)$/.exec(header || "");
   if (!match) throw new Error(ui("tlgLibraryTextInvalidHeader"));
-  if (Number(match[1]) !== 1) throw new Error(uif("tlgLibraryTextUnsupportedVersion", { version: match[1] }));
+  const version = Number(match[1]);
+  if (![1, 2].includes(version)) throw new Error(uif("tlgLibraryTextUnsupportedVersion", { version: match[1] }));
   const fields = new Map();
   let crcValue = "";
   const bodyParts = [header];
@@ -14009,9 +14159,34 @@ function tlgLibraryParseCompactTextCase(text) {
   const modeIndex = Number(options[1]);
   const linkIndex = Number(options[3]);
   if (!TLG_LIBRARY_MODE_VALUES[modeIndex] || !TLG_LIBRARY_LINK_TYPE_VALUES[linkIndex]) throw new Error(uif("tlgLibraryTextInvalidField", { field: "O" }));
-  const virtualParts = String(fields.get("W") || "0,").split(",");
-  const truthsToApply = Math.max(0, Math.min(255, Number(virtualParts.shift() || options[4] || 0) || 0));
-  const flags = Math.max(0, Number(options[5] || 0) || 0) >>> 0;
+
+  let card1 = 1;
+  let card2 = 1;
+  let virtual1 = "";
+  let virtual2 = "";
+  let flags = 0;
+  let created = "0";
+  let updated = "0";
+  let virtualGroup = 0;
+  if (version === 1) {
+    const virtualParts = String(fields.get("W") || "0,").split(",");
+    card1 = Math.max(1, Math.min(4, Number(virtualParts.shift() || options[4] || 1) || 1));
+    virtual1 = virtualParts.join(",");
+    flags = Math.max(0, Number(options[5] || 0) || 0) >>> 0;
+    created = options[6] || "0";
+    updated = options[7] || "0";
+  } else {
+    const virtualParts1 = String(fields.get("W1") || "1,").split(",");
+    const virtualParts2 = String(fields.get("W2") || "1,").split(",");
+    card1 = Math.max(1, Math.min(4, Number(virtualParts1.shift() || 1) || 1));
+    card2 = Math.max(1, Math.min(4, Number(virtualParts2.shift() || 1) || 1));
+    virtual1 = virtualParts1.join(",");
+    virtual2 = virtualParts2.join(",");
+    flags = Math.max(0, Number(options[4] || 0) || 0) >>> 0;
+    created = options[5] || "0";
+    updated = options[6] || "0";
+    virtualGroup = Math.max(0, Math.min(1, Number(options[7] || 0) || 0));
+  }
   const mapped = new Map([
     ["TITLE", JSON.stringify(String(meta?.title || ""))],
     ["TAGS", JSON.stringify(String(meta?.tags || ""))],
@@ -14027,24 +14202,165 @@ function tlgLibraryParseCompactTextCase(text) {
     ["AUR2", fields.get("A2") || ""],
     ["DAUR", fields.get("D") || ""],
     ["GUR", fields.get("GUR") || ""],
-    ["VIRTUAL", virtualParts.join(",")],
+    ["VIRTUAL1", virtual1],
+    ["VIRTUAL2", virtual2],
     ["RESULT-LINKS", fields.get("R") || ""],
     ["ELIM", fields.get("E") || ""],
     ["SET", fields.get("S") || ""],
-    ["OPTIONS", `premise=${options[0] === "C" ? "candidate-grid-asserted" : "unique-puzzle-derived"};mode=${TLG_LIBRARY_MODE_VALUES[modeIndex]};aur=${options[2] || 0};link=${TLG_LIBRARY_LINK_TYPE_VALUES[linkIndex]};truths=${truthsToApply}`],
+    ["OPTIONS", `premise=${options[0] === "C" ? "candidate-grid-asserted" : "unique-puzzle-derived"};mode=${TLG_LIBRARY_MODE_VALUES[modeIndex]};aur=${options[2] || 0};link=${TLG_LIBRARY_LINK_TYPE_VALUES[linkIndex]};v1=${card1};v2=${card2};vgroup=${virtualGroup}`],
     ["FLAGS", String(flags)],
-    ["CREATED", options[6] || "0"],
-    ["UPDATED", options[7] || "0"],
+    ["CREATED", created],
+    ["UPDATED", updated],
   ]);
-  return tlgTextRecordFromFields(mapped);
+  return tlgTextRecordFromFields(mapped, version);
 }
 
 function tlgLibraryParseTextCase(text) {
   const normalized = String(text || "").trim();
   if (!normalized) throw new Error(ui("tlgLibraryTextEmpty"));
-  if (normalized.startsWith(`${TLG_TEXT_COMPACT_HEADER}|`)) return tlgLibraryParseCompactTextCase(normalized);
-  if (normalized.startsWith(TLG_TEXT_CASE_HEADER)) return tlgLibraryParseMultilineTextCase(normalized);
+  if (/^YZFTLG[12]\|/.test(normalized)) return tlgLibraryParseCompactTextCase(normalized);
+  if (/^YZF-TLG-CASE:[12](?:\r?\n|$)/.test(normalized)) return tlgLibraryParseMultilineTextCase(normalized);
   throw new Error(ui("tlgLibraryTextInvalidHeader"));
+}
+
+function tlgDebugNormalizeLibraryRecord(input = {}) {
+  const asSet = (value) => new Set(value instanceof Set ? value : (Array.isArray(value) ? value : []));
+  const now = 1_700_000_000;
+  const virtual1 = asSet(input.virtual1 || input.virtual);
+  return {
+    id: Number(input.id || 7) >>> 0,
+    createdAt: Number(input.createdAt || now) >>> 0,
+    updatedAt: Number(input.updatedAt || now + 1) >>> 0,
+    meta: tlgLibraryNormalizeMeta(input.meta || { title: "dual-vset", tags: "test", source: "debug", notes: "round-trip" }),
+    givens: String(input.givens || ".".repeat(81)).slice(0, 81).padEnd(81, "."),
+    values: String(input.values || ".".repeat(81)).slice(0, 81).padEnd(81, "."),
+    initialCandidates: asSet(input.initialCandidates),
+    activeCandidates: asSet(input.activeCandidates),
+    truths: [...(input.truths || [])],
+    links: [...(input.links || [])],
+    aur1: asSet(input.aur1),
+    aur2: asSet(input.aur2),
+    daur: asSet(input.daur),
+    gur: asSet(input.gur),
+    virtual: new Set(virtual1),
+    virtual1,
+    virtual2: asSet(input.virtual2),
+    resultLinks: [...(input.resultLinks || [])],
+    eliminations: asSet(input.eliminations),
+    assignments: asSet(input.assignments),
+    truthsToApply: Math.max(1, Math.min(4, Number(input.truthsToApply || input.virtualCardinalities?.[0] || 1) || 1)),
+    virtualCardinalities: [
+      Math.max(1, Math.min(4, Number(input.virtualCardinalities?.[0] || input.truthsToApply || 1) || 1)),
+      Math.max(1, Math.min(4, Number(input.virtualCardinalities?.[1] || 1) || 1)),
+    ],
+    premiseMode: input.premiseMode || "candidate-grid-asserted",
+    inputMode: input.inputMode || "virtualSet",
+    aurGroup: Math.max(0, Math.min(1, Number(input.aurGroup || 0) || 0)),
+    virtualGroup: Math.max(0, Math.min(1, Number(input.virtualGroup || 0) || 0)),
+    linkType: input.linkType || "auto",
+    hasCandidateGrid: input.hasCandidateGrid !== false,
+    resultLinksAvailable: !!input.resultLinksAvailable,
+    hasResult: !!input.hasResult,
+  };
+}
+
+function tlgDebugPlainLibraryRecord(record) {
+  const sorted = (value) => [...(value || [])].sort((a, b) => String(a).localeCompare(String(b)));
+  return {
+    version: Number(record.version || 0),
+    id: Number(record.id || 0),
+    createdAt: Number(record.createdAt || 0),
+    updatedAt: Number(record.updatedAt || 0),
+    meta: { ...(record.meta || {}) },
+    givens: record.givens,
+    values: record.values,
+    initialCandidates: sorted(record.initialCandidates),
+    activeCandidates: sorted(record.activeCandidates),
+    truths: sorted(record.truths),
+    links: sorted(record.links),
+    aur1: sorted(record.aur1),
+    aur2: sorted(record.aur2),
+    daur: sorted(record.daur),
+    gur: sorted(record.gur),
+    virtual1: sorted(record.virtual1 || record.virtual),
+    virtual2: sorted(record.virtual2),
+    resultLinks: sorted(record.resultLinks),
+    eliminations: sorted(record.eliminations),
+    assignments: sorted(record.assignments),
+    virtualCardinalities: [...(record.virtualCardinalities || [record.truthsToApply || 1, 1])],
+    premiseMode: record.premiseMode,
+    inputMode: record.inputMode,
+    aurGroup: Number(record.aurGroup || 0),
+    virtualGroup: Number(record.virtualGroup || 0),
+    linkType: record.linkType,
+    hasCandidateGrid: !!record.hasCandidateGrid,
+    resultLinksAvailable: !!record.resultLinksAvailable,
+    hasResult: !!record.hasResult,
+  };
+}
+
+function tlgDebugLegacyBinaryRecord(input) {
+  const record = tlgDebugNormalizeLibraryRecord(input);
+  record.virtual2.clear();
+  record.virtualCardinalities[1] = 1;
+  record.virtualGroup = 0;
+  const bytes = tlgLibraryEncodeRecord(record);
+  const view = new DataView(bytes.buffer);
+  view.setUint16(4, 1, true);
+  view.setUint8(32, record.virtualCardinalities[0]);
+  view.setUint8(34, record.aurGroup & 1);
+  bytes.fill(0, TLG_LIBRARY_OFFSETS.virtual2, TLG_LIBRARY_RECORD_SIZE);
+  view.setUint32(24, tlgLibraryCrc32(bytes.subarray(TLG_LIBRARY_OFFSETS.givens, TLG_LIBRARY_OFFSETS.title)), true);
+  view.setUint32(20, 0, true);
+  view.setUint32(20, tlgLibraryCrc32(bytes), true);
+  return bytes;
+}
+
+function tlgDebugSerializeLegacyTextCase(input, { compact = false } = {}) {
+  const record = tlgDebugNormalizeLibraryRecord(input);
+  const card = record.virtualCardinalities[0];
+  const flags = tlgTextRecordFlags(record);
+  if (compact) {
+    const metadata = tlgTextBase64UrlEncodeUtf8(JSON.stringify(tlgLibraryNormalizeMeta(record.meta)));
+    const options = [
+      record.premiseMode === "candidate-grid-asserted" ? "C" : "U",
+      Math.max(0, TLG_LIBRARY_MODE_VALUES.indexOf(record.inputMode)),
+      record.aurGroup,
+      Math.max(0, TLG_LIBRARY_LINK_TYPE_VALUES.indexOf(record.linkType)),
+      card,
+      flags,
+      record.createdAt,
+      record.updatedAt,
+    ].join(",");
+    const parts = [
+      "YZFTLG1",
+      `M=${metadata}`,
+      `G=${tlgTextNormalizeDigits(record.givens, "GIVENS")}`,
+      `V=${tlgTextNormalizeDigits(record.values, "VALUES")}`,
+      `I=${tlgTextBase64UrlEncodeBytes(tlgLibraryPackCandidateKeys(record.initialCandidates))}`,
+      `P=${tlgTextBase64UrlEncodeBytes(tlgLibraryPackCandidateKeys(record.activeCandidates))}`,
+      `T=${tlgTextSerializeDescriptors(record.truths, true)}`,
+      `L=${tlgTextSerializeDescriptors(record.links, true)}`,
+      `A1=${tlgTextSerializeCandidateSet(record.aur1, true)}`,
+      `A2=${tlgTextSerializeCandidateSet(record.aur2, true)}`,
+      `D=${tlgTextSerializeCandidateSet(record.daur, true)}`,
+      `GUR=${tlgTextSerializeCandidateSet(record.gur, true)}`,
+      `W=${card},${tlgTextSerializeCandidateSet(record.virtual1, true)}`,
+      `R=${tlgTextSerializeDescriptors(record.resultLinks, true)}`,
+      `E=${tlgTextSerializeCandidateSet(record.eliminations, true)}`,
+      `S=${tlgTextSerializeCandidateSet(record.assignments, true)}`,
+      `O=${options}`,
+    ];
+    const body = parts.join("|");
+    return `${body}|H=${tlgTextHexCrc(body)}`;
+  }
+  const v2 = tlgLibrarySerializeTextCase(record);
+  const bodyLines = v2.replace(/^YZF-TLG-CASE:2/, "YZF-TLG-CASE:1")
+    .split("\n")
+    .filter((line) => !line.startsWith("VIRTUAL2[") && !line.startsWith("CRC32:") && line !== "END")
+    .map((line) => line.replace(/^VIRTUAL1\[(\d+)\]:/, "VIRTUAL[$1]:"));
+  const body = `${bodyLines.join("\n")}\n`;
+  return `${body}CRC32:${tlgTextHexCrc(body)}\nEND`;
 }
 
 function tlgLibraryOpenDb() {
@@ -14155,7 +14471,8 @@ function tlgLibraryTypeLabel(record) {
   if (record.aur1.size || record.aur2.size) types.push("AUR");
   if (record.daur.size) types.push("DAUR");
   if (record.gur.size) types.push("GUR");
-  if (record.virtual.size) types.push("VSet");
+  if ((record.virtual1 || record.virtual)?.size) types.push("VSet1");
+  if (record.virtual2?.size) types.push("VSet2");
   return types.length ? types.join("+") : "TLG";
 }
 
@@ -14283,8 +14600,8 @@ function tlgLibraryApplyRecord(record) {
   if (tlgSolverEnable) tlgSolverEnable.checked = true;
   if (tlgSolverMode) tlgSolverMode.value = TLG_LIBRARY_MODE_VALUES.includes(record.inputMode) ? record.inputMode : "truths";
   if (tlgSolverAurGroup) tlgSolverAurGroup.value = String(record.aurGroup || 0);
+  if (tlgSolverVirtualGroup) tlgSolverVirtualGroup.value = String(record.virtualGroup || 0);
   if (tlgSolverLinkType) tlgSolverLinkType.value = TLG_LIBRARY_LINK_TYPE_VALUES.includes(record.linkType) ? record.linkType : "auto";
-  if (tlgSolverTruthsToApply) tlgSolverTruthsToApply.value = String(record.truthsToApply || 0);
   if (tlgSolverAurPremiseMode) tlgSolverAurPremiseMode.value = record.premiseMode;
   tlgSolverState.selectedEndpoint = null;
   tlgSolverState.selectedCandidates.clear();
@@ -14293,7 +14610,18 @@ function tlgLibraryApplyRecord(record) {
   tlgSolverState.links = [...record.links];
   tlgSolverState.resultLinks = [...record.resultLinks];
   tlgSolverState.resultLinksAvailable = record.resultLinksAvailable;
-  tlgSolverState.virtualCandidates = new Set(record.virtual);
+  tlgSolverState.virtualSets = [
+    new Set(record.virtual1 || record.virtual || []),
+    new Set(record.virtual2 || []),
+  ];
+  const storedVirtualCardinalities = Array.isArray(record.virtualCardinalities)
+    ? record.virtualCardinalities
+    : [record.truthsToApply || 1, 1];
+  tlgSolverState.virtualSetCardinalities = [
+    Math.max(1, Math.min(4, Number(storedVirtualCardinalities[0] || 1) || 1)),
+    Math.max(1, Math.min(4, Number(storedVirtualCardinalities[1] || 1) || 1)),
+  ];
+  tlgSyncVirtualCardinalityInput();
   tlgSolverState.aurGroups = [new Set(record.aur1), new Set(record.aur2)];
   tlgSolverState.dynamicAurCandidates = new Set(record.daur);
   tlgSolverState.genericAurCandidates = new Set(record.gur);
@@ -14305,7 +14633,7 @@ function tlgLibraryApplyRecord(record) {
     initialCandidates: new Set(record.initialCandidates),
     snapshot,
     count: record.activeCandidates.size,
-    format: "tlgdb-v1",
+    format: `tlgdb-v${record.version || TLG_LIBRARY_SCHEMA_VERSION}`,
     source: "tlg-library",
   };
   if (record.hasResult || record.resultLinksAvailable) {
@@ -14818,6 +15146,16 @@ async function init() {
     window.manualAdvancedStepTest = manualAdvancedStepTest;
     window.tlgSolverRequestV440 = buildTlgSolverRequestV440;
     window.tlgSolverFindEliminationsV440 = callTlgSolverFindEliminationsV440;
+    window.__YZF_TLG_SERIALIZATION_TEST__ = Object.freeze({
+      schemaVersion: TLG_LIBRARY_SCHEMA_VERSION,
+      normalize: (record) => tlgDebugPlainLibraryRecord(tlgDebugNormalizeLibraryRecord(record)),
+      encode: (record) => [...tlgLibraryEncodeRecord(tlgDebugNormalizeLibraryRecord(record))],
+      decode: (bytes) => tlgDebugPlainLibraryRecord(tlgLibraryDecodeRecord(Uint8Array.from(bytes || []))),
+      encodeLegacyV1: (record) => [...tlgDebugLegacyBinaryRecord(record)],
+      serialize: (record, compact = false) => tlgLibrarySerializeTextCase(tlgDebugNormalizeLibraryRecord(record), { compact: !!compact }),
+      serializeLegacyV1: (record, compact = false) => tlgDebugSerializeLegacyTextCase(record, { compact: !!compact }),
+      parse: (text) => tlgDebugPlainLibraryRecord(tlgLibraryParseTextCase(text)),
+    });
   }
   buildNumpad();
   loadTechniqueState();
