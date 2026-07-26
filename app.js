@@ -1,4 +1,4 @@
-import createModule from "./sudoku_wasm.js?v=wasm-a33fe8b22cb55aa9";
+import createModule from "./sudoku_wasm.js?v=wasm-5c094f6aa35489ca";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -20,7 +20,7 @@ import {
 } from "./ui-localization.js?v=ui-d5a841241e91";
 import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-e2f97cdd3860";
 
-const APP_VERSION = "wasm-a33fe8b22cb55aa9";
+const APP_VERSION = "wasm-5c094f6aa35489ca";
 const MANUAL_VERSION = "manual-5275ef564eeb";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
