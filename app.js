@@ -1,4 +1,4 @@
-import createModule from "./sudoku_wasm.js?v=wasm-5c094f6aa35489ca";
+import createModule from "./sudoku_wasm.js?v=wasm-a33fe8b22cb55aa9";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -20,7 +20,7 @@ import {
 } from "./ui-localization.js?v=ui-d5a841241e91";
 import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-e2f97cdd3860";
 
-const APP_VERSION = "wasm-5c094f6aa35489ca";
+const APP_VERSION = "wasm-a33fe8b22cb55aa9";
 const MANUAL_VERSION = "manual-5275ef564eeb";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
@@ -1216,6 +1216,7 @@ for (const [key, zh, en] of [
   ["wasmLoaded", "wasm 已加载。", "wasm loaded."],
   ["exportCopied", "题串已导出并复制到剪贴板。", "Puzzle string exported and copied to the clipboard."],
   ["shareUnavailable", "分享失败：当前没有可编码的有效盘面。", "Share failed: the current board cannot be encoded."],
+  ["shareReady", "分享链接已生成：{url}", "Share link created: {url}"],
   ["shareCopied", "分享链接已复制到剪贴板：{url}", "Share link copied to the clipboard: {url}"],
   ["shareClipboardFailed", "分享链接已生成，但浏览器未允许写入剪贴板：{url}", "The share link was created, but the browser did not allow clipboard access: {url}"],
   ["exportToInput", "题串已导出到输入框。", "Puzzle string exported to the input box."],
@@ -4943,6 +4944,7 @@ async function shareCurrentPuzzle() {
   }
 
   const url = buildPuzzleShareUrl(encodedPuzzle);
+  setStatus(uif("shareReady", { url }));
   // Start clipboard writing and the system share request in the same user
   // activation turn. Awaiting one before invoking the other can make Android
   // browsers reject the second privileged API.
