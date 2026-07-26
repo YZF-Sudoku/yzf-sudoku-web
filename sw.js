@@ -15,7 +15,7 @@ importScripts("./pwa-assets.js");
 
 // One-release repair marker. This release auto-activates only after every asset
 // in its regenerated manifest has been downloaded and SHA-256 verified.
-const FORCE_ACTIVATE_RELEASE = "e0f2bb1a95d80ae1e0ef";
+const FORCE_ACTIVATE_RELEASE = "83b22f61452e1bf34dd6";
 
 const manifest = self.YZF_PWA_ASSET_MANIFEST || { version: "missing", totalBytes: 0, assets: [] };
 

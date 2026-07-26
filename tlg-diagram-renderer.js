@@ -337,6 +337,38 @@ export function createTlgDiagramRenderer({
     return false;
   }
 
+  function renderConstraint(constraint) {
+    if (!constraint || constraint.role !== "link") return constraint;
+    const members = constraint.members.filter((key) => candidateIsRenderNode(model?.candidates?.get(key)));
+    // A Link with fewer than two proof-relevant candidates has no visible
+    // relationship to draw. Link-only candidates remain as ordinary pencilmarks.
+    if (members.length < 2) return null;
+    if (members.length === constraint.members.length) return constraint;
+    return { ...constraint, members };
+  }
+
+  function excludedLinkMetrics(constraint, renderedConstraint, metricsByKey) {
+    if (!constraint || constraint.role !== "link" || !renderedConstraint) return [];
+    const included = new Set(renderedConstraint.members);
+    return constraint.members
+      .filter((key) => !included.has(key))
+      .map((key) => ({ key, metrics: metricsByKey.get(key) }))
+      .filter((item) => item.metrics);
+  }
+
+  function appendExcludedCandidateHoles(mask, excludedMetrics) {
+    for (const item of excludedMetrics || []) {
+      const metrics = item.metrics;
+      mask.appendChild(svgElement("circle", {
+        cx: metrics.x,
+        cy: metrics.y,
+        r: metrics.radius + Math.max(2.6, metrics.size * 0.14),
+        fill: "black",
+        "data-tlg-excluded-candidate": item.key,
+      }));
+    }
+  }
+
   function prepare({ enabled, snapshot, state }) {
     const wasActive = active;
     active = !!enabled;
@@ -398,7 +430,7 @@ export function createTlgDiagramRenderer({
     return "";
   }
 
-  function appendHollowPath(layer, defs, pathD, color, type, key, serial) {
+  function appendHollowPath(layer, defs, pathD, color, type, key, serial, excludedMetrics = []) {
     const maskId = `tlg-mask-${serial}-${safeId(key)}`;
     const outerWidth = type === "b" ? 9 : 7;
     const innerWidth = type === "b" ? 4.2 : 3.2;
@@ -414,6 +446,7 @@ export function createTlgDiagramRenderer({
         "stroke-linecap": "round", "stroke-linejoin": "round",
       }),
     );
+    appendExcludedCandidateHoles(mask, excludedMetrics);
     defs.appendChild(mask);
     layer.appendChild(svgElement("path", {
       class: "tlg-diagram-constraint tlg-diagram-link",
@@ -424,7 +457,7 @@ export function createTlgDiagramRenderer({
     }));
   }
 
-  function appendCellRegion(layer, constraint, metricsByKey, color) {
+  function appendCellRegion(layer, defs, constraint, metricsByKey, color, serial, excludedMetrics = []) {
     const points = constraint.members.map((key) => metricsByKey.get(key)).filter(Boolean);
     if (!points.length) return;
     const pad = Math.max(4, points[0].size * 0.16);
@@ -444,6 +477,14 @@ export function createTlgDiagramRenderer({
       Object.assign(attributes, { fill: color, "fill-opacity": 0.42, stroke: color, "stroke-width": 1.4, "stroke-opacity": 0.72 });
     } else {
       Object.assign(attributes, { fill: "none", stroke: color, "stroke-width": 3, "stroke-opacity": 0.92 });
+      if (excludedMetrics.length) {
+        const maskId = `tlg-cell-mask-${serial}-${safeId(constraint.key)}`;
+        const mask = svgElement("mask", { id: maskId, x: 0, y: 0, width: 900, height: 900, maskUnits: "userSpaceOnUse" });
+        mask.appendChild(svgElement("rect", { x: 0, y: 0, width: 900, height: 900, fill: "white" }));
+        appendExcludedCandidateHoles(mask, excludedMetrics);
+        defs.appendChild(mask);
+        attributes.mask = `url(#${maskId})`;
+      }
     }
     layer.appendChild(svgElement("rect", attributes));
   }
@@ -573,34 +614,55 @@ export function createTlgDiagramRenderer({
     });
     let serial = 0;
     for (const constraint of ordered) {
-      const color = constraint.type === "v" ? FALLBACK_COLORS.v : cssColor(constraint.type);
-      if (constraint.type === "n") {
-        appendCellRegion(constraint.role === "truth" ? cellTruthLayer : cellLinkLayer, constraint, metricsByKey, color);
+      const renderedConstraint = renderConstraint(constraint);
+      if (!renderedConstraint) continue;
+      const excludedMetrics = excludedLinkMetrics(constraint, renderedConstraint, metricsByKey);
+      const color = renderedConstraint.type === "v" ? FALLBACK_COLORS.v : cssColor(renderedConstraint.type);
+      if (renderedConstraint.type === "n") {
+        appendCellRegion(
+          renderedConstraint.role === "truth" ? cellTruthLayer : cellLinkLayer,
+          defs,
+          renderedConstraint,
+          metricsByKey,
+          color,
+          serial,
+          excludedMetrics,
+        );
+        serial += 1;
         continue;
       }
-      const pathD = constraintPath(constraint, metricsByKey);
+      const pathD = constraintPath(renderedConstraint, metricsByKey);
       if (!pathD) continue;
-      if (constraint.type === "v") {
+      if (renderedConstraint.type === "v") {
         virtualTruthLayer.appendChild(svgElement("path", {
           class: "tlg-diagram-constraint tlg-diagram-virtual",
           d: pathD, fill: "none", stroke: color,
           "stroke-width": 5.4, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: 0.95,
-          "data-tlg-role": "virtual", "data-tlg-type": "v", "data-tlg-key": constraint.key,
-          "data-tlg-virtual-group": String((constraint.groupIndex ?? 0) + 1),
+          "data-tlg-role": "virtual", "data-tlg-type": "v", "data-tlg-key": renderedConstraint.key,
+          "data-tlg-virtual-group": String((renderedConstraint.groupIndex ?? 0) + 1),
         }));
         continue;
       }
-      const layer = constraint.role === "truth" ? houseTruthLayer : houseLinkLayer;
-      if (constraint.role === "truth") {
+      const layer = renderedConstraint.role === "truth" ? houseTruthLayer : houseLinkLayer;
+      if (renderedConstraint.role === "truth") {
         layer.appendChild(svgElement("path", {
           class: "tlg-diagram-constraint tlg-diagram-truth",
           d: pathD, fill: "none", stroke: color,
-          "stroke-width": constraint.type === "b" ? 7.2 : 5.6,
+          "stroke-width": renderedConstraint.type === "b" ? 7.2 : 5.6,
           "stroke-linecap": "round", "stroke-linejoin": "round", opacity: 0.78,
-          "data-tlg-role": "truth", "data-tlg-type": constraint.type, "data-tlg-key": constraint.key,
+          "data-tlg-role": "truth", "data-tlg-type": renderedConstraint.type, "data-tlg-key": renderedConstraint.key,
         }));
       } else {
-        appendHollowPath(layer, defs, pathD, color, constraint.type, constraint.key, serial);
+        appendHollowPath(
+          layer,
+          defs,
+          pathD,
+          color,
+          renderedConstraint.type,
+          renderedConstraint.key,
+          serial,
+          excludedMetrics,
+        );
       }
       serial += 1;
     }

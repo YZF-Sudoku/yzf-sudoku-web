@@ -18,7 +18,7 @@ import {
   difficultyDescriptor,
   difficultyLevels,
 } from "./ui-localization.js?v=ui-d5a841241e91";
-import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-4c2e94ce3029";
+import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-e2f97cdd3860";
 
 const APP_VERSION = "wasm-a33fe8b22cb55aa9";
 const MANUAL_VERSION = "manual-5275ef564eeb";
