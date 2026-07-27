@@ -1,4 +1,4 @@
-import createModule from "./sudoku_wasm.js?v=wasm-1a4ff45222ba599b";
+import createModule from "./sudoku_wasm.js?v=wasm-c66616ba9de50fe0";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -20,7 +20,7 @@ import {
 } from "./ui-localization.js?v=ui-d5a841241e91";
 import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-e2f97cdd3860";
 
-const APP_VERSION = "wasm-1a4ff45222ba599b";
+const APP_VERSION = "wasm-c66616ba9de50fe0";
 const MANUAL_VERSION = "manual-5275ef564eeb";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
@@ -1060,7 +1060,7 @@ for (const [key, zh, en] of [
   ["tlgBackendTrainingGrid", "使用了 TLG 训练候选盘；未核验唯一解前提", "A TLG training candidate grid was used; the uniqueness premise was not verified."],
   ["tlgActionsAria", "TLG Solver 操作", "TLG Solver actions"],
   ["tlgCandidateGridEmpty", "输入框为空；请先粘贴 Sukaku 候选盘面。", "The input box is empty. Paste a Sukaku candidate grid first."],
-  ["tlgCandidateGridInvalid", "无法识别 TLG 候选盘面：需要 729 字符 Sukaku，或 81 个候选单元格。", "Unrecognized TLG candidate grid. Use a 729-character Sukaku or 81 candidate-cell tokens."],
+  ["tlgCandidateGridInvalid", "无法识别输入框中的 TLG 候选盘面：需要 729 字符 Sukaku，或 81 个候选单元格。", "Unrecognized TLG candidate grid. Use a 729-character Sukaku or 81 candidate-cell tokens."],
   ["tlgCandidateGridEmptyCell", "TLG 候选盘面包含无候选单元格：{cell}。", "The TLG candidate grid contains a cell with no candidates: {cell}."],
   ["tlgContextCandidate", "候选数 {value}", "Candidate {value}"],
   ["tlgContextCandidates", "已选 {count} 个候选数", "{count} Candidates selected"],
