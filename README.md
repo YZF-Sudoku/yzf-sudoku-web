@@ -67,6 +67,28 @@ Solve Mode keeps the screen awake by default through the browser Screen Wake Loc
 - Browsers release it when the app goes into the background; YZF requests it again after returning to the foreground.
 - HTTPS, localhost, or an installed PWA is required. Battery saver or device policy may still reject the request.
 
+
+## Desktop Mouse and Keyboard Input / PC 鼠标与键盘输入
+
+The desktop input paths intentionally coexist without a global “cell-first / number-first” switch:
+
+- **Mouse:** preserves the existing FB-style direct operation. The clicked position inside a cell selects digit 1–9, while the left/right button determines value or candidate semantics. It does not read the persistent on-screen number-pad selection.
+- **Keyboard:** arrows select and move the current cell; `1–9` enters a value; `0`, `Delete`, or `Backspace` clears a user value; `Ctrl/Cmd+1–9` toggles the matching candidate; `Ctrl/Cmd+Z` undoes and `Ctrl+Y` or `Ctrl/Cmd+Shift+Z` redoes.
+- **Touch:** keeps the existing number-first workflow: choose a persistent on-screen digit, then tap one or more cells.
+
+Keyboard board editing is disabled while focus is in an editable field, Mobile Solve Mode, OCR correction, TLG editing, Manual Marks, a step preview, a long solver task, or any open modal dialog. This prevents the same keystroke from reaching two state machines. Some browsers reserve main-keyboard `Ctrl+1–9`; the shortcut still works whenever the browser delivers it, especially from the numeric keypad or installed PWA/Standalone.
+
+### Candidate restoration after clearing a value
+
+`base_cand` is the imported puzzle/Sukaku candidate universe. Clearing or replacing a user value must not call a whole-board candidate reset:
+
+- the cleared cell is rebuilt as `initial baseline ∩ current row/column/box legality`;
+- only the deleted digit is reconsidered in related row/column/box peers;
+- unrelated manual candidate deletions remain untouched;
+- no candidate absent from the imported baseline may be invented.
+
+This restoration returns the affected area to the original puzzle constraints; it does not attempt to make an invalid or unsatisfiable user puzzle solvable.
+
 ## Help & Workspaces / 帮助与现场
 
 The top bar keeps frequent actions visible and collects less-frequent tools in one responsive **Help & workspaces / 帮助与现场** center.
@@ -86,6 +108,7 @@ Visible UI additions must provide both Simplified Chinese and English in the app
 
 ```bash
 python tools/test_bilingual_ui_contract.py
+python tools/test_desktop_keyboard_and_technique_theme.py
 python tools/test_ui_foundation_browser.py
 python tools/test_ocr_guide_launch_browser.py
 ```

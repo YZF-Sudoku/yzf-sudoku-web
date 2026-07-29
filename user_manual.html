@@ -511,7 +511,7 @@
 <h1>YZF Sudoku 使用手册 / User Manual</h1>
 <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
 <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-<div class="meta">Version: Manual v3.9 · Updated: 2026-07-29</div>
+<div class="meta">Version: Manual v3.10 · Updated: 2026-07-29</div>
 </div>
 <div aria-label="Manual language view / 手册语言视图" class="manual-language-toolbar" role="group">
 <button aria-pressed="true" data-manual-lang-button="bilingual" type="button">双语 / Bilingual</button>
@@ -628,7 +628,7 @@
 <ul>
 <li><strong>自动：</strong>跟随系统浅色/深色偏好，系统切换时页面即时同步。</li>
 <li><strong>浅色：</strong>保持原来的明亮分析界面。</li>
-<li><strong>深色：</strong>盘面、候选、表单、弹窗、手工标记和 TLG 状态全部使用深色分析画布；Truth、Link、删数等逻辑颜色仍保留原语义。</li>
+<li><strong>深色：</strong>盘面、候选、表单、弹窗、技巧配置、手工标记和 TLG 状态全部使用深色分析画布；Truth、Link、删数等逻辑颜色仍保留原语义。</li>
 <li><strong>高对比：</strong>使用黑白边界、加粗焦点框和形状差异，减少阴影与装饰；不是简单反色。</li>
 </ul>
 <p>主题不会改变盘面真值、候选坐标、技巧搜索或 TLG 投影。浏览器启用“减少动态效果”或系统强制颜色时，界面会同步降低动画并保留原生可访问颜色。</p>
@@ -638,7 +638,7 @@
 <thead><tr><th>功能</th><th>电脑</th><th>手机/触屏</th></tr></thead>
 <tbody>
 <tr><td>图片输入</td><td>文件、剪贴板按钮、<span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>选择图片或拍照识别</td></tr>
-<tr><td>普通出数/候选</td><td>左键候选出数；左键用户大数清除；右键候选删除/恢复</td><td>先选数字与“出数/候选”，再轻触格子</td></tr>
+<tr><td>普通出数/候选</td><td>鼠标左键候选出数、左键用户大数清除、右键切候选；键盘方向键选格，1–9 出数，0/Delete/Backspace 清除，Ctrl/Cmd+数字切候选</td><td>先选数字与“出数/候选”，再轻触格子</td></tr>
 <tr><td>手工候选标记</td><td>按当前模式使用左/右键；链、构造链和微型区域由第二次点击的左右键决定类型</td><td>先点格子，再使用大数字键和面板按钮；长按可删除常规视觉标记</td></tr>
 <tr><td>替换解题路径</td><td>右键可替换步骤</td><td>长按约 0.65 秒</td></tr>
 <tr><td>标记截图</td><td>优先复制 PNG 到剪贴板，失败时下载</td><td>优先打开系统分享，失败时下载</td></tr>
@@ -669,7 +669,7 @@
 <ul>
 <li><strong>Auto:</strong> follows the operating-system light/dark preference and updates immediately when it changes.</li>
 <li><strong>Light:</strong> preserves the original bright analysis workspace.</li>
-<li><strong>Dark:</strong> uses a dark analysis canvas for the board, candidates, forms, dialogs, Manual Marks, and TLG status while preserving the semantic colors of Truths, Links, and eliminations.</li>
+<li><strong>Dark:</strong> uses a dark analysis canvas for the board, candidates, forms, dialogs, Technique Configuration, Manual Marks, and TLG status while preserving the semantic colors of Truths, Links, and eliminations.</li>
 <li><strong>High Contrast:</strong> emphasizes black/white boundaries, stronger focus rings, and shape differences while reducing shadows and decoration; it is not a simple color inversion.</li>
 </ul>
 <p>The theme does not alter board truth, candidate coordinates, technique search, or TLG projection. Reduced-motion and forced-colors system settings are respected.</p>
@@ -679,6 +679,7 @@
 <thead><tr><th>Feature</th><th>Desktop</th><th>Mobile / touch</th></tr></thead>
 <tbody>
 <tr><td>Image input</td><td>File, clipboard button, or <span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>Select Image or Take Photo</td></tr>
+<tr><td>Values / candidates</td><td>Mouse: left-click sets/clears and right-click toggles a candidate. Keyboard: arrows select, 1–9 sets, 0/Delete/Backspace clears, Ctrl/Cmd+digit toggles a candidate.</td><td>Choose a digit and Value/Candidate, then tap a cell.</td></tr>
 <tr><td>Manual candidate marks</td><td>Left-click adds; right-click erases the current mark mode</td><td>Select a cell, then tap a large digit to add or hold it for about 0.6 s to erase; Add/Erase buttons remain available</td></tr>
 <tr><td>Replace solve path</td><td>Right-click a replaceable step</td><td>Long-press for about 0.65 seconds</td></tr>
 <tr><td>Mark capture</td><td>Copies PNG to the clipboard when possible, otherwise downloads</td><td>Opens system share when possible, otherwise downloads</td></tr>
@@ -811,6 +812,7 @@
 <ol>
 <li><strong>载入题目：</strong>粘贴题串、使用图片识别、恢复现场，或生成一题。先确认黑色提示数无误；OCR 题尤其要先校正提示数/出数身份。</li>
 <li><strong>鼠标输入：</strong>直接在盘面操作，不需要数字盘。左键当前候选将其设为出数；左键用户填写的大数将其清除；右键候选位置删除或恢复候选。</li>
+<li><strong>键盘输入：</strong>用方向键建立并移动当前格；1–9 写入出数，0/Delete/Backspace 清除用户出数，Ctrl/Cmd+1–9 开关当前格候选，Ctrl/Cmd+Z 撤销，Ctrl+Y 或 Cmd+Shift+Z 重做。鼠标仍按格内位置及左右键直接操作，不读取屏幕数字盘状态；键盘也不读取屏幕数字盘的持久选数状态。</li>
 <li><strong>触摸/触控笔输入：</strong>数字盘自动显示。先选择“出数/候选”和 1–9，再轻触目标格。</li>
 <li><strong>人工分析：</strong>需要圈候选、画链、上色或暂存删数时，打开“手工标记”。手工标记与真实候选盘分离，不会因为画了红叉就自动删候选。</li>
 <li><strong>核对逻辑：</strong>“提示一步”只预览程序找到的下一步；确认后点“应用提示”才真正写入盘面。也可在“可选步骤”中比较多个合法步骤。</li>
@@ -820,13 +822,17 @@
 <h3>出数模式</h3>
 <ul>
 <li>鼠标：左键点击空格中当前真实存在的候选，将其写为用户出数。已被删除的候选不能直接出数，需先右键恢复。</li>
+<li>键盘：方向键移动选格，1–9 在当前格写入用户出数；0、Delete 或 Backspace 清除当前用户出数。</li>
 <li>触摸/触控笔：选择数字后轻触空格，写入用户出数。</li>
 <li>再次输入该格当前的大数字，可清除用户出数；原始提示数受保护，不能用普通做题操作覆盖。</li>
 <li>出数后，盘面候选会按当前局面更新。若填入与规则冲突的数字，状态区会提示局面无效。</li>
+<li><strong>清除或替换用户出数时的候选恢复：</strong>被清空格恢复为“初始盘面允许候选 ∩ 当前行列宫合法候选”；同行、同列、同宫只补回被删除的那个数字，并且不得超出导入时的初始候选基线。其它格、其它数字的手工删候选保持原样，不会再全盘重算候选。</li>
 </ul>
+<div class="note">候选恢复只回到原题或 Sukaku 初始候选允许的范围，不负责把用户给出的无解题目“修成有解”。若初始题面或当前用户候选状态本身无解，程序应如实报告无解，而不是凭空补入初始盘面不存在的候选。</div>
 <h3>候选模式</h3>
 <ul>
 <li>鼠标：右键候选位置切换该候选；存在时删除，不存在时在不违反行、列、宫约束的前提下恢复。</li>
+<li>键盘：Ctrl/Cmd+1–9 开关当前选中格的对应候选；该快捷键不读取屏幕数字盘当前是“出数”还是“候选”。某些浏览器可能保留主键盘 Ctrl+数字，可改用数字小键盘，或在安装后的 PWA/Standalone 中操作。</li>
 <li>触摸/触控笔：选择候选模式和数字后轻触空格，切换该候选。</li>
 <li>候选模式改的是<strong>真实当前候选盘</strong>，会直接影响后续提示、自动解题、评分和 TLG。</li>
 <li>“隐藏候选数”只改变显示，不会删除候选；再次显示后原候选仍在。</li>
@@ -843,6 +849,7 @@
 <h3>电脑与手机的基本操作差异</h3>
 <ul>
 <li><strong>鼠标：</strong>使用 FB 风格直接操作，数字盘自动隐藏。左键候选出数，左键用户大数清除，右键候选删除/恢复。</li>
+<li><strong>键盘：</strong>使用选格优先操作；方向键、数字键和删除键只在普通盘面生效。焦点位于输入框、OCR、TLG、手工标记、步骤预览或任意弹窗时，快捷键不会穿透修改主盘。</li>
 <li><strong>手机：</strong>普通做题优先使用“先选数字，再点格”的大按钮流程。精细候选标记则先选格子，再点大数字键，避免点不中小候选。</li>
 <li>开启 TLG 编辑后，盘面点击由 TLG 接管；要恢复普通出数/候选编辑，先关闭“启用 TLG 编辑”。</li>
 </ul>
@@ -853,6 +860,7 @@
 <ol>
 <li><strong>Load a puzzle:</strong> paste a string, use OCR, restore a session, or generate one. Verify all black givens first; OCR puzzles may need given/user-digit role correction.</li>
 <li><strong>Mouse input:</strong> work directly on the board. Left-click an active candidate to set it; left-click a user value to clear it; right-click a candidate slot to remove or restore it.</li>
+<li><strong>Keyboard input:</strong> use an arrow key to establish and move the selected cell. Press 1–9 to set a value, 0/Delete/Backspace to clear a user value, Ctrl/Cmd+1–9 to toggle candidates, Ctrl/Cmd+Z to undo, and Ctrl+Y or Cmd+Shift+Z to redo. Mouse input remains direct and depends on the clicked candidate position plus the left/right button; neither mouse nor keyboard reads the persistent on-screen digit selection.</li>
 <li><strong>Touch/pen input:</strong> the solve layout shows a single-row 1–9 digit strip. The next row provides Value/Candidate, Undo, Redo, Hint, Apply, Marks, and More; Clear is under More. Choose Value/Candidate and 1–9, then tap the target cell.</li>
 <li><strong>Analyze manually:</strong> open Manual Marks for circles, colors, chains, blocks, or staged eliminations. Visual marks are separate from the real candidate grid.</li>
 <li><strong>Check logic:</strong> Hint only previews the next program step. Press Apply Hint to commit it. Available Steps can compare multiple legal options.</li>
@@ -861,13 +869,19 @@
 </ol>
 <h3>Value Mode</h3>
 <ul>
-<li>Select a digit and click an empty cell to enter a user value.</li>
+<li>Mouse: left-click an active candidate to enter it as a user value.</li>
+<li>Keyboard: use the arrow keys to select a cell, press 1–9 to enter a value, and press 0/Delete/Backspace to clear a user value.</li>
+<li>Touch/pen: choose a digit, then tap an empty cell.</li>
 <li>Entering the cell's current user value again clears it. Original givens are protected from ordinary solving edits.</li>
 <li>Candidates update after a value is entered. A rule conflict is reported as an invalid position.</li>
+<li>When a user value is cleared or replaced, the cleared cell is rebuilt from the imported initial candidate baseline filtered by current row/column/box legality. Only the removed digit is restored in related peers. Unrelated manual candidate eliminations remain untouched, and no candidate outside the original puzzle/Sukaku baseline is invented.</li>
 </ul>
+<div class="note">Candidate restoration does not attempt to repair an unsatisfiable puzzle. If the imported puzzle or the user's current candidate state has no solution, the application reports that state instead of adding candidates that were absent from the initial baseline.</div>
 <h3>Candidate Mode</h3>
 <ul>
-<li>Select a digit and click an empty cell to add or remove that candidate.</li>
+<li>Mouse: right-click a candidate slot to remove or legally restore it.</li>
+<li>Keyboard: Ctrl/Cmd+1–9 toggles the matching candidate in the selected cell without reading the on-screen Value/Candidate mode. Some browsers reserve main-keyboard Ctrl+digit; use the numeric keypad or the installed PWA/Standalone when necessary.</li>
+<li>Touch/pen: choose Candidate mode and a digit, then tap an empty cell.</li>
 <li>Candidate mode changes the <strong>real current candidate grid</strong>, affecting hints, auto solving, rating, and TLG.</li>
 <li>Hide Candidates changes display only; it does not delete candidates.</li>
 <li>Provisional/Formal Eliminations in Manual Marks are different. Provisional is visual only; Formal is committed only by Apply All Eliminations.</li>

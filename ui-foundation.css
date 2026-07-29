@@ -1264,3 +1264,49 @@ button.primary:not(:disabled) {
   border-color: var(--border) !important;
   background: var(--surface-muted) !important;
 }
+
+/* 深色/高对比主题：技巧配置表必须完整继承主题语义色。 */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"], [data-yzf-theme="contrast"]) :is(
+  .technique-memory-row,
+  .technique-toolbar,
+  .technique-row td
+) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"], [data-yzf-theme="contrast"]) :is(
+  .technique-table th,
+  .technique-memory-control,
+  .technique-option-check,
+  .technique-name-cell,
+  .technique-name-cell span,
+  .technique-score-cell,
+  .technique-suboption
+) {
+  color: var(--ink) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .technique-table th,
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .technique-suboption {
+  color: var(--muted) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .technique-row:hover td {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--border)) !important;
+  background: var(--accent-faint) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .technique-row.disabled {
+  color: var(--muted) !important;
+  opacity: .78;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"], [data-yzf-theme="contrast"]) :is(
+  .technique-name-cell input[type="checkbox"],
+  .technique-option-check input[type="checkbox"],
+  .technique-suboption input[type="checkbox"]
+) {
+  accent-color: var(--accent);
+}

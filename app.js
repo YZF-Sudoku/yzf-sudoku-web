@@ -8,7 +8,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-c66616ba9de50fe0";
+import createModule from "./sudoku_wasm.js?v=wasm-c152f269d213021c";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -41,9 +41,9 @@ import {
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
 
-const APP_VERSION = "wasm-c66616ba9de50fe0";
-const UI_RELEASE_VERSION = "ui-20260729-phase8.2-ocr-guide-launch";
-const MANUAL_VERSION = "manual-20260729-phase8.2-ocr-guide-launch";
+const APP_VERSION = "wasm-c152f269d213021c";
+const UI_RELEASE_VERSION = "ui-20260729-phase8.3-ocr-keyboard-candidate-theme";
+const MANUAL_VERSION = "manual-20260729-phase8.3-ocr-keyboard-candidate-theme";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
@@ -498,6 +498,15 @@ let currentPreviewRecord = null;
 let selectedIndex = -1;
 let selectedDigit = 1;
 let inputMode = "value";
+// 当前题目的候选宇宙。普通数独由原始提示数推导；Sukaku 则直接使用
+// 导入时携带的 729 候选基线。清除用户出数时，任何恢复都不得越过它。
+let initialCandidateMasks = new Array(81).fill(0);
+let initialCandidateSukaku = "";
+// 网页端使用逻辑快照作为撤销单元。候选精确修复可能在旧 WASM 内部触发
+// 多次 toggle，但对用户仍应表现为一次“清除/替换出数”。
+const appUndoStack = [];
+const appRedoStack = [];
+const APP_EDIT_HISTORY_LIMIT = 200;
 let boardPointerMode = window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches ? "mouse" : "touch";
 let mobileSolveActive = false;
 let mobileSolveDrawerOpen = false;
@@ -1328,6 +1337,9 @@ for (const [key, zh, en] of [
   ["debugCandidate", "Debug candidate：红叉，仅调试", "Debug candidate: red cross, debug only"],
   ["overlayDebugOnly", "仅调试，不作为正式删数", "Debug only; not a formal elimination"],
   ["chooseDigit", "选择数字", "Choose digit"],
+  ["keyboardSelectCellFirst", "请先用方向键选择一个格。", "Select a cell with the arrow keys first."],
+  ["keyboardCellSelected", "键盘选格：r{row}c{col}。", "Keyboard cell: r{row}c{col}."],
+  ["keyboardCandidateShortcutHint", "Ctrl/Cmd+数字切换当前格候选；若浏览器占用该快捷键，可使用数字小键盘或安装后的 PWA/Standalone。", "Ctrl/Cmd+digit toggles a candidate in the selected cell. If the browser reserves that shortcut, use the numeric keypad or the installed PWA/Standalone."],
   ["candidateMode", "候选", "Candidates"],
   ["valueMode", "出数", "Values"],
   ["inputModeTitle", "触摸/触控笔：切换出数/候选模式，先选数字再点格。鼠标直接在盘面使用左/右键。", "Touch/pen: toggle Value/Candidate, choose a digit, then tap a cell. Mouse input uses direct left/right clicks on the board."],
@@ -3033,7 +3045,7 @@ function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
         return;
       }
       selectedDigit = digit;
-      refreshAfterEdit(engine.set_value_json(cellIndex, digit));
+      executeValueEdit(cellIndex, digit);
     });
     candidate.addEventListener("contextmenu", (event) => {
       const digit = Number(candidate.dataset.digit || 0);
@@ -3064,7 +3076,7 @@ function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
         return;
       }
       selectedDigit = digit;
-      refreshAfterEdit(engine.toggle_candidate_json(cellIndex, digit));
+      executeSimpleEngineEdit(() => engine.toggle_candidate_json(cellIndex, digit));
     });
     installManualMarkProtectedTouch(
       candidate,
@@ -3643,6 +3655,7 @@ function resetEngineHintCacheToCurrentSnapshot() {
   if (!snapshotText || !engine) return false;
   const result = parseJson(engine.import_puzzle_json(snapshotText));
   if (!result?.ok) return false;
+  setInitialCandidateBaselineFromImport(result);
   currentSnapshot = result.state || currentSnapshot;
   currentHint = null;
   return true;
@@ -4036,21 +4049,28 @@ async function applyManualMarkedEliminations() {
     setManualMarkStatus(ui("markNoElims"));
     return;
   }
+  const beforeLibrary = captureAppEditHistory();
   let applied = 0;
-  let lastResponse = "";
+  let lastState = null;
   const keys = [...manualMarks.eliminations];
   for (const key of keys) {
     const { cell, digit } = manualMarkParseKey(key);
     const snapshotCell = currentSnapshot?.cells?.[cell];
     if (snapshotCell?.value > 0) continue;
     if (!Array.isArray(snapshotCell?.candidates) || !snapshotCell.candidates.includes(digit)) continue;
-    lastResponse = engine.toggle_candidate_json(cell, digit);
+    const response = parseJson(engine.toggle_candidate_json(cell, digit));
+    if (!response?.ok) {
+      restoreAppHistorySnapshot(beforeLibrary);
+      setManualMarkStatus(response?.error || ui("operationFailed"));
+      return;
+    }
+    lastState = response.state || lastState;
     applied += 1;
     manualMarks.eliminations.delete(key);
   }
-  if (applied > 0 && lastResponse) {
+  if (applied > 0) {
     markManualMarksDirty();
-    refreshAfterEdit(lastResponse);
+    applySnapshotRefreshState(lastState || getCurrentSnapshot());
   } else {
     renderBoardSnapshot(currentSnapshot, currentHint);
   }
@@ -4060,6 +4080,10 @@ async function applyManualMarkedEliminations() {
   if (shouldCleanEasy) {
     const cleanResult = cleanManualEasySteps();
     cleaned = cleanResult.count || 0;
+  }
+  if (applied > 0 || cleaned > 0) {
+    currentSnapshot = getCurrentSnapshot() || currentSnapshot;
+    commitAppEditHistory(beforeLibrary);
   }
 
   if (applied > 0 && cleaned > 0) {
@@ -4703,6 +4727,81 @@ function legalCandidateMaskForBoard(boardText, index) {
   return mask;
 }
 
+
+function candidateArrayFromMask(mask) {
+  const values = [];
+  for (let digit = 1; digit <= 9; digit += 1) {
+    if ((mask & (1 << digit)) !== 0) values.push(digit);
+  }
+  return values;
+}
+
+function parseInitialCandidateSukaku(text) {
+  const compact = [...String(text || "")].filter((ch) => /[0-9.]/.test(ch)).join("");
+  if (compact.length !== 729) return null;
+  const masks = new Array(81).fill(0);
+  for (let cell = 0; cell < 81; cell += 1) {
+    let mask = 0;
+    for (let offset = 0; offset < 9; offset += 1) {
+      const digit = Number(compact[cell * 9 + offset] || 0);
+      if (digit >= 1 && digit <= 9) mask |= 1 << digit;
+    }
+    masks[cell] = mask;
+  }
+  return { text: compact, masks };
+}
+
+function candidateSukakuFromMasks(masks) {
+  if (!Array.isArray(masks) || masks.length !== 81) return "";
+  let output = "";
+  for (let cell = 0; cell < 81; cell += 1) {
+    const mask = Number(masks[cell] || 0);
+    for (let digit = 1; digit <= 9; digit += 1) {
+      output += (mask & (1 << digit)) !== 0 ? String(digit) : "0";
+    }
+  }
+  return output;
+}
+
+function deriveInitialCandidateMasksFromGivens(givensText) {
+  const normalized = normalizePuzzle(givensText || "");
+  const masks = new Array(81).fill(0);
+  for (let index = 0; index < 81; index += 1) {
+    masks[index] = legalCandidateMaskForBoard(normalized, index);
+  }
+  return masks;
+}
+
+function setInitialCandidateBaselineFromImport(result) {
+  const supplied = parseInitialCandidateSukaku(result?.initialCandidates || "");
+  if (supplied) {
+    initialCandidateMasks = supplied.masks;
+    initialCandidateSukaku = supplied.text;
+    return;
+  }
+  const givensText = result?.state?.givens || result?.givens || result?.puzzle || snapshotGivensString();
+  initialCandidateMasks = deriveInitialCandidateMasksFromGivens(givensText);
+  initialCandidateSukaku = "";
+}
+
+function ensureInitialCandidateBaseline() {
+  if (Array.isArray(initialCandidateMasks) && initialCandidateMasks.some((mask) => Number(mask) !== 0)) return;
+  initialCandidateMasks = deriveInitialCandidateMasksFromGivens(snapshotGivensString());
+  initialCandidateSukaku = "";
+}
+
+function clearAppEditHistory() {
+  appUndoStack.length = 0;
+  appRedoStack.length = 0;
+}
+
+function pushAppHistoryEntry(stack, libraryText) {
+  if (!libraryText) return;
+  if (stack.at(-1) === libraryText) return;
+  stack.push(libraryText);
+  if (stack.length > APP_EDIT_HISTORY_LIMIT) stack.splice(0, stack.length - APP_EDIT_HISTORY_LIMIT);
+}
+
 function cloneSnapshot(snapshot) {
   if (!snapshot || !Array.isArray(snapshot.cells)) return null;
   const revision = Number(snapshot.revision ?? snapshot.version ?? 0) + 1;
@@ -4806,6 +4905,7 @@ function snapshotToLibraryString(snapshot = currentSnapshot) {
     return "";
   }
 
+  ensureInitialCandidateBaseline();
   const original = snapshotGivensString(snapshot);
   let boardPart = "";
   for (let index = 0; index < 81; index += 1) {
@@ -4822,7 +4922,12 @@ function snapshotToLibraryString(snapshot = currentSnapshot) {
     if (/[1-9]/.test(boardText[index] || ".")) continue;
     const legalMask = legalCandidateMaskForBoard(boardText, index);
     const candidateMask = candidateMaskFromArray(snapshot.cells[index]?.candidates || []);
-    const removedMask = legalMask & ~candidateMask;
+    // Standard Library records rebuild the baseline from givens. Sukaku
+    // Library records must instead compare against their original 729 masks.
+    const availableMask = initialCandidateSukaku
+      ? (Number(initialCandidateMasks[index] || 0) & legalMask)
+      : legalMask;
+    const removedMask = availableMask & ~candidateMask;
     const row = Math.floor(index / 9) + 1;
     const col = (index % 9) + 1;
     for (let digit = 1; digit <= 9; digit += 1) {
@@ -4831,9 +4936,12 @@ function snapshotToLibraryString(snapshot = currentSnapshot) {
       }
     }
   }
+
+  if (initialCandidateSukaku) {
+    return `:0000:s:${initialCandidateSukaku}:${boardPart}:${eliminations.trim()}::`;
+  }
   return `:0000:x:${boardPart}:${eliminations.trim()}::`;
 }
-
 
 function snapshotToOriginalPuzzleString(snapshot = currentSnapshot) {
   const givensText = snapshotGivensString(snapshot);
@@ -5554,6 +5662,7 @@ function syncEngineToCurrentSnapshot() {
     return false;
   }
   givens.value = text;
+  setInitialCandidateBaselineFromImport(result);
   originalBoard = result.state?.givens || result.givens || result.puzzle || snapshotGivensString();
   currentSnapshot = result.state || currentSnapshot;
   previewSnapshotActive = false;
@@ -9984,7 +10093,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
             renderBoardSnapshot(currentSnapshot, currentHint);
             setStatus(ui("fixedCell"));
           } else {
-            refreshAfterEdit(engine.set_value_json(index, 0));
+            executeValueEdit(index, 0);
           }
         } else {
           renderBoardSnapshot(currentSnapshot, currentHint);
@@ -10120,7 +10229,73 @@ function resetBoardContextForSnapshot(nextSnapshot = null, options = {}) {
   scheduleAppSessionSave();
 }
 
-function refreshAfterEdit(responseText) {
+function captureAppEditHistory() {
+  return snapshotToLibraryString(currentSnapshot);
+}
+
+function commitAppEditHistory(beforeLibrary) {
+  if (!beforeLibrary) return;
+  const afterLibrary = snapshotToLibraryString(currentSnapshot);
+  if (!afterLibrary || afterLibrary === beforeLibrary) return;
+  pushAppHistoryEntry(appUndoStack, beforeLibrary);
+  appRedoStack.length = 0;
+}
+
+function adoptImportedRuntimeState(result, options = {}) {
+  if (!result?.ok || !result.state) return false;
+  setInitialCandidateBaselineFromImport(result);
+  originalBoard = result.state?.givens || result.givens || result.puzzle || originalBoard;
+  currentSnapshot = result.state;
+  clearStepViewState({ resetSelectedIndex: options.resetSelectedIndex === true });
+  renderBoardSnapshot(currentSnapshot, null);
+  updateInputControls();
+  scheduleAppSessionSave();
+  return true;
+}
+
+function restoreAppHistorySnapshot(libraryText) {
+  if (!engine || !libraryText) return false;
+  const result = parseJson(engine.import_puzzle_json(libraryText));
+  if (!result?.ok) {
+    setStatus(result?.error || ui("operationFailed"));
+    return false;
+  }
+  return adoptImportedRuntimeState(result, { resetSelectedIndex: false });
+}
+
+function performAppUndo() {
+  if (!engine || appUndoStack.length === 0) {
+    setStatus(ui("undoNone"));
+    return false;
+  }
+  const currentLibrary = snapshotToLibraryString(currentSnapshot);
+  const target = appUndoStack.pop();
+  if (!restoreAppHistorySnapshot(target)) {
+    appUndoStack.push(target);
+    return false;
+  }
+  pushAppHistoryEntry(appRedoStack, currentLibrary);
+  setStatus(ui("undoDone"));
+  return true;
+}
+
+function performAppRedo() {
+  if (!engine || appRedoStack.length === 0) {
+    setStatus(ui("redoNone"));
+    return false;
+  }
+  const currentLibrary = snapshotToLibraryString(currentSnapshot);
+  const target = appRedoStack.pop();
+  if (!restoreAppHistorySnapshot(target)) {
+    appRedoStack.push(target);
+    return false;
+  }
+  pushAppHistoryEntry(appUndoStack, currentLibrary);
+  setStatus(ui("redoDone"));
+  return true;
+}
+
+function refreshAfterEdit(responseText, options = {}) {
   const result = parseJson(responseText);
   if (!result?.ok) {
     setStatus(result?.error || ui("operationFailed"));
@@ -10128,10 +10303,120 @@ function refreshAfterEdit(responseText) {
     return false;
   }
   applySnapshotRefreshState(result.state);
+  if (options.beforeLibrary) commitAppEditHistory(options.beforeLibrary);
+  return true;
+}
+
+function executeSimpleEngineEdit(operation) {
+  if (!engine || typeof operation !== "function") return false;
+  const beforeLibrary = captureAppEditHistory();
+  return refreshAfterEdit(operation(), { beforeLibrary });
+}
+
+function desiredCandidateMasksAfterValueEdit(beforeSnapshot, afterSnapshot, index, oldValue, nextValue) {
+  ensureInitialCandidateBaseline();
+  const boardText = snapshotBoardString(afterSnapshot);
+  const peers = new Set(peerIndexes(index));
+  const desired = new Array(81).fill(0);
+  for (let cell = 0; cell < 81; cell += 1) {
+    const afterCell = afterSnapshot?.cells?.[cell];
+    if (Number(afterCell?.value || 0) > 0) continue;
+    const legalMask = legalCandidateMaskForBoard(boardText, cell);
+    const baselineMask = Number(initialCandidateMasks[cell] || 0) & legalMask;
+    let mask = 0;
+    if (cell === index && nextValue === 0) {
+      // 被清空的格恢复到初始候选基线，再由当前已填数字过滤。
+      mask = baselineMask;
+    } else {
+      mask = candidateMaskFromArray(beforeSnapshot?.cells?.[cell]?.candidates || []);
+      if (peers.has(cell) && oldValue >= 1 && oldValue <= 9) {
+        const oldBit = 1 << oldValue;
+        if ((baselineMask & oldBit) !== 0) mask |= oldBit;
+      }
+      if (peers.has(cell) && nextValue >= 1 && nextValue <= 9) {
+        mask &= ~(1 << nextValue);
+      }
+      mask &= baselineMask;
+    }
+    desired[cell] = mask;
+  }
+  return desired;
+}
+
+function repairEngineCandidatesToMasks(desiredMasks) {
+  let mutations = 0;
+  let snapshot = getCurrentSnapshot();
+  if (!snapshot) return { ok: false, error: "candidate-state-unavailable", mutations };
+  for (let cell = 0; cell < 81; cell += 1) {
+    if (Number(snapshot.cells?.[cell]?.value || 0) > 0) continue;
+    let actualMask = candidateMaskFromArray(snapshot.cells?.[cell]?.candidates || []);
+    const desiredMask = Number(desiredMasks[cell] || 0);
+    let diff = actualMask ^ desiredMask;
+    for (let digit = 1; digit <= 9; digit += 1) {
+      const bit = 1 << digit;
+      if ((diff & bit) === 0) continue;
+      const response = parseJson(engine.toggle_candidate_json(cell, digit));
+      if (!response?.ok) {
+        return { ok: false, error: response?.error || "candidate-repair-failed", mutations };
+      }
+      mutations += 1;
+      actualMask ^= bit;
+    }
+  }
+  snapshot = getCurrentSnapshot();
+  if (!snapshot) return { ok: false, error: "candidate-state-unavailable", mutations };
+  for (let cell = 0; cell < 81; cell += 1) {
+    if (Number(snapshot.cells?.[cell]?.value || 0) > 0) continue;
+    const actualMask = candidateMaskFromArray(snapshot.cells?.[cell]?.candidates || []);
+    if (actualMask !== Number(desiredMasks[cell] || 0)) {
+      return { ok: false, error: `candidate-repair-mismatch:${cell}`, mutations };
+    }
+  }
+  return { ok: true, state: snapshot, mutations };
+}
+
+function executeValueEdit(index, nextValue) {
+  if (!engine || !currentSnapshot) return false;
+  const oldValue = Number(currentSnapshot.cells?.[index]?.value || 0);
+  const normalizedNext = Number(nextValue || 0);
+  if (oldValue === normalizedNext) return false;
+  const beforeSnapshot = cloneSnapshot(currentSnapshot);
+  const beforeLibrary = captureAppEditHistory();
+  const response = parseJson(engine.set_value_json(index, normalizedNext));
+  if (!response?.ok) {
+    setStatus(response?.error || ui("operationFailed"));
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    return false;
+  }
+
+  let nextSnapshot = response.state || getCurrentSnapshot();
+  // 旧 WASM 清除出数时会重算全盘候选；新 native 核心已经是精确恢复。
+  // 无论运行的是哪一版，这里都以同一基线规则校准最终状态。
+  if (oldValue > 0 && oldValue !== normalizedNext && beforeSnapshot && nextSnapshot) {
+    const desiredMasks = desiredCandidateMasksAfterValueEdit(
+      beforeSnapshot,
+      nextSnapshot,
+      index,
+      oldValue,
+      normalizedNext
+    );
+    const repaired = repairEngineCandidatesToMasks(desiredMasks);
+    if (!repaired.ok) {
+      restoreAppHistorySnapshot(beforeLibrary);
+      setStatus(repaired.error || ui("operationFailed"));
+      return false;
+    }
+    nextSnapshot = repaired.state;
+  }
+
+  applySnapshotRefreshState(nextSnapshot);
+  commitAppEditHistory(beforeLibrary);
   return true;
 }
 
 function refreshAfterHistory(responseText, changedText, emptyText) {
+  // 保留旧 API 兼容入口。正式界面使用应用级逻辑快照撤销，避免一次
+  // 候选精确修复在旧 WASM 内部产生多个可见撤销步骤。
   const result = parseJson(responseText);
   if (!result?.ok) {
     setStatus(result?.error || ui("operationFailed"));
@@ -10141,7 +10426,6 @@ function refreshAfterHistory(responseText, changedText, emptyText) {
     setStatus(result.description || emptyText);
     return false;
   }
-
   applySnapshotRefreshState(result.state);
   setStatus(changedText);
   return true;
@@ -10158,8 +10442,7 @@ function handleValueTap(index) {
   const cell = currentSnapshot?.cells?.[index];
   const currentValue = cell?.value || 0;
   const nextValue = currentValue === selectedDigit ? 0 : selectedDigit;
-  const result = engine.set_value_json(index, nextValue);
-  refreshAfterEdit(result);
+  executeValueEdit(index, nextValue);
 }
 
 function handleCandidateTap(index) {
@@ -10177,8 +10460,7 @@ function handleCandidateTap(index) {
     return;
   }
 
-  const result = engine.toggle_candidate_json(index, selectedDigit);
-  refreshAfterEdit(result);
+  executeSimpleEngineEdit(() => engine.toggle_candidate_json(index, selectedDigit));
 }
 
 function handleCellTap(index) {
@@ -10202,6 +10484,159 @@ function handleCellTap(index) {
   } else {
     handleValueTap(index);
   }
+}
+
+function desktopBoardKeyboardEditableTarget(target) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest(
+    'input, textarea, select, [contenteditable="true"], [role="textbox"], [role="combobox"], [role="listbox"]'
+  ));
+}
+
+function desktopBoardKeyboardBlocked(event) {
+  if (event.defaultPrevented || !engine || !currentSnapshot) return true;
+  if (desktopBoardKeyboardEditableTarget(event.target)) return true;
+  if (tabBtnControls?.getAttribute("aria-selected") !== "true") return true;
+  if (mobileSolveActive || solverBusyTask || previewSnapshotActive) return true;
+  if (manualMarksActive() || tlgSolverEditingActive() || ocrCorrectionIsActive()) return true;
+  if (document.querySelector('dialog[open]')) return true;
+  return false;
+}
+
+function desktopBoardKeyboardDigit(event) {
+  const codeMatch = String(event.code || "").match(/^(?:Digit|Numpad)([1-9])$/);
+  if (codeMatch) return Number(codeMatch[1]);
+  return /^[1-9]$/.test(String(event.key || "")) ? Number(event.key) : 0;
+}
+
+function firstDesktopKeyboardCell() {
+  for (let index = 0; index < 81; index += 1) {
+    if (!isFixedCell(index)) return index;
+  }
+  return 0;
+}
+
+function selectDesktopKeyboardCell(index, options = {}) {
+  const next = Math.max(0, Math.min(80, Number(index) || 0));
+  selectedIndex = next;
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  const cell = board?.querySelector(`.sudoku-cell[data-cell-index="${next}"]`);
+  cell?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  if (options.announce !== false) {
+    setStatus(uif("keyboardCellSelected", { row: Math.floor(next / 9) + 1, col: (next % 9) + 1 }));
+  }
+  return next;
+}
+
+function moveDesktopKeyboardCell(key) {
+  if (selectedIndex < 0 || selectedIndex >= 81) {
+    selectDesktopKeyboardCell(firstDesktopKeyboardCell());
+    return true;
+  }
+
+  const row = Math.floor(selectedIndex / 9);
+  const col = selectedIndex % 9;
+  let nextRow = row;
+  let nextCol = col;
+  if (key === "ArrowUp") nextRow = Math.max(0, row - 1);
+  else if (key === "ArrowDown") nextRow = Math.min(8, row + 1);
+  else if (key === "ArrowLeft") nextCol = Math.max(0, col - 1);
+  else if (key === "ArrowRight") nextCol = Math.min(8, col + 1);
+  else return false;
+
+  selectDesktopKeyboardCell(nextRow * 9 + nextCol);
+  return true;
+}
+
+function ensureDesktopKeyboardSelection() {
+  if (selectedIndex >= 0 && selectedIndex < 81) return true;
+  setStatus(ui("keyboardSelectCellFirst"));
+  return false;
+}
+
+function applyDesktopKeyboardValue(digit) {
+  if (!ensureDesktopKeyboardSelection()) return false;
+  if (isFixedCell(selectedIndex)) {
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    setStatus(ui("fixedCell"));
+    return false;
+  }
+  return executeValueEdit(selectedIndex, digit);
+}
+
+function toggleDesktopKeyboardCandidate(digit) {
+  if (!ensureDesktopKeyboardSelection()) return false;
+  if (isFixedCell(selectedIndex)) {
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    setStatus(ui("fixedCandidate"));
+    return false;
+  }
+  const cell = currentSnapshot.cells?.[selectedIndex];
+  if (cell?.value > 0) {
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    setStatus(ui("solvedCandidate"));
+    return false;
+  }
+  return executeSimpleEngineEdit(() => engine.toggle_candidate_json(selectedIndex, digit));
+}
+
+function installDesktopBoardKeyboardInput() {
+  document.addEventListener("keydown", (event) => {
+    if (desktopBoardKeyboardBlocked(event)) return;
+
+    const commandModifier = event.ctrlKey || event.metaKey;
+    const digit = desktopBoardKeyboardDigit(event);
+
+    if (commandModifier && !event.altKey && (event.key === "z" || event.key === "Z")) {
+      event.preventDefault();
+      if (event.shiftKey) {
+        performAppRedo();
+      } else {
+        performAppUndo();
+      }
+      return;
+    }
+    if (commandModifier && !event.altKey && (event.key === "y" || event.key === "Y")) {
+      event.preventDefault();
+      performAppRedo();
+      return;
+    }
+
+    if (!commandModifier && !event.altKey && !event.shiftKey && moveDesktopKeyboardCell(event.key)) {
+      event.preventDefault();
+      return;
+    }
+
+    // FB 桌面版使用 Ctrl+数字切换候选。这里严格保持该语义：快捷键
+    // 直接切换当前格候选，不读取屏幕数字盘的“出数/候选”状态。
+    // 某些浏览器会保留主键盘 Ctrl+1..9；数字小键盘、PWA/Standalone
+    // 通常不会发生同样冲突，因此不额外发明另一套按键语义。
+    const candidateShortcut = digit > 0 && !event.altKey && commandModifier && !event.shiftKey;
+    if (candidateShortcut) {
+      event.preventDefault();
+      toggleDesktopKeyboardCandidate(digit);
+      return;
+    }
+
+    if (digit > 0 && !commandModifier && !event.altKey && !event.shiftKey) {
+      event.preventDefault();
+      applyDesktopKeyboardValue(digit);
+      return;
+    }
+
+    if (!commandModifier && !event.altKey && !event.shiftKey &&
+        (event.key === "0" || event.code === "Numpad0" || event.key === "Delete" || event.key === "Backspace")) {
+      event.preventDefault();
+      if (!ensureDesktopKeyboardSelection()) return;
+      if (isFixedCell(selectedIndex)) {
+        renderBoardSnapshot(currentSnapshot, currentHint);
+        setStatus(ui("fixedCell"));
+        return;
+      }
+      const cell = currentSnapshot.cells?.[selectedIndex];
+      if (cell?.value > 0) executeValueEdit(selectedIndex, 0);
+    }
+  });
 }
 
 function buildNumpad() {
@@ -15800,6 +16235,8 @@ async function importPuzzleFromCurrentInput(options = {}) {
   }
   const result = parseJson(engine.import_puzzle_json(importText));
   if (result?.ok) {
+    setInitialCandidateBaselineFromImport(result);
+    clearAppEditHistory();
     originalBoard = result.state?.givens || result.givens || result.puzzle;
     givens.value = result.givens === result.puzzle && !result.hasCandidates ? result.puzzle : rawInput;
     resetBoardContextForSnapshot(result.state, { resetSelectedIndex: true });
@@ -16885,6 +17322,8 @@ btnGenerateTraining?.addEventListener("click", async () => {
         return;
       }
 
+      setInitialCandidateBaselineFromImport(imported);
+      clearAppEditHistory();
       originalBoard = result.puzzle;
       givens.value = otpLibrary;
       resetBoardContextForSnapshot(imported.state || otpSnapshot, { resetSelectedIndex: true });
@@ -16912,6 +17351,8 @@ btnGenerateTraining?.addEventListener("click", async () => {
       return;
     }
 
+    setInitialCandidateBaselineFromImport(imported);
+    clearAppEditHistory();
     givens.value = trainingLibrary;
     resetBoardContextForSnapshot(imported.state || trainingSnapshot, { resetSelectedIndex: true });
     debugLog({ ...result, trainingLibrary, trainingStepIndex: matchedIndex + 1 });
@@ -17007,6 +17448,7 @@ btnStep.addEventListener("click", () => {
 btnApply.addEventListener("click", () => {
   if (!engine) return;
   if (previewSnapshotActive && currentPreviewRecord) {
+    const beforeLibrary = captureAppEditHistory();
     const afterSnapshot = currentPreviewRecord.after ||
       applyStepToSnapshot(currentPreviewRecord.before || currentSnapshot, currentPreviewRecord.step || currentPreviewRecord);
     if (!afterSnapshot) {
@@ -17021,6 +17463,7 @@ btnApply.addEventListener("click", () => {
       return;
     }
     currentHint = null;
+    setInitialCandidateBaselineFromImport(result);
     currentSnapshot = result.state || afterSnapshot;
     lastSolveData = null;
     lastAllStepsData = null;
@@ -17033,12 +17476,14 @@ btnApply.addEventListener("click", () => {
         renderBoardSnapshot(currentSnapshot, null);
     debugLog(JSON.stringify(result, null, 2));
     updateInputControls();
+    commitAppEditHistory(beforeLibrary);
     setStatus(ui("appliedPreviewStep"));
     return;
   }
   currentHint = null;
+  const beforeLibrary = captureAppEditHistory();
   const text = engine.apply_hint_json();
-  if (refreshAfterEdit(text)) {
+  if (refreshAfterEdit(text, { beforeLibrary })) {
     debugLog(text);
     setStatus(ui("appliedHint"));
   } else {
@@ -17127,12 +17572,12 @@ btnAllSteps?.addEventListener("click", async () => {
 
 btnUndo?.addEventListener("click", () => {
   if (!engine) return;
-  refreshAfterHistory(engine.undo_json(), ui("undoDone"), ui("undoNone"));
+  performAppUndo();
 });
 
 btnRedo?.addEventListener("click", () => {
   if (!engine) return;
-  refreshAfterHistory(engine.redo_json(), ui("redoDone"), ui("redoNone"));
+  performAppRedo();
 });
 
 btnSolve.addEventListener("click", async () => {
@@ -17889,10 +18334,10 @@ function clearMobileSolveSelection() {
   }
   const cell = currentSnapshot.cells?.[selectedIndex];
   if (cell?.value > 0) {
-    return refreshAfterEdit(engine.set_value_json(selectedIndex, 0));
+    return executeValueEdit(selectedIndex, 0);
   }
   if (inputMode === "candidate" && cell?.candidates?.includes(selectedDigit)) {
-    return refreshAfterEdit(engine.toggle_candidate_json(selectedIndex, selectedDigit));
+    return executeSimpleEngineEdit(() => engine.toggle_candidate_json(selectedIndex, selectedDigit));
   }
   setStatus(ui("mobileNothingToClear"));
   return false;
@@ -18359,6 +18804,7 @@ document.addEventListener("visibilitychange", () => {
 
 installDynamicBoardSizing();
 installMobileSolveMode();
+installDesktopBoardKeyboardInput();
 installAppStatusControls();
 installAppBackNavigation();
 applyStaticLanguage();
