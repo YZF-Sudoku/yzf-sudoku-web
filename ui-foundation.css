@@ -1732,3 +1732,142 @@ button.primary:not(:disabled) {
 :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell.mobile-same-digit-value.selected .cell-value.suggested {
   color: var(--place) !important;
 }
+
+
+/*
+ * V512 full-chain dark-theme closure.
+ * Covers real solve-path/all-steps trees, native file controls and the remaining
+ * legacy light surfaces that only appear after a complete solve or file workflow.
+ */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  #tree > .json-treeview,
+  #allStepsTree > .json-treeview,
+  .json-treeview
+) {
+  border-color: var(--border-strong) !important;
+  background: var(--surface-soft) !important;
+  color: var(--ink) !important;
+  scrollbar-color: var(--border-strong) var(--surface-soft);
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .json-treeview ul ul::before {
+  border-left-color: #536783 !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .json-treeview li::before {
+  border-top-color: #536783 !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-row {
+  color: var(--ink) !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-row:not(.step-row):hover,
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-row:not(.step-row).selected {
+  background: var(--accent-faint) !important;
+  outline-color: #577baa !important;
+}
+
+/* Preserve the five difficulty levels, but replace retina-searing light fills. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-row.step-difficulty-1 {
+  --yzf-step-row-bg: #182438;
+  --yzf-step-row-fg: #e7eef8;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-row.step-difficulty-2 {
+  --yzf-step-row-bg: #183d2c;
+  --yzf-step-row-fg: #dbf7e7;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-row.step-difficulty-3 {
+  --yzf-step-row-bg: #4a421d;
+  --yzf-step-row-fg: #fff2b3;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-row.step-difficulty-4 {
+  --yzf-step-row-bg: #56331f;
+  --yzf-step-row-fg: #ffe0c2;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-row.step-difficulty-5 {
+  --yzf-step-row-bg: #57272f;
+  --yzf-step-row-fg: #ffdce0;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-row.step-row {
+  background: var(--yzf-step-row-bg, #182438) !important;
+  color: var(--yzf-step-row-fg, var(--ink)) !important;
+  outline-color: transparent;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-row.step-row :is(
+  .tree-key, .tree-colon, .tree-value, .tree-type,
+  .tree-value.string, .tree-value.number, .tree-value.boolean,
+  .tree-value.null, .tree-value.collection
+) {
+  color: inherit !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-row.step-row:hover {
+  filter: brightness(1.13) !important;
+  outline: 1px solid #7c91ad !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-row.step-row.selected {
+  filter: none !important;
+  outline: 3px solid #79b8ff !important;
+  box-shadow: inset 6px 0 0 #79b8ff, 0 0 0 2px #0d1726 !important;
+  color: #ffffff !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-toggle {
+  border-color: #607694 !important;
+  background: #111c2d !important;
+  color: #dce7f5 !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-toggle:not(.empty):hover,
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-toggle:not(.empty):focus-visible {
+  border-color: #79b8ff !important;
+  background: #203a5d !important;
+  color: #ffffff !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-toggle.empty {
+  border-color: transparent !important;
+  background: transparent !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-key { color: #9bc7ff !important; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-colon,
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-type { color: var(--muted) !important; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-value { color: #e7eef8 !important; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-value.string { color: #ffc58f !important; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-value.number { color: #8ed8ff !important; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-value.boolean { color: #d9b4ff !important; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-value.null { color: #ffb0b8 !important; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tree-value.collection { color: #b9c8dc !important; }
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .branch-panel {
+  border-color: #426a9d !important;
+  background: #172a43 !important;
+  color: #e6f0ff !important;
+  box-shadow: none !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .branch-panel-delta.better { color: #74e2b5 !important; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .branch-panel-delta.worse { color: #ffc078 !important; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(.branch-panel-delta.neutral, .branch-panel-change) { color: #bdcbe0 !important; }
+
+/* Native file controls are used by batch solving; hidden OCR/TLG inputs inherit safely. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) input[type="file"]:not(.ocr-native-file-input) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  color-scheme: dark;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) input[type="file"]:not(.ocr-native-file-input)::file-selector-button {
+  height: 100%;
+  margin: -4px 8px -4px -7px;
+  padding: 4px 10px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: #203653;
+  color: #edf3fb;
+  cursor: pointer;
+  font: inherit;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) input[type="file"]:not(.ocr-native-file-input):hover::file-selector-button,
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) input[type="file"]:not(.ocr-native-file-input):focus-visible::file-selector-button {
+  background: #2b568b;
+  color: #ffffff;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .batch-grid label {
+  color: var(--ink) !important;
+}

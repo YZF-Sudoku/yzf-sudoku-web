@@ -16,6 +16,35 @@
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <link rel="icon" href="data:,"/>
 <title>YZF Sudoku 使用手册 / User Manual</title>
+
+<meta name="color-scheme" content="light dark" />
+<meta id="yzfDeepThemeColor" name="theme-color" content="#f6f7fb" />
+<script>
+(() => {
+  const key = "yzf_ui_appearance_v1";
+  const allowed = new Set(["system", "light", "dark", "contrast"]);
+  const media = window.matchMedia?.("(prefers-color-scheme: dark)");
+  const read = () => {
+    let value = "system";
+    try { value = localStorage.getItem(key) || "system"; } catch {}
+    return allowed.has(value) ? value : "system";
+  };
+  const apply = () => {
+    const appearance = read();
+    const resolved = appearance === "system" ? (media?.matches ? "dark" : "light") : appearance;
+    document.documentElement.dataset.yzfTheme = appearance;
+    document.documentElement.dataset.yzfResolvedTheme = resolved;
+    document.documentElement.style.colorScheme = resolved === "dark" || resolved === "contrast" ? "dark" : "light";
+    const meta = document.querySelector("#yzfDeepThemeColor");
+    if (meta) meta.content = resolved === "dark" ? "#0d1726" : resolved === "contrast" ? "#000000" : "#f6f7fb";
+  };
+  apply();
+  media?.addEventListener?.("change", apply);
+  window.addEventListener("storage", event => { if (!event.key || event.key === key) apply(); });
+  window.addEventListener("pageshow", apply);
+})();
+</script>
+
 <style>
     :root {
       --bg: #f6f7fb;
@@ -503,6 +532,130 @@
       .visual-demo-stage { width: 78px; min-width: 78px; }
       .pattern-demo-grid { grid-template-columns: 1fr; }
     }
+
+
+    /* Full-chain appearance sync with the main application. */
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) {
+      --bg: #0d1726;
+      --paper: #121d2f;
+      --text: #edf3fb;
+      --muted: #a8b6ca;
+      --line: #334762;
+      --brand: #79b8ff;
+      --brand-soft: #1b3150;
+      --warn: #ffc078;
+      --warn-soft: #3a291b;
+      --ok: #6ee7b7;
+      --ok-soft: #14372d;
+      --code: #e7eef8;
+      --code-bg: #0b1320;
+      color-scheme: dark;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) body {
+      background-color: var(--bg);
+      background-image: radial-gradient(circle at top, #162541 0, var(--bg) 38rem);
+      color: var(--text);
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) header {
+      background-color: #17376b;
+      background-image: linear-gradient(135deg, #17376b, #412b70);
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(nav, section) {
+      background: var(--paper);
+      border-color: var(--line);
+      box-shadow: 0 12px 32px rgba(0,0,0,.28);
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(.zh, .en) {
+      background: #172337;
+      border-color: var(--line);
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .zh::before {
+      color: #a9d0ff;
+      background: #203a5d;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .en::before {
+      color: #9aefc9;
+      background: #174337;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .note {
+      border-color: #426a9d;
+      color: #e5efff;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .warn {
+      border-color: #8d6234;
+      color: #ffd5a3;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .ok {
+      border-color: #2f745b;
+      color: #baf4d8;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) th {
+      background: #18263b;
+      color: #f2f6fc;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .kbd {
+      border-color: #50637e;
+      background: #172337;
+      color: #f2f6fc;
+      box-shadow: inset 0 -1px 0 #50637e;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .manual-language-toolbar button[aria-pressed="true"] {
+      border-color: #8fc2ff;
+      background: #d9eaff;
+      color: #123b70;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+      .tlg-visual-card, .visual-demo-card, .pattern-demo-card
+    ) {
+      border-color: var(--line);
+      background: #172337;
+      color: var(--text);
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+      .visual-demo-copy strong, .tlg-demo-candidate, .demo-candidate
+    ) {
+      color: #edf3fb;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(.tlg-demo-cell, .demo-sudoku-cell, .pattern-cell) {
+      border-color: #667b98;
+      background: #101a2b;
+      color: #b7c7dc;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-sudoku-cell.active {
+      background: #173658;
+      box-shadow: inset 0 0 0 3px #79b8ff;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-large-digit.given { color: #f3f7fd; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-large-digit.solved { color: #79b8ff; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-candidate-grid { color: #b9c8db; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-candidate.candidate-fill { background: #35511f; color: #efffdc; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-candidate.vset { background: #31245a; color: #f1eafe; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-candidate.aur1 { background: #4b2b18; color: #ffe5cf; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-candidate.aur2 { background: #183b61; color: #e4f1ff; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-candidate.daur { background: #164550; color: #d9f9ff; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-candidate.gur { background: #4a241d; color: #ffe3dc; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-candidate.multi { background: #4a242d; color: #ffe1e7; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-cell-fill {
+      border-color: #667b98;
+      background: #4a4626;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .demo-chain-svg .node { fill: #172337; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tlg-diagram-demo .grid { fill: #101a2b; stroke: #667b98; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tlg-diagram-demo .ordinary-candidate { fill: #b7c7dc; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .visual-demo-section { border-top-color: #536783; }
+
+    :root[data-yzf-theme="contrast"] {
+      --bg:#000; --paper:#000; --text:#fff; --muted:#fff; --line:#fff;
+      --brand:#00ffff; --brand-soft:#000; --warn:#ffff00; --warn-soft:#000;
+      --ok:#00ff80; --ok-soft:#000; --code:#fff; --code-bg:#000;
+      color-scheme: dark;
+    }
+    :root[data-yzf-theme="contrast"] body,
+    :root[data-yzf-theme="contrast"] :is(nav, section, .zh, .en, .tlg-visual-card, .visual-demo-card, .pattern-demo-card) {
+      background:#000 !important; color:#fff !important; box-shadow:none !important;
+    }
+    :root[data-yzf-theme="contrast"] * { border-color:#fff !important; }
+
 </style>
 </head>
 <body>

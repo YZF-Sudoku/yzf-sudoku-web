@@ -15,6 +15,35 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>YZF Sudoku 技巧说明 / Techniques</title>
+
+<meta name="color-scheme" content="light dark" />
+<meta id="yzfDeepThemeColor" name="theme-color" content="#f6f7fb" />
+<script>
+(() => {
+  const key = "yzf_ui_appearance_v1";
+  const allowed = new Set(["system", "light", "dark", "contrast"]);
+  const media = window.matchMedia?.("(prefers-color-scheme: dark)");
+  const read = () => {
+    let value = "system";
+    try { value = localStorage.getItem(key) || "system"; } catch {}
+    return allowed.has(value) ? value : "system";
+  };
+  const apply = () => {
+    const appearance = read();
+    const resolved = appearance === "system" ? (media?.matches ? "dark" : "light") : appearance;
+    document.documentElement.dataset.yzfTheme = appearance;
+    document.documentElement.dataset.yzfResolvedTheme = resolved;
+    document.documentElement.style.colorScheme = resolved === "dark" || resolved === "contrast" ? "dark" : "light";
+    const meta = document.querySelector("#yzfDeepThemeColor");
+    if (meta) meta.content = resolved === "dark" ? "#0d1726" : resolved === "contrast" ? "#000000" : "#f6f7fb";
+  };
+  apply();
+  media?.addEventListener?.("change", apply);
+  window.addEventListener("storage", event => { if (!event.key || event.key === key) apply(); });
+  window.addEventListener("pageshow", apply);
+})();
+</script>
+
 <style>
     :root { --bg:#f6f7fb; --card:#fff; --ink:#1f2937; --muted:#6b7280; --line:#d9dee8; --accent:#2554a4; }
     * { box-sizing:border-box; }
@@ -92,6 +121,101 @@
     body[data-tech-lang="bilingual"] .lang-en:not(.tech-card-copy) { border-left:3px solid #bbf7d0; padding-left:10px; }
     body[data-tech-lang="bilingual"] .lang-zh:not(.tech-card-copy) { border-left:3px solid #bfdbfe; padding-left:10px; }
     @media (max-width:760px) { .tech-language-toolbar { gap:6px; } .tech-language-toolbar button { padding:5px 10px; } }
+
+
+    /* Full-chain appearance sync with the main application. */
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) {
+      --bg:#0d1726;
+      --card:#121d2f;
+      --ink:#edf3fb;
+      --muted:#a8b6ca;
+      --line:#334762;
+      --accent:#79b8ff;
+      color-scheme:dark;
+    }
+    @media (min-width:1020px) {
+      :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) body {
+        background:linear-gradient(90deg,#0d1726 0,#0d1726 50%,#101b2b 50%,#101b2b 100%);
+      }
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) body {
+      background-color:var(--bg);
+      color:var(--ink);
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) header {
+      background-color:#101a2b;
+      background-image:linear-gradient(135deg,#101a2b,#1a2b48);
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(nav,.note,.category,.appendix,.toolbar) {
+      border-color:var(--line);
+      background:var(--card);
+      color:var(--ink);
+      box-shadow:0 10px 28px rgba(0,0,0,.24);
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(.note strong,.cat-intro,dt,.toolbar label,.source-note,.method-boxes p) {
+      color:var(--ink);
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tech-card {
+      border-color:#3b4e69;
+      background:#172337;
+      color:var(--ink);
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tech-card dt:nth-of-type(3) { color:#78e0d1; }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) code {
+      background:#203653;
+      color:#eaf2ff;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .placeholder {
+      border-color:#8d6234;
+      background:#3a291b;
+      color:#ffd5a3;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .toolbar input {
+      border-color:var(--line);
+      background:#0f1929;
+      color:var(--ink);
+      caret-color:#9bc7ff;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .badge {
+      background:#263658;
+      color:#cbd5ff;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .status-ok {
+      background:#174337;
+      color:#9aefc9;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .status-placeholder {
+      background:#3a291b;
+      color:#ffd5a3;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(.path-grid p,.method-boxes div) {
+      border-color:#3b4e69;
+      background:#172337;
+      color:var(--ink);
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .reading-method-note {
+      background:#142640;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tech-language-toolbar button[aria-pressed="true"] {
+      border-color:#8fc2ff;
+      background:#d9eaff;
+      color:#123b70;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) body[data-tech-lang="bilingual"] .tech-card-copy.lang-zh::before {
+      color:#a9d0ff; background:#203a5d;
+    }
+    :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) body[data-tech-lang="bilingual"] .tech-card-copy.lang-en::before {
+      color:#9aefc9; background:#174337;
+    }
+    :root[data-yzf-theme="contrast"] {
+      --bg:#000;--card:#000;--ink:#fff;--muted:#fff;--line:#fff;--accent:#00ffff;color-scheme:dark;
+    }
+    :root[data-yzf-theme="contrast"] body,
+    :root[data-yzf-theme="contrast"] :is(nav,.note,.category,.appendix,.toolbar,.tech-card,.path-grid p,.method-boxes div) {
+      background:#000 !important;color:#fff !important;box-shadow:none !important;
+    }
+    :root[data-yzf-theme="contrast"] * { border-color:#fff !important; }
+
 </style>
 </head>
 <body data-tech-lang="bilingual">
