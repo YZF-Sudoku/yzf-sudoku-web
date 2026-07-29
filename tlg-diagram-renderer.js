@@ -1,3 +1,13 @@
+/*
+ * 维护说明（简体中文）
+ * 职责：TLG 图形渲染器。
+ * 数据流：把不可变 TLG 渲染模型投影到菱形候选坐标和分层 SVG；不负责修改证明数据。
+ * 修改时注意：
+ * - 本文件只应在明确理解数据流后修改；注释描述的是设计意图和维护约束。
+ * - 重构时须保持既有求解结果、技巧优先级、前后端字段或测试基线不变。
+ * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
+ * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
+ */
 /**
  * Dedicated Truth/Link diagram renderer for TLG editing mode.
  *
@@ -15,6 +25,11 @@
 //   x, left to right: 1 4 7 | 2 5 8 | 3 6 9
 //   y, top to bottom: 3 2 1 | 6 5 4 | 9 8 7
 // Therefore 3 remains at the upper-right and 7 remains at the lower-left.
+/*
+ * TLG 候选坐标不是普通 3×3 pencilmark 坐标。
+ * 9 个数字必须拥有彼此不同的 x 和 y 轨道，形成菱形/斜置布局，Truth/Link 线才不会重叠。
+ * 修改顺序时同时验证 1..9 的固定位置、宫格线对齐和手机缩放后的命中区域。
+ */
 const CANDIDATE_TRACK_MIN = 16;
 const CANDIDATE_TRACK_MAX = 84;
 const CANDIDATE_TRACK_STEP = (CANDIDATE_TRACK_MAX - CANDIDATE_TRACK_MIN) / 8;
@@ -87,6 +102,11 @@ function safeId(value) {
   return String(value || "constraint").replace(/[^a-z0-9_-]+/gi, "-");
 }
 
+/*
+ * 渲染模型在进入 SVG 绘制前冻结。
+ * 渲染器只能读取模型，不能把布局计算结果写回 TLG 编辑状态；否则重绘顺序会改变证明数据。
+ * Map 内的候选对象也逐个冻结，是为了防止浅冻结留下可变数组。
+ */
 function freezeModel(model) {
   for (const [key, candidate] of model.candidates) {
     model.candidates.set(key, Object.freeze({
@@ -103,6 +123,10 @@ function freezeModel(model) {
   return Object.freeze(model);
 }
 
+/*
+ * 渲染器通过几何回调依赖 app.js，而不直接读取主界面内部变量。
+ * 这样普通候选盘布局和 TLG 菱形布局可独立演进；调用方必须提供同一逻辑坐标系下的 cell rect/center。
+ */
 export function createTlgDiagramRenderer({
   boardStage,
   board,

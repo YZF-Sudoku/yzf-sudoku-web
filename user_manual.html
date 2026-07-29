@@ -1,3 +1,13 @@
+<!--
+  维护说明（简体中文）
+  职责：项目源码模块。
+  数据流：该文件属于 YZF Sudoku 自研代码；修改前先确认其调用方、序列化协议和回归测试。
+  修改时注意：
+  - 本文件只应在明确理解数据流后修改；注释描述的是设计意图和维护约束。
+  - 重构时须保持既有求解结果、技巧优先级、前后端字段或测试基线不变。
+  - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
+  - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
+-->
 <!doctype html>
 
 <html lang="zh-CN">
@@ -501,7 +511,7 @@
 <h1>YZF Sudoku 使用手册 / User Manual</h1>
 <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
 <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-<div class="meta">Version: Manual v3.2 · Updated: 2026-07-24</div>
+<div class="meta">Version: Manual v3.9 · Updated: 2026-07-29</div>
 </div>
 <div aria-label="Manual language view / 手册语言视图" class="manual-language-toolbar" role="group">
 <button aria-pressed="true" data-manual-lang-button="bilingual" type="button">双语 / Bilingual</button>
@@ -550,6 +560,7 @@
 <li>手工上色、画圈、删数、画链、区块标记、盘面截图与手机分享。</li>
 <li>批量出题、批量解题，以及 TLG Truth-Link 集合逻辑编辑器。</li>
 <li>专门的手机做题模式，支持竖屏、横屏和触摸标记。</li>
+<li>帮助与现场中心，统一管理自动保存、OCR 草稿、近期题目、任务状态、操作引导、语言、界面外观和诊断信息。</li>
 </ul>
 </div>
 <div class="en">
@@ -564,6 +575,7 @@
 <li>Manual coloring, circles, eliminations, chains, block marks, board capture, and mobile sharing.</li>
 <li>Batch generation, batch solving, and the TLG Truth-Link set-logic editor.</li>
 <li>A dedicated portrait/landscape mobile solve mode with touch-friendly marking.</li>
+<li>A Help &amp; Workspaces center for autosave, OCR drafts, recent puzzles, task status, operation guides, language, appearance, and diagnostics.</li>
 </ul>
 </div>
 </div>
@@ -598,11 +610,29 @@
 <h3>主界面区域</h3>
 <ul>
 <li><strong>盘面区：</strong>9×9 盘面、提示数、出数、候选数、链路和各种高亮。</li>
-<li><strong>顶部入口：</strong>语言、使用手册、解释、技巧说明；小屏或触屏设备还会显示“做题”。</li>
+<li><strong>顶部入口：</strong>应用状态、解释、做题和“帮助与现场”。桌面可保留语言下拉框；窄屏把语言、手册、技巧说明等低频入口收进帮助中心。</li>
 <li><strong>主要操作：</strong>生成、训练生成、加载、撤销、重做、自动解题、提示一步、应用提示、所有步骤、全屏。</li>
 <li><strong>四个页签：</strong>操作、技巧、解题路径、可选步骤。</li>
 <li><strong>数字盘：</strong>供触摸、触控笔和手机做题模式使用。最近一次盘面输入来自鼠标时，普通电脑界面的数字盘自动隐藏；OCR 草稿仍可显示“提示数/出数”角色按钮。</li>
 </ul>
+<h3>帮助与现场中心</h3>
+<p>点击顶部“帮助与现场”可打开统一入口。桌面采用居中面板，手机竖屏从底部弹出，低高度横屏从右侧进入。</p>
+<ul>
+<li><strong>工作现场：</strong>恢复自动保存的盘面与手工标记、未完成的 OCR 对照校正，以及最多 12 条近期题目快照。近期卡片包含 9×9 缩略盘、提示数、已填数、候选格和手工标记数量。</li>
+<li><strong>任务状态：</strong>持续显示生成、评分、自动解题、批量、OCR、保存和 PWA 更新，不再只能靠按钮转圈判断。</li>
+<li><strong>学习与引导：</strong>打开双语使用手册、技巧说明，或重新播放快速上手、手工标记、OCR 校正和 TLG 编辑引导。重播 OCR 引导时会先尝试读取剪贴板图片；没有图片或权限不可用时，会自动展开现有图片入口并引导选择文件。</li>
+<li><strong>设置与支持：</strong>切换中英文和自动/浅色/深色/高对比外观，复制不含题面内容的诊断信息。</li>
+<li><strong>语言同步：</strong>工作现场、任务状态、诊断、引导按钮、手册与技巧说明会随主界面语言一起切换，不维护互相独立的第二套语言状态。</li>
+</ul>
+<h3>界面外观与高对比</h3>
+<ul>
+<li><strong>自动：</strong>跟随系统浅色/深色偏好，系统切换时页面即时同步。</li>
+<li><strong>浅色：</strong>保持原来的明亮分析界面。</li>
+<li><strong>深色：</strong>盘面、候选、表单、弹窗、手工标记和 TLG 状态全部使用深色分析画布；Truth、Link、删数等逻辑颜色仍保留原语义。</li>
+<li><strong>高对比：</strong>使用黑白边界、加粗焦点框和形状差异，减少阴影与装饰；不是简单反色。</li>
+</ul>
+<p>主题不会改变盘面真值、候选坐标、技巧搜索或 TLG 投影。浏览器启用“减少动态效果”或系统强制颜色时，界面会同步降低动画并保留原生可访问颜色。</p>
+<div class="note">首次进入新界面会播放一次四步快速上手引导；完成或跳过后不会重复弹出，可随时从“帮助与现场”重播。重播 OCR 引导时，程序先尝试直接读取剪贴板图片，效果等同于在非输入框区域粘贴截图；若剪贴板不可访问、权限被拒绝或没有图片，则展开“题面输入与导出评分”，用顶层说明卡的“选择图片”按钮打开系统文件选择器。识别完成后，正式 OCR 三步引导会强制接续，即使此前已经看过。操作引导使用浏览器顶层弹窗，即使帮助中心、题库弹窗、OCR 全屏校正或其他高层界面仍在显示，主按钮和“跳过”也应保持位于最上层并可点击。OCR 校正第一步支持直接点击高亮格，点击会转交给真实校正格并自动进入下一步。外观偏好保存在本机浏览器中，并在页面首次绘制前恢复，避免深色模式启动时闪白。</div>
 <h3>电脑与手机的关键差异</h3>
 <table>
 <thead><tr><th>功能</th><th>电脑</th><th>手机/触屏</th></tr></thead>
@@ -620,11 +650,30 @@
 <h3>Main Interface</h3>
 <ul>
 <li><strong>Board:</strong> the 9×9 grid, givens, solved digits, candidates, chains, and highlights.</li>
-<li><strong>Top entries:</strong> language, User Manual, Explain, and Technique Guide. Small-screen or coarse-pointer devices also show Solve.</li>
+<li><strong>Top entries:</strong> app status, Explain, Solve, and Help &amp; Workspaces. Desktop may keep the language selector; narrow layouts move language, manuals, and other low-frequency entries into the hub.</li>
 <li><strong>Main actions:</strong> Generate, Training Generate, Load, Undo, Redo, Auto Solve, Hint, Apply Hint, All Steps, and Fullscreen.</li>
 <li><strong>Four tabs:</strong> Controls, Techniques, Solve Path, and Available Steps.</li>
 <li><strong>Number pad:</strong> used for touch, pen, and Solve mode. It is hidden in the normal desktop layout after mouse input; OCR drafts may also show a Given/Solved role button.</li>
 </ul>
+<h3>Help &amp; Workspaces</h3>
+<p>Use Help &amp; Workspaces in the top bar as the unified low-frequency entry. It is a centered dialog on desktop, a bottom sheet in portrait mobile, and a right-side sheet in low-height landscape.</p>
+<ul>
+<li><strong>Workspaces:</strong> restore the autosaved board and manual marks, an unfinished OCR review, or up to 12 recent puzzle snapshots. Recent cards include a 9×9 preview plus given, filled, candidate-cell, and manual-mark counts.</li>
+<li><strong>OCR guide interaction:</strong> on the first correction step, tapping the highlighted cell proxies the tap to the real correction cell and advances automatically. The guide card’s Next button remains available as a fallback.</li>
+<li><strong>Task Status:</strong> keeps generation, rating, auto solve, batch, OCR, saving, and PWA updates visible instead of reducing them to an unexplained spinner.</li>
+<li><strong>Learn &amp; Guides:</strong> open the bilingual Manual, Technique Guide, or replay Quick Start, Manual Marks, OCR Correction, and TLG Editing guides.</li>
+<li><strong>Settings &amp; Support:</strong> switch Chinese/English, choose Auto/Light/Dark/High Contrast appearance, and copy diagnostics that exclude puzzle contents.</li>
+<li><strong>Language synchronization:</strong> Workspaces, Task Status, Diagnostics, guide controls, the Manual, and Technique Guide follow the main interface language instead of keeping separate language state.</li>
+</ul>
+<h3>Appearance and High Contrast</h3>
+<ul>
+<li><strong>Auto:</strong> follows the operating-system light/dark preference and updates immediately when it changes.</li>
+<li><strong>Light:</strong> preserves the original bright analysis workspace.</li>
+<li><strong>Dark:</strong> uses a dark analysis canvas for the board, candidates, forms, dialogs, Manual Marks, and TLG status while preserving the semantic colors of Truths, Links, and eliminations.</li>
+<li><strong>High Contrast:</strong> emphasizes black/white boundaries, stronger focus rings, and shape differences while reducing shadows and decoration; it is not a simple color inversion.</li>
+</ul>
+<p>The theme does not alter board truth, candidate coordinates, technique search, or TLG projection. Reduced-motion and forced-colors system settings are respected.</p>
+<div class="note">The four-step Quick Start appears once on the new interface. After it is finished or skipped, it stays hidden until replayed from Help &amp; Workspaces. Operation guides use the browser top layer, so Next and Skip remain above Help, library dialogs, full-screen OCR correction, and other high-level interfaces. Appearance is stored locally and restored before first paint to avoid a bright flash when Dark mode starts.</div>
 <h3>Desktop vs Mobile</h3>
 <table>
 <thead><tr><th>Feature</th><th>Desktop</th><th>Mobile / touch</th></tr></thead>
@@ -658,8 +707,9 @@
 </ol>
 <p>电脑浏览器拒绝剪贴板权限时，可取消“剪贴板优先”后直接加载文本框。手机做题模式中的“题面输入”会返回分析界面并自动展开输入面板。</p>
 <h3>自动保存现场</h3>
-<p>程序会在本机浏览器保存当前盘面、候选状态、语言和技巧配置，下次打开时自动恢复。“清除本地保存”会删除下次恢复所用的盘面、语言和技巧配置，但不会清空当前盘面。</p>
-<div class="warn">手工标记、当前提示预览和解题路径预览不会作为主现场保存。TLG 逻辑也不属于主现场；请使用“TLG 题库”保存，并定期导出 <code>.tlgdb</code> 文件备份。</div>
+<p>程序会在本机浏览器保存当前盘面、候选状态、语言、技巧配置和完整手工标记，下次打开时自动恢复。现场格式 v2 可保存整格/候选着色、圆圈、预删数、正式删数、强弱链、构造链、微型区域、区块草稿和当前标记模式，同时兼容旧版 v1 现场。</p>
+<p>“帮助与现场”还能继续未确认导入的 OCR 对照校正草稿，并保留最多 12 条去重后的近期题目。空白启动盘不会进入近期列表。</p>
+<div class="warn">当前提示预览、解题路径预览和 TLG 逻辑不属于主现场。TLG 请使用“TLG 题库”保存，并定期导出 <code>.tlgdb</code> 文件备份；清除站点数据会同时删除现场、近期记录、OCR 草稿和 TLG 用户题库。</div>
 <h3>Coach 候选数 mask</h3>
 <p><code>userCellCandidates</code> 由 81 个十进制 mask 组成，用 <code>-</code> 分隔。数字 <code>d</code> 对应 <code>1 &lt;&lt; d</code>；例如候选 2、3、6 的 mask 为 <code>4 + 8 + 64 = 76</code>。</p>
 </div>
@@ -679,8 +729,9 @@
 </ol>
 <p>If desktop clipboard permission is denied, disable Prefer Clipboard and load the text area directly. Puzzle Input inside mobile solve mode returns to the analysis view and opens the input panel.</p>
 <h3>Automatic Session Restore</h3>
-<p>The browser locally saves the current board, candidate state, language, and technique configuration, then restores them on the next visit. Clear Saved Session removes the board, language, and technique data used for the next restore, but does not clear the current board.</p>
-<div class="warn">Manual marks, the current hint preview, and solve-path previews are not part of the main saved session. TLG logic is also separate from the main session; save it in the TLG Library and export a <code>.tlgdb</code> backup regularly.</div>
+<p>The browser locally saves the current board, candidate state, language, technique configuration, and complete Manual Marks state. Session format v2 includes cell and candidate colors, circles, pending and applied eliminations, chain lines, construction lines, Mini-Regions, blocks, and the current marking tools, while remaining compatible with legacy v1 sessions.</p>
+<p>Help &amp; Workspaces can also resume an unfinished OCR correction draft and up to 12 recent puzzle snapshots. Recent puzzles are deduplicated, and the initial empty board is never added to the list. Clear Saved Session removes the board, language, technique data, and saved manual marks used for the next restore, but does not clear the board currently on screen.</p>
+<div class="warn">The current hint preview, solve-path preview, and TLG logic are not part of the main saved session. Save TLG logic in the TLG Library and export a <code>.tlgdb</code> backup regularly. Clearing browser site data also removes local workspaces and OCR drafts.</div>
 <h3>Coach Candidate Masks</h3>
 <p><code>userCellCandidates</code> contains 81 decimal masks separated by <code>-</code>. Digit <code>d</code> corresponds to <code>1 &lt;&lt; d</code>; candidates 2, 3, and 6 therefore use <code>4 + 8 + 64 = 76</code>.</p>
 </div>
@@ -698,6 +749,7 @@
 <li><strong>从剪贴板识别：</strong>电脑读取剪贴板中的图片。</li>
 <li><strong>Ctrl+V：</strong>焦点不在输入框时，可直接粘贴截图。</li>
 </ul>
+<p><strong>重播 OCR 引导：</strong>从“帮助与现场”点击重播后，程序先尝试读取剪贴板图片。成功时直接识别并进入校正；失败时自动展开图片输入区，并在顶层说明卡中提供“选择图片”按钮。选图识别完成后，正式 OCR 引导自动接续，不需要先进入校正页。</p>
 <h3>OCR 对照校正窗口</h3>
 <ul>
 <li>左侧显示识别后的盘面图片，中间显示固定 9×9 校正盘面；点击任一侧会同步选中同一格。</li>
@@ -722,6 +774,7 @@
 <li><strong>Read Clipboard:</strong> reads an image from the desktop clipboard.</li>
 <li><strong>Ctrl+V:</strong> paste a screenshot when focus is not inside an editable field.</li>
 </ul>
+<p><strong>Replay OCR guide:</strong> replaying from Help &amp; workspaces first attempts to read a clipboard image. On success it recognizes the image and enters correction directly. Otherwise it expands the existing image-input section and provides a top-layer Choose Image action. The formal OCR guide continues automatically after recognition; users do not need to enter correction first.</p>
 <h3>OCR Review Window</h3>
 <ul>
 <li>The recognized image is shown on the left and a fixed 9×9 correction grid in the middle. Clicking either side selects the same cell.</li>
@@ -1103,7 +1156,7 @@
 <p>“截图”按屏幕当前显示生成 PNG，包含全部手工标记。电脑优先复制到图片剪贴板；手机优先系统分享；能力不可用时回退下载。</p>
 <h3>与 TLG 的关系</h3>
 <p>TLG 编辑和手工标记都需要接管候选触摸，因此不能同时操作。开启 TLG 时，普通技巧高亮、链路和手工标记只暂时隐藏；关闭 TLG 后恢复。要继续画普通标记，先关闭“启用 TLG 编辑”。</p>
-<div class="warn">手工标记不随主现场自动保存。重要结构应截图；真实候选状态则另行导出 Library、Coach 或 Sukaku。</div>
+<div class="note">手工标记会随主现场自动保存并可从“工作现场”恢复。浏览器数据可能被清理，重要结构仍建议截图长期保存；Library、Coach 和 Sukaku 只保存真实盘面/候选状态，不包含颜色、圈、链和区块。</div>
 </div>
 <div class="en">
 <p>Open Manual Marks in the Controls tab. It is a human-analysis layer for hypotheses, teaching diagrams, and planned eliminations. Marks do not change the live board except through Apply All Eliminations.</p>
@@ -1114,7 +1167,7 @@
 <li>Cell modes target the cell; candidate modes can target tiny candidates, or on mobile use a selected cell plus the large digit pad.</li>
 <li>For a chain, select start and end. For a block, collect nodes and press Finish Block.</li>
 <li>Use Provisional Eliminations while testing. Convert confirmed conclusions to Formal Eliminations, then press Apply All Eliminations.</li>
-<li>Capture important diagrams immediately; manual marks are not part of automatic session restore.</li>
+<li>Manual marks are saved with the main autosave session. Capture important diagrams for long-term archiving or sharing, because browser storage may still be cleared.</li>
 </ol>
 <h3>Mark Modes</h3>
 <table>
@@ -1206,7 +1259,7 @@
 <p>Capture creates a PNG exactly as displayed. Desktop first tries the image clipboard; mobile first tries system share; unsupported cases fall back to download.</p>
 <h3>Relationship with TLG</h3>
 <p>TLG editing and manual marks both need candidate touch ownership, so they cannot be edited simultaneously. TLG temporarily hides ordinary highlights, chains, and marks; disabling TLG restores them.</p>
-<div class="warn">Manual marks are not automatically restored with the main session. Capture important diagrams; export Library, Coach, or Sukaku separately for the real candidate state.</div>
+<div class="note">Manual marks are saved with the main autosave session and can be restored from Workspaces. Browser data may still be cleared, so capture important diagrams for long-term storage. Library, Coach, and Sukaku preserve the live board/candidate state, not colors, circles, chains, or blocks.</div>
 </div>
 </div>
 
@@ -1279,6 +1332,7 @@
 <div class="pair">
 <div class="zh">
 <p>TLG Solver 用 Truth、Link 和额外唯一性约束描述一个集合证明，再枚举满足全部约束的投影，从共同结果中得到删数或出数。它不是普通提示器：用户必须明确告诉程序哪些集合和 deadly-pattern 约束属于当前证明。</p>
+<div class="note">首次启用 TLG 编辑会播放四步引导，依次说明输入模式、盘面接管、结构核对和“查找删数”。完成或跳过后，可从“帮助与现场 → 工作现场 → 引导重播”再次打开。</div>
 <p>勾选“启用 TLG 编辑”后，TLG 独占整个盘面的鼠标、触摸和长按输入以及专属高亮。普通技巧高亮、链路和手工标记只暂时隐藏；关闭 TLG 后恢复。关闭 TLG 会释放临时导入的 TLG 候选盘和计算结果，但保留已输入的 Truth、用户 Link、两组 Virtual Set、AUR、DAUR、GUR 标记。</p>
 <div class="note"><strong>专用图解布局：</strong>TLG 开启时，1～9 候选会切换为横纵坐标都不重复的错切九点布局，便于 Row、Column 与 Box 通道分轨，同时仍保持标准 3×3 的读数方位。蓝色徽标表示结构候选，红色徽标表示最终删数；Cell 淡蓝、Row 紫、Column 绿、Box 褐。颜色只区分对象类型，Truth/Link 由形态区分：Truth 是实心区域，Link 是同一几何的空心轮廓。两组 Virtual Set 使用黑色集合连线并以 1/2 角标区分；AUR、DAUR、GUR 不再画外框，而是用候选徽标角标着色，同组同色、异组异色。普通候选、提示数和已出数字保持正常对比度；关闭 TLG 后立即恢复普通 3×3 候选布局。</div>
 <div class="note"><strong>输入兜底：</strong>TLG 开启期间，Truths 模式左键轻触空候选位置仍按 Cell Truth 处理；除此之外，空候选位置的右键/长按、固定格、出数格，以及非 Truths 模式的单元格空白点击都会被安全忽略。它们不会回落为普通出数、恢复候选、数字盘输入或手工标记。只有关闭“启用 TLG 编辑”后，普通盘面编辑才会恢复。</div>
@@ -1528,6 +1582,7 @@ GUR 枚举约束 = 1
 </div>
 <div class="en">
 <p>TLG Solver describes a set proof with Truths, Links, and optional uniqueness constraints, enumerates projections satisfying all premises, and derives common eliminations or assignments. It is not an ordinary hint button: the user defines the proof structure.</p>
+<div class="note">The first time TLG editing is enabled, a four-step guide explains input modes, board ownership, structure review, and Find Eliminations. Replay it later from Help &amp; Workspaces → Workspaces → Guides.</div>
 <p>Enable TLG Editing gives TLG exclusive ownership of all board mouse, touch, long-press input, and its visual layer. Ordinary technique highlights, chains, and manual marks are hidden rather than deleted. Disabling TLG releases the temporary TLG candidate grid and computed result, while keeping the entered Truths, User Links, both Virtual Sets, AUR, DAUR, and GUR marks.</p>
 <div class="note"><strong>Dedicated diagram layout:</strong> while TLG is enabled, the familiar 3×3 candidate directions are preserved. The x tracks run left-to-right as <code>1 4 7 | 2 5 8 | 3 6 9</code>, and the y tracks run top-to-bottom as <code>3 2 1 | 6 5 4 | 9 8 7</code>. Thus 3 remains upper-right and 7 remains lower-left, while every digit still receives a unique x/y pair that separates adjacent Row, Column, and Box channels. Blue badges are structure candidates and red badges are final eliminations; Cell is light blue, Row purple, Column green, and Box brown. Color identifies the object type only: a Truth is a filled region, while a Link is the hollow outline of the same geometry. Ordinary candidates, givens, and solved values retain their normal contrast; only candidates replaced by blue/red SVG badges hide their duplicate DOM labels. Disabling TLG immediately restores the ordinary 3×3 pencilmark layout.</div>
 <div class="note"><strong>Input guard:</strong> while TLG is enabled, a plain left tap on an empty candidate slot in Truths mode still acts as the Cell Truth shortcut. Otherwise, right-click/long-press on an empty slot, fixed/solved cells, and cell-background clicks outside Truths mode are safe no-ops. They never fall through to ordinary value entry, candidate restoration, the number pad, or manual marks. Ordinary board editing resumes only after TLG Editing is disabled.</div>
@@ -1891,12 +1946,13 @@ GUR enumeration constraints = 1
 <li><strong>清除：</strong>清除当前选中格的大数字；候选模式下可清除当前选中的候选。</li>
 <li><strong>撤销/重做：</strong>与主界面共用历史。</li>
 <li><strong>标记：</strong>打开完整手工标记面板。</li>
-<li><strong>更多：</strong>打开提示、应用、可选步骤、题面输入、候选显示、同数字高亮、屏幕常亮、全屏、分析模式和语言。</li>
+<li><strong>更多：</strong>打开提示、应用、可选步骤、题面输入、候选显示、同数字高亮、屏幕常亮、全屏、分析模式、帮助与现场和语言。</li>
 </ul>
 <h3>标题栏状态图标</h3>
 <ul>
 <li><strong>云朵：</strong>显示离线资源下载、完整就绪、当前离线、新版本可用或失败。黄色表示缓存不完整，联网点击会自动补齐；出现“新版本已就绪”时点击会切换到新版本。</li>
 <li><strong>软盘：</strong>绿色表示已保存，橙色表示有未保存修改，蓝色旋转表示正在保存，红色表示保存失败。切到后台、关闭页面或系统回收页面前会立即刷新保存。</li>
+<li><strong>任务列表：</strong>有进行中任务时显示数量和蓝色工作状态；点击可查看每项任务的进度、耗时、完成或失败原因。</li>
 <li><strong>返回箭头：</strong>说明安卓返回键下一步会关闭什么；数字角标表示当前 UI 层级深度。</li>
 <li><strong>临时反馈：</strong>分享、复制、恢复现场和更新完成会短暂显示，约 2–3 秒后自动收起。</li>
 </ul>
@@ -1954,12 +2010,13 @@ GUR enumeration constraints = 1
 <li><strong>Clear:</strong> clears the selected user value, or the selected candidate in Candidate mode.</li>
 <li><strong>Undo/Redo:</strong> shares history with the main interface.</li>
 <li><strong>Marks:</strong> opens the full Manual Marks panel.</li>
-<li><strong>More:</strong> opens Hint, Apply, Available Steps, Puzzle Input, candidate visibility, same-digit highlighting, Screen Wake Lock, Fullscreen, Analysis Mode, and language.</li>
+<li><strong>More:</strong> opens Hint, Apply, Available Steps, Puzzle Input, candidate visibility, same-digit highlighting, Screen Wake Lock, Fullscreen, Analysis Mode, Help &amp; Workspaces, and language.</li>
 </ul>
 <h3>Title-Bar Status Icons</h3>
 <ul>
 <li><strong>Cloud:</strong> shows offline-resource download, full readiness, current offline state, update availability, or failure. Tap for details; when an update is ready, tapping switches to it.</li>
 <li><strong>Disk:</strong> green means saved, amber means unsaved changes, spinning blue means saving, and red means failure. The session is flushed when the page goes to the background, closes, or is reclaimed by the OS.</li>
+<li><strong>Task list:</strong> shows a count and active state while work is running; open it for per-task progress, elapsed time, completion, or failure details.</li>
 <li><strong>Back arrow:</strong> explains what Android Back will close next. Its badge shows the current UI-layer depth.</li>
 <li><strong>Temporary feedback:</strong> sharing, copying, session restore, and update completion appear briefly, then collapse after about 2–3 seconds.</li>
 </ul>
@@ -2026,6 +2083,7 @@ GUR enumeration constraints = 1
 <table><thead><tr><th>图标</th><th>含义</th><th>点击行为</th></tr></thead><tbody>
 <tr><td>云朵</td><td>离线资源、联网/离线、安装与更新</td><td>查看下载详情、触发安装、重试或应用更新</td></tr>
 <tr><td>软盘</td><td>已保存、未保存、保存中、保存失败</td><td>查看保存状态；失败或未保存时立即重试</td></tr>
+<tr><td>任务列表</td><td>生成、评分、求解、OCR、批量、保存和更新任务</td><td>打开任务中心查看进度、耗时和结果</td></tr>
 <tr><td>返回箭头</td><td>当前 UI 层级和安卓返回键目标</td><td>关闭最上层界面；根界面时提示将离开应用</td></tr>
 <tr><td>临时圆形图标</td><td>分享、复制、恢复或更新结果</td><td>在自动消失前再次查看文字说明</td></tr>
 </tbody></table>
@@ -2054,6 +2112,7 @@ GUR enumeration constraints = 1
 <table><thead><tr><th>Icon</th><th>Meaning</th><th>Tap action</th></tr></thead><tbody>
 <tr><td>Cloud</td><td>Offline package, connectivity, installation, and updates</td><td>Show progress, install, retry, or apply an update</td></tr>
 <tr><td>Disk</td><td>Saved, dirty, saving, or failed</td><td>Show save state; retry immediately when dirty or failed</td></tr>
+<tr><td>Task list</td><td>Generation, rating, solving, OCR, batch, saving, and update work</td><td>Open Task Status for progress, elapsed time, and results</td></tr>
 <tr><td>Back arrow</td><td>Current UI depth and Android Back target</td><td>Close the top layer; at root, explain that Back leaves the app</td></tr>
 <tr><td>Temporary circle</td><td>Share, copy, restore, or update result</td><td>Repeat the text before the icon disappears automatically</td></tr>
 </tbody></table>
@@ -2117,7 +2176,7 @@ GUR enumeration constraints = 1
 <tr><td>技巧找不到，但 native 测试能找到</td><td>技巧未启用、候选状态不同，或前端 WASM/缓存不是最新版。</td><td>检查技巧页，重新载入同一候选盘，并刷新版本缓存。</td></tr>
 <tr><td>手机全屏后进入做题模式</td><td>小屏/触屏全屏会自动选择专用做题布局。</td><td>使用“分析模式”返回；OCR 校正全屏不会触发该切换。</td></tr>
 <tr><td>TLG 开启后普通标记消失</td><td>TLG 独占视觉和候选触摸层，普通标记被临时隐藏。</td><td>关闭“启用 TLG 编辑”，原标记会恢复。</td></tr>
-<tr><td>恢复现场后没有手工标记</td><td>主现场不保存手工颜色、圈、链和区块。</td><td>重要结构使用“截图”保存。</td></tr>
+<tr><td>恢复现场后没有手工标记</td><td>现场来自旧版 v1、站点数据曾被清除，或浏览器在保存完成前强制回收了页面。</td><td>新版 v2 会保存完整手工标记。查看软盘状态，并从“帮助与现场”选择最新自动保存或近期快照；重要结构仍建议截图备份。</td></tr>
 <tr><td>TLG 查找有 Links 数量，但盘面没有 Links 高亮</td><td>旧版本只从用户 Links 绘制，自动 Links 没有独立结果状态；或浏览器仍缓存旧 <code>app.js</code>。</td><td>覆盖本修复包并强制刷新。新版使用“结果 Links”高亮，自动 Links 不再需要写入用户 Links。</td></tr>
 <tr><td>加一个 Truth 后再次查找，不再自动生成 Links</td><td>“当前 TLG 状态”中仍有用户 Links。任意一个用户 Link 都会切换到显式结构模式。</td><td>删除全部用户 Links 后再查找。结果 Links 是只读结果，不会阻止自动生成。</td></tr>
 <tr><td>第一次自动查找正常，第二次结构却像沿用旧 Links</td><td>旧版本曾把自动 Links 同步回用户 Links。</td><td>使用新版；Find 现在只更新结果 Links，不修改用户 Links。输入变化会清除旧结果。</td></tr>

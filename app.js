@@ -1,3 +1,13 @@
+/*
+ * 维护说明（简体中文）
+ * 职责：浏览器主控制器。
+ * 数据流：管理盘面、候选、求解 worker、训练、OCR、手工标记、TLG 编辑器、PWA 更新和全屏交互。
+ * 修改时注意：
+ * - 本文件只应在明确理解数据流后修改；注释描述的是设计意图和维护约束。
+ * - 重构时须保持既有求解结果、技巧优先级、前后端字段或测试基线不变。
+ * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
+ * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
+ */
 import createModule from "./sudoku_wasm.js?v=wasm-c66616ba9de50fe0";
 import {
   categoryNameForLocale,
@@ -19,15 +29,75 @@ import {
   difficultyLevels,
 } from "./ui-localization.js?v=ui-d5a841241e91";
 import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-e2f97cdd3860";
+import { applyPwaLaunchAction, installUiFoundation } from "./ui-foundation.js";
+import {
+  clearOcrCorrectionDraft,
+  clearRecentPuzzleRecords,
+  hashWorkspaceText,
+  loadOcrCorrectionDraft,
+  loadRecentPuzzleRecords,
+  removeRecentPuzzleRecord,
+  saveOcrCorrectionDraft,
+  upsertRecentPuzzleRecord,
+} from "./workspace-storage.js";
 
 const APP_VERSION = "wasm-c66616ba9de50fe0";
-const MANUAL_VERSION = "manual-5275ef564eeb";
+const UI_RELEASE_VERSION = "ui-20260729-phase8.2-ocr-guide-launch";
+const MANUAL_VERSION = "manual-20260729-phase8.2-ocr-guide-launch";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
 const TRAINING_OTP_STORAGE_KEY = "yzf-training-otp-v1";
 const OCR_ASSET_VERSION = "20260630-role-glyph-core-v8";
 const OCR_CORRECTION_UI_VERSION = "20260629-ocr-correction-v7.1-gridfix";
+const APP_OVERVIEW_GUIDE_STEPS = [
+  { target: "#boardStage", titleZh: "盘面始终是操作中心", bodyZh: "加载、生成或恢复题目后，出数、候选和技巧高亮都会在这里呈现。", titleEn: "The board is the center of every workflow", bodyEn: "After loading, generating, or restoring a puzzle, values, candidates, and technique highlights all appear here." },
+  { target: ".global-actions", titleZh: "高频操作集中在盘面下方", bodyZh: "生成、加载、撤销、自动解题、提示一步和应用提示都在同一行；耗时任务可在任务状态中持续查看。", titleEn: "Frequent actions stay below the board", bodyEn: "Generate, load, undo, solve, hint, and apply share one row; long-running work remains visible in Task Status." },
+  { target: "#hintPanel", titleZh: "提示区解释当前状态", bodyZh: "这里显示加载结果、技巧结论、错误和下一步建议；可解释步骤还能使用顶部的“解释”。", titleEn: "The hint panel explains the current state", bodyEn: "It shows load results, technique conclusions, errors, and next actions; explainable steps can also use Explain in the top bar." },
+  { target: "#btnAppHub", titleZh: "低频功能统一放在帮助与现场", bodyZh: "手册、技巧说明、自动保存、OCR 草稿、近期题目、引导重播、语言和诊断都从这里进入。", titleEn: "Less-frequent tools live in Help & workspaces", bodyEn: "Manuals, technique notes, autosave, OCR drafts, recent puzzles, guide replay, language, and diagnostics are all available here." },
+];
+const MANUAL_MARK_GUIDE_STEPS = [
+  { target: "#manualMarkMode", titleZh: "先选择标记模式", bodyZh: "整格、候选、圆圈、删数、链和区块共用同一套入口。", titleEn: "Choose a mark mode", bodyEn: "Cell, candidate, circle, elimination, chain, and block marks share this entry." },
+  { target: "#manualMarkSwatches", titleZh: "再选择颜色", bodyZh: "颜色只影响手工标记，不会改变求解器的技巧高亮。", titleEn: "Choose a color", bodyEn: "Manual colors do not alter solver highlighting." },
+  { target: "#manualMarkApplyElims", titleZh: "删数确认后再应用", bodyZh: "红色删数标记只是草稿，点击应用才会真正改变候选盘。", titleEn: "Apply eliminations explicitly", bodyEn: "Elimination marks are drafts until you apply them." },
+];
+const OCR_IMAGE_PICKER_GUIDE_STEPS = [
+  {
+    target: "#btnImageOcrPick",
+    nextLabelZh: "选择图片",
+    nextLabelEn: "Choose image",
+    onNext: () => {
+      if (!imageOcrInput) return false;
+      if (typeof imageOcrInput.showPicker === "function") imageOcrInput.showPicker();
+      else imageOcrInput.click();
+      return true;
+    },
+    titleZh: "请选择一张数独图片",
+    bodyZh: "剪贴板中没有可读取的图片，或浏览器未授予剪贴板权限。点击高亮按钮选择图片；识别完成后会自动继续 OCR 校正引导。",
+    titleEn: "Choose a Sudoku image",
+    bodyEn: "No readable image was available in the clipboard, or clipboard access was denied. Activate the highlighted button; the OCR correction guide will continue automatically after recognition.",
+  },
+];
+const OCR_CORRECTION_GUIDE_STEPS = [
+  {
+    target: ".ocr-correction-cell.selected",
+    advanceOnTarget: true,
+    targetActionLabelZh: "点击当前校正格并进入下一步",
+    targetActionLabelEn: "Activate the selected correction cell and continue",
+    titleZh: "点击高亮格开始校正",
+    bodyZh: "高亮框会把点击转交给真实校正格，并自动进入下一步；也可以直接点击说明卡中的“下一步”。",
+    titleEn: "Tap the highlighted cell to begin",
+    bodyEn: "The highlight proxies the tap to the real correction cell and advances automatically. You can also use Next in the guide card.",
+  },
+  { target: ".ocr-correction-mode-row", titleZh: "再确认数字角色", bodyZh: "提示数、出数和候选数采用不同颜色与导入语义。", titleEn: "Then confirm the digit role", bodyEn: "Givens, solved digits, and candidates use different import semantics." },
+  { target: ".ocr-correction-confirm", titleZh: "确认后才导入主盘", bodyZh: "校正过程会自动保存；确认导入后才替换当前盘面。", titleEn: "Import only after confirmation", bodyEn: "The draft is autosaved and replaces the main board only after confirmation." },
+];
+const TLG_EDITOR_GUIDE_STEPS = [
+  { target: "#tlgSolverMode", titleZh: "先确定 TLG 输入模式", bodyZh: "Truth、Link、Virtual Set、AUR、DAUR 与 GUR 使用不同输入语义；AUR/GUR 还可通过盘面右键菜单补充通用格。", titleEn: "Choose the TLG input mode first", bodyEn: "Truth, Link, Virtual Set, AUR, DAUR, and GUR use different input semantics; AUR/GUR generic cells are also available from the board context menu." },
+  { target: "#boardStage", titleZh: "在盘面上输入证明结构", bodyZh: "TLG 启用时盘面点击由 TLG 接管，普通出数、候选编辑和手工标记暂时让位；退出 TLG 后原现场会恢复。", titleEn: "Enter the proof structure on the board", bodyEn: "While TLG is enabled, it owns board input and temporarily supersedes ordinary value, candidate, and manual-mark editing; the previous view returns after TLG is disabled." },
+  { target: ".tlg-solver-state-panel", titleZh: "随时核对当前结构", bodyZh: "当前 Truth、Link、Virtual Set、AUR/GUR 与门控状态会集中列出，先检查结构再运行验证。", titleEn: "Review the current structure", bodyEn: "The current Truths, Links, Virtual Sets, AUR/GUR data, and gate state are listed together; verify the structure before running validation." },
+  { target: "#btnTlgFindEliminations", titleZh: "最后查找共同结论", bodyZh: "只有满足全部 Truth、Link 与唯一性前提的投影才参与共同删数或出数；结果应结合结构列表和图形一起核对。", titleEn: "Find common conclusions last", bodyEn: "Only projections satisfying every Truth, Link, and uniqueness premise contribute common eliminations or assignments; review the result together with the structure list and diagram." },
+];
 const OTP_INELIGIBLE_TECHNIQUES = new Set([
   "FullHouse", "HiddenSingle", "NakedSingle", "LockedCandidates",
   "NakedPair", "HiddenPair", "NakedTriple", "HiddenTriple",
@@ -37,6 +107,11 @@ const OTP_INELIGIBLE_TECHNIQUES = new Set([
 const COACH_BASE32_CHARS = "0123456789abcdefghijklmnopqrstuv";
 const COACH_BASE32_REVERSE = new Map([...COACH_BASE32_CHARS].map((ch, index) => [ch, index]));
 
+/*
+ * DOM 引用集中区。
+ * 这些 id 与 index.html 是硬契约：变量允许重构，元素 id 不能单边改名。
+ * 初始化阶段只取得引用，不在这里绑定复杂逻辑，避免模块加载顺序导致空引用难以定位。
+ */
 const tree = document.getElementById("tree");
 const allStepsTree = document.getElementById("allStepsTree");
 const allStepsFilterText = document.getElementById("allStepsFilterText");
@@ -131,10 +206,17 @@ const btnClearSavedSession = document.getElementById("btnClearSavedSession");
 const imageOcrInput = document.getElementById("imageOcrInput");
 const imageOcrCameraInput = document.getElementById("imageOcrCameraInput");
 
+/*
+ * 全局运行状态按职责分组：OCR 加载、会话保存、PWA 更新、求解/训练 worker、手工标记和 TLG 编辑。
+ * 新增状态时应明确其生命周期（页面级、题目级、弹窗级），并在“新题/恢复会话/关闭弹窗”相应位置重置。
+ * 不要把后端盘面事实复制成多个互相独立的前端真相源。
+ */
 let localSudokuOcrModulePromise = null;
 let ortScriptPromise = null;
 let localSudokuOcrLoadAttempt = 0;
 const APP_SESSION_STORAGE_KEY = "yzf_sudoku_session_v1";
+const APP_SESSION_PAYLOAD_VERSION = 2;
+const OCR_DRAFT_SAVE_DELAY_MS = 450;
 const SHARED_PUZZLE_QUERY_PARAM = "p";
 const LEGACY_SHARED_PUZZLE_QUERY_PARAM = "puzzle";
 const SHARED_PUZZLE_S1_PREFIX = "s1.";
@@ -158,6 +240,8 @@ let pwaPendingVersion = (() => {
 let pwaActivationRequested = !!pwaPendingVersion;
 let pwaTargetVersion = pwaPendingVersion && pwaPendingVersion !== "1" ? pwaPendingVersion : "";
 let pwaActivationTimer = 0;
+let uiFoundation = null;
+let ocrDraftSaveTimer = 0;
 let pwaWaitingSyncTimer = 0;
 let pwaObservedInstallingWorker = null;
 let pwaObservedActivationWorker = null;
@@ -170,6 +254,11 @@ let appBackGuardInstalled = false;
 let appBackPopHandling = false;
 
 
+/*
+ * 外部脚本去重加载器。
+ * 同一 URL 在加载中时复用 Promise；失败节点必须移除，下一次才可真正重试。
+ * OCR/ORT 的弱网恢复依赖这一行为，不能把 rejected Promise 永久缓存。
+ */
 function loadScriptOnce(src) {
   const existing = document.querySelector(`script[data-yzf-src="${src}"]`);
   if (existing) {
@@ -378,6 +467,7 @@ const btnMobileSolveInput = document.getElementById("btnMobileSolveInput");
 const btnMobileSolveCandidates = document.getElementById("btnMobileSolveCandidates");
 const btnMobileSolveSameDigit = document.getElementById("btnMobileSolveSameDigit");
 const btnMobileSolveAnalysis = document.getElementById("btnMobileSolveAnalysis");
+const btnMobileSolveHelp = document.getElementById("btnMobileSolveHelp");
 const appStatusControls = [...document.querySelectorAll("[data-app-status-kind]")];
 const appStatusToast = document.getElementById("appStatusToast");
 const mobileBackDepthBadge = document.getElementById("mobileBackDepthBadge");
@@ -435,6 +525,7 @@ let ocrCorrectionSelectedIndex = 0;
 let ocrCorrectionMode = "given";
 let ocrCorrectionHistory = [];
 let ocrCorrectionHistoryIndex = -1;
+let ocrGuideReplayPending = false;
 let techniqueState = [];
 let whipMemoryMode = "auto";
 let whipCompareGWhip = false;
@@ -450,6 +541,11 @@ let yzfBranchContext = {
   contextKey: "",
 };
 
+/*
+ * 盘面指针模式统一入口。
+ * 桌面鼠标、触屏手指和手写笔的事件序列不同，所有后续点击/拖动/长按判断都应使用规范化模式，
+ * 避免只在 Chrome 桌面正常、手机上被浏览器手势吞掉。
+ */
 function normalizeBoardPointerMode(pointerType = "") {
   return String(pointerType || "").toLowerCase() === "mouse" ? "mouse" : "touch";
 }
@@ -789,6 +885,84 @@ for (const [key, zh, en] of [
   ["mobileSolveNewPuzzleDifficulty", "难度", "Difficulty"],
   ["mobileSolveMore", "更多", "More"],
   ["mobileSolveMoreTitle", "更多功能", "More tools"],
+  ["mobileSolveHelp", "帮助与现场", "Help & workspaces"],
+  ["appHubButton", "帮助与现场", "Help & workspaces"],
+  ["appHubTitle", "帮助与现场", "Help & workspaces"],
+  ["appHubIntro", "继续工作、查阅说明、重播引导或收集诊断信息。", "Resume work, read documentation, replay guides, or collect diagnostics."],
+  ["appHubContinueTitle", "继续工作", "Continue working"],
+  ["appHubWorkspace", "工作现场", "Workspaces"],
+  ["appHubWorkspaceDesc", "恢复自动保存、OCR 草稿或近期题目。", "Restore autosave, an OCR draft, or a recent puzzle."],
+  ["appHubTasks", "任务状态", "Task status"],
+  ["appHubTasksDesc", "查看评分、生成、OCR 与更新进度。", "Review rating, generation, OCR, and update progress."],
+  ["appHubLearnTitle", "学习与引导", "Learn & guides"],
+  ["appHubManual", "使用手册", "User Manual"],
+  ["appHubManualDesc", "完整操作、移动端、TLG、PWA 与维护说明。", "Complete controls, mobile mode, TLG, PWA, and maintenance notes."],
+  ["appHubTechniques", "技巧说明", "Technique Guide"],
+  ["appHubTechniquesDesc", "查询技巧定义、评分、子选项与示例。", "Look up definitions, ratings, sub-options, and examples."],
+  ["appHubOverview", "快速上手引导", "Quick-start guide"],
+  ["appHubOverviewDesc", "重新播放主界面的四步操作引导。", "Replay the four-step guide to the main interface."],
+  ["appHubSupportTitle", "设置与支持", "Settings & support"],
+  ["appHubDiagnostics", "诊断信息", "Diagnostics"],
+  ["appHubDiagnosticsDesc", "复制版本、浏览器、缓存和任务状态。", "Copy version, browser, cache, and task status details."],
+  ["appHubLanguage", "界面语言", "Interface language"],
+  ["appHubLanguageDesc", "语言切换会同步手册与技巧说明链接。", "Language changes also update the manual and technique links."],
+  ["appHubAppearance", "界面外观", "Appearance"],
+  ["appHubAppearanceDesc", "跟随系统，或使用浅色、深色、高对比主题。", "Follow the system, or use light, dark, or high-contrast mode."],
+  ["appearanceSystem", "自动", "Auto"],
+  ["appearanceLight", "浅色", "Light"],
+  ["appearanceDark", "深色", "Dark"],
+  ["appearanceContrast", "高对比", "High contrast"],
+  ["diagnosticsTitle", "诊断信息", "Diagnostics"],
+  ["diagnosticsIntro", "排查更新、浏览器、OCR 或性能问题时可复制此信息；默认不包含题目内容。", "Copy this when reporting update, browser, OCR, or performance problems. Puzzle contents are not included."],
+  ["diagnosticsLoading", "正在收集诊断信息……", "Collecting diagnostics…"],
+  ["diagnosticsReady", "诊断信息已生成，未包含题目内容和剪贴板数据。", "Diagnostics collected. Puzzle contents and personal clipboard data are excluded."],
+  ["diagnosticsRefresh", "刷新", "Refresh"],
+  ["diagnosticsCopy", "复制诊断信息", "Copy diagnostics"],
+  ["diagnosticsCopied", "诊断信息已复制。", "Diagnostics copied."],
+  ["diagnosticsCopyFailed", "浏览器未允许写入剪贴板，请手动选择并复制。", "Clipboard access failed. Select the text and copy it manually."],
+  ["taskCenterTitle", "任务状态", "Task status"],
+  ["taskCenterIntro", "耗时任务会在这里保留明确状态，不再只剩一个无法判断的转圈。", "Long-running work stays visible here instead of being reduced to a spinner."],
+  ["taskCenterEmpty", "当前没有进行中或近期任务。", "No active or recent tasks."],
+  ["taskCenterClear", "清除已完成", "Clear completed"],
+  ["taskCenterActive", "{count} 项进行中", "{count} active"],
+  ["taskCenterRecent", "{count} 项近期任务", "{count} recent"],
+  ["taskStateQueued", "等待中", "Queued"],
+  ["taskStateRunning", "进行中", "Running"],
+  ["taskStateSuccess", "已完成", "Completed"],
+  ["taskStateError", "失败", "Failed"],
+  ["taskStateCancelled", "已取消", "Cancelled"],
+  ["taskStatePaused", "已暂停", "Paused"],
+  ["taskStateWaiting", "等待中", "Waiting"],
+  ["workspaceTitle", "工作现场", "Workspaces"],
+  ["workspaceIntro", "从自动保存现场、OCR 草稿或近期快照继续工作。", "Resume the saved board, an OCR draft, or a recent snapshot."],
+  ["workspaceCurrent", "自动保存现场", "Saved session"],
+  ["workspaceCurrentDetail", "重新载入最近保存的盘面、技巧配置和手工标记。", "Reload the latest autosaved board and manual marks."],
+  ["workspaceResume", "继续", "Resume"],
+  ["workspaceOcr", "OCR 校正草稿", "OCR correction draft"],
+  ["workspaceOcrDetail", "继续尚未导入主盘的图片对照校正。", "Continue the unfinished image review without importing it yet."],
+  ["workspaceRecent", "近期快照", "Recent snapshots"],
+  ["workspaceOpen", "打开", "Open"],
+  ["workspaceRemove", "移除", "Remove"],
+  ["workspaceClear", "清空近期记录", "Clear recent"],
+  ["workspaceEmpty", "还没有近期快照。", "No recent snapshots yet."],
+  ["workspaceCount", "共 {count} 个可恢复现场", "{count} recoverable items"],
+  ["workspaceConfirmClear", "确定清空全部近期快照吗？", "Clear all recent snapshots?"],
+  ["workspaceLoading", "正在读取工作现场……", "Loading saved workspaces…"],
+  ["workspaceFailed", "读取工作现场失败。", "Failed to load workspace data."],
+  ["workspaceClues", "{clues} 个提示数", "{clues} givens"],
+  ["workspaceFilled", "已填 {filled}/81", "{filled}/81 filled"],
+  ["workspaceCandidates", "{count} 个候选格", "{count} candidate cells"],
+  ["workspaceMarks", "{count} 项手工标记", "{count} manual marks"],
+  ["workspaceGuides", "操作引导", "Operation guides"],
+  ["workspaceReplay", "重新播放", "Replay"],
+  ["workspaceGuideIntro", "重新播放简短引导，不会重置盘面或现场数据。", "Replay a short guide without resetting any puzzle data."],
+  ["coachSkip", "跳过", "Skip"],
+  ["coachNext", "下一步", "Next"],
+  ["coachDone", "完成", "Done"],
+  ["coachStep", "{current}/{total}", "{current}/{total}"],
+  ["pwaLaunchOcr", "已定位到图片识别入口。", "Image recognition is ready."],
+  ["pwaLaunchTraining", "已定位到训练生成入口。", "Training generation is ready."],
+  ["pwaLaunchResume", "已打开上次现场。", "The previous session is open."],
   ["mobileSolveValueShort", "出数", "Value"],
   ["mobileSolveCandidateShort", "候选", "Cand."],
   ["mobileSolveHintShort", "提示", "Hint"],
@@ -1060,7 +1234,7 @@ for (const [key, zh, en] of [
   ["tlgBackendTrainingGrid", "使用了 TLG 训练候选盘；未核验唯一解前提", "A TLG training candidate grid was used; the uniqueness premise was not verified."],
   ["tlgActionsAria", "TLG Solver 操作", "TLG Solver actions"],
   ["tlgCandidateGridEmpty", "输入框为空；请先粘贴 Sukaku 候选盘面。", "The input box is empty. Paste a Sukaku candidate grid first."],
-  ["tlgCandidateGridInvalid", "无法识别输入框中的 TLG 候选盘面：需要 729 字符 Sukaku，或 81 个候选单元格。", "Unrecognized TLG candidate grid. Use a 729-character Sukaku or 81 candidate-cell tokens."],
+  ["tlgCandidateGridInvalid", "无法识别输入框中的 TLG 候选盘面：需要 729 字符 Sukaku，或 81 个候选单元格。", "Unrecognized TLG candidate grid in inputbox. Use a 729-character Sukaku or 81 candidate-cell tokens."],
   ["tlgCandidateGridEmptyCell", "TLG 候选盘面包含无候选单元格：{cell}。", "The TLG candidate grid contains a cell with no candidates: {cell}."],
   ["tlgContextCandidate", "候选数 {value}", "Candidate {value}"],
   ["tlgContextCandidates", "已选 {count} 个候选数", "{count} Candidates selected"],
@@ -1204,6 +1378,7 @@ for (const [key, zh, en] of [
   ["ocrReadingClipboard", "正在读取剪贴板图片……", "Reading clipboard image..."],
   ["ocrClipboardNoImage", "剪贴板中没有图片。请先截图/复制图片，或使用“选择图片识别”“拍照识别”。", "No image found in the clipboard. Copy a screenshot first, or use Recognize image / Take photo."],
   ["ocrClipboardReadFailed", "读取剪贴板图片失败：{message}。桌面端也可以直接按 Ctrl+V 粘贴截图。", "Failed to read clipboard image: {message}. On desktop, you can also press Ctrl+V after copying a screenshot."],
+  ["ocrGuideClipboardFallback", "未能从剪贴板取得图片，请选择一张数独图片；识别完成后会自动继续 OCR 引导。", "No clipboard image was available. Choose a Sudoku image; the OCR guide will continue automatically after recognition."],
   ["clipboardReadUnsupported", "当前浏览器不支持读取剪贴板", "This browser does not support reading text from the clipboard"],
   ["clipboardEmpty", "剪贴板为空", "Clipboard is empty"],
   ["clipboardPreferredLoaded", "已优先从剪贴板读取并尝试加载。", "Read the puzzle from the clipboard first and tried loading it."],
@@ -1438,8 +1613,47 @@ function appStatusLanguage() {
   return lang?.value === "en" ? "en" : "zh";
 }
 
+function syncAppStatusTask(kind, state, descriptor, values = {}) {
+  const tasks = uiFoundation?.tasks;
+  if (!tasks) return;
+  const en = appStatusLanguage() === "en";
+  if (kind === "save") {
+    if (state === "saving" || state === "dirty") {
+      tasks.update("app-save", {
+        label: en ? "Save current session" : "保存当前现场",
+        state: state === "dirty" ? "waiting" : "running",
+        detail: descriptor.label,
+      });
+    } else if (state === "error") {
+      tasks.finish("app-save", {
+        label: en ? "Save current session" : "保存当前现场",
+        state: "error",
+        detail: descriptor.label,
+      });
+    } else {
+      tasks.remove("app-save");
+    }
+    return;
+  }
+  if (kind !== "pwa") return;
+  const activeStates = new Set(["initializing", "downloading", "checking", "updateRepairing", "updating", "incomplete"]);
+  const successStates = new Set(["ready", "installed", "installable", "offlineReady", "updateReady"]);
+  const errorStates = new Set(["error", "updateError", "offlinePartial"]);
+  const progress = Number(values.total || 0) > 0 ? Number(values.loaded || 0) / Number(values.total || 1) : undefined;
+  const common = {
+    label: en ? "Offline resources and updates" : "离线资源与应用更新",
+    detail: descriptor.label,
+    ...(Number.isFinite(progress) ? { progress } : {}),
+  };
+  if (activeStates.has(state)) tasks.update("pwa-release", { ...common, state: "running" });
+  else if (errorStates.has(state)) tasks.finish("pwa-release", { ...common, state: "error" });
+  else if (successStates.has(state)) tasks.finish("pwa-release", { ...common, state: "success" });
+  else tasks.remove("pwa-release");
+}
+
 function renderAppStatus(kind, state, values = {}) {
   const descriptor = appStatusDescriptor(kind, state, appStatusLanguage(), values);
+  syncAppStatusTask(kind, state, descriptor, values);
   for (const control of appStatusControls) {
     if (control.dataset.appStatusKind !== kind) continue;
     control.dataset.state = state;
@@ -1484,6 +1698,17 @@ function setTransientStatus(state, values = {}, options = {}) {
   return showAppStatusToast("transient", state, values, options);
 }
 
+function showPlainAppStatusToast(message, tone = "info", duration = 2400) {
+  if (!appStatusToast) return;
+  appStatusToast.textContent = String(message || "");
+  appStatusToast.dataset.tone = tone;
+  appStatusToast.dataset.visible = "true";
+  window.clearTimeout(transientStatusTimer);
+  transientStatusTimer = window.setTimeout(() => {
+    appStatusToast.dataset.visible = "false";
+  }, Math.max(1200, Number(duration || 2400)));
+}
+
 function setAppSaveStatus(state, values = {}) {
   appSaveStatus = { state, values };
   return renderAppStatus("save", state, values);
@@ -1522,6 +1747,11 @@ function refreshPwaStatusLanguage() {
 
 function currentAppBackState() {
   const layers = [];
+  if (uiFoundation?.appHub?.dialog?.open) layers.push("closeDialog");
+  if (uiFoundation?.diagnostics?.dialog?.open) layers.push("closeDialog");
+  if (uiFoundation?.tasks?.dialog?.open) layers.push("closeDialog");
+  if (uiFoundation?.workspace?.dialog?.open) layers.push("closeDialog");
+  if (uiFoundation?.coachMarks?.open) layers.push("closeDialog");
   if (typeof ocrCorrectionIsActive === "function" && ocrCorrectionIsActive()) layers.push("closeDialog");
   if (stepExplainDialog?.open) layers.push("closeDialog");
   if (trainingTextFilterDialog?.open) layers.push("closeDialog");
@@ -1540,6 +1770,31 @@ function updateAppBackStatus() {
 }
 
 async function closeTopAppUiLayer() {
+  if (uiFoundation?.appHub?.dialog?.open) {
+    uiFoundation.appHub.dialog.close();
+    updateAppBackStatus();
+    return true;
+  }
+  if (uiFoundation?.diagnostics?.dialog?.open) {
+    uiFoundation.diagnostics.dialog.close();
+    updateAppBackStatus();
+    return true;
+  }
+  if (uiFoundation?.tasks?.dialog?.open) {
+    uiFoundation.tasks.dialog.close();
+    updateAppBackStatus();
+    return true;
+  }
+  if (uiFoundation?.workspace?.dialog?.open) {
+    uiFoundation.workspace.dialog.close();
+    updateAppBackStatus();
+    return true;
+  }
+  if (uiFoundation?.coachMarks?.open) {
+    uiFoundation.coachMarks.close(true);
+    updateAppBackStatus();
+    return true;
+  }
   if (typeof ocrCorrectionIsActive === "function" && ocrCorrectionIsActive()) {
     return closeOcrCorrection(true) !== false;
   }
@@ -1612,9 +1867,15 @@ function installAppBackNavigation() {
     if (target) observer.observe(target, { attributes: true, attributeFilter: ["open", "hidden", "class"] });
   }
   document.addEventListener("click", () => window.requestAnimationFrame(updateAppBackStatus), { passive: true });
+  window.addEventListener("yzf-ui-layerchange", () => window.requestAnimationFrame(updateAppBackStatus));
   updateAppBackStatus();
 }
 
+/*
+ * PWA 激活状态机的页面侧持久标记。
+ * 紫色表示新版本准备/等待，绿色表示当前版本可用；只有收到 Service Worker 的完整校验与激活协议后才清除 pending。
+ * 页面刷新不能把“尚未激活”误显示成成功，否则用户会一直停留在旧缓存。
+ */
 function setPwaActivationPending(pending, version = pwaTargetVersion) {
   pwaActivationRequested = !!pending;
   pwaPendingVersion = pending ? (String(version || "") || "1") : "";
@@ -1825,6 +2086,11 @@ async function waitForPwaWaitingWorker(timeoutMs = 3000) {
   return pwaRegistration?.waiting || null;
 }
 
+/*
+ * 请求 PWA 更新激活。
+ * 先锁定 waiting worker，再通过 MessageChannel 发送激活命令并等待明确回执；超时只报告失败，不擅自 reload。
+ * 真正 reload 由 controllerchange/激活完成协议触发，保证切换到的是完整新缓存。
+ */
 async function activatePwaUpdate() {
   setPwaActivationPending(true);
   pwaReloadRequested = true;
@@ -1917,6 +2183,11 @@ async function handlePwaStatusAction() {
   showAppStatusToast("pwa", pwaStatus.state, pwaStatus.values, { duration: 3600 });
 }
 
+/*
+ * Service Worker 消息协议集中处理。
+ * 消息中的 version、asset、bytes 和阶段状态同时驱动图标、进度和错误文案；未知消息应忽略以保持版本兼容。
+ * 不要仅凭 install/activate 浏览器事件推断资源完整，完整性以 worker 的 manifest 校验结果为准。
+ */
 function handlePwaWorkerMessage(event) {
   const data = event.data || {};
   if (!String(data.type || "").startsWith("YZF_PWA_")) return;
@@ -2158,6 +2429,133 @@ let manualMarkColorId = "4";
 let manualChainStart = null;
 let manualMiniRegionStart = null;
 
+/*
+ * 手工标记是“题目现场”的一部分，不是求解器状态。
+ * 序列化时只保存纯数据，Map/Set 在边界处转换成数组；恢复时重新校验格号、数字和颜色字段，
+ * 避免旧版本或手工篡改的 localStorage 把非法节点带入盘面渲染。
+ */
+function serializeManualMarks() {
+  return {
+    version: 1,
+    cellColors: [...manualMarks.cellColors.entries()],
+    candidateColors: [...manualMarks.candidateColors.entries()],
+    circles: [...manualMarks.circles.entries()],
+    preEliminations: [...manualMarks.preEliminations],
+    eliminations: [...manualMarks.eliminations],
+    chains: manualMarks.chains.map((edge) => ({
+      from: { cell: Number(edge?.from?.cell), digit: Number(edge?.from?.digit) },
+      to: { cell: Number(edge?.to?.cell), digit: Number(edge?.to?.digit) },
+      type: String(edge?.type || "strong"),
+    })),
+    miniRegions: manualMarks.miniRegions.map((region) => ({
+      from: { cell: Number(region?.from?.cell), digit: Number(region?.from?.digit) },
+      to: { cell: Number(region?.to?.cell), digit: Number(region?.to?.digit) },
+      type: region?.type === "blue" ? "blue" : "green",
+    })),
+    blocks: manualMarks.blocks.map((block) => ({
+      colorId: String(block?.colorId || manualMarkColorId),
+      nodes: (block?.nodes || []).map((node) => ({ cell: Number(node?.cell), digit: Number(node?.digit) })),
+    })),
+    blockDraft: manualBlockDraft ? {
+      colorId: String(manualBlockDraft.colorId || manualMarkColorId),
+      nodes: (manualBlockDraft.nodes || []).map((node) => ({ cell: Number(node?.cell), digit: Number(node?.digit) })),
+    } : null,
+    controls: {
+      mode: manualMarkModeValue(),
+      lineType: String(manualMarkLineType?.value || "strong"),
+      button: manualMarkButton === "secondary" ? "secondary" : "primary",
+      colorId: String(manualMarkColorId || "4"),
+    },
+  };
+}
+
+function manualMarkItemCount() {
+  return manualMarks.cellColors.size
+    + manualMarks.candidateColors.size
+    + manualMarks.circles.size
+    + manualMarks.preEliminations.size
+    + manualMarks.eliminations.size
+    + manualMarks.chains.length
+    + manualMarks.miniRegions.length
+    + manualMarks.blocks.length
+    + (manualBlockDraft ? 1 : 0);
+}
+
+function resetManualMarksState() {
+  manualMarks.cellColors.clear();
+  manualMarks.candidateColors.clear();
+  manualMarks.circles.clear();
+  manualMarks.preEliminations.clear();
+  manualMarks.eliminations.clear();
+  manualMarks.chains.length = 0;
+  manualMarks.miniRegions.length = 0;
+  manualMarks.blocks.length = 0;
+  manualBlockDraft = null;
+  manualChainStart = null;
+  manualMiniRegionStart = null;
+}
+
+function validManualEndpoint(endpoint) {
+  const cell = Number(endpoint?.cell);
+  const digit = Number(endpoint?.digit);
+  return Number.isInteger(cell) && cell >= 0 && cell < 81 && Number.isInteger(digit) && digit >= 1 && digit <= 9;
+}
+
+function restoreManualMarks(payload) {
+  resetManualMarksState();
+  if (!payload || payload.version !== 1) {
+    updateManualMarkControls();
+    return false;
+  }
+  const restoreMap = (target, entries, keyValidator) => {
+    for (const entry of Array.isArray(entries) ? entries : []) {
+      if (!Array.isArray(entry) || entry.length !== 2 || !keyValidator(entry[0])) continue;
+      const colorId = String(entry[1]?.colorId || "");
+      if (!colorId) continue;
+      target.set(entry[0], { colorId });
+    }
+  };
+  restoreMap(manualMarks.cellColors, payload.cellColors, (key) => Number.isInteger(Number(key)) && Number(key) >= 0 && Number(key) < 81);
+  restoreMap(manualMarks.candidateColors, payload.candidateColors, (key) => /^([0-9]|[1-7][0-9]|80):[1-9]$/.test(String(key)));
+  restoreMap(manualMarks.circles, payload.circles, (key) => /^([0-9]|[1-7][0-9]|80):[1-9]$/.test(String(key)));
+  for (const key of Array.isArray(payload.preEliminations) ? payload.preEliminations : []) {
+    if (/^([0-9]|[1-7][0-9]|80):[1-9]$/.test(String(key))) manualMarks.preEliminations.add(String(key));
+  }
+  for (const key of Array.isArray(payload.eliminations) ? payload.eliminations : []) {
+    if (/^([0-9]|[1-7][0-9]|80):[1-9]$/.test(String(key))) manualMarks.eliminations.add(String(key));
+  }
+  for (const edge of Array.isArray(payload.chains) ? payload.chains : []) {
+    if (!validManualEndpoint(edge?.from) || !validManualEndpoint(edge?.to)) continue;
+    manualMarks.chains.push({ from: { ...edge.from }, to: { ...edge.to }, type: normalizeManualChainType(edge.type) });
+  }
+  for (const region of Array.isArray(payload.miniRegions) ? payload.miniRegions : []) {
+    if (!validManualEndpoint(region?.from) || !validManualEndpoint(region?.to)) continue;
+    manualMarks.miniRegions.push({ from: { ...region.from }, to: { ...region.to }, type: region.type === "blue" ? "blue" : "green" });
+  }
+  const restoreBlock = (block) => {
+    const nodes = (Array.isArray(block?.nodes) ? block.nodes : []).filter(validManualEndpoint)
+      .map((node) => ({ cell: Number(node.cell), digit: Number(node.digit) }));
+    return nodes.length ? { colorId: String(block?.colorId || "4"), nodes } : null;
+  };
+  for (const block of Array.isArray(payload.blocks) ? payload.blocks : []) {
+    const restored = restoreBlock(block);
+    if (restored) manualMarks.blocks.push(restored);
+  }
+  manualBlockDraft = restoreBlock(payload.blockDraft);
+  const controls = payload.controls || {};
+  if (manualMarkMode && [...manualMarkMode.options].some((option) => option.value === controls.mode)) manualMarkMode.value = controls.mode;
+  if (manualMarkLineType && [...manualMarkLineType.options].some((option) => option.value === controls.lineType)) manualMarkLineType.value = controls.lineType;
+  manualMarkButton = controls.button === "secondary" ? "secondary" : "primary";
+  manualMarkColorId = MANUAL_MARK_COLORS.some((color) => String(color.id) === String(controls.colorId)) ? String(controls.colorId) : "4";
+  updateManualMarkControls();
+  return true;
+}
+
+function markManualMarksDirty() {
+  invalidateManualScreenshotDomCache();
+  scheduleAppSessionSave();
+}
+
 function manualMarkModeValue() {
   return manualMarkMode?.value || "off";
 }
@@ -2203,6 +2601,11 @@ function manualMarkFollowupSuppressor(target, resolvedSuppressionKey) {
   };
 }
 
+/*
+ * 手工标记长按处理。
+ * 移动浏览器可能在 touchend 后补发 click/contextmenu，因此长按成功后必须短暂抑制后续事件。
+ * 定时器、pointer/touch 取消和 DOM 销毁都要清理，避免一次长按影响下一格。
+ */
 function installManualMarkLongPress(target, enabled, onLongPress, suppressionKey = "") {
   if (!target || typeof enabled !== "function" || typeof onLongPress !== "function") return;
   let timer = 0;
@@ -2449,6 +2852,7 @@ function finishManualBlockDraft() {
   });
   manualBlockDraft = null;
   renderBoardSnapshot(currentSnapshot, currentHint);
+  markManualMarksDirty();
   setManualMarkStatus(ui("markBlockFinished"));
   return true;
 }
@@ -2458,12 +2862,14 @@ function undoManualBlock() {
     manualBlockDraft.nodes.pop();
     if (manualBlockDraft.nodes.length === 0) manualBlockDraft = null;
     renderBoardSnapshot(currentSnapshot, currentHint);
+    markManualMarksDirty();
     setManualMarkStatus(ui("markBlockUndone"));
     return true;
   }
   if (manualMarks.blocks.length > 0) {
     manualMarks.blocks.pop();
     renderBoardSnapshot(currentSnapshot, currentHint);
+    markManualMarksDirty();
     setManualMarkStatus(ui("markBlockUndone"));
     return true;
   }
@@ -2530,6 +2936,7 @@ function buildManualMarkSwatches() {
     button.addEventListener("click", () => {
       manualMarkColorId = String(color.id);
       updateManualMarkControls();
+      markManualMarksDirty();
       setManualMarkStatus(uif("markColorSelected", { id: color.custom ? color.bg : color.id }));
     });
     manualMarkSwatches.appendChild(button);
@@ -3057,18 +3464,9 @@ function renderManualMarkOverlay() {
 
 
 function clearManualMarks() {
-  manualMarks.cellColors.clear();
-  manualMarks.candidateColors.clear();
-  manualMarks.circles.clear();
-  manualMarks.preEliminations.clear();
-  manualMarks.eliminations.clear();
-  manualMarks.chains.length = 0;
-  manualMarks.miniRegions.length = 0;
-  manualMarks.blocks.length = 0;
-  manualBlockDraft = null;
-  manualChainStart = null;
-  manualMiniRegionStart = null;
+  resetManualMarksState();
   renderBoardSnapshot(currentSnapshot, currentHint);
+  markManualMarksDirty();
   setManualMarkStatus(ui("markAllCleared"));
 }
 
@@ -3119,6 +3517,7 @@ function applyManualMarkTarget(cell, digit = 0, forcedButton = null) {
   if (button === "secondary" && !["chain", "construction", "miniRegion"].includes(mode)) {
     clearManualMarkAt(cellIndex, digitValue, mode);
     renderBoardSnapshot(currentSnapshot, currentHint);
+    markManualMarksDirty();
     setManualMarkStatus(uif("markRemoved", { target: manualMarkTargetText(cellIndex, digitValue) }));
     return true;
   }
@@ -3139,6 +3538,7 @@ function applyManualMarkTarget(cell, digit = 0, forcedButton = null) {
       draft.nodes.push({ cell: cellIndex, digit: digitValue });
     }
     renderBoardSnapshot(currentSnapshot, currentHint);
+    markManualMarksDirty();
     setManualMarkStatus(uif("markBlockAdded", { target: manualMarkTargetText(cellIndex, digitValue) }));
     return true;
   } else if (mode === "chain" || mode === "construction") {
@@ -3158,6 +3558,7 @@ function applyManualMarkTarget(cell, digit = 0, forcedButton = null) {
     const toText = manualMarkTargetText(endpoint.cell, endpoint.digit);
     manualChainStart = null;
     renderBoardSnapshot(currentSnapshot, currentHint);
+    if (chainAction !== "none") markManualMarksDirty();
     if (chainAction === "removed") {
       setManualMarkStatus(uif("markChainRemoved", { from: fromText, to: toText }));
     } else if (chainAction === "updated") {
@@ -3187,6 +3588,7 @@ function applyManualMarkTarget(cell, digit = 0, forcedButton = null) {
     const toText = manualMarkTargetText(endpoint.cell, endpoint.digit);
     manualMiniRegionStart = null;
     renderBoardSnapshot(currentSnapshot, currentHint);
+    if (action !== "none") markManualMarksDirty();
     const typeText = ui(regionType === "blue" ? "markMiniRegionBlue" : "markMiniRegionGreen");
     if (action === "removed") {
       setManualMarkStatus(uif("markMiniRegionRemoved", { from: fromText, to: toText }));
@@ -3198,6 +3600,7 @@ function applyManualMarkTarget(cell, digit = 0, forcedButton = null) {
     return true;
   }
   renderBoardSnapshot(currentSnapshot, currentHint);
+  markManualMarksDirty();
   setManualMarkStatus(uif("markAdded", { target: manualMarkTargetText(cellIndex, digitValue) }));
   return true;
 }
@@ -3646,6 +4049,7 @@ async function applyManualMarkedEliminations() {
     manualMarks.eliminations.delete(key);
   }
   if (applied > 0 && lastResponse) {
+    markManualMarksDirty();
     refreshAfterEdit(lastResponse);
   } else {
     renderBoardSnapshot(currentSnapshot, currentHint);
@@ -3681,12 +4085,17 @@ function initManualMarksControls() {
     manualMiniRegionStart = null;
     updateManualMarkControls();
     renderBoardSnapshot(currentSnapshot, currentHint);
+    markManualMarksDirty();
+    if (manualMarksActive()) {
+      uiFoundation?.coachMarks.show("manual-marks-v1", MANUAL_MARK_GUIDE_STEPS);
+    }
     setManualMarkStatus(manualMarksActive() ? ui("markModeHint") : ui("markOffStatus"));
   });
   manualMarkLineType?.addEventListener("change", () => {
     const weak = String(manualMarkLineType.value).toLowerCase().includes("weak");
     manualMarkButton = weak ? "secondary" : "primary";
     updateManualMarkControls();
+    markManualMarksDirty();
   });
   manualMarkPrimary?.addEventListener("click", () => {
     manualMarkButton = "primary";
@@ -3694,6 +4103,7 @@ function initManualMarksControls() {
     if (manualMarkLineType && mode === "chain") manualMarkLineType.value = "strong";
     if (manualMarkLineType && mode === "construction") manualMarkLineType.value = "constructionStrong";
     updateManualMarkControls();
+    markManualMarksDirty();
   });
   manualMarkSecondary?.addEventListener("click", () => {
     manualMarkButton = "secondary";
@@ -3701,6 +4111,7 @@ function initManualMarksControls() {
     if (manualMarkLineType && mode === "chain") manualMarkLineType.value = "weak";
     if (manualMarkLineType && mode === "construction") manualMarkLineType.value = "constructionWeak";
     updateManualMarkControls();
+    markManualMarksDirty();
   });
   manualMarkAddColor?.addEventListener("click", () => {
     const bg = normalizeManualColor(manualMarkCustomColor?.value || "");
@@ -3715,6 +4126,7 @@ function initManualMarksControls() {
     }
     manualMarkColorId = String(existing.id);
     updateManualMarkControls();
+    markManualMarksDirty();
   });
   manualMarkApplyElims?.addEventListener("click", applyManualMarkedEliminations);
   manualMarkScreenshot?.addEventListener("click", shareManualBoardScreenshot);
@@ -3723,6 +4135,7 @@ function initManualMarksControls() {
     if (manualMarkModeValue() === "miniRegion") manualMarks.miniRegions.pop();
     else manualMarks.chains.pop();
     renderBoardSnapshot(currentSnapshot, currentHint);
+    markManualMarksDirty();
     setManualMarkStatus(ui("markLineUndone"));
   });
   manualMarkCancelChain?.addEventListener("click", () => {
@@ -3889,7 +4302,7 @@ function applyStaticLanguage() {
   const techniquesLinkEl = document.getElementById("techniquesLink");
   if (techniquesLinkEl) techniquesLinkEl.href = `./techniques.html${linkLangSuffix}`;
   setLocalizedTexts([
-    "brandSubtitle", "manualLink", ["techniquesLink", "techniqueHelp"], "boardHeading",
+    "brandSubtitle", ["techniqueHelp", "techniqueHelp"], "boardHeading",
   ]);
   if (yzfHintBaseText === (lang.value === "en" ? uiText.zh.initialHint : uiText.en.initialHint)) {
     yzfHintBaseText = ui("initialHint");
@@ -4999,11 +5412,12 @@ function buildAppSessionPayload() {
   const techniqueConfig = currentSessionTechniqueConfig();
   if (!libraryString && !techniqueConfig) return null;
   return {
-    version: 1,
+    version: APP_SESSION_PAYLOAD_VERSION,
     savedAt: Date.now(),
     language: lang?.value || "zh",
     libraryString,
     techniqueConfig,
+    manualMarks: serializeManualMarks(),
   };
 }
 
@@ -5017,6 +5431,32 @@ function saveAppSessionNow() {
       return true;
     }
     localStorage.setItem(APP_SESSION_STORAGE_KEY, JSON.stringify(payload));
+    const cells = currentSnapshot?.cells || [];
+    const filled = cells.filter((cell) => Number(cell?.value || 0) > 0).length;
+    const clues = cells.filter((cell, index) => Number(cell?.value || 0) > 0 && isFixedCell(index)).length;
+    const candidateCells = cells.filter((cell) => !Number(cell?.value || 0) && Array.isArray(cell?.candidates) && cell.candidates.length > 0).length;
+    /*
+     * 自动保存允许记录空白配置现场，但“近期快照”只展示真正含盘面的记录。
+     * 否则首次启动时的空盘会占据列表，并在点击恢复时被求解器判定为多解。
+     */
+    if (payload.libraryString && (filled > 0 || candidateCells > 0)) {
+      const identity = String(originalBoard || payload.libraryString);
+      upsertRecentPuzzleRecord({
+        id: hashWorkspaceText(identity),
+        identity,
+        savedAt: payload.savedAt,
+        libraryString: payload.libraryString,
+        language: payload.language,
+        filled,
+        clues,
+        candidateCells,
+        source: "session",
+        manualMarks: payload.manualMarks,
+        manualMarkCount: manualMarkItemCount(),
+        previewValues: cells.map((cell) => Number(cell?.value || 0)),
+        previewGivens: cells.map((cell, index) => Number(cell?.value || 0) > 0 && isFixedCell(index)),
+      });
+    }
     setAppSaveStatus("saved");
     return true;
   } catch (error) {
@@ -5057,7 +5497,7 @@ async function restoreAppSession(options = {}) {
     console.warn("Failed to read YZF session", error);
     return false;
   }
-  if (!payload || payload.version !== 1) return false;
+  if (!payload || ![1, APP_SESSION_PAYLOAD_VERSION].includes(payload.version)) return false;
   appSessionRestoring = true;
   try {
     if (payload.language && lang && [...lang.options].some((option) => option.value === payload.language)) {
@@ -5074,6 +5514,8 @@ async function restoreAppSession(options = {}) {
       if (!restored?.ok) {
         throw new Error(restored?.error || ui("importUnknownFormat"));
       }
+      restoreManualMarks(payload.manualMarks || null);
+      renderBoardSnapshot(currentSnapshot, currentHint);
     }
     renderTechniques();
     if (announce) {
@@ -9904,6 +10346,16 @@ function getSolverWorker() {
 
 function setSolverBusy(task, busy) {
   solverBusyTask = busy ? task : "";
+  const taskId = `solver-${task}`;
+  if (busy) {
+    uiFoundation?.tasks.update(taskId, {
+      label: task === "findall" ? ui("allSteps") : ui("solve"),
+      state: "running",
+      detail: task === "findall" ? ui("findAllBusy") : ui("solveBusy"),
+    });
+  } else {
+    uiFoundation?.tasks.remove(taskId);
+  }
   if (btnSolve) {
     btnSolve.disabled = busy;
     const label = btnSolve.querySelector(".action-label");
@@ -9964,6 +10416,15 @@ async function runSolverWorkerTask(task, payload) {
 
 
 function setRatingBusy(busy) {
+  if (busy) {
+    uiFoundation?.tasks.update("rating", {
+      label: ui("ratePuzzle"),
+      state: "running",
+      detail: ui("rateStarting"),
+    });
+  } else {
+    uiFoundation?.tasks.remove("rating");
+  }
   if (!btnRate) return;
   setButtonText(btnRate, busy ? ui("rateCancel") : ui("ratePuzzle"));
   btnRate.setAttribute("aria-busy", busy ? "true" : "false");
@@ -10020,7 +10481,9 @@ async function runRatingTask(input, fallbackPuzzle) {
   task.timer = window.setInterval(() => {
     if (ratingTask !== task) return;
     const seconds = Math.max(0, Math.floor((performance.now() - task.startedAt) / 1000));
-    setYzfHintBaseText(uif("rateRunning", { seconds }));
+    const detail = uif("rateRunning", { seconds });
+    setYzfHintBaseText(detail);
+    uiFoundation?.tasks.update("rating", { detail });
   }, 1000);
 
   return new Promise((resolve, reject) => {
@@ -10458,10 +10921,18 @@ function generateTrainingPuzzleInWorker(
 function startTrainingTimer(label, { otp = false } = {}) {
   const start = Date.now();
   const key = otp ? "otpSearching" : "trainingSearching";
-  setStatus(uif(key, { technique: label, elapsed: uif("seconds", { seconds: 0 }) }));
+  const initial = uif(key, { technique: label, elapsed: uif("seconds", { seconds: 0 }) });
+  setStatus(initial);
+  uiFoundation?.tasks.update("training-generate", {
+    label: ui("generateTraining"),
+    state: "running",
+    detail: initial,
+  });
   return window.setInterval(() => {
     const elapsed = Math.floor((Date.now() - start) / 1000);
-    setStatus(uif(key, { technique: label, elapsed: uif("seconds", { seconds: elapsed }) }));
+    const detail = uif(key, { technique: label, elapsed: uif("seconds", { seconds: elapsed }) });
+    setStatus(detail);
+    uiFoundation?.tasks.update("training-generate", { detail });
   }, 1000);
 }
 
@@ -10616,12 +11087,22 @@ async function openBatchWriter(filename) {
 function setBatchRunning(running) {
   if (btnBatchGenerate) btnBatchGenerate.disabled = running;
   if (btnBatchStop) btnBatchStop.disabled = !running;
+  if (running) {
+    uiFoundation?.tasks.update("batch", {
+      label: ui("batchGenerate"),
+      state: "running",
+      detail: batchStatus?.textContent || "",
+    });
+  } else {
+    uiFoundation?.tasks.remove("batch");
+  }
 }
 
 function updateBatchStatus(message) {
   if (batchStatus) {
     batchStatus.textContent = message;
   }
+  if (btnBatchGenerate?.disabled) uiFoundation?.tasks.update("batch", { detail: message });
   setStatus(message);
 }
 
@@ -13242,6 +13723,9 @@ function initTlgSolverControls() {
     // annotations remain stored, but are visually suppressed until TLG exits.
     renderBoardSnapshot(currentSnapshot, tlgSolverEditingActive() ? null : currentHint);
     updateTlgSolverUi();
+    if (tlgSolverEditingActive()) {
+      void uiFoundation?.coachMarks?.showGuide?.("tlg-editor-v1", { force: false });
+    }
   });
   tlgSolverMode?.addEventListener("change", () => {
     closeTlgSolverContextMenu();
@@ -15361,6 +15845,12 @@ window.addEventListener("yzf-ocr-resource-progress", (event) => {
     percent: Number(detail.percent || 0),
     attempt: Number(detail.attempt || 0),
   };
+  uiFoundation?.tasks.update("ocr", {
+    label: ui("ocrPickImage"),
+    state: "running",
+    detail: `${asset} · ${values.percent}%`,
+    progress: detail.total > 0 ? Number(detail.loaded || 0) / Number(detail.total || 1) : undefined,
+  });
   if (detail.phase === "retry") {
     setStatus(uif("ocrResourceRetry", values));
   } else if (detail.phase === "probing") {
@@ -15455,6 +15945,64 @@ function ocrCorrectionCloneCells(cells) {
     candidateMask: Number(cell?.candidateMask || 0) & 0x3fe,
     originalConfidence: Number.isFinite(Number(cell?.originalConfidence)) ? Number(cell.originalConfidence) : null,
   }));
+}
+
+
+function currentOcrCorrectionDraftPayload() {
+  if (!ocrCorrectionState || !Array.isArray(ocrCorrectionState.cells) || ocrCorrectionState.cells.length !== 81) return null;
+  return {
+    cells: ocrCorrectionCloneCells(ocrCorrectionState.cells),
+    originalCells: ocrCorrectionCloneCells(ocrCorrectionState.originalCells),
+    previewUrl: String(ocrCorrectionState.previewUrl || ""),
+    selectedIndex: ocrCorrectionSelectedIndex,
+    mode: ocrCorrectionMode,
+  };
+}
+
+function scheduleOcrCorrectionDraftSave() {
+  if (ocrDraftSaveTimer) window.clearTimeout(ocrDraftSaveTimer);
+  const payload = currentOcrCorrectionDraftPayload();
+  if (!payload) return;
+  ocrDraftSaveTimer = window.setTimeout(() => {
+    ocrDraftSaveTimer = 0;
+    void saveOcrCorrectionDraft(payload);
+  }, OCR_DRAFT_SAVE_DELAY_MS);
+}
+
+async function flushOcrCorrectionDraftSave() {
+  if (ocrDraftSaveTimer) {
+    window.clearTimeout(ocrDraftSaveTimer);
+    ocrDraftSaveTimer = 0;
+  }
+  const payload = currentOcrCorrectionDraftPayload();
+  if (!payload) return false;
+  return saveOcrCorrectionDraft(payload);
+}
+
+async function restoreSavedOcrCorrectionDraft(options = {}) {
+  const draft = await loadOcrCorrectionDraft();
+  if (!draft) return false;
+  if (mobileSolveActive) await exitMobileSolveMode({ exitFullscreen: false });
+  const root = ensureOcrCorrectionUi();
+  ocrCorrectionState = {
+    ocr: { coachJson: {} },
+    cells: ocrCorrectionCloneCells(draft.cells),
+    originalCells: ocrCorrectionCloneCells(draft.originalCells),
+    previewUrl: String(draft.previewUrl || ""),
+  };
+  ocrCorrectionSelectedIndex = Math.max(0, Math.min(80, Number(draft.selectedIndex || 0)));
+  ocrCorrectionMode = ["given", "solved", "candidate"].includes(draft.mode) ? draft.mode : "given";
+  ocrCorrectionHistory = [];
+  ocrCorrectionHistoryIndex = -1;
+  ocrCorrectionPushHistory();
+  root.hidden = false;
+  document.body.classList.add("ocr-correction-mode");
+  renderOcrCorrection();
+  root.querySelector(`.ocr-correction-cell[data-index="${ocrCorrectionSelectedIndex}"]`)?.focus?.({ preventScroll: true });
+  if (options.showGuide !== false) {
+    uiFoundation?.coachMarks.show("ocr-correction-v1", OCR_CORRECTION_GUIDE_STEPS);
+  }
+  return true;
 }
 
 function ocrCorrectionCellsFromResult(ocr) {
@@ -15573,12 +16121,14 @@ function ocrCorrectionPushHistory() {
   ocrCorrectionHistory.push(snapshot);
   if (ocrCorrectionHistory.length > 100) ocrCorrectionHistory.shift();
   ocrCorrectionHistoryIndex = ocrCorrectionHistory.length - 1;
+  scheduleOcrCorrectionDraftSave();
 }
 
 function ocrCorrectionRestoreHistory(index) {
   if (!ocrCorrectionState || index < 0 || index >= ocrCorrectionHistory.length) return;
   ocrCorrectionHistoryIndex = index;
   ocrCorrectionState.cells = ocrCorrectionCloneCells(ocrCorrectionHistory[index]);
+  scheduleOcrCorrectionDraftSave();
   renderOcrCorrection();
 }
 
@@ -15603,79 +16153,6 @@ function ensureOcrCorrectionUi() {
   root.className = "ocr-correction-root";
   root.hidden = true;
   root.innerHTML = `
-    <style>
-      body.ocr-correction-mode { overflow: hidden !important; }
-      .ocr-correction-root[hidden] { display: none !important; }
-      .ocr-correction-root { position: fixed; inset: 0; z-index: 2147483000; display: grid; grid-template-rows: auto minmax(0,1fr); background: #eef3f9; color: #172234; font-family: system-ui,-apple-system,"Segoe UI",sans-serif; }
-      .ocr-correction-root, .ocr-correction-root * { box-sizing: border-box; }
-      .ocr-correction-header { display:flex; align-items:center; gap:10px; min-height:52px; padding:8px 12px; border-bottom:1px solid #c9d4e2; background:#fff; box-shadow:0 2px 10px rgba(29,48,75,.08); }
-      .ocr-correction-title-wrap { min-width:0; flex:1; }
-      .ocr-correction-title { font-size:17px; font-weight:750; }
-      .ocr-correction-subtitle { margin-top:2px; color:#62718a; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-      .ocr-correction-header-actions { display:flex; gap:6px; }
-      .ocr-correction-root button { min-height:36px; margin:0 !important; border:1px solid #aebbd0; border-radius:9px; padding:6px 10px; background:#fff; color:#172234; font:inherit; cursor:pointer; touch-action:manipulation; box-sizing:border-box; }
-      .ocr-correction-root button:active { transform:translateY(1px); }
-      .ocr-correction-root button.primary { border-color:#245dc1; background:#2868d5; color:#fff; font-weight:700; }
-      .ocr-correction-root button.danger-lite { color:#8b2635; }
-      .ocr-correction-workspace { min-height:0; display:grid; grid-template-columns:minmax(260px,1fr) minmax(300px,1fr) minmax(210px,.7fr); gap:10px; padding:10px; overflow:hidden; }
-      .ocr-correction-card { min-width:0; min-height:0; display:flex; flex-direction:column; border:1px solid #c9d4e2; border-radius:13px; background:#fff; box-shadow:0 5px 18px rgba(29,48,75,.08); overflow:hidden; }
-      .ocr-correction-card-title { flex:0 0 auto; padding:8px 10px; border-bottom:1px solid #dde4ee; font-size:13px; font-weight:700; }
-      .ocr-correction-image-body, .ocr-correction-board-body { min-height:0; flex:1; display:grid; place-items:center; padding:8px; overflow:auto; }
-      .ocr-correction-image-stage { position:relative; width:min(100%, calc(100dvh - 154px)); aspect-ratio:1; background:#f4f6f9; border:2px solid #263c5e; }
-      .ocr-correction-image-stage img { display:block; width:100%; height:100%; object-fit:contain; }
-      .ocr-correction-image-grid { position:absolute; inset:0; display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); grid-template-rows:repeat(9,minmax(0,1fr)); overflow:hidden; }
-      .ocr-correction-image-cell { width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; max-width:none !important; max-height:none !important; margin:0 !important; padding:0 !important; border:0 !important; border-right:1px solid rgba(31,53,84,.25) !important; border-bottom:1px solid rgba(31,53,84,.25) !important; border-radius:0 !important; background:transparent !important; align-self:stretch !important; justify-self:stretch !important; appearance:none; -webkit-appearance:none; transform:none !important; }
-      .ocr-correction-image-cell:nth-child(9n+3), .ocr-correction-image-cell:nth-child(9n+6) { border-right-width:2px !important; border-right-color:rgba(12,31,59,.65) !important; }
-      .ocr-correction-image-cell:nth-child(n+19):nth-child(-n+27), .ocr-correction-image-cell:nth-child(n+46):nth-child(-n+54) { border-bottom-width:2px !important; border-bottom-color:rgba(12,31,59,.65) !important; }
-      .ocr-correction-image-cell.selected { outline:3px solid #ff9d00; outline-offset:-3px; background:rgba(255,190,43,.18) !important; }
-      .ocr-correction-board { width:min(100%, calc(100dvh - 154px)); aspect-ratio:1; display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); grid-template-rows:repeat(9,minmax(0,1fr)); grid-auto-flow:row; border:3px solid #1c2c45; background:#fff; overflow:hidden; contain:layout paint; }
-      .ocr-correction-cell { position:relative; width:100% !important; height:100% !important; min-width:0 !important; min-height:0 !important; max-width:none !important; max-height:none !important; margin:0 !important; padding:0 !important; border:0 !important; border-right:1px solid #8b99ac !important; border-bottom:1px solid #8b99ac !important; border-radius:0 !important; display:grid; place-items:center; align-self:stretch !important; justify-self:stretch !important; background:#fff !important; overflow:hidden; appearance:none; -webkit-appearance:none; transform:none !important; }
-      .ocr-correction-cell:nth-child(9n+3), .ocr-correction-cell:nth-child(9n+6) { border-right:3px solid #1c2c45 !important; }
-      .ocr-correction-cell:nth-child(n+19):nth-child(-n+27), .ocr-correction-cell:nth-child(n+46):nth-child(-n+54) { border-bottom:3px solid #1c2c45 !important; }
-      .ocr-correction-cell.selected { outline:3px solid #ff9d00; outline-offset:-3px; z-index:2; }
-      .ocr-correction-cell .ocr-value { font-size:clamp(16px,4.2vmin,34px); line-height:1; font-weight:700; }
-      .ocr-correction-cell.ocr-role-given .ocr-value { color:#111; }
-      .ocr-correction-cell.ocr-role-solved .ocr-value { color:#1f67c9; }
-      .ocr-correction-candidates { position:absolute; inset:2px; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); font-size:clamp(6px,1.35vmin,11px); color:#40516b; line-height:1; }
-      .ocr-correction-candidates span { display:grid; place-items:center; }
-      .ocr-correction-controls { min-height:0; overflow:auto; padding:10px; gap:9px; }
-      .ocr-correction-selected { padding:8px 9px; border-radius:9px; background:#eef4ff; color:#244979; font-weight:700; }
-      .ocr-correction-zoom { width:100%; aspect-ratio:2.5/1; min-height:76px; border:1px solid #b8c5d6; border-radius:9px; background-color:#f4f6f9; background-repeat:no-repeat; image-rendering:auto; }
-      .ocr-correction-mode-row { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
-      .ocr-correction-mode-row button.active { border-color:#245dc1; background:#dce9ff; color:#174b9e; font-weight:700; }
-      .ocr-correction-keypad { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
-      .ocr-correction-keypad button { min-height:46px; font-size:20px; font-weight:700; }
-      .ocr-correction-nav, .ocr-correction-edit-actions { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; }
-      .ocr-correction-summary { display:flex; flex-wrap:wrap; gap:5px; color:#5b6a80; font-size:12px; }
-      .ocr-correction-summary span { padding:4px 7px; border-radius:99px; background:#eef2f7; }
-      .ocr-correction-hint { color:#65758c; font-size:12px; line-height:1.4; }
-      @media (orientation: landscape) and (max-height: 800px) {
-        .ocr-correction-header { min-height:44px; padding:5px 8px; }
-        .ocr-correction-subtitle { display:none; }
-        .ocr-correction-workspace { grid-template-columns:minmax(230px,34vw) minmax(250px,38vw) minmax(180px,1fr); gap:6px; padding:6px; }
-        .ocr-correction-card-title { padding:5px 8px; }
-        .ocr-correction-image-body, .ocr-correction-board-body { padding:4px; }
-        .ocr-correction-image-stage, .ocr-correction-board { width:min(100%, calc(100dvh - 98px)); }
-        .ocr-correction-controls { padding:6px; gap:5px; }
-        .ocr-correction-zoom { min-height:54px; }
-        .ocr-correction-keypad { grid-template-columns:repeat(5,1fr); gap:4px; }
-        .ocr-correction-keypad button { min-height:34px; padding:3px; font-size:16px; }
-        .ocr-correction-root button { min-height:32px; padding:4px 7px; font-size:12px; }
-      }
-      @media (orientation: portrait), (max-width: 700px) {
-        .ocr-correction-header { padding:6px; }
-        .ocr-correction-subtitle { display:none; }
-        .ocr-correction-header-actions .ocr-correction-fullscreen { display:none; }
-        .ocr-correction-workspace { display:block; overflow:auto; padding:6px; }
-        .ocr-correction-card { min-height:auto; margin-bottom:8px; }
-        .ocr-correction-image-body, .ocr-correction-board-body { flex:none; overflow:visible; height:min(94vw,430px); min-height:min(94vw,430px); }
-        .ocr-correction-image-stage, .ocr-correction-board { width:min(94vw,430px); }
-        .ocr-correction-controls { overflow:visible; }
-        .ocr-correction-zoom { max-height:130px; }
-        .ocr-correction-keypad { grid-template-columns:repeat(5,1fr); }
-        .ocr-correction-keypad button { min-height:42px; }
-      }
-    </style>
     <header class="ocr-correction-header">
       <div class="ocr-correction-title-wrap">
         <div class="ocr-correction-title"></div>
@@ -15693,6 +16170,7 @@ function ensureOcrCorrectionUi() {
         <div class="ocr-correction-image-body">
           <div class="ocr-correction-image-stage">
             <img class="ocr-correction-source-image" alt="OCR recognized Sudoku" />
+            <div class="ocr-correction-no-preview" hidden></div>
             <div class="ocr-correction-image-grid"></div>
           </div>
         </div>
@@ -15762,6 +16240,7 @@ function ensureOcrCorrectionUi() {
     }
     if (target.dataset.mode) {
       ocrCorrectionMode = target.dataset.mode;
+      scheduleOcrCorrectionDraftSave();
       renderOcrCorrection();
       return;
     }
@@ -15818,6 +16297,7 @@ function ensureOcrCorrectionUi() {
 
 function selectOcrCorrectionCell(index) {
   ocrCorrectionSelectedIndex = Math.max(0, Math.min(80, Number(index) || 0));
+  scheduleOcrCorrectionDraftSave();
   renderOcrCorrection();
   const button = ocrCorrectionRoot?.querySelector(`.ocr-correction-cell[data-index="${ocrCorrectionSelectedIndex}"]`);
   button?.focus?.({ preventScroll: true });
@@ -15878,12 +16358,16 @@ function renderOcrCorrection() {
   root.querySelector(".ocr-correction-hint").textContent = ocrCorrectionText(ocrCorrectionMode === "candidate" ? "candidateHint" : "valueHint");
 
   const source = root.querySelector(".ocr-correction-source-image");
+  const noPreview = root.querySelector(".ocr-correction-no-preview");
   if (ocrCorrectionState.previewUrl) {
     source.src = ocrCorrectionState.previewUrl;
     source.hidden = false;
+    noPreview.hidden = true;
   } else {
     source.removeAttribute("src");
     source.hidden = true;
+    noPreview.textContent = ocrCorrectionText("noPreview");
+    noPreview.hidden = false;
   }
 
   const selected = ocrCorrectionState.cells[ocrCorrectionSelectedIndex];
@@ -15937,7 +16421,7 @@ function renderOcrCorrection() {
   });
 }
 
-async function openOcrCorrection(ocr) {
+async function openOcrCorrection(ocr, options = {}) {
   if (!ocr?.coachJson) throw new Error(ui("ocrNoCoachJson"));
   if (mobileSolveActive) await exitMobileSolveMode({ exitFullscreen: false });
   const root = ensureOcrCorrectionUi();
@@ -15958,17 +16442,26 @@ async function openOcrCorrection(ocr) {
   document.body.classList.add("ocr-correction-mode");
   renderOcrCorrection();
   root.querySelector(".ocr-correction-cell")?.focus?.({ preventScroll: true });
+  scheduleOcrCorrectionDraftSave();
+  if (options.showGuide !== false) {
+    uiFoundation?.coachMarks.show("ocr-correction-v1", OCR_CORRECTION_GUIDE_STEPS);
+  }
   return { ok: true, correction: true };
 }
 
 function closeOcrCorrection(confirmDiscard = false) {
   if (!ocrCorrectionIsActive()) return true;
   if (confirmDiscard && ocrCorrectionHistoryIndex > 0 && !window.confirm(ocrCorrectionText("closeConfirm"))) return false;
+  if (ocrDraftSaveTimer) {
+    window.clearTimeout(ocrDraftSaveTimer);
+    ocrDraftSaveTimer = 0;
+  }
   ocrCorrectionRoot.hidden = true;
   document.body.classList.remove("ocr-correction-mode");
   ocrCorrectionState = null;
   ocrCorrectionHistory = [];
   ocrCorrectionHistoryIndex = -1;
+  void clearOcrCorrectionDraft();
   return true;
 }
 
@@ -16008,7 +16501,7 @@ async function confirmOcrCorrection() {
   return result;
 }
 
-async function recognizeAndImportImageFile(file) {
+async function recognizeAndImportImageFile(file, options = {}) {
   if (!file) return { ok: false, error: ui("ocrNoImageSelected") };
   if (!file.type?.startsWith?.("image/")) {
     const error = ui("ocrInvalidImageFile");
@@ -16017,11 +16510,22 @@ async function recognizeAndImportImageFile(file) {
   }
   try {
     ocrResourceProgressActive = true;
+    uiFoundation?.tasks.update("ocr", {
+      label: ui("ocrPickImage"),
+      state: "running",
+      detail: ui("ocrRecognizingLocal"),
+    });
     setStatus(ui("ocrRecognizingLocal"));
     const { recognizeSudokuImageToCoachJson } = await loadLocalSudokuOcrModule();
     const ocr = await recognizeSudokuImageToCoachJson(file);
     if (!ocr?.coachJson) throw new Error(ui("ocrNoCoachJson"));
-    return await openOcrCorrection(ocr);
+    const result = await openOcrCorrection(ocr, { showGuide: options.showGuide !== false });
+    uiFoundation?.tasks.finish("ocr", {
+      label: ui("ocrPickImage"),
+      state: result?.ok === false ? "error" : "success",
+      detail: result?.ok === false ? (result.error || ui("ocrPickImage")) : ocrCorrectionText("title"),
+    });
+    return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (isLocalSudokuOcrRuntimeLoadError(error)) {
@@ -16029,6 +16533,11 @@ async function recognizeAndImportImageFile(file) {
     }
     setStatus(uif("ocrFailed", { message }));
     debugLog(uif("ocrFailed", { message }));
+    uiFoundation?.tasks.finish("ocr", {
+      label: ui("ocrPickImage"),
+      state: "error",
+      detail: message,
+    });
     return { ok: false, error: message };
   } finally {
     ocrResourceProgressActive = false;
@@ -16046,7 +16555,7 @@ btnLoad.addEventListener("click", async () => {
 });
 
 
-async function recognizeFirstClipboardImage() {
+async function recognizeFirstClipboardImage(options = {}) {
   if (!navigator.clipboard?.read) {
     const message = ui("ocrClipboardUnsupported");
     setStatus(message);
@@ -16062,7 +16571,7 @@ async function recognizeFirstClipboardImage() {
       const blob = await item.getType(type);
       const ext = type.includes("png") ? "png" : type.includes("jpeg") ? "jpg" : "webp";
       const file = new File([blob], `clipboard-sudoku.${ext}`, { type });
-      return await recognizeAndImportImageFile(file);
+      return await recognizeAndImportImageFile(file, options);
     }
     const message = ui("ocrClipboardNoImage");
     setStatus(message);
@@ -16076,13 +16585,40 @@ async function recognizeFirstClipboardImage() {
 }
 
 
+async function showOcrImagePickerGuide() {
+  ocrGuideReplayPending = true;
+  if (mobileSolveActive) await exitMobileSolveMode({ exitFullscreen: false });
+  activateTab("controls");
+  const panel = document.getElementById("puzzleInputPanel");
+  if (panel) panel.open = true;
+  const picker = document.getElementById("btnImageOcrPick");
+  picker?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  setStatus(ui("ocrGuideClipboardFallback"));
+  await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+  return uiFoundation?.coachMarks.showTransient?.(OCR_IMAGE_PICKER_GUIDE_STEPS, { force: true }) === true;
+}
+
+async function prepareOcrGuideReplay() {
+  ocrGuideReplayPending = false;
+  if (ocrCorrectionIsActive()) return true;
+  const result = await recognizeFirstClipboardImage({ showGuide: false });
+  if (result?.ok) return true;
+  await showOcrImagePickerGuide();
+  return false;
+}
+
 btnImageOcrClipboard?.addEventListener("click", async () => {
   await recognizeFirstClipboardImage();
 });
 
 imageOcrInput?.addEventListener("change", async () => {
   const file = imageOcrInput.files?.[0];
-  await recognizeAndImportImageFile(file);
+  const replayGuide = ocrGuideReplayPending;
+  ocrGuideReplayPending = false;
+  const result = await recognizeAndImportImageFile(file, { showGuide: !replayGuide });
+  if (replayGuide && result?.ok) {
+    uiFoundation?.coachMarks.show("ocr-correction-v1", OCR_CORRECTION_GUIDE_STEPS, { force: true });
+  }
 });
 
 imageOcrCameraInput?.addEventListener("change", async () => {
@@ -16384,6 +16920,7 @@ btnGenerateTraining?.addEventListener("click", async () => {
   } finally {
     window.clearInterval(timer);
     btnGenerateTraining.disabled = false;
+    uiFoundation?.tasks.remove("training-generate");
   }
 });
 
@@ -17168,6 +17705,7 @@ function updateMobileSolveLanguage() {
   setTextById("btnMobileSolveAllSteps", ui("allSteps"));
   setTextById("btnMobileSolveInput", ui("mobileSolveInput"));
   setTextById("btnMobileSolveAnalysis", ui("mobileSolveAnalysis"));
+  setTextById("btnMobileSolveHelp", ui("mobileSolveHelp"));
   setTextById("mobileSolveLanguageLabel", ui("mobileSolveLanguage"));
   setTextById("mobileSolveWakeLockLabel", ui("mobileSolveWakeLock"));
   updateMobileSolveWakeLockUi();
@@ -17428,6 +17966,10 @@ function installMobileSolveMode() {
     setMobileSolveKeepScreenAwake(mobileSolveWakeLockToggle.checked).catch(() => {});
   });
   btnMobileSolveAnalysis?.addEventListener("click", () => exitMobileSolveMode());
+  btnMobileSolveHelp?.addEventListener("click", () => {
+    setMobileSolveDrawer(false);
+    uiFoundation?.appHub?.open?.();
+  });
   mobileSolveLang?.addEventListener("change", () => {
     lang.value = mobileSolveLang.value;
     lang.dispatchEvent(new Event("change", { bubbles: true }));
@@ -17793,12 +18335,19 @@ lang.addEventListener("change", () => {
     renderBoard(currentHint);
   }
   scheduleAppSessionSave();
+  uiFoundation?.relocalize();
 });
 
 btnClearSavedSession?.addEventListener("click", clearSavedAppSession);
 
-window.addEventListener("beforeunload", flushAppSessionSave);
-window.addEventListener("pagehide", flushAppSessionSave);
+window.addEventListener("beforeunload", () => {
+  flushAppSessionSave();
+  void flushOcrCorrectionDraftSave();
+});
+window.addEventListener("pagehide", () => {
+  flushAppSessionSave();
+  void flushOcrCorrectionDraftSave();
+});
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
     flushAppSessionSave();
@@ -17815,7 +18364,144 @@ installAppBackNavigation();
 applyStaticLanguage();
 installPwaSupport();
 
-init().catch((err) => {
+/*
+ * 正式 UI 基础层接线点。
+ * 这里只暴露受控操作与只读状态快照；UI 组件不得绕过主控制器修改盘面、技巧配置或 Worker 状态。
+ */
+uiFoundation = installUiFoundation({
+  getLanguage: appStatusLanguage,
+  getText: ui,
+  setLanguage: (value) => {
+    const next = value === "en" ? "en" : "zh";
+    if (!lang || lang.value === next) return;
+    lang.value = next;
+    lang.dispatchEvent(new Event("change", { bubbles: true }));
+  },
+  guides: [
+    {
+      key: "app-overview-v1",
+      labelZh: "快速上手",
+      labelEn: "Quick start",
+      descriptionZh: "盘面、高频操作、提示区和帮助中心的四步概览。",
+      descriptionEn: "A four-step overview of the board, frequent actions, hint panel, and help center.",
+      steps: APP_OVERVIEW_GUIDE_STEPS,
+      prepare: async () => {
+        if (mobileSolveActive) await exitMobileSolveMode({ exitFullscreen: false });
+        return true;
+      },
+    },
+    {
+      key: "manual-marks-v1",
+      labelZh: "手工标记",
+      labelEn: "Manual marks",
+      descriptionZh: "模式、颜色与删数应用的三步说明。",
+      descriptionEn: "A three-step guide to modes, colors, and applying eliminations.",
+      steps: MANUAL_MARK_GUIDE_STEPS,
+      prepare: () => {
+        if (manualMarksPanel) manualMarksPanel.open = true;
+        manualMarksPanel?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+        return true;
+      },
+    },
+    {
+      key: "ocr-correction-v1",
+      labelZh: "OCR 对照校正",
+      labelEn: "OCR correction",
+      descriptionZh: "重播时先读取剪贴板图片；不可用时引导选择图片，识别后继续三步校正说明。",
+      descriptionEn: "Replay first reads a clipboard image; if unavailable, it guides image selection and then continues the three-step correction flow.",
+      steps: OCR_CORRECTION_GUIDE_STEPS,
+      prepare: prepareOcrGuideReplay,
+    },
+    {
+      key: "tlg-editor-v1",
+      labelZh: "TLG 编辑",
+      labelEn: "TLG editing",
+      descriptionZh: "输入模式、盘面接管、结构核对和查找结论的四步说明。",
+      descriptionEn: "A four-step guide to input modes, board ownership, structure review, and finding conclusions.",
+      steps: TLG_EDITOR_GUIDE_STEPS,
+      prepare: async () => {
+        if (mobileSolveActive) await exitMobileSolveMode({ exitFullscreen: false });
+        activateTab("controls");
+        if (tlgSolverPanel) tlgSolverPanel.open = true;
+        tlgSolverPanel?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+        return true;
+      },
+    },
+  ],
+  getDiagnostics: async () => ({
+    versions: {
+      app: APP_VERSION,
+      ui: UI_RELEASE_VERSION,
+      manual: MANUAL_VERSION,
+      ocrAssets: OCR_ASSET_VERSION,
+      ocrCorrectionUi: OCR_CORRECTION_UI_VERSION,
+    },
+    runtime: {
+      debugMode: APP_DEBUG_MODE,
+      boardPointerMode,
+      mobileSolveActive,
+      currentLanguage: appStatusLanguage(),
+    },
+    save: { ...appSaveStatus },
+    pwa: {
+      state: pwaStatus.state,
+      values: { ...(pwaStatus.values || {}) },
+      cacheReady: pwaCacheReady,
+      pendingVersion: pwaPendingVersion,
+      targetVersion: pwaTargetVersion,
+      hasRegistration: Boolean(pwaRegistration),
+      installedDisplayMode: pwaInstalledDisplayMode(),
+    },
+  }),
+  getWorkspaceSnapshot: async () => {
+    let session = null;
+    try {
+      const raw = localStorage.getItem(APP_SESSION_STORAGE_KEY);
+      const payload = raw ? JSON.parse(raw) : null;
+      if (payload?.savedAt) session = { savedAt: Number(payload.savedAt) };
+    } catch {}
+    return {
+      session,
+      recent: loadRecentPuzzleRecords(),
+      ocrDraft: await loadOcrCorrectionDraft(),
+    };
+  },
+  resumeSession: async () => restoreAppSession({ restorePuzzle: true, announce: true }),
+  openRecent: async (id) => {
+    const record = loadRecentPuzzleRecords().find((item) => item.id === String(id || ""));
+    if (!record?.libraryString) return false;
+    givens.value = record.libraryString;
+    const imported = await importPuzzleFromCurrentInput({ clipboardFallback: false, preferClipboardFirst: false });
+    if (!imported?.ok) return false;
+    restoreManualMarks(record.manualMarks || null);
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    scheduleAppSessionSave();
+    return true;
+  },
+  removeRecent: async (id) => {
+    removeRecentPuzzleRecord(id);
+    return true;
+  },
+  clearRecent: async () => {
+    clearRecentPuzzleRecords();
+    return true;
+  },
+  resumeOcrDraft: restoreSavedOcrCorrectionDraft,
+});
+
+renderAppStatus("save", appSaveStatus.state, appSaveStatus.values);
+renderAppStatus("pwa", pwaStatus.state, pwaStatus.values);
+
+init().then(() => {
+  applyPwaLaunchAction({
+    getText: ui,
+    announce: (message) => showPlainAppStatusToast(message, "info"),
+  });
+  window.setTimeout(() => {
+    if (document.querySelector("dialog[open]") || document.body.classList.contains("mobile-solve-mode")) return;
+    void uiFoundation?.coachMarks?.showGuide?.("app-overview-v1", { force: false });
+  }, 900);
+}).catch((err) => {
   console.error(err);
   const message = `${ui("wasmLoadFailed")}: ${err}`;
   setStatus(message);

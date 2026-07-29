@@ -1,3 +1,14 @@
+/*
+ * 维护说明（简体中文）
+ * 职责：PWA Service Worker。
+ * 数据流：实现清单校验、断点续传、旧缓存复用、原子激活和离线回退。
+ * 修改时注意：
+ * - 本文件只应在明确理解数据流后修改；注释描述的是设计意图和维护约束。
+ * - 重构时须保持既有求解结果、技巧优先级、前后端字段或测试基线不变。
+ * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
+ * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
+ * - 新版本只有在清单全部下载并校验后才能激活，不能为追求更新速度破坏原子性。
+ */
 /* YZF Sudoku resumable incremental-offline service worker.
 
    Update model:
@@ -15,6 +26,11 @@ importScripts("./pwa-assets.js");
 
 // One-release repair marker. This release auto-activates only after every asset
 // in its regenerated manifest has been downloaded and SHA-256 verified.
+/*
+ * 一次性修复版本标记。
+ * 只有指定发布且完整资源已校验时才允许自动激活；发布后应由生成流程更新/移除，
+ * 不能把它改成“所有版本永远强制激活”，那会绕过用户控制和失败恢复。
+ */
 const FORCE_ACTIVATE_RELEASE = "83b22f61452e1bf34dd6";
 
 const manifest = self.YZF_PWA_ASSET_MANIFEST || { version: "missing", totalBytes: 0, assets: [] };
@@ -83,6 +99,7 @@ function contentTypeForAsset(asset) {
   if (pathname.endsWith(".ort")) return "application/octet-stream";
   if (pathname.endsWith(".png")) return "image/png";
   if (pathname.endsWith(".svg")) return "image/svg+xml";
+  if (pathname.endsWith(".css")) return "text/css; charset=utf-8";
   if (pathname.endsWith(".mjs") || pathname.endsWith(".js")) return "text/javascript; charset=utf-8";
   if (pathname.endsWith(".html")) return "text/html; charset=utf-8";
   if (pathname.endsWith(".json") || pathname.endsWith(".webmanifest")) return "application/json; charset=utf-8";
@@ -158,6 +175,11 @@ async function reportActivation(event, type, details = {}) {
   return message;
 }
 
+/*
+ * 激活前的最终闸门。
+ * 即使浏览器把 worker 标记为 waiting，也必须重新检查 release complete 元数据和关键资源；
+ * 任何缺失都拒绝 skipWaiting，保证用户不会得到“新壳+旧/缺 WASM”的混合版本。
+ */
 async function ensureReleaseCompleteForActivation(event) {
   if (await releaseIsComplete()) return { repaired: false, stats: null };
   await reportActivation(event, "YZF_PWA_ACTIVATION_REPAIRING", {
@@ -268,6 +290,11 @@ async function responseMatchesKnownMeta(cache, meta, asset) {
   return null;
 }
 
+/*
+ * 旧发布缓存复用。
+ * 复用前同时核对字节数与 SHA-256；URL 相同不足以证明内容相同。
+ * 命中后写入新发布缓存并更新 meta，最终激活仍等待整个清单完成。
+ */
 async function copyReusableAsset(asset, targetCache, targetMeta, sources) {
   const staged = await responseMatchesKnownMeta(targetCache, targetMeta, asset);
   if (staged) {
@@ -342,6 +369,11 @@ async function deleteAssetChunks(cache, asset) {
   await Promise.all(Array.from({ length: count }, (_, index) => cache.delete(chunkUrl(asset, index))));
 }
 
+/*
+ * 大文件断点续传。
+ * 每个 Range 分块单独校验长度并缓存，重试时从首个缺块继续；最终拼接后再做整文件 SHA-256。
+ * 服务器不支持 Range 或响应不合规时回退整文件下载，不能把部分响应当完整资源。
+ */
 async function downloadChunkedAsset(asset, cache, onProgress) {
   const total = Number(asset.bytes || 0);
   const count = Math.ceil(total / CHUNK_SIZE);
@@ -442,6 +474,11 @@ async function ensureAsset(asset, cache, meta, sources, progress) {
   return { source: "network" };
 }
 
+/*
+ * 发布准备事务。
+ * 依次复用/下载所有清单资源，持续保存 staging meta；只有全部资源通过摘要校验才写入 complete 状态。
+ * 失败时保留已完成分块供下次继续，但绝不删除当前活动发布缓存。
+ */
 async function cacheReleaseInternal() {
   if (MANIFEST_ERROR) throw new Error(`offline manifest validation failed: ${MANIFEST_ERROR}`);
   const cache = await caches.open(CACHE_NAME);

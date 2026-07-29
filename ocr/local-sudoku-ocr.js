@@ -1,3 +1,13 @@
+/*
+ * 维护说明（简体中文）
+ * 职责：本地 OCR 封装。
+ * 数据流：加载本地模型、图像预处理、候选识别和错误归一化。
+ * 修改时注意：
+ * - 本文件只应在明确理解数据流后修改；注释描述的是设计意图和维护约束。
+ * - 重构时须保持既有求解结果、技巧优先级、前后端字段或测试基线不变。
+ * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
+ * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
+ */
 // Local Sudoku image OCR for YZF_Sudoku.
 // Runs completely in the browser with ONNX Runtime Web; no sudoku-ocr.com fallback.
 // Recognition model attribution: Alex Kubiesa / Sudoku OCR model family.

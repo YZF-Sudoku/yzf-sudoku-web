@@ -67,6 +67,29 @@ Solve Mode keeps the screen awake by default through the browser Screen Wake Loc
 - Browsers release it when the app goes into the background; YZF requests it again after returning to the foreground.
 - HTTPS, localhost, or an installed PWA is required. Battery saver or device policy may still reject the request.
 
+## Help & Workspaces / 帮助与现场
+
+The top bar keeps frequent actions visible and collects less-frequent tools in one responsive **Help & workspaces / 帮助与现场** center.
+
+- Resume the autosaved board, an unfinished OCR correction draft, or one of up to 12 deduplicated recent puzzles.
+- Review long-running rating, solving, generation, OCR, batch, save, and PWA tasks without relying on an ambiguous spinner.
+- Open the bilingual user manual and technique guide, or replay the quick-start, Manual Marks, OCR correction, and TLG editing guides. OCR replay first attempts a clipboard image and falls back to the existing image picker with a guided Choose Image action.
+- Switch Chinese/English and copy diagnostic information from the same center.
+
+Desktop uses a centered dialog. Phone portrait uses a bottom sheet, while low-height landscape uses a right-side sheet. The same center is available from Mobile Solve Mode.
+
+主现场格式 v2 会保存完整手工标记并兼容 v1；OCR 草稿在确认导入前不会改写主盘。清除浏览器站点数据会一并移除这些本地现场。
+
+## Bilingual UI Contract / 双语界面契约
+
+Visible UI additions must provide both Simplified Chinese and English in the application text configuration. Update `user_manual.html` in both languages whenever a user-facing workflow changes, then run:
+
+```bash
+python tools/test_bilingual_ui_contract.py
+python tools/test_ui_foundation_browser.py
+python tools/test_ocr_guide_launch_browser.py
+```
+
 ## WebAssembly Solver
 
 The Sudoku solving engine runs in the browser through WebAssembly.

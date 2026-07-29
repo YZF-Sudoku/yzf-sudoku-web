@@ -1,3 +1,13 @@
+/*
+ * 维护说明（简体中文）
+ * 职责：步骤本地化。
+ * 数据流：映射技巧名、格名、house 名和说明模板，不改变步骤结构。
+ * 修改时注意：
+ * - 本文件只应在明确理解数据流后修改；注释描述的是设计意图和维护约束。
+ * - 重构时须保持既有求解结果、技巧优先级、前后端字段或测试基线不变。
+ * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
+ * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
+ */
 // Frontend-only step localization.
 // It receives a final StepResult after solving; workers and solver hot paths do not import this file.
 
