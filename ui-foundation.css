@@ -1310,3 +1310,425 @@ button.primary:not(:disabled) {
 ) {
   accent-color: var(--accent);
 }
+
+/*
+ * V512 dark-theme exhaustive UI contrast closure.
+ * Legacy rules in index.html still assign light backgrounds to several controls.
+ * Keep the override scoped to dark/system-dark so light and high-contrast themes
+ * retain their established semantics.
+ */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  #tabTechniques .technique-toolbar button:not(:disabled):not(.primary),
+  .ocr-import-actions button:not(:disabled):not(.primary),
+  .ocr-import-actions select:not(:disabled),
+  .ocr-file-button,
+  .ocr-toggle-chip
+) {
+  border-color: var(--border) !important;
+  background: var(--surface-soft) !important;
+  color: var(--ink) !important;
+  box-shadow: none !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  #tabTechniques .technique-toolbar button:not(:disabled):not(.primary),
+  .ocr-import-actions button:not(:disabled):not(.primary),
+  .ocr-file-button,
+  .ocr-toggle-chip
+):hover,
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  #tabTechniques .technique-toolbar button:not(:disabled):not(.primary),
+  .ocr-import-actions button:not(:disabled):not(.primary),
+  .ocr-file-button,
+  .ocr-toggle-chip
+):focus-visible,
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .ocr-toggle-chip:focus-within {
+  border-color: var(--accent) !important;
+  background: var(--accent-faint) !important;
+  color: var(--accent-strong) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .all-steps-filter {
+  border-color: var(--border) !important;
+  background: var(--surface-soft) !important;
+  color: var(--ink) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .all-steps-filter label,
+  .all-steps-filter-status,
+  .tlg-solver-grid,
+  .tlg-solver-grid label,
+  .tlg-solver-grid label > span
+) {
+  color: var(--ink) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .all-steps-filter-status,
+  .batch-status,
+  .tlg-solver-status
+) {
+  color: var(--muted) !important;
+}
+
+/* Dynamic dialogs and secondary surfaces created by ui-foundation/app.js. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .app-hub-dialog,
+  .yzf-diagnostics-dialog,
+  .yzf-workspace-dialog,
+  .yzf-task-center-dialog,
+  .training-text-filter-dialog,
+  .tlg-library-dialog,
+  .step-explain-dialog
+) button:not(:disabled):not(.primary):not([data-yzf-variant="brand-primary"]):not([data-yzf-variant^="alert-"]):not(.app-status-button):not(.app-status-back-control) {
+  border-color: var(--border) !important;
+  background: var(--surface-soft) !important;
+  color: var(--ink) !important;
+  box-shadow: none !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .app-hub-dialog,
+  .yzf-diagnostics-dialog,
+  .yzf-workspace-dialog,
+  .yzf-task-center-dialog,
+  .training-text-filter-dialog,
+  .tlg-library-dialog,
+  .step-explain-dialog
+) button:not(:disabled):not(.primary):not([data-yzf-variant="brand-primary"]):not([data-yzf-variant^="alert-"]):not(.app-status-button):not(.app-status-back-control):hover,
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .app-hub-dialog,
+  .yzf-diagnostics-dialog,
+  .yzf-workspace-dialog,
+  .yzf-task-center-dialog,
+  .training-text-filter-dialog,
+  .tlg-library-dialog,
+  .step-explain-dialog
+) button:not(:disabled):not(.primary):not([data-yzf-variant="brand-primary"]):not([data-yzf-variant^="alert-"]):not(.app-status-button):not(.app-status-back-control):focus-visible {
+  border-color: var(--accent) !important;
+  background: var(--accent-faint) !important;
+  color: var(--accent-strong) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .training-text-filter-field,
+  .training-text-filter-field > span,
+  .training-text-filter-case,
+  .training-text-filter-case > span,
+  .tlg-library-filebar label,
+  .tlg-library-filebar label > span,
+  .tlg-library-share-panel label,
+  .tlg-library-share-panel label > span,
+  .tlg-library-editor label,
+  .tlg-library-editor label > span
+) {
+  color: var(--ink) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .tlg-library-count,
+  .tlg-library-empty,
+  .tlg-library-summary,
+  .tlg-library-share-summary
+) {
+  color: var(--muted) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-entry {
+  border-color: var(--border-strong) !important;
+  background: var(--surface-soft) !important;
+  color: var(--ink) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-entry:hover,
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-entry:focus-visible {
+  border-color: var(--accent) !important;
+  background: var(--accent-faint) !important;
+  color: var(--accent-strong) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tlg-library-summary {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--muted) !important;
+}
+
+/* TLG library secondary/selected states. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .tlg-library-share-summary,
+  .tlg-library-table th,
+  .tlg-library-table td
+) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tlg-library-row:hover td {
+  background: var(--surface-muted) !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tlg-library-row[aria-selected="true"] td {
+  background: var(--accent-faint) !important;
+  color: var(--ink) !important;
+}
+
+/* Step explanation cards and details must not retain translucent white layers. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .step-explain-panel .step-explain-section,
+  .step-explain-dialog-content .step-explain-section,
+  .step-explain-details,
+  .step-explain-pill
+) {
+  border-color: var(--border) !important;
+  background: var(--surface-soft) !important;
+  color: var(--ink) !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .step-explain-panel .step-explain-section-heading,
+  .step-explain-dialog-content .step-explain-section-heading,
+  .step-explain-details > summary
+) {
+  color: var(--ink) !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .step-explain-section-math {
+  background: color-mix(in srgb, var(--surface-soft) 84%, #0f766e 16%) !important;
+}
+
+/* Dedicated mobile solve mode: close the complete light-only legacy surface set. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) body.mobile-solve-mode,
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell {
+  background: linear-gradient(180deg, #101a2b, var(--bg)) !important;
+  color: var(--ink) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .mobile-solve-topbar,
+  .mobile-solve-status,
+  .mobile-solve-drawer,
+  .mobile-solve-new-puzzle-panel,
+  .mobile-solve-shell .manual-marks-panel.mobile-manual-marks
+) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .mobile-solve-title,
+  .mobile-solve-drawer-title,
+  .mobile-solve-new-puzzle-header strong,
+  .mobile-solve-new-puzzle-fieldset legend,
+  .mobile-solve-setting-row,
+  .mobile-solve-language-row,
+  .mobile-solve-new-puzzle-options label,
+  .mobile-solve-new-puzzle-options b
+) {
+  color: var(--ink) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .mobile-solve-input-state,
+  .mobile-solve-setting-copy small,
+  .mobile-solve-new-puzzle-hint,
+  .mobile-solve-new-puzzle-options small
+) {
+  color: var(--muted) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .mobile-solve-topbar > button:not(.app-status-button):not(.app-status-back-control),
+  .mobile-solve-actions button:not(.mobile-primary),
+  .mobile-solve-drawer button,
+  .mobile-solve-new-puzzle-header button,
+  .mobile-solve-new-puzzle-actions button:not(.mobile-primary),
+  .mobile-solve-shell .manual-marks-panel.mobile-manual-marks button
+) {
+  border-color: var(--border) !important;
+  background: var(--surface-soft) !important;
+  color: var(--ink) !important;
+  box-shadow: none !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-topbar .app-status-back-control {
+  border-color: var(--border-strong) !important;
+  background: var(--surface-soft) !important;
+  color: var(--ink) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .mobile-solve-actions #btnMobileSolveHint,
+  .mobile-solve-actions #btnMobileSolveApply,
+  .mobile-solve-actions #btnMobileSolveInputMode[aria-pressed="true"],
+  .mobile-solve-actions button[data-mark-active="true"],
+  .mobile-solve-drawer-grid button[aria-pressed="true"],
+  .mobile-solve-new-puzzle-options label:has(input:checked)
+) {
+  border-color: var(--accent) !important;
+  background: var(--accent-faint) !important;
+  color: var(--accent-strong) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .mobile-solve-actions button.mobile-primary,
+  .mobile-solve-new-puzzle-actions .mobile-primary
+) {
+  border-color: #6ea8ff !important;
+  background: linear-gradient(180deg, #3978d3, #285ca8) !important;
+  color: #fff !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .numpad button[data-digit] {
+  color: var(--ink) !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .numpad button[data-digit].active {
+  color: var(--accent-strong) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-new-puzzle-options label {
+  border-color: var(--border) !important;
+  background: var(--surface-soft) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-new-puzzle-warning {
+  border-color: #a56d2a !important;
+  background: #362711 !important;
+  color: #ffd28a !important;
+}
+
+/* TLG library chrome: avoid light title/share bars inside an otherwise dark dialog. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
+  .tlg-library-header,
+  .tlg-library-toolbar,
+  .tlg-library-filebar,
+  .tlg-library-sharebar
+) {
+  border-color: var(--border) !important;
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .tlg-library-header strong {
+  color: var(--ink) !important;
+}
+
+/* Global transient status belongs to the selected theme as well. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .app-status-toast {
+  border-color: color-mix(in srgb, var(--toast-color, var(--accent)) 58%, var(--border)) !important;
+  background: var(--surface-muted) !important;
+  color: var(--ink) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* V513: dark Sudoku canvas line hierarchy.
+ * V456 moved all grid drawing into board-wrap custom properties and the
+ * sudoku-board pseudo-element. The older dark-theme rules only recolored
+ * cell borders, which are disabled by the V456 geometry, so the live board
+ * kept the light-theme #646464 normal lines and black box separators.
+ * Use a quiet blue-gray minor grid and a clearly brighter (not white) major
+ * grid so 3x3 boxes remain readable without cutting the dark board into nine
+ * harsh black blocks. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(.board-wrap, .sudoku-board) {
+  --yzf-grid-line-color: #39485d;
+  --yzf-box-line-color: #8193ad;
+}
+
+/* Keep selected/peer states visually subordinate to the fixed grid. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell.selected {
+  background: #1d416d;
+  box-shadow: inset 0 0 0 3px #76adff;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell.hint-peer {
+  background: #18263a;
+}
+
+/* The high-contrast theme must not inherit the decorative dark palette. */
+:root[data-yzf-theme="contrast"] :is(.board-wrap, .sudoku-board) {
+  --yzf-grid-line-color: #000000;
+  --yzf-box-line-color: #000000;
+}
+
+/* Preserve board-state meaning on the dark analysis canvas. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell.hint-place {
+  background: #17382f;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell:is(
+  .mobile-same-digit,
+  .mobile-same-digit-candidate,
+  .mobile-same-digit-value
+) {
+  background: #382b14 !important;
+  box-shadow: inset 0 0 0 2px #d59a2c;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell.mobile-same-digit-value .cell-value {
+  color: #ffd58a;
+  text-shadow: none;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell:is(
+  .mobile-same-digit.selected,
+  .mobile-same-digit-candidate.selected,
+  .mobile-same-digit-value.selected
+) {
+  background: #1d416d !important;
+  box-shadow: inset 0 0 0 3px #76adff;
+}
+
+/* Whole-cell solver highlights keep their original semantic colors. Most are
+ * deliberately light, so dark-theme foreground inheritance must be reversed
+ * locally or the digits become pale-on-pastel. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell:is(
+  .solver-cell-bkclr-1, .solver-cell-bkclr-2, .solver-cell-bkclr-3,
+  .solver-cell-bkclr-4, .solver-cell-bkclr-5, .solver-cell-bkclr-6,
+  .solver-cell-bkclr-7, .solver-cell-bkclr-8, .solver-cell-bkclr-9,
+  .solver-cell-bkclr-10, .solver-cell-bkclr-11
+) .candidate-grid {
+  color: #111827 !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell:is(
+  .solver-cell-bkclr-1, .solver-cell-bkclr-2, .solver-cell-bkclr-3,
+  .solver-cell-bkclr-4, .solver-cell-bkclr-5, .solver-cell-bkclr-6,
+  .solver-cell-bkclr-7, .solver-cell-bkclr-8, .solver-cell-bkclr-9,
+  .solver-cell-bkclr-10, .solver-cell-bkclr-11
+) .cell-value.given {
+  color: #111827 !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell:is(
+  .solver-cell-bkclr-1, .solver-cell-bkclr-2, .solver-cell-bkclr-3,
+  .solver-cell-bkclr-4, .solver-cell-bkclr-5, .solver-cell-bkclr-6,
+  .solver-cell-bkclr-7, .solver-cell-bkclr-8, .solver-cell-bkclr-9,
+  .solver-cell-bkclr-10, .solver-cell-bkclr-11
+) .cell-value.solved {
+  color: #0b356a !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell:is(
+  .solver-cell-bkclr-1, .solver-cell-bkclr-2, .solver-cell-bkclr-3,
+  .solver-cell-bkclr-4, .solver-cell-bkclr-5, .solver-cell-bkclr-6,
+  .solver-cell-bkclr-7, .solver-cell-bkclr-8, .solver-cell-bkclr-9,
+  .solver-cell-bkclr-10, .solver-cell-bkclr-11
+) .cell-value.suggested {
+  color: #0b3d2e !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell.solver-cell-bkclr-12 :is(
+  .candidate-grid,
+  .cell-value.given,
+  .cell-value.solved,
+  .cell-value.suggested
+) {
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
+
+/* The twelfth candidate background is the sole dark fill in the legacy
+ * palette; it also needs a light glyph in every theme. */
+.candidate.bkclr-12 {
+  color: #ffffff !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell.mobile-same-digit-value.selected .cell-value.given {
+  color: var(--board-given) !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell.mobile-same-digit-value.selected .cell-value.solved {
+  color: var(--board-solved) !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell.mobile-same-digit-value.selected .cell-value.suggested {
+  color: var(--place) !important;
+}
