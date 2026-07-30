@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2019-2026 YZF Sudoku and its developers. All rights reserved.
+ * Contact: 63160007@qq.com. Full notice: COPYRIGHT.md.
  * YZF Sudoku UI 基础层。
  * 统一正式界面组件、响应式弹层与可访问状态；盘面、候选、链图和技巧高亮规则仍由业务样式维护。
  */
@@ -350,23 +352,30 @@ dialog.yzf-coach-root {
   color: var(--ink);
   pointer-events: auto;
 }
-dialog.yzf-coach-root::backdrop { background: transparent; }
+dialog.yzf-coach-root::backdrop { background: transparent !important; backdrop-filter: none !important; }
 .yzf-coach-root[hidden] { display: none !important; }
 .yzf-coach-backdrop {
   position: absolute;
   z-index: 0;
   inset: 0;
-  background: rgba(15, 23, 42, .52);
-  backdrop-filter: blur(1px);
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  background: transparent;
+  pointer-events: auto;
 }
+.yzf-coach-backdrop mask { mask-type: luminance; }
+.yzf-coach-shade { fill: rgba(15, 23, 42, .52); }
 .yzf-coach-focus {
   position: fixed;
   z-index: 1;
   pointer-events: none;
   border: 4px solid color-mix(in srgb, var(--accent) 82%, #fff);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--surface, #fff) 12%, transparent);
-  box-shadow: 0 0 0 2px rgba(255,255,255,.72), 0 10px 34px rgba(15,23,42,.28);
+  background: transparent;
+  box-shadow:
+    0 0 0 2px rgba(255,255,255,.72),
+    0 10px 34px rgba(15,23,42,.28);
   transition: left .16s ease, top .16s ease, width .16s ease, height .16s ease;
 }
 .yzf-coach-focus[hidden] { display: none !important; }
@@ -1871,3 +1880,150 @@ button.primary:not(:disabled) {
 :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .batch-grid label {
   color: var(--ink) !important;
 }
+
+/*
+ * V512 深色全链路补漏：功能导引（Coach Marks）位于浏览器 Top Layer，
+ * 不能依赖普通业务面板的按钮/卡片覆盖规则。此前说明卡本身继承了深色变量，
+ * 但“跳过”按钮仍命中 index.html 的白底按钮规则，高亮框还保留白色外圈，
+ * 形成白底浅字与过亮边缘。这里直接为整套导引语义层定义深色外观。
+ */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+dialog.yzf-coach-root {
+  color-scheme: dark;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.yzf-coach-backdrop {
+  background: transparent;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.yzf-coach-shade {
+  fill: rgba(2, 6, 23, .74);
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.yzf-coach-focus {
+  border-color: #79afff;
+  background: transparent;
+  box-shadow:
+    0 0 0 2px rgba(8, 14, 26, .96),
+    0 0 0 5px rgba(110, 168, 255, .22),
+    0 14px 42px rgba(0, 0, 0, .52);
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.yzf-coach-focus.is-interactive:hover {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.yzf-coach-card {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border-strong));
+  background-color: var(--surface);
+  background-image:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--surface-soft) 90%, var(--accent-faint)) 0%,
+      var(--surface) 100%);
+  color: var(--ink);
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, .62),
+    0 0 0 1px rgba(255, 255, 255, .025) inset;
+  scrollbar-color: var(--border-strong) var(--surface);
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.yzf-coach-step {
+  color: var(--accent-strong);
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.yzf-coach-card strong {
+  color: var(--ink);
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.yzf-coach-card p {
+  color: #becbdd;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.yzf-coach-actions button:not(.primary):not(:disabled) {
+  border-color: var(--border-strong) !important;
+  background: var(--surface-muted) !important;
+  color: var(--ink) !important;
+  box-shadow: none !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.yzf-coach-actions button:not(.primary):hover:not(:disabled) {
+  border-color: var(--accent) !important;
+  background: var(--accent-faint) !important;
+  color: var(--accent-strong) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.yzf-coach-actions button:focus-visible {
+  outline: 3px solid var(--focus-ring, #f5b942);
+  outline-offset: 2px;
+}
+
+/* 高对比模式继续使用明确的黑白语义，不继承深色渐变。 */
+:root[data-yzf-theme="contrast"] .yzf-coach-backdrop {
+  background: transparent;
+}
+:root[data-yzf-theme="contrast"] .yzf-coach-shade {
+  fill: rgba(0, 0, 0, .76);
+}
+:root[data-yzf-theme="contrast"] .yzf-coach-focus {
+  border-color: #ffffff;
+  background: transparent;
+  box-shadow: 0 0 0 3px #000000;
+}
+:root[data-yzf-theme="contrast"] .yzf-coach-card {
+  border: 3px solid #000000;
+  background: #ffffff;
+  color: #000000;
+  box-shadow: none;
+}
+:root[data-yzf-theme="contrast"] .yzf-coach-card :is(.yzf-coach-step, strong, p) {
+  color: #000000;
+}
+:root[data-yzf-theme="contrast"] .yzf-coach-actions button:not(.primary):not(:disabled) {
+  border-color: #000000 !important;
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* YZF Sudoku copyright and contact notice. */
+html[lang^="zh"] .yzf-lang-en,
+html[lang="en"] .yzf-lang-zh { display: none !important; }
+.yzf-copyright-card {
+  padding: 15px 17px;
+  border: 1px solid var(--border);
+  border-radius: var(--yzf-radius-m);
+  background: var(--surface-soft);
+  color: var(--ink);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .08);
+  font-size: 13px;
+  line-height: 1.62;
+}
+.yzf-copyright-card p { margin: 0 0 9px; }
+.yzf-copyright-card p:last-child { margin-bottom: 0; }
+.yzf-copyright-card a { color: var(--accent-strong); font-weight: 700; overflow-wrap: anywhere; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .yzf-copyright-card {
+  border-color: var(--border);
+  background: var(--surface-soft);
+  color: var(--ink);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .24);
+}
+:root[data-yzf-theme="contrast"] .yzf-copyright-card {
+  border: 2px solid ButtonText;
+  background: Canvas;
+  color: CanvasText;
+  box-shadow: none;
+}
+:root[data-yzf-theme="contrast"] .yzf-copyright-card a { color: LinkText; }

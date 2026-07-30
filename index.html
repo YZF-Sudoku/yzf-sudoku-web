@@ -1,4 +1,6 @@
 <!--
+  Copyright (c) 2019-2026 YZF Sudoku and its developers. All rights reserved.
+  Contact: 63160007@qq.com. Full notice: COPYRIGHT.md.
   维护说明（简体中文）
   职责：前端页面结构。
   数据流：定义主界面、弹窗和控件 DOM；元素 id 被 app.js 直接引用，重命名必须同步。
@@ -12,6 +14,10 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
+  <meta name="author" content="YZF Sudoku 及其开发者" />
+  <meta name="copyright" content="© 2019–2026 YZF Sudoku 及其开发者。保留所有权利。" />
+  <meta name="contact" content="63160007@qq.com" />
+  <link rel="license" href="./COPYRIGHT.md" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="color-scheme" content="light dark" />
   <meta id="themeColorMeta" name="theme-color" content="#eef2f7" />
@@ -6124,6 +6130,26 @@
                 <button id="btnAppHubThemeDark" type="button" data-appearance="dark" aria-pressed="false">深色</button>
                 <button id="btnAppHubThemeContrast" type="button" data-appearance="contrast" aria-pressed="false">高对比</button>
               </span>
+            </div>
+          </div>
+        </section>
+        <section class="app-hub-section yzf-copyright-section" aria-labelledby="yzfCopyrightTitle">
+          <h3 id="yzfCopyrightTitle">
+            <span class="yzf-lang-zh" lang="zh-CN">版权与联系</span>
+            <span class="yzf-lang-en" lang="en">Copyright and contact</span>
+          </h3>
+          <div class="yzf-copyright-card">
+            <div class="yzf-lang-zh" lang="zh-CN">
+              <p><strong>© 2019–2026 YZF Sudoku 及其开发者。保留所有权利。</strong></p>
+              <p>YZF Sudoku 的原创源代码、用户界面、文档、中文翻译、测试资料及新增功能受著作权法保护。未经权利人书面许可，不得擅自复制、修改、重新发布、镜像托管、商业利用或删除版权及署名信息。</p>
+              <p>项目包含的第三方程序、开源组件、既有算法实现及相关资料，其权利归相应权利人所有，并适用各自的许可条款。本声明不扩大或改变第三方组件原有许可证授予的权利。</p>
+              <p class="yzf-copyright-contact">联系邮箱：<a href="mailto:63160007@qq.com">63160007@qq.com</a></p>
+            </div>
+            <div class="yzf-lang-en" lang="en">
+              <p><strong>© 2019–2026 YZF Sudoku and its developers. All rights reserved.</strong></p>
+              <p>The original source code, user interface, documentation, Chinese translations, test materials, and newly developed features of YZF Sudoku are protected by copyright law. Without prior written permission from the rights holder, they may not be copied, modified, republished, mirror-hosted, commercially exploited, or stripped of copyright or attribution information.</p>
+              <p>Third-party programs, open-source components, pre-existing algorithm implementations, and related materials included in this project remain the property of their respective rights holders and are subject to their own license terms. This notice does not expand or alter the rights granted by those third-party licenses.</p>
+              <p class="yzf-copyright-contact">Contact: <a href="mailto:63160007@qq.com">63160007@qq.com</a></p>
             </div>
           </div>
         </section>

@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2019-2026 YZF Sudoku and its developers. All rights reserved.
+ * Contact: 63160007@qq.com. Full notice: COPYRIGHT.md.
  * 维护说明（简体中文）
  * 职责：浏览器主控制器。
  * 数据流：管理盘面、候选、求解 worker、训练、OCR、手工标记、TLG 编辑器、PWA 更新和全屏交互。
@@ -81,6 +83,12 @@ const OCR_IMAGE_PICKER_GUIDE_STEPS = [
 const OCR_CORRECTION_GUIDE_STEPS = [
   {
     target: ".ocr-correction-cell.selected",
+    revealTargets: [
+      ".ocr-correction-image-card",
+      ".ocr-correction-selected",
+      ".ocr-correction-zoom",
+    ],
+    revealPadding: 4,
     advanceOnTarget: true,
     targetActionLabelZh: "点击当前校正格并进入下一步",
     targetActionLabelEn: "Activate the selected correction cell and continue",
@@ -89,8 +97,26 @@ const OCR_CORRECTION_GUIDE_STEPS = [
     titleEn: "Tap the highlighted cell to begin",
     bodyEn: "The highlight proxies the tap to the real correction cell and advances automatically. You can also use Next in the guide card.",
   },
-  { target: ".ocr-correction-mode-row", titleZh: "再确认数字角色", bodyZh: "提示数、出数和候选数采用不同颜色与导入语义。", titleEn: "Then confirm the digit role", bodyEn: "Givens, solved digits, and candidates use different import semantics." },
-  { target: ".ocr-correction-confirm", titleZh: "确认后才导入主盘", bodyZh: "校正过程会自动保存；确认导入后才替换当前盘面。", titleEn: "Import only after confirmation", bodyEn: "The draft is autosaved and replaces the main board only after confirmation." },
+  {
+    target: ".ocr-correction-mode-row",
+    revealTargets: [
+      ".ocr-correction-cell.selected",
+      ".ocr-correction-selected",
+      ".ocr-correction-zoom",
+    ],
+    titleZh: "再确认数字角色",
+    bodyZh: "提示数、出数和候选数采用不同颜色与导入语义。",
+    titleEn: "Then confirm the digit role",
+    bodyEn: "Givens, solved digits, and candidates use different import semantics.",
+  },
+  {
+    target: ".ocr-correction-confirm",
+    revealTargets: [".ocr-correction-board-card"],
+    titleZh: "确认后才导入主盘",
+    bodyZh: "校正过程会自动保存；确认导入后才替换当前盘面。",
+    titleEn: "Import only after confirmation",
+    bodyEn: "The draft is autosaved and replaces the main board only after confirmation.",
+  },
 ];
 const TLG_EDITOR_GUIDE_STEPS = [
   { target: "#tlgSolverMode", titleZh: "先确定 TLG 输入模式", bodyZh: "Truth、Link、Virtual Set、AUR、DAUR 与 GUR 使用不同输入语义；AUR/GUR 还可通过盘面右键菜单补充通用格。", titleEn: "Choose the TLG input mode first", bodyEn: "Truth, Link, Virtual Set, AUR, DAUR, and GUR use different input semantics; AUR/GUR generic cells are also available from the board context menu." },

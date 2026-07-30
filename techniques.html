@@ -1,4 +1,6 @@
 <!--
+  Copyright (c) 2019-2026 YZF Sudoku and its developers. All rights reserved.
+  Contact: 63160007@qq.com. Full notice: COPYRIGHT.md.
   维护说明（简体中文）
   职责：项目源码模块。
   数据流：该文件属于 YZF Sudoku 自研代码；修改前先确认其调用方、序列化协议和回归测试。
@@ -13,6 +15,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"/>
+<meta name="author" content="YZF Sudoku 及其开发者" />
+<meta name="copyright" content="© 2019–2026 YZF Sudoku 及其开发者。保留所有权利。" />
+<meta name="contact" content="63160007@qq.com" />
+<link rel="license" href="./COPYRIGHT.md" />
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>YZF Sudoku 技巧说明 / Techniques</title>
 
@@ -216,6 +222,20 @@
     }
     :root[data-yzf-theme="contrast"] * { border-color:#fff !important; }
 
+
+    .yzf-copyright-footer {
+      max-width: 1160px; margin: 0 auto 42px; padding: 20px 24px;
+      border: 1px solid var(--line); border-radius: 14px;
+      background: var(--card); color: var(--ink); box-shadow: 0 2px 12px rgba(15,23,42,.04);
+    }
+    .yzf-copyright-footer h2 { margin-top: 0; }
+    .yzf-copyright-footer p { margin: 8px 0; }
+    .yzf-copyright-footer a { color: var(--accent); font-weight: 700; overflow-wrap: anywhere; }
+    body[data-tech-lang="zh"] .yzf-copyright-footer .copyright-en,
+    body[data-tech-lang="en"] .yzf-copyright-footer .copyright-zh { display: none; }
+    body[data-tech-lang="bilingual"] .yzf-copyright-footer .copyright-en { margin-top: 18px; padding-top: 18px; border-top: 1px dashed var(--line); }
+    @media (min-width: 1020px) { .yzf-copyright-footer { max-width: 840px; margin-left: calc((100% - 1160px) / 2 + 320px); margin-right: max(18px, calc((100% - 1160px) / 2)); } }
+    @media (max-width: 760px) { .yzf-copyright-footer { margin: 0 12px 28px; padding: 17px; } }
 </style>
 </head>
 <body data-tech-lang="bilingual">
@@ -463,6 +483,23 @@
 <div class="tech-card placeholder"><h3>AHS-W-Wing <span>AHS-W 翅膀</span></h3><p class="kindline"><span class="badge">Kind: <code>AHSWWing</code></span><span class="badge">Category: AHS</span><span class="badge status-placeholder">占位 / placeholder</span></p><p>后续真正迁移后，可按 AHS-XZ 与 ALS-W-Wing 的说明风格补充。</p></div>
 <div class="tech-card placeholder"><h3>AHS Chain <span>AHS 链</span></h3><p class="kindline"><span class="badge">Kind: <code>AHSChain</code></span><span class="badge">Category: AHS</span><span class="badge status-placeholder">占位 / placeholder</span></p><p>后续真正迁移后，可按 AHS-XZ 与 ALS Chain 的说明风格补充。</p></div></section>
 </main>
+<footer class="yzf-copyright-footer" aria-label="版权与联系 / Copyright and contact">
+  <div class="copyright-zh" lang="zh-CN">
+    <h2>版权与联系</h2>
+    <p><strong>© 2019–2026 YZF Sudoku 及其开发者。保留所有权利。</strong></p>
+    <p>YZF Sudoku 的原创源代码、用户界面、文档、中文翻译、测试资料及新增功能受著作权法保护。未经权利人书面许可，不得擅自复制、修改、重新发布、镜像托管、商业利用或删除版权及署名信息。</p>
+    <p>项目包含的第三方程序、开源组件、既有算法实现及相关资料，其权利归相应权利人所有，并适用各自的许可条款。本声明不扩大或改变第三方组件原有许可证授予的权利。</p>
+    <p>联系邮箱：<a href="mailto:63160007@qq.com">63160007@qq.com</a></p>
+  </div>
+  <div class="copyright-en" lang="en">
+    <h2>Copyright and contact</h2>
+    <p><strong>© 2019–2026 YZF Sudoku and its developers. All rights reserved.</strong></p>
+    <p>The original source code, user interface, documentation, Chinese translations, test materials, and newly developed features of YZF Sudoku are protected by copyright law. Without prior written permission from the rights holder, they may not be copied, modified, republished, mirror-hosted, commercially exploited, or stripped of copyright or attribution information.</p>
+    <p>Third-party programs, open-source components, pre-existing algorithm implementations, and related materials included in this project remain the property of their respective rights holders and are subject to their own license terms. This notice does not expand or alter the rights granted by those third-party licenses.</p>
+    <p>Contact: <a href="mailto:63160007@qq.com">63160007@qq.com</a></p>
+  </div>
+</footer>
+
 <script src="./techniques-i18n.js"></script>
 <script>
 (function(){

@@ -467,10 +467,24 @@ body.ocr-correction-mode {
   color: var(--accent-strong) !important;
 }
 :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
-.ocr-correction-root button:not(:disabled):not(.primary) {
+.ocr-correction-root button:not(:disabled):not(.primary):not(.ocr-correction-image-cell) {
   border-color: var(--border) !important;
   background: var(--surface-soft) !important;
   color: var(--ink) !important;
+}
+/*
+ * 左侧原始对照图上方的 81 个按钮只负责命中格与点击转发，必须保持透明。
+ * 深色主题的通用按钮底色若覆盖这些按钮，会把原图逐格遮住，最终只剩网格线。
+ */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.ocr-correction-image-cell:not(.selected) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+.ocr-correction-image-cell.selected {
+  background: rgba(255,190,43,.18) !important;
+  box-shadow: none !important;
 }
 :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
 .ocr-correction-root button.primary:not(:disabled) {

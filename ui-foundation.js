@@ -981,8 +981,17 @@ function createCoachMarks(options = {}) {
   root.className = "yzf-coach-root";
   root.hidden = true;
   root.setAttribute("aria-labelledby", "yzfCoachTitle");
+  const maskId = `yzfCoachMask-${Math.random().toString(36).slice(2)}`;
   root.innerHTML = `
-    <div class="yzf-coach-backdrop" aria-hidden="true"></div>
+    <svg class="yzf-coach-backdrop" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+      <defs>
+        <mask id="${maskId}" maskUnits="userSpaceOnUse" x="0" y="0">
+          <rect class="yzf-coach-mask-base" x="0" y="0" fill="#fff"></rect>
+          <g data-yzf-coach-holes></g>
+        </mask>
+      </defs>
+      <rect class="yzf-coach-shade" x="0" y="0" mask="url(#${maskId})"></rect>
+    </svg>
     <div class="yzf-coach-focus" aria-hidden="true" hidden></div>
     <section class="yzf-coach-card" role="document">
       <div class="yzf-coach-step" data-yzf-coach-step></div>
@@ -995,6 +1004,10 @@ function createCoachMarks(options = {}) {
       </div>
     </section>`;
   document.body.append(root);
+  const backdrop = root.querySelector(".yzf-coach-backdrop");
+  const maskBase = root.querySelector(".yzf-coach-mask-base");
+  const maskHoles = root.querySelector("[data-yzf-coach-holes]");
+  const shade = root.querySelector(".yzf-coach-shade");
   const focus = root.querySelector(".yzf-coach-focus");
   const card = root.querySelector(".yzf-coach-card");
   const stepLabel = root.querySelector("[data-yzf-coach-step]");
@@ -1006,6 +1019,7 @@ function createCoachMarks(options = {}) {
   let steps = [];
   let index = 0;
   let target = null;
+  let revealTargets = [];
   let positionFrame = 0;
   const registry = new Map();
 
@@ -1025,6 +1039,8 @@ function createCoachMarks(options = {}) {
   function clearTarget() {
     target?.classList.remove("yzf-coach-target");
     target = null;
+    revealTargets = [];
+    maskHoles.replaceChildren();
     focus.hidden = true;
     focus.classList.remove("is-interactive");
     focus.removeAttribute("role");
@@ -1069,6 +1085,37 @@ function createCoachMarks(options = {}) {
     const top = Math.max(4, rect.top - padding);
     const right = Math.min(viewportWidth - 4, rect.right + padding);
     const bottom = Math.min(viewportHeight - 4, rect.bottom + padding);
+
+    backdrop.setAttribute("viewBox", `0 0 ${viewportWidth} ${viewportHeight}`);
+    maskBase.setAttribute("width", String(viewportWidth));
+    maskBase.setAttribute("height", String(viewportHeight));
+    shade.setAttribute("width", String(viewportWidth));
+    shade.setAttribute("height", String(viewportHeight));
+    const item = steps[index] || {};
+    const auxiliaryPadding = Number.isFinite(Number(item.revealPadding)) ? Number(item.revealPadding) : 5;
+    const holeSpecs = [
+      { element: target, padding },
+      ...revealTargets.map((element) => ({ element, padding: auxiliaryPadding })),
+    ];
+    maskHoles.replaceChildren(...holeSpecs.flatMap(({ element, padding: holePadding }) => {
+      if (!(element instanceof Element) || !isVisible(element)) return [];
+      const holeRect = element.getBoundingClientRect();
+      const holeLeft = Math.max(0, holeRect.left - holePadding);
+      const holeTop = Math.max(0, holeRect.top - holePadding);
+      const holeRight = Math.min(viewportWidth, holeRect.right + holePadding);
+      const holeBottom = Math.min(viewportHeight, holeRect.bottom + holePadding);
+      if (holeRight <= holeLeft || holeBottom <= holeTop) return [];
+      const node = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      node.setAttribute("x", String(holeLeft));
+      node.setAttribute("y", String(holeTop));
+      node.setAttribute("width", String(holeRight - holeLeft));
+      node.setAttribute("height", String(holeBottom - holeTop));
+      node.setAttribute("rx", String(Math.max(4, Number(item.revealRadius) || 10)));
+      node.setAttribute("ry", String(Math.max(4, Number(item.revealRadius) || 10)));
+      node.setAttribute("fill", "#000");
+      return [node];
+    }));
+
     focus.hidden = false;
     focus.style.left = `${left}px`;
     focus.style.top = `${top}px`;
@@ -1143,6 +1190,15 @@ function createCoachMarks(options = {}) {
     target.classList.add("yzf-coach-target");
     target.scrollIntoView({ block: "center", behavior: "smooth" });
     const item = steps[index];
+    const requestedRevealTargets = Array.isArray(item?.revealTargets)
+      ? item.revealTargets
+      : (item?.revealTargets ? [item.revealTargets] : []);
+    revealTargets = requestedRevealTargets.flatMap((entry) => {
+      if (entry instanceof Element) return [entry];
+      if (typeof entry !== "string" || !entry.trim()) return [];
+      try { return [...document.querySelectorAll(entry)].filter((element) => element !== target && isVisible(element)); }
+      catch { return []; }
+    });
     const en = normalizeLanguage(options.getLanguage?.()) === "en";
     const text = labels();
     const targetAction = item?.advanceOnTarget === true;
@@ -1279,7 +1335,7 @@ function createCoachMarks(options = {}) {
     event.preventDefault();
     event.stopPropagation();
   });
-  root.querySelector(".yzf-coach-backdrop").addEventListener("click", () => close(true));
+  backdrop.addEventListener("click", () => close(true));
   root.addEventListener("cancel", (event) => {
     event.preventDefault();
     close(true);
