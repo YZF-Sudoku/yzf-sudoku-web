@@ -542,10 +542,14 @@ function parseGroupRecord(group) {
   const tail = colon >= 0 ? label.slice(colon + 1).trim() : "";
   const headKey = normalizeGroupHead(head);
   const houses = parseCompactHouses(tail);
-  const digitRole = /^(alsa|alsb|alsc|ahsa|ahsb|ahsc|rcc|rccx|rccy|x|stronglink|set|petal|fin|fins|regfin|regfins|eri)$/i.test(headKey);
+  const digitRole = /^(alsa|alsb|alsc|ahsa|ahsb|ahsb\(pivot\)|ahsc|rcc|rccx|rccy|x|stronglink|set|petal|fin|fins|regfin|regfins|eri|pivot|pivota|pivotb)$/i.test(headKey);
   const linkRole = /^(link|stronglink)$/i.test(headKey);
   let digitText = tail;
-  if (linkRole) {
+  // Structured ALS/AHS labels use digits@house.  The house index is metadata
+  // and must never be folded into the candidate set.
+  if (/^(alsa|alsb|alsc|ahsa|ahsb|ahsb\(pivot\)|ahsc)$/i.test(headKey)) {
+    digitText = tail.split("@", 1)[0];
+  } else if (linkRole) {
     const houseAt = tail.search(/[rcb]/i);
     if (houseAt >= 0) digitText = tail.slice(0, houseAt);
   }
@@ -833,6 +837,13 @@ function formatOddagonZh(step, name) {
 function formatAlsZh(step, name) {
   const cells = cellList(structureCells(step));
   const digits = primaryDigits(step);
+  const describeAhs = (group, label) => {
+    if (!group) return "";
+    const digitSet = validDigits(group.digits).join("") || "相关数字";
+    const house = group.houses.join("/") || "相关house";
+    const positions = groupCellsText(group) || "相关格组";
+    return `${label}=${digitSet}@${house}{${positions}}`;
+  };
   const describeAls = (group, label) => {
     if (!group) return "";
     const digitText = group.digits.length ? `，候选数为${slashDigits(group.digits)}` : "";
@@ -847,6 +858,48 @@ function formatAlsZh(step, name) {
     if (als) parts.push(`显性待定部分为${groupCellsText(als)}`);
     const detail = parts.length ? `${parts.join("；")}。` : "相关格比锁定数组多一个自由候选。";
     return `${name}：${detail}两部分共同占用的候选容量受到同一单元约束。${conclusionTextZh(step)}`;
+  }
+
+  if (step?.kind === "AHSXZ") {
+    const a = findGroup(step, /^ahsa$/i);
+    const b = findGroup(step, /^ahsb$/i);
+    const rcc = findGroup(step, /^rcc$/i);
+    const branch = findGroup(step, /^branch$/i)?.tail || "AHS-XZ";
+    const parts = [describeAhs(a, "AHS A"), describeAhs(b, "AHS B")].filter(Boolean);
+    const x = slashDigits(rcc?.digits || []);
+    if (x) parts.push(`受限公共候选数X=${x}`);
+    else if (rcc?.tail) parts.push(`RCC=${rcc.tail}`);
+    return `${name}（${branch}）：${parts.join("；")}。先按候选数组合与house确认AHS，再核对对应格位及RCC证明。${conclusionTextZh(step)}`;
+  }
+
+  if (step?.kind === "AHSXYWing") {
+    const a = findGroup(step, /^ahsa$/i);
+    const b = findGroup(step, /^ahsb(?:\(pivot\))?$/i);
+    const c = findGroup(step, /^ahsc$/i);
+    const rccX = findGroup(step, /^rccx$/i);
+    const rccY = findGroup(step, /^rccy$/i);
+    const parts = [describeAhs(a, "AHS A"), describeAhs(b, "枢纽AHS B"), describeAhs(c, "AHS C")].filter(Boolean);
+    if (rccX?.tail) parts.push(`RCC X=${rccX.tail}`);
+    if (rccY?.tail) parts.push(`RCC Y=${rccY.tail}`);
+    return `${name}：${parts.join("；")}。AHS必须先读候选数组合@house，再核对Extra事件、局部HLS格组和逐数字支撑位置。${conclusionTextZh(step)}`;
+  }
+
+  if (step?.kind === "AHSWWing") {
+    const a = findGroup(step, /^ahsa$/i);
+    const b = findGroup(step, /^ahsb$/i);
+    const pivot = findGroup(step, /^pivot$/i);
+    const pivotA = findGroup(step, /^pivota$/i);
+    const pivotB = findGroup(step, /^pivotb$/i);
+    const parts = [describeAhs(a, "AHS A")].filter(Boolean);
+    if (pivot) {
+      const pivotDigits = validDigits(pivot.digits).join("") || "相关候选";
+      const pivotCells = groupCellsText(pivot) || "枢纽格";
+      const splitA = validDigits(pivotA?.digits).join("") || "A端组";
+      const splitB = validDigits(pivotB?.digits).join("") || "B端组";
+      parts.push(`枢纽=${pivotDigits}@${pivotCells}（${splitA}|${splitB}）`);
+    }
+    if (b) parts.push(describeAhs(b, "AHS B"));
+    return `${name}：${parts.join("；")}。两端AHS均先按候选数组合与house阅读，再核对枢纽分组、Extra事件、HLS格组和支撑位置。${conclusionTextZh(step)}`;
   }
 
   if (step?.kind === "ALSXZ") {

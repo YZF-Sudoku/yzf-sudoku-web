@@ -45,6 +45,38 @@ const cases = [
   ["uniqueness", base({ kind: "UniqueRectangle", title: "Unique Rectangle Type 3", candidates: [2, 8], cells: [c(0), c(1), c(9), c(10)], actions: [], eliminations: [elim(10, [2])], description: "Unique Rectangle Type 3: deadly rectangle 28 with an extra subset." })],
   ["uniqueness", base({ kind: "GSP", title: "GSP Central", candidates: [5], cells: [c(0), c(80)], actions: [], eliminations: [elim(40, [5])], description: "Central symmetry candidate mapping: 1->9." })],
   ["als", base({ kind: "ALSXZ", title: "ALS-XZ", candidates: [3, 7], cells: [c(0), c(1), c(9)], actions: [], eliminations: [elim(10, [7])], groups: [{ label: "ALSA:137", cells: [c(0), c(1)] }, { label: "ALSB:237", cells: [c(9), c(10)] }, { label: "RCC:3", cells: [] }, { label: "Link:7", cells: [] }] })],
+  ["als", base({ kind: "AHSXYWing", title: "AHS-XY-Wing", candidates: [1, 2, 4, 5, 7, 8], cells: [c(11), c(20), c(29), c(10), c(12), c(16), c(17), c(26), c(35), c(53)], actions: [], eliminations: [elim(35, [4])], groups: [
+    { label: "AhsA:24@c3", cells: [c(11), c(20), c(29)] },
+    { label: "AhsB(Pivot):1578@r2", cells: [c(10), c(11), c(12), c(16), c(17)] },
+    { label: "AhsC:158@c9", cells: [c(17), c(26), c(35), c(53)] },
+    { label: "RccX:Locked-Set Position", cells: [c(20), c(11)] },
+    { label: "ExtraX(A):r3c3", cells: [c(20)] },
+    { label: "HlsX(A):r3c3", cells: [c(20)] },
+    { label: "SupportX(A):2", cells: [c(20)] },
+    { label: "ExtraX(B):r2c3", cells: [c(11)] },
+    { label: "HlsX(B):r2c3", cells: [c(11)] },
+    { label: "SupportX(B):2", cells: [c(11)] },
+    { label: "RccY:Overlap-Hall Group", cells: [c(26), c(17)] },
+    { label: "ExtraY(C):r3c9", cells: [c(26)] },
+    { label: "HlsY(C):r3c9", cells: [c(26)] },
+    { label: "SupportY(C):1", cells: [c(26)] },
+    { label: "ExtraY(B):r2c9", cells: [c(17)] },
+    { label: "HlsY(B):r2c9", cells: [c(17)] },
+    { label: "SupportY(B):1", cells: [c(17)] },
+  ] })],
+  ["als", base({ kind: "AHSWWing", title: "AHS-W-Wing", candidates: [1, 2, 6, 7, 8], cells: [c(8), c(16), c(34), c(43), c(61), c(33), c(44), c(53)], actions: [], eliminations: [elim(34, [3]), elim(44, [6]), elim(61, [6])], groups: [
+    { label: "AhsA:167@c8", cells: [c(16), c(34), c(43), c(61)] },
+    { label: "PivotA:1", cells: [c(8)] },
+    { label: "Pivot:126", cells: [c(8)] },
+    { label: "PivotB:26", cells: [c(8)] },
+    { label: "AhsB:2678@b6", cells: [c(33), c(34), c(43), c(44), c(53)] },
+    { label: "ExtraA:r2c8", cells: [c(16)] },
+    { label: "HlsA:r2c8", cells: [c(16)] },
+    { label: "SupportA:1", cells: [c(16)] },
+    { label: "ExtraB:r56c9", cells: [c(44), c(53)] },
+    { label: "HlsB:b6p169", cells: [c(33), c(44), c(53)] },
+    { label: "SupportB:26", cells: [c(43), c(53)] },
+  ] })],
   ["chain", base({ kind: "AIC", title: "Continuous Nice Loop", candidates: [4], cells: [c(0), c(1), c(10)], actions: [], eliminations: [elim(9, [4])], nodes: [{ id: 1, ...c(0), digit: 4, kind: "SingleCandidate", label: "4r1c1 ON" }, { id: 2, ...c(1), digit: 4, kind: "SingleCandidate", label: "4r1c2 OFF" }], edges: [{ from: 1, to: 2, type: "weak" }, { from: 2, to: 1, type: "strong" }], description: "4r1c1 - 4r1c2 = 4r2c2 - 4r1c1 => r2c1<>4." })],
   ["dynamic", base({ kind: "DynamicChain", title: "Dynamic Contradiction Chain", candidates: [9], actions: [], eliminations: [elim(5, [9])], chainBranches: [{ label: "ON", nodes: [{ id: 1, ...c(0), digit: 9, label: "9r1c1 ON" }], edges: [] }, { label: "OFF", nodes: [{ id: 2, ...c(0), digit: 9, label: "9r1c1 OFF" }], edges: [] }], description: "If 9r1c1 then contradiction.\nON conclusion:\nChain 1: 9r1c1 = 2r1c2." })],
   ["forcing", base({ kind: "CellRegionFC", title: "Region Forcing Chain", candidates: [6], actions: [], eliminations: [elim(20, [6])], chainBranches: [{ label: "r1c1=1", nodes: [], edges: [] }, { label: "r1c1=2", nodes: [], edges: [] }], description: "r1c1=1 ... | r1c1=2 ... => r3c3<>6." })],
@@ -80,6 +112,49 @@ for (const [expectedType, step] of cases) {
       }
     }
   }
+}
+
+{
+  const ahsW = cases.find(([, step]) => step.kind === "AHSWWing")?.[1];
+  const zh = buildStepExplanationModel(ahsW, "zh").sections.map((section) => section.text).join("\n");
+  const en = buildStepExplanationModel(ahsW, "en").sections.map((section) => section.text).join("\n");
+  assert.ok(zh.includes("完整分为A端组1与B端组2/6"), "AHS-W-Wing must explain the complete multi-candidate pivot partition");
+  assert.ok(zh.includes("双值格只是最小特例"), "AHS-W-Wing must not require a bivalue pivot");
+  assert.ok(zh.includes("局部HLS格组=r2c8") && zh.includes("局部HLS格组=r4c7、r5c9、r6c9"), "AHS-W-Wing must name both local HLS cell groups");
+  assert.ok(zh.includes("支撑位置=r2c8") && zh.includes("支撑位置=r5c8、r6c9"), "AHS-W-Wing must distinguish exact support positions from whole HLS cells");
+  assert.ok(!zh.includes("双值枢纽的两个候选"), "obsolete bivalue-only explanation must be removed");
+  assert.ok(en.includes("bivalue cell is only the smallest special case"), "English AHS-W-Wing explanation must describe multi-candidate pivots");
+}
+
+{
+  const ahsXY = cases.find(([, step]) => step.kind === "AHSXYWing")?.[1];
+  const zh = buildStepExplanationModel(ahsXY, "zh").sections.map((section) => section.text).join("\n");
+  assert.ok(zh.includes("AHS A=24@c3{") && zh.indexOf("AHS A=24@c3{") < zh.indexOf("r2c3"), "AHS-XY-Wing A group must be candidate-first with its house");
+  assert.ok(zh.includes("枢纽AHS B=1578@r2{"), "AHS-XY-Wing pivot group must retain candidates and house metadata");
+  assert.ok(zh.includes("A端HLS/见证格组=r3c3") && zh.includes("C端HLS/见证格组=r3c9"), "AHS-XY-Wing must name the outer local HLS groups");
+  assert.ok(zh.includes("枢纽HLS/见证格组=r2c3") && zh.includes("枢纽HLS/见证格组=r2c9"), "AHS-XY-Wing must name both pivot local HLS groups");
+  assert.ok(!zh.includes("三个ALS按 A—B—C 相连"), "AHS-XY-Wing must not reuse the ALS-XY-Wing explanation");
+}
+
+{
+  const doubleRcc = base({
+    kind: "ALSXZ",
+    title: "ALS-XZ",
+    candidates: [2, 3, 7],
+    cells: [c(9), c(36), c(54), c(72), c(27), c(29), c(37), c(45), c(47)],
+    actions: [],
+    eliminations: [elim(73, [7])],
+    groups: [
+      { label: "Branch:Double-RCC Rank-0", cells: [] },
+      { label: "AlsA:23478", cells: [c(9), c(36), c(54), c(72)] },
+      { label: "AlsB:1234578", cells: [c(27), c(29), c(36), c(37), c(45), c(47)] },
+      { label: "Rcc:23", cells: [] },
+    ],
+  });
+  const zh = buildStepExplanationModel(doubleRcc, "zh").sections.map((section) => section.text).join("\n");
+  assert.ok(zh.includes("Double-RCC Rank-0"), "ALS-XZ Double-RCC must identify its branch");
+  assert.ok(zh.includes("不能套用普通ALS-XZ"), "ALS-XZ Double-RCC must reject the single-RCC Z template");
+  assert.ok(!zh.includes("共同删数候选 Z=7"), "ALS-XZ Double-RCC must not fabricate Z from the elimination digit");
 }
 
 
@@ -387,8 +462,28 @@ phase4Cases.push(
   ["ALS-W-Wing standard", phase4Step("ALSWWing", "ALS-W-Wing", "Standard", [g("AlsA", [c(0), c(1)], "1/5"), g("AlsB", [c(9), c(10)], "1/5"), g("StrongLink", [c(2), c(11)], "1"), g("Z", [], "5")], [1, 5]), "强链给出X_A∨X_B"],
   ["ALS-W-Wing grouped", phase4Step("ALSWWing", "Grouped ALS-W-Wing", "Grouped", [g("AlsA", [c(0), c(1)], "1/5"), g("AlsB", [c(9), c(10)], "1/5"), g("StrongLink", [c(2), c(3), c(11)], "1"), g("Z", [], "5")], [1, 5]), "强链端可以是组节点"],
   ["ALS-W-Wing rank zero", phase4Step("ALSWWing", "ALS-W-Wing", "Standard Rank-0", [g("AlsA", [c(0), c(1)], "1/5"), g("AlsB", [c(9), c(10)], "1/5"), g("StrongLink", [c(2), c(11)], "1"), g("SameHouseRcc", [], "2"), g("Z", [], "5")], [1, 5]), "按Rank 0产生额外删数"],
-  ["AHS-XZ single", phase4Step("AHSXZ", "AHS-XZ", "Single-RCC XZ", [g("AhsA", [c(0), c(1)], "1/2/3"), g("AhsB", [c(9), c(10)], "1/2/4"), g("Rcc", [], "1")], [1, 3]), "不能把AHS-XZ照抄成ALS-XZ文字"],
-  ["AHS-XZ double", phase4Step("AHSXZ", "AHS-XZ", "Double-RCC Rank-0", [g("AhsA", [c(0), c(1)], "1/2/3"), g("AhsB", [c(9), c(10)], "1/2/4"), g("Rcc", [], "1/2")], [1, 2]), "两个RCC把AHS位置需求"],
+  ["AHS-XZ single", phase4Step("AHSXZ", "AHS-XZ", "Single-RCC XZ", [g("AhsA", [c(0), c(1)], "25@r1"), g("AhsB", [c(9), c(10)], "389@b2"), g("Rcc", [], "1")], [1, 3]), "AHS A=25@r1{"],
+  ["AHS-XZ double", phase4Step("AHSXZ", "AHS-XZ", "Double-RCC Rank-0", [g("AhsA", [c(0), c(1)], "1234@r3"), g("AhsB", [c(9), c(10)], "78@b3"), g("Rcc", [], "1/2")], [1, 2]), "两个RCC把AHS位置需求"],
+  ["AHS-XY-Wing event logic", phase4Step("AHSXYWing", "AHS-XY-Wing", "Event-RCC", [
+    g("AhsA", [c(11), c(20), c(29)], "24@c3"),
+    g("AhsB(Pivot)", [c(10), c(11), c(12), c(16), c(17)], "1578@r2"),
+    g("AhsC", [c(17), c(26), c(35), c(53)], "158@c9"),
+    g("RccX", [c(20), c(11)], "Locked-Set Position"),
+    g("ExtraX(A)", [c(20)], "2"), g("HlsX(A)", [c(20)], "2"), g("SupportX(A)", [c(20)], "2"),
+    g("ExtraX(B)", [c(11)], "2"), g("HlsX(B)", [c(11)], "2"), g("SupportX(B)", [c(11)], "2"),
+    g("RccY", [c(26), c(17)], "Overlap-Hall Group"),
+    g("ExtraY(C)", [c(26)], "1"), g("HlsY(C)", [c(26)], "1"), g("SupportY(C)", [c(26)], "1"),
+    g("ExtraY(B)", [c(17)], "1"), g("HlsY(B)", [c(17)], "1"), g("SupportY(B)", [c(17)], "1"),
+    g("Targets", [c(35)], "4")
+  ], [1, 2, 4, 5, 7, 8]), "两条RCC都是AHS的Extra事件析取"],
+  ["AHS-W-Wing event partition", phase4Step("AHSWWing", "AHS-W-Wing", "Pivot-Partition", [
+    g("AhsA", [c(16), c(34), c(43), c(61)], "167@c8"),
+    g("PivotA", [c(8)], "1"), g("Pivot", [c(8)], "126"), g("PivotB", [c(8)], "26"),
+    g("AhsB", [c(33), c(34), c(43), c(44), c(53)], "2678@b6"),
+    g("ExtraA", [c(16)], "1"), g("HlsA", [c(16)], "1"), g("SupportA", [c(16)], "1"),
+    g("ExtraB", [c(44), c(53)], "2/6"), g("HlsB", [c(33), c(44), c(53)], "2/6"), g("SupportB", [c(43), c(53)], "2/6"),
+    g("Targets", [c(34), c(44), c(61)], "3/6")
+  ], [1, 2, 3, 6, 7, 8]), "这不是两个集合由外部强链直接连接"],
   ["Sue de Coq standard", phase4Step("SueDeCoq", "Sue de Coq", "Standard", [g("ActiveSector", [c(0), c(1)], "1/2/3"), g("SueB", [c(9), c(10)], "1/2"), g("SueL", [c(18)], "3/4"), g("SueInsular", [], "4")], [1, 2, 3, 4]), "候选容量等式"],
   ["Sue de Coq cannibal", phase4Step("SueDeCoq", "Cannibalized Sue de Coq", "Cannibalized", [g("ActiveSector", [c(0), c(1)], "1/2/3"), g("SueB", [c(9), c(10)], "1/2"), g("SueL", [c(18)], "2/3"), g("CannibalTargets", [c(1)], "2")], [1, 2, 3]), "Cannibalized分支要单独显示"],
 );
@@ -466,6 +561,20 @@ const phase5Step = (kind, title, form, groups = [], candidates = [5]) => base({
     ...groups,
   ],
 });
+
+{
+  const ahsXy = phase4Cases.find(([name]) => name === "AHS-XY-Wing event logic")?.[1];
+  const ahsW = phase4Cases.find(([name]) => name === "AHS-W-Wing event partition")?.[1];
+  for (const [name, step] of [["AHS-XY-Wing", ahsXy], ["AHS-W-Wing", ahsW]]) {
+    const zhGuide = buildAuditedTechniqueGuide(step, "zh");
+    const enGuide = buildAuditedTechniqueGuide(step, "en");
+    assert.equal(zhGuide?.length, 6, `${name}: must use a dedicated six-field AHS guide`);
+    assert.equal(enGuide?.length, 6, `${name}: must use a dedicated English AHS guide`);
+    const zhText = zhGuide.join("\n");
+    assert.ok(!/ALS/.test(zhText), `${name}: dedicated AHS guide must not contain ALS tutorial terminology`);
+    assert.ok(zhText.includes("HLS"), `${name}: must explain HLS witness cells`);
+  }
+}
 
 const phase5Cases = [
   ["X-Chain", phase5Step("XChain", "X-Chain", "OpenChain", [], [5]), "整条链只使用一个数字"],

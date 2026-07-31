@@ -345,6 +345,22 @@
       "The visual emphasis is on digit sets and their possible locations, not on low-candidate cell sets.",
       "Confirm that this is a hidden-set relation—digits confined to cells—rather than an ALS read from cell candidates."
     ),
+    AHSXYWing: entry(
+      "AHS-XY-Wing links three Almost Hidden Sets with two strict rank-1 RCC events; the middle AHS is the pivot.",
+      "The two pivot-side Extra events are mutually exclusive, so at least one outer Extra event must occur and every target rejected by both outer branches can be removed.",
+      "Each RCC proves an OR relation between an outer Extra event and a pivot Extra event. When the two pivot event cell groups are disjoint and the proof resources are independent, the pivot cannot satisfy both events; therefore one outer event is forced.",
+      "1. Find the pivot AHS. 2. Verify both rank-1 RCC proofs. 3. Confirm that the pivot events are disjoint and do not reuse proof resources. 4. Intersect the eliminations from the two outer Extra-event branches.",
+      "Read the candidate-first AHS labels and house tags, then inspect both Extra events, Hall/HLS witnesses, and all valid support positions.",
+      "Two edges alone are insufficient: both RCCs must be valid, the pivot events must be mutually exclusive, and their proof resources must remain independent."
+    ),
+    AHSWWing: entry(
+      "AHS-W-Wing uses one pivot cell whose entire candidate set is partitioned between two AHS endpoint events; a bivalue pivot is only the smallest special case.",
+      "Every pivot candidate assigned to side A forces the A-side Extra event, and every candidate assigned to side B forces the B-side event. Since the pivot must take one candidate, at least one endpoint event occurs.",
+      "Each endpoint is a conditional local hidden set of at most three cells. Support positions are calculated separately for each digit across all valid AHS matchings, and every pivot candidate must be covered by one side of the partition.",
+      "1. Find a pivot cell with at least two candidates. 2. Partition all its candidates between sides A and B. 3. Verify both AHS endpoints. 4. Check every digit against all exact support positions. 5. Keep eliminations common to both Extra-event branches.",
+      "The pivot's A/B candidate groups, both Extra events, local HLS cells, exact per-digit supports, and common targets are highlighted separately.",
+      "The pivot need not be bivalue. The structure fails if any pivot candidate is uncovered, any valid support position is omitted, or a pivot candidate cannot see every required support position."
+    ),
     XChain: chainLogic(
       "X-Chain",
       "candidates of one digit",
@@ -522,7 +538,7 @@
     ["header .wrap > p:not(.meta)", "Player-facing logic explanations; internal search implementation details are intentionally omitted."],
     ["#reading-intro > h2", "Reading Guide"],
     ["#reading-intro > p:nth-of-type(1)", "This guide follows Kazusa's layered progression: direct techniques, local and full candidate marking, chains, constructions, rank theory, Exocet, and deadly patterns. It condenses those ideas into what a player should inspect when the program shows a step."],
-    ["#reading-intro > p:nth-of-type(2)", "<strong>Matched to the currently wired backend:</strong> the reference table contains 70 entries. <code>AHS-XY-Wing</code>, <code>AHS-W-Wing</code>, and <code>AHS Chain</code> remain explicit reference placeholders, so they are not listed as implemented techniques."],
+    ["#reading-intro > p:nth-of-type(2)", "<strong>Matched to the currently wired backend:</strong> the reference table contains 70 entries. Only <code>AHS Chain</code> remains an explicit reference placeholder. <code>AHS-XY-Wing</code> and <code>AHS-W-Wing</code> are now wired finders."],
     ["#reading-intro > p:nth-of-type(3)", "Further reading: <a href=\"https://github.com/kyoyama-kazusa/Sudoku/tree/main/docs/tutorial\" rel=\"noopener\" target=\"_blank\">Kazusa Sudoku tutorial</a>. This page uses a definition → reasoning → checkpoint reading structure without copying external diagrams or documenting internal search code."],
     ["#step-reading-method > p", "This guide organizes each technique as definition → current structure → why the placement or elimination works → how to verify it. Identify the structure, understand the proof, then verify the conclusion."],
     ["#step-reading-method .method-boxes > div:nth-child(1) h3", "1. Identify the structure"],
@@ -555,8 +571,6 @@
   ];
 
   const PLACEHOLDERS = {
-    "AHS-XY-Wing": "After the finder is fully wired, document it using the AHS-XZ and ALS-XY-Wing proof style.",
-    "AHS-W-Wing": "After the finder is fully wired, document it using the AHS-XZ and ALS-W-Wing proof style.",
     "AHS Chain": "After the finder is fully wired, document it using the AHS-XZ and ALS Chain proof style.",
   };
 

@@ -1685,6 +1685,15 @@ button.primary:not(:disabled) {
 /* Whole-cell solver highlights keep their original semantic colors. Most are
  * deliberately light, so dark-theme foreground inheritance must be reversed
  * locally or the digits become pale-on-pastel. */
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell.solver-cell-role-fill :is(
+  .candidate-grid,
+  .cell-value.given,
+  .cell-value.solved,
+  .cell-value.suggested
+) {
+  color: #111827 !important;
+  text-shadow: none !important;
+}
 :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell:is(
   .solver-cell-bkclr-1, .solver-cell-bkclr-2, .solver-cell-bkclr-3,
   .solver-cell-bkclr-4, .solver-cell-bkclr-5, .solver-cell-bkclr-6,

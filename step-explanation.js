@@ -42,7 +42,7 @@ const AUDITED_PHASE3 = new Set([
 ]);
 const AUDITED_PHASE4 = new Set([
   "AlmostPair", "AlmostTriple", "SueDeCoq", "ALSXZ", "ALSXYWing", "ALSWWing", "AHSXZ",
-  "Fireworks", "BivalueOddagon", "TripletOddagon", "DeathBlossom", "BlossomLoop",
+  "AHSXYWing", "AHSWWing", "Fireworks", "BivalueOddagon", "TripletOddagon", "DeathBlossom", "BlossomLoop",
 ]);
 const AUDITED_PHASE5 = new Set([
   "XChain", "XYChain", "AIC", "GroupedAIC", "ALSChain", "ComplexAIC",
@@ -215,8 +215,11 @@ function groupRecord(group) {
   const head = (colon >= 0 ? label.slice(0, colon) : label).trim();
   const tail = (colon >= 0 ? label.slice(colon + 1) : "").trim();
   const headKey = normalizeHead(head);
-  const digitBearing = /^(alsa|alsb|alsc|ahsa|ahsb|ahsc|rcc|rccx|rccy|x|z|stronglink|set|petal|fin|fins|regfin|regfins|edofin|edofins|eri|link|urbody|arbody|ulbody|xrbody|guardians?|guardiansa|guardiansb|winga|wingb|wxyzpivot|wxyzwings|bugplusonecell|forcedcandidate|exitcell|exitcells|conjugateexit|confineddeadly|hiddenlock|nakedsubset|hiddensubset|solvedcorners|roof|targetcorner|self|target|targets|cannibaltargets|lockedcandidates|fishdigit|sourcedigits|fishbody|brokenloop|roofs|linkedside|rowstrong|columnstrong|rowouter|columnouter|rowinner|columninner|outerendpoints|connector|endpoints|linktoa|linktob|deletedigit|pivot|sharedz|connectorz|erbody|erintersection|outsideendpoint|pair|erisupport|activeeri|oppositeeri|remotewing|wxyzset|activesector|z|samehousercc|oddagonbody|oddagona|oddagonb|sharedexit|lockedsubset|tripletbody|fireworkarms|fireworkset|fireworka|fireworkb|sharedarms|erconnector|bivaluebridge|pit|alppivot|bivaluepair|basecells|stem|victim|petals|start|end)$/i.test(headKey);
-  const digits = digitBearing ? unique((tail.match(/[1-9]/g) || []).map(Number)).sort((a, b) => a - b) : [];
+  const digitBearing = /^(alsa|alsb|alsc|ahsa|ahsb|ahsb\(pivot\)|ahsc|rcc|rccx|rccy|x|z|stronglink|set|petal|fin|fins|regfin|regfins|edofin|edofins|eri|link|urbody|arbody|ulbody|xrbody|guardians?|guardiansa|guardiansb|winga|wingb|wxyzpivot|wxyzwings|bugplusonecell|forcedcandidate|exitcell|exitcells|conjugateexit|confineddeadly|hiddenlock|nakedsubset|hiddensubset|solvedcorners|roof|targetcorner|self|target|targets|cannibaltargets|lockedcandidates|fishdigit|sourcedigits|fishbody|brokenloop|roofs|linkedside|rowstrong|columnstrong|rowouter|columnouter|rowinner|columninner|outerendpoints|connector|endpoints|linktoa|linktob|deletedigit|pivot|pivota|pivotb|supporta|supportb|supportx\(a\)|supportx\(b\)|supporty\(c\)|supporty\(b\)|sharedz|connectorz|erbody|erintersection|outsideendpoint|pair|erisupport|activeeri|oppositeeri|remotewing|wxyzset|activesector|z|samehousercc|oddagonbody|oddagona|oddagonb|sharedexit|lockedsubset|tripletbody|fireworkarms|fireworkset|fireworka|fireworkb|sharedarms|erconnector|bivaluebridge|pit|alppivot|bivaluepair|basecells|stem|victim|petals|start|end)$/i.test(headKey);
+  // Structured AHS/ALS labels may use "digits@house" (for example
+  // AhsA:25@r1).  House numbers are metadata, not candidates.
+  const digitTail = tail.split("@", 1)[0];
+  const digits = digitBearing ? unique((digitTail.match(/[1-9]/g) || []).map(Number)).sort((a, b) => a - b) : [];
   return {
     label,
     head,
@@ -260,6 +263,15 @@ function roleSummary(group, locale, fallback) {
   if (digits) details.push(lang === "zh" ? `候选数${digits}` : `digits ${digits}`);
   if (houses) details.push(houses);
   return `${fallback}${details.length ? (lang === "zh" ? `为${details.join("，")}` : `: ${details.join(", ")}`) : ""}`;
+}
+
+function ahsRoleSummary(group, locale, fallback) {
+  if (!group) return "";
+  const lang = localeKey(locale);
+  const digits = list(group.digits).filter((digit) => Number(digit) >= 1 && Number(digit) <= 9).map(Number).sort((a, b) => a - b).join("") || (lang === "zh" ? "相关数字" : "digits");
+  const houses = group.houses.join("/") || (lang === "zh" ? "相关house" : "house");
+  const cells = cellNames(group.cells) || (lang === "zh" ? "相关格组" : "cells");
+  return `${fallback}=${digits}@${houses}{${cells}}`;
 }
 
 function cellHouseSet(cells, type) {
@@ -825,39 +837,157 @@ function alsExplanation(step, locale) {
   const zh = localeKey(locale) === "zh";
   const kind = String(step?.kind || "");
   const a = firstGroup(step, /^alsa$|^ahsa$/i);
-  const b = firstGroup(step, /^alsb$|^ahsb$/i);
+  const b = firstGroup(step, /^alsb$|^ahsb(?:\(pivot\))?$/i);
   const c = firstGroup(step, /^alsc$|^ahsc$/i);
   const rcc = firstGroup(step, /^rcc$|^rccx$|^rccy$/i);
   const link = firstGroup(step, /^link$|^stronglink$/i);
+  const branch = firstGroup(step, /^branch$/i);
+  const branchKey = String(branch?.tail || "").toLowerCase();
   const roles = [
     roleSummary(a, locale, zh ? "待定数组A" : "ALS A"),
     roleSummary(b, locale, zh ? "待定数组B" : "ALS B"),
     roleSummary(c, locale, zh ? "待定数组C" : "ALS C"),
   ].filter(Boolean);
+  const ahsBLabel = kind === "AHSXYWing"
+    ? (zh ? "枢纽AHS B" : "pivot AHS B")
+    : "AHS B";
+  const ahsRoles = [
+    ahsRoleSummary(a, locale, "AHS A"),
+    ahsRoleSummary(b, locale, ahsBLabel),
+    ahsRoleSummary(c, locale, "AHS C"),
+  ].filter(Boolean);
   const structure = roles.length
     ? sentenceParts(roles, locale) + (zh ? "。" : ".")
     : (zh ? `高亮单元格${cellNames(structureCells(step)) ? `（${cellNames(structureCells(step))}）` : ""}构成待定数组结构。` : `The highlighted cells${cellNames(structureCells(step)) ? ` (${cellNames(structureCells(step))})` : ""} form an almost-locked-set structure.`);
-  if (kind === "ALSXZ" || kind === "AHSXZ") {
+  const ahsStructure = ahsRoles.length
+    ? (zh ? `候选数组合优先：${sentenceParts(ahsRoles, locale)}。` : `Digit-set first: ${sentenceParts(ahsRoles, locale)}.`)
+    : (zh ? "AHS应先按候选数组合与house确认，再核对承载格组。" : "Read the AHS digit set and house first, then verify its carrier cells.");
+
+  if (kind === "ALSXZ") {
     const x = digitText(rcc?.digits || []);
-    const z = digitText(link?.digits || candidateValues(step?.eliminations?.[0]));
+    const zGroup = firstGroup(step, /^z$/i);
+    const z = digitText(zGroup?.digits || []);
+    const doubleRcc = branchKey.includes("double-rcc");
+    if (doubleRcc) {
+      return {
+        structure: `${structure}${x ? (zh ? ` 两个RCC数字为${x}，结构属于Double-RCC Rank-0分支。` : ` The two RCC digits are ${x}; this is the Double-RCC rank-0 branch.`) : ""}`,
+        basis: zh
+          ? "两个独立RCC把两组ALS闭合成Rank 0。这里不能套用普通ALS-XZ的“X不能两边同时为真，所以Z至少在一边为真”解释；删数来自Rank-0链接容量已被结构完全占用。"
+          : "Two independent RCCs close the ALS pair to rank 0. Do not reuse the ordinary ALS-XZ statement that X cannot be true in both ALSs and therefore Z is true in one; eliminations come from fully occupied rank-0 link capacity.",
+        deduction: zh
+          ? "被删候选若保留，会在已经闭合的Rank-0结构中额外占用链接容量或重复占用结构资源。具体扩展见后端原始证明。"
+          : "Keeping an eliminated candidate would consume additional link capacity or duplicate a proof resource in the closed rank-0 structure. See the backend proof for the exact extension.",
+      };
+    }
     return {
       structure: `${structure}${x ? (zh ? ` 严格共享候选数 X=${x}。` : ` Restricted common candidate X=${x}.`) : ""}${z ? (zh ? ` 共同删数候选 Z=${z}。` : ` Common elimination digit Z=${z}.`) : ""}`,
-      basis: zh ? "一个待定数组若失去某个候选数，就会变成锁定集。严格共享候选数不能同时在两个数组中为真，也不能让两个数组同时失去它。" : "If an ALS loses one candidate, it becomes a locked set. A restricted common candidate cannot be true in both ALSes and cannot be absent from both.",
-      deduction: zh ? "因此两个数组中至少有一侧必须包含共同删数候选 Z；同时看见两侧全部 Z 位置的外部 Z 候选可以删除。" : "Therefore the common elimination digit Z is true in at least one ALS; an external Z candidate that sees all relevant Z positions in both ALSes can be removed.",
+      basis: zh ? "一个ALS若失去一个候选数就会成为锁定集。单RCC数字X不能同时在两组ALS中取真，因此共同数字Z至少在其中一组ALS中取真。" : "If an ALS loses one candidate it becomes locked. The single RCC digit X cannot be true in both ALSs, so shared digit Z is true in at least one ALS.",
+      deduction: zh ? "只有同时看见A、B两组中全部Z位置的外部Z候选才能删除。" : "Only an external Z candidate seeing every Z position in both ALSs can be removed.",
     };
   }
-  if (kind === "ALSXYWing" || kind === "AHSXYWing") {
+
+  if (kind === "AHSXZ") {
+    return {
+      structure: ahsStructure,
+      basis: zh
+        ? "AHS按数字—格位匹配工作：N个数字分布在N+1个格中，恰有一个格由AHS数字集之外的数字占据。RCC约束的是两侧Extra事件或局部HLS位置关系，而不是ALS候选容量。"
+        : "AHS logic is a digit-position matching: N digits occupy N+1 cells, leaving exactly one cell for a digit outside the AHS set. Its RCC constrains Extra-events or local-HLS positions, not ALS candidate capacity.",
+      deduction: zh
+        ? "按后端给出的两个事件分支分别检查合法匹配；两个分支都排除的候选才可删除。"
+        : "Check the legal matchings under the two backend event branches; only a candidate excluded in both branches can be removed.",
+    };
+  }
+
+  if (kind === "AHSXYWing") {
+    const rccX = firstGroup(step, /^rccx$/i);
+    const rccY = firstGroup(step, /^rccy$/i);
+    const extraXA = firstGroup(step, /^extrax\(a\)$/i);
+    const hlsXA = firstGroup(step, /^hlsx\(a\)$/i);
+    const extraXB = firstGroup(step, /^extrax\(b\)$/i);
+    const hlsXB = firstGroup(step, /^hlsx\(b\)$/i);
+    const supportXA = firstGroup(step, /^supportx\(a\)$/i);
+    const supportXB = firstGroup(step, /^supportx\(b\)$/i);
+    const extraYC = firstGroup(step, /^extray\(c\)$/i);
+    const hlsYC = firstGroup(step, /^hlsy\(c\)$/i);
+    const extraYB = firstGroup(step, /^extray\(b\)$/i);
+    const hlsYB = firstGroup(step, /^hlsy\(b\)$/i);
+    const supportYC = firstGroup(step, /^supporty\(c\)$/i);
+    const supportYB = firstGroup(step, /^supporty\(b\)$/i);
+    const xText = [
+      rccX?.tail,
+      extraXA ? `${zh ? "A端Extra" : "A Extra"}=${cellNames(extraXA.cells)}` : "",
+      hlsXA ? `${zh ? "A端HLS/见证格组" : "A local HLS/witness"}=${cellNames(hlsXA.cells)}` : "",
+      supportXA?.digits?.length ? `${zh ? "A端支撑" : "A support"}=${digitText(supportXA.digits)}@${cellNames(supportXA.cells)}` : "",
+      extraXB ? `${zh ? "枢纽Extra" : "pivot Extra"}=${cellNames(extraXB.cells)}` : "",
+      hlsXB ? `${zh ? "枢纽HLS/见证格组" : "pivot local HLS/witness"}=${cellNames(hlsXB.cells)}` : "",
+      supportXB?.digits?.length ? `${zh ? "枢纽支撑" : "pivot support"}=${digitText(supportXB.digits)}@${cellNames(supportXB.cells)}` : "",
+    ].filter(Boolean).join(zh ? "，" : ", ");
+    const yText = [
+      rccY?.tail,
+      extraYC ? `${zh ? "C端Extra" : "C Extra"}=${cellNames(extraYC.cells)}` : "",
+      hlsYC ? `${zh ? "C端HLS/见证格组" : "C local HLS/witness"}=${cellNames(hlsYC.cells)}` : "",
+      supportYC?.digits?.length ? `${zh ? "C端支撑" : "C support"}=${digitText(supportYC.digits)}@${cellNames(supportYC.cells)}` : "",
+      extraYB ? `${zh ? "枢纽Extra" : "pivot Extra"}=${cellNames(extraYB.cells)}` : "",
+      hlsYB ? `${zh ? "枢纽HLS/见证格组" : "pivot local HLS/witness"}=${cellNames(hlsYB.cells)}` : "",
+      supportYB?.digits?.length ? `${zh ? "枢纽支撑" : "pivot support"}=${digitText(supportYB.digits)}@${cellNames(supportYB.cells)}` : "",
+    ].filter(Boolean).join(zh ? "，" : ", ");
+    return {
+      structure: `${ahsStructure}${xText ? (zh ? ` RCC X：${xText}。` : ` RCC X: ${xText}.`) : ""}${yText ? (zh ? ` RCC Y：${yText}。` : ` RCC Y: ${yText}.`) : ""}`,
+      basis: zh
+        ? "枢纽AHS只有一个Extra格。RCC X表示“A端Extra或枢纽X事件”，RCC Y表示“C端Extra或枢纽Y事件”；两个枢纽事件互斥且不能复用同一HLS证明资源，因此A端Extra与C端Extra至少一个成立。"
+        : "The pivot AHS has one Extra cell. RCC X states ‘A Extra or pivot-X event’, and RCC Y states ‘C Extra or pivot-Y event’. The pivot events are disjoint and cannot reuse the same local-HLS proof resource, so at least one outer Extra-event holds.",
+      deduction: zh
+        ? "分别在A端Extra、C端Extra条件下枚举全部合法AHS匹配；两分支共同排除的候选才是删数。整格底色标出参与RCC证明的局部HLS格组，候选色标出实际支撑位置。"
+        : "Enumerate every legal AHS matching under the A-Extra and C-Extra branches. Only candidates excluded in both are removed. Cell fills mark the local-HLS cells used by each RCC, while candidate colors mark the actual support positions.",
+    };
+  }
+
+  if (kind === "ALSXYWing") {
     return {
       structure,
-      basis: zh ? "三个待定数组按 A—B—C 相连，B 分别通过两个严格共享候选数连接 A 和 C。" : "Three almost-locked sets form A—B—C, with B connected to A and C by two restricted common candidates.",
-      deduction: zh ? "无论中间数组 B 怎样完成，A 或 C 中至少一侧会承担共同删数候选，因此同时看见两端该候选的外部位置可以删除。" : "Whatever assignment completes B, the common elimination digit is true in A or C, so an external candidate that sees both ends can be removed.",
+      basis: zh ? "三个ALS按 A—B—C 相连，B分别通过两个严格共享候选数连接A和C。" : "Three ALSs form A—B—C, with B connected to A and C by two restricted common candidates.",
+      deduction: zh ? "无论中间ALS B怎样完成，A或C中至少一侧会承担共同删数候选，因此同时看见两端该候选的外部位置可以删除。" : "Whatever assignment completes ALS B, the common elimination digit is true in A or C, so an external candidate seeing both ends can be removed.",
     };
   }
-  if (kind === "ALSWWing" || kind === "AHSWWing") {
+
+  if (kind === "AHSWWing") {
+    const pivot = firstGroup(step, /^pivot$/i);
+    const pivotA = firstGroup(step, /^pivota$/i);
+    const pivotB = firstGroup(step, /^pivotb$/i);
+    const extraA = firstGroup(step, /^extraa$/i);
+    const hlsA = firstGroup(step, /^hlsa$/i);
+    const supportA = firstGroup(step, /^supporta$/i);
+    const extraB = firstGroup(step, /^extrab$/i);
+    const hlsB = firstGroup(step, /^hlsb$/i);
+    const supportB = firstGroup(step, /^supportb$/i);
+    const pivotDigits = digitText(pivot?.digits || []);
+    const aDigits = digitText(pivotA?.digits || []);
+    const bDigits = digitText(pivotB?.digits || []);
+    const endpointA = [
+      extraA ? `${zh ? "Extra格组" : "Extra cells"}=${cellNames(extraA.cells)}` : "",
+      hlsA ? `${zh ? "局部HLS格组" : "local HLS"}=${cellNames(hlsA.cells)}` : "",
+      supportA ? `${zh ? "支撑位置" : "support positions"}=${cellNames(supportA.cells)}` : "",
+    ].filter(Boolean).join(zh ? "，" : ", ");
+    const endpointB = [
+      extraB ? `${zh ? "Extra格组" : "Extra cells"}=${cellNames(extraB.cells)}` : "",
+      hlsB ? `${zh ? "局部HLS格组" : "local HLS"}=${cellNames(hlsB.cells)}` : "",
+      supportB ? `${zh ? "支撑位置" : "support positions"}=${cellNames(supportB.cells)}` : "",
+    ].filter(Boolean).join(zh ? "，" : ", ");
+    return {
+      structure: `${ahsStructure} ${zh ? "单格枢纽" : "Single-cell pivot"}${pivot ? `（${cellNames(pivot.cells)}{${pivotDigits}}）` : ""}${zh ? `完整分为A端组${aDigits || "（见高亮）"}与B端组${bDigits || "（见高亮）"}。` : ` is completely partitioned into A-side ${aDigits || "(highlighted)"} and B-side ${bDigits || "(highlighted)"}.`}${endpointA ? (zh ? ` A端：${endpointA}。` : ` A side: ${endpointA}.`) : ""}${endpointB ? (zh ? ` B端：${endpointB}。` : ` B side: ${endpointB}.`) : ""}`,
+      basis: zh
+        ? "枢纽每个候选都必须看见其所属端支撑数字的全部有效位置。取A端组候选会强制AHS A的Extra事件；取B端组候选会强制AHS B的Extra事件。枢纽必取一个候选，所以两个端点Extra事件至少一个成立；双值格只是最小特例。"
+        : "Every pivot candidate must see every valid position of its assigned endpoint support digit. An A-side value forces AHS A's Extra-event, while a B-side value forces AHS B's Extra-event. The pivot takes one value, so at least one endpoint Extra-event holds; a bivalue cell is only the smallest special case.",
+      deduction: zh
+        ? "分别在A端Extra和B端Extra条件下枚举全部合法AHS匹配；两分支共同排除的候选可以删除。整格底色标出局部HLS格组，候选色只标真实支撑位置。"
+        : "Enumerate all legal AHS matchings under the A-Extra and B-Extra branches. Candidates excluded in both can be removed. Cell fills mark the local-HLS cells, while candidate colors mark only real support positions.",
+    };
+  }
+  if (kind === "ALSWWing") {
     return {
       structure: `${structure}${link ? ` ${roleSummary(link, locale, zh ? "外部强关系" : "external strong link")}。` : ""}`,
-      basis: zh ? "外部强关系保证连接数字的两个端点至少有一个为真，从而迫使两个待定数组中至少一侧承担共同删数候选。" : "The external strong link guarantees one endpoint is true, forcing at least one ALS to contain the common elimination digit.",
-      deduction: zh ? "同时看见两个数组中共同删数候选全部位置的外部候选可以删除。" : "An external candidate that sees every relevant occurrence in both ALSes can be removed.",
+      basis: zh ? "外部强关系保证连接数字的两个端点至少有一个为真，从而迫使两个ALS中至少一侧承担共同删数候选。" : "The external strong link guarantees one endpoint is true, forcing at least one ALS to contain the common elimination digit.",
+      deduction: zh ? "同时看见两个ALS中共同删数候选全部位置的外部候选可以删除。" : "An external candidate that sees every relevant occurrence in both ALSs can be removed.",
     };
   }
   if (kind === "ALSChain" || kind === "AHSChain") {
@@ -869,8 +999,8 @@ function alsExplanation(step, locale) {
   }
   return {
     structure,
-    basis: zh ? "待定数组由 N 个单元格和 N+1 个候选数组成；少掉任意一个候选数后，其余候选会被锁定。" : "An ALS contains N cells and N+1 candidates; removing any one candidate locks the remaining candidates into the set.",
-    deduction: zh ? "本步利用数组之间的共享候选、区域交叉或外部强关系，把所有可能都导向同一结论。具体关系以分组和原始证明为准。" : "This step uses shared candidates, house intersections or an external strong link so that every case yields the same conclusion. See the groups and backend proof for the exact relation.",
+    basis: zh ? "这些单元格的候选数与格位数量只差一个，形成待定数组。" : "The candidate count differs from the cell count by one, forming an almost-locked structure.",
+    deduction: zh ? "结构间的受限共享候选数或强关系迫使目标候选无法成立。" : "Restricted common candidates or strong links between the structures rule out the target.",
   };
 }
 
@@ -1949,17 +2079,93 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
     ];
   }
 
-  if (kind === "AHSXZ") {
-    const a = firstGroup(step, /^ahsa$/i), b = firstGroup(step, /^ahsb$/i), x = digitText(firstGroup(step, /^rcc$/i)?.digits);
+  if (kind === "AHSXYWing") {
+    const a = firstGroup(step, /^ahsa$/i), b = firstGroup(step, /^ahsb(?:\(pivot\))?$/i), c = firstGroup(step, /^ahsc$/i);
+    const rccX = firstGroup(step, /^rccx$/i), rccY = firstGroup(step, /^rccy$/i);
+    const extraXA = firstGroup(step, /^extrax\(a\)$/i), hlsXA = firstGroup(step, /^hlsx\(a\)$/i), supportXA = firstGroup(step, /^supportx\(a\)$/i);
+    const extraXB = firstGroup(step, /^extrax\(b\)$/i), hlsXB = firstGroup(step, /^hlsx\(b\)$/i), supportXB = firstGroup(step, /^supportx\(b\)$/i);
+    const extraYC = firstGroup(step, /^extray\(c\)$/i), hlsYC = firstGroup(step, /^hlsy\(c\)$/i), supportYC = firstGroup(step, /^supporty\(c\)$/i);
+    const extraYB = firstGroup(step, /^extray\(b\)$/i), hlsYB = firstGroup(step, /^hlsy\(b\)$/i), supportYB = firstGroup(step, /^supporty\(b\)$/i);
+    const ahsLabel = (group) => `${digitText(group?.digits, "") || "?"}@${group?.houses?.join("/") || "house"}{${cellNames(group?.cells)}}`;
+    const endpoint = (extra, hls, support, label) => [
+      extra ? `${label}${zh ? "Extra格" : " Extra"}=${cellNames(extra.cells)}` : "",
+      hls ? `${zh ? "局部HLS/见证格组" : "local HLS/witness"}=${cellNames(hls.cells)}` : "",
+      support ? `${zh ? "支撑" : "support"}=${digitText(support.digits)}@${cellNames(support.cells)}` : "",
+    ].filter(Boolean).join(zh ? "，" : ", ");
+    const xA = endpoint(extraXA, hlsXA, supportXA, zh ? "A端" : "A-side");
+    const xB = endpoint(extraXB, hlsXB, supportXB, zh ? "枢纽X端" : "pivot-X");
+    const yC = endpoint(extraYC, hlsYC, supportYC, zh ? "C端" : "C-side");
+    const yB = endpoint(extraYB, hlsYB, supportYB, zh ? "枢纽Y端" : "pivot-Y");
     return zh ? [
-      `AHS-XZ（${branch}）：AHS A=${cellNames(a?.cells)}{${digitText(a?.digits)}}与B=${cellNames(b?.cells)}{${digitText(b?.digits)}}通过受限公共位置/数字X=${x || "cell"}连接。`,
+      `AHS-XY-Wing：AHS A=${ahsLabel(a)}、枢纽AHS B=${ahsLabel(b)}、AHS C=${ahsLabel(c)}；RCC X=${rccX?.tail || "高亮事件"}，RCC Y=${rccY?.tail || "高亮事件"}。`,
+      "两条RCC都是AHS的Extra事件析取，不是普通候选强链。RCC X保证A端Extra或枢纽X事件成立，RCC Y保证C端Extra或枢纽Y事件成立；枢纽的X、Y事件互斥，因此A端Extra与C端Extra至少一个成立。",
+      "记两条边为 (E_A ∨ E_BX) 与 (E_C ∨ E_BY)。若 E_BX ∧ E_BY 不可能，且两条边没有复用同一Hall/HLS证明资源，则推出 E_A ∨ E_C。分别枚举满足E_A与满足E_C的全部合法AHS匹配；两个分支都排除的候选才可删除。",
+      `① 按候选数组合与house确认A、B、C三组AHS；② 核对RCC X两端：${xA || "A端见证"}${xB ? `；${xB}` : ""}；③ 核对RCC Y两端：${yC || "C端见证"}${yB ? `；${yB}` : ""}；④ 确认枢纽事件互斥且证明资源不复用；⑤ 取两个外翼Extra分支的共同删数${targets ? `（${targets}）` : ""}。`,
+      "整格底色按RCC配对：RCC X两端的局部HLS/Hall见证格使用同一种底色，RCC Y两端使用另一种底色；同一格同时属于两条RCC时，只显示后端明确输出的双色条带。候选数颜色区分端点独有、共有及逐数字真实支撑位置。AHS本体应按“候选数组合@house”阅读，不能按格子候选并集阅读。",
+      "不能只因三组AHS之间存在两条边就判定成立。两条RCC必须各自是严格rank-1事件，枢纽事件必须互斥，且不能复用同一HLS/Hall证明资源；任何合法匹配中的支撑位置都不能漏标。",
+    ] : [
+      `AHS-XY-Wing: AHS A=${ahsLabel(a)}, pivot AHS B=${ahsLabel(b)}, and AHS C=${ahsLabel(c)}; RCC X=${rccX?.tail || "highlighted event"}, RCC Y=${rccY?.tail || "highlighted event"}.`,
+      "The two RCCs are AHS Extra-event disjunctions, not ordinary candidate strong links. RCC X gives A-Extra or pivot-X; RCC Y gives C-Extra or pivot-Y. The two pivot events are mutually exclusive, so A-Extra or C-Extra must hold.",
+      "Write the edges as (E_A or E_BX) and (E_C or E_BY). If E_BX and E_BY cannot both hold and the edges do not reuse the same Hall/HLS proof resource, then E_A or E_C. Enumerate every legal AHS matching under each outer event; only common eliminations are valid.",
+      `1. Verify A, B, and C by digit set and house. 2. Verify RCC X: ${xA || "A witness"}${xB ? `; ${xB}` : ""}. 3. Verify RCC Y: ${yC || "C witness"}${yB ? `; ${yB}` : ""}. 4. Check pivot-event exclusivity and proof-resource independence. 5. Keep only common branch eliminations${targets ? ` (${targets})` : ""}.`,
+      "Cell fills encode RCC pairing: every local-HLS/Hall witness cell on RCC X uses one backend fill, and every cell on RCC Y uses another. A cell in both links shows only the two colours explicitly emitted by the backend. Candidate colours distinguish endpoint-only/common digits and exact per-digit supports. Read each AHS as digits@house, not as a cell-candidate union.",
+      "Two visible links are not enough. Both must be strict rank-1 events, the pivot events must be disjoint, proof resources must not be reused, and no support position from a legal matching may be omitted.",
+    ];
+  }
+
+  if (kind === "AHSWWing") {
+    const a = firstGroup(step, /^ahsa$/i), b = firstGroup(step, /^ahsb$/i), pivot = firstGroup(step, /^pivot$/i);
+    const pivotA = firstGroup(step, /^pivota$/i), pivotB = firstGroup(step, /^pivotb$/i);
+    const extraA = firstGroup(step, /^extraa$/i), hlsA = firstGroup(step, /^hlsa$/i), supportA = firstGroup(step, /^supporta$/i);
+    const extraB = firstGroup(step, /^extrab$/i), hlsB = firstGroup(step, /^hlsb$/i), supportB = firstGroup(step, /^supportb$/i);
+    const ahsLabel = (group) => `${digitText(group?.digits, "") || "?"}@${group?.houses?.join("/") || "house"}{${cellNames(group?.cells)}}`;
+    const aGroup = digitText(pivotA?.digits) || "?";
+    const bGroup = digitText(pivotB?.digits) || "?";
+    const pivotDigits = digitText(pivot?.digits) || `${aGroup}/${bGroup}`;
+    const aWitness = [
+      extraA ? `${zh ? "Extra格" : "Extra cells"}=${cellNames(extraA.cells)}` : "",
+      hlsA ? `${zh ? "局部HLS格组" : "local HLS"}=${cellNames(hlsA.cells)}` : "",
+      supportA ? `${zh ? "逐数字支撑" : "per-digit support"}=${digitText(supportA.digits)}@${cellNames(supportA.cells)}` : "",
+    ].filter(Boolean).join(zh ? "，" : ", ");
+    const bWitness = [
+      extraB ? `${zh ? "Extra格" : "Extra cells"}=${cellNames(extraB.cells)}` : "",
+      hlsB ? `${zh ? "局部HLS格组" : "local HLS"}=${cellNames(hlsB.cells)}` : "",
+      supportB ? `${zh ? "逐数字支撑" : "per-digit support"}=${digitText(supportB.digits)}@${cellNames(supportB.cells)}` : "",
+    ].filter(Boolean).join(zh ? "，" : ", ");
+    return zh ? [
+      `AHS-W-Wing：AHS A=${ahsLabel(a)}，单格枢纽${cellNames(pivot?.cells)}{${pivotDigits}}的全部候选完整分为A端组${aGroup}与B端组${bGroup}，AHS B=${ahsLabel(b)}。`,
+      "这不是两个集合由外部强链直接连接。枢纽中每个候选都被指派到一侧AHS端点，并且必须看见该侧支撑数字在全部合法匹配中的所有位置；枢纽取该候选时，会排除这些支撑位置并强制相应AHS的Extra事件。",
+      `令枢纽候选集P=P_A∪P_B且无遗漏。对任意p∈P_A有p⇒E_A，对任意p∈P_B有p⇒E_B；枢纽必取P中的一个候选，所以E_A∨E_B。分别枚举E_A与E_B条件下的全部合法AHS匹配，两个分支共同排除的目标为假。双值枢纽只是|P_A|=|P_B|=1的最小特例。`,
+      `① 按候选数组合与house确认两端AHS；② 确认枢纽${cellNames(pivot?.cells)}的候选${pivotDigits}被完整分成${aGroup}|${bGroup}；③ 核对A端${aWitness || "HLS与支撑"}；④ 核对B端${bWitness || "HLS与支撑"}；⑤ 比较两个Extra事件分支并保留共同删数${targets ? `（${targets}）` : ""}。`,
+      "整格底色按枢纽配对：A端局部HLS与枢纽同用第一种底色，B端局部HLS与枢纽同用第二种底色，枢纽因同时连接两端而显示后端明确输出的双色条带。候选数颜色只标逐数字真实支撑位置，枢纽候选按A/B分组单独着色。不要把HLS格组、支撑候选和AHS本体混成一个普通集合节点。",
+      "枢纽不要求恰好双值，但其每个候选必须归入至少一侧且最终分组完整。每个枢纽候选都必须看见所属端支撑数字的全部有效位置；漏掉合法匹配位置、只存在普通弱可见关系或直接套普通W-Wing强链模板，结构都不成立。",
+    ] : [
+      `AHS-W-Wing: AHS A=${ahsLabel(a)}; every candidate of single-cell pivot ${cellNames(pivot?.cells)}{${pivotDigits}} is partitioned into A-side ${aGroup} and B-side ${bGroup}; AHS B=${ahsLabel(b)}.`,
+      "This is not two set nodes joined directly by an external strong link. Every pivot value is assigned to an AHS endpoint and must see every valid support position for that endpoint; taking the value removes those supports and forces the endpoint Extra-event.",
+      "Let P=P_A union P_B with no uncovered pivot value. For p in P_A, p implies E_A; for p in P_B, p implies E_B. The pivot takes one value, hence E_A or E_B. Enumerate every legal AHS matching under each event; only eliminations common to both branches are valid. A bivalue pivot is only the smallest |P_A|=|P_B|=1 case.",
+      `1. Verify both AHS endpoints by digit set and house. 2. Confirm pivot ${cellNames(pivot?.cells)} candidates ${pivotDigits} are completely partitioned as ${aGroup}|${bGroup}. 3. Verify A-side ${aWitness || "HLS and supports"}. 4. Verify B-side ${bWitness || "HLS and supports"}. 5. Keep only common Extra-branch eliminations${targets ? ` (${targets})` : ""}.`,
+      "Cell fills encode pivot pairing: the A-side local HLS and pivot share one backend fill, and the B-side local HLS and pivot share another; the pivot therefore shows both explicit backend bands. Candidate colours mark exact per-digit supports and pivot candidates by side. Do not merge HLS cells, supports, and the AHS body into one ordinary set node.",
+      "The pivot need not be bivalue, but every value must be covered by the complete partition. Each value must see every valid support position of its assigned endpoint. Missing a legal support, having only an ordinary weak visibility relation, or reusing an ordinary W-Wing strong-link template invalidates the structure.",
+    ];
+  }
+
+  if (kind === "AHSXZ") {
+    const a = firstGroup(step, /^ahsa$/i), b = firstGroup(step, /^ahsb$/i), rcc = firstGroup(step, /^rcc$/i);
+    const x = digitText(rcc?.digits) || rcc?.tail || "cell";
+    const ahsLabel = (group) => {
+      const digits = digitText(group?.digits, "") || "?";
+      const house = group?.houses?.join("/") || "house";
+      return `${digits}@${house}{${cellNames(group?.cells)}}`;
+    };
+    return zh ? [
+      `AHS-XZ（${branch}）：AHS A=${ahsLabel(a)}与AHS B=${ahsLabel(b)}通过受限公共位置/数字X=${x || "cell"}连接。`,
       `AHS描述的是“少数数字只能落在少数格”的位置容量。RCC使两个AHS不能同时占用同一连接资源；若目标候选保留，会使两组AHS所需位置超过可用格或令连接资源被重复占用。`,
       `${/double-rcc/i.test(branch) ? "两个RCC把AHS位置需求与链接容量锁成Rank 0，因此结构外与结构内的超额候选都可删。" : "单RCC分支中，A、B共同的Z位置至少一侧必须保留；同时看见所有Z位置的目标为假。"}${cannibals ? ` 自噬删数：${cannibals}。` : ""}`,
-      `① 在各自house中找AHS；② 确认X由具体格对或同格候选构成受限公共关系；③ 区分Single-RCC与Double-RCC；④ 应用目标删数${targets ? `（${targets}）` : ""}。`,
+      `① 先按候选数组合@house读取两组AHS，再查看全部承载格；② 确认X由具体格对或同格候选构成受限公共关系；③ 区分Single-RCC与Double-RCC；④ 应用目标删数${targets ? `（${targets}）` : ""}。`,
       `FB配色：AHS A/B分别cAls1(4)/cAls2(5)，RCC端点cEdoFins(3)，普通删数cToDel(11)，结构内删数Cannibalism(12)。`,
       `AHS的数字数与位置数关系和ALS相反；不能把AHS-XZ照抄成ALS-XZ文字。RCC可以由不同格或同一交格形成，必须按实际输出核对。`,
     ] : [
-      `AHS-XZ (${branch}): AHS A=${cellNames(a?.cells)}{${digitText(a?.digits)}} and B=${cellNames(b?.cells)}{${digitText(b?.digits)}} share restricted resource X=${x || "cell"}.`,
+      `AHS-XZ (${branch}): AHS A=${ahsLabel(a)} and B=${ahsLabel(b)} share restricted resource X=${x || "cell"}.`,
       `AHS logic is positional capacity: a small digit set is confined to a small cell set. The RCC prevents both AHSs from consuming the connector simultaneously.`,
       `${/double-rcc/i.test(branch) ? "Two RCCs form a rank-0 positional cover." : "With one RCC, the shared Z position must survive on one side; a target seeing all Z positions is false."}${cannibals ? ` Cannibal targets: ${cannibals}.` : ""}`,
       `1. Identify both AHSs in their houses. 2. Verify the cell/digit RCC. 3. Distinguish single from double RCC. 4. Apply targets${targets ? ` (${targets})` : ""}.`,

@@ -10,21 +10,21 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-c152f269d213021c";
+import createModule from "./sudoku_wasm.js?v=wasm-344e4443cbd019d1";
 import {
   categoryNameForLocale,
   localizedStepDescription,
   techniqueIdentityForStep,
   techniqueNameForStep,
-} from "./step-localization.js?v=20260710-step-i18n-v5-title-proof";
+} from "./step-localization.js?v=20260731-ahs-number-first-v1";
 import {
   TECHNIQUE_TUTORIAL_CARDS,
   TECHNIQUE_TUTORIAL_FIELDS,
-} from "./technique-tutorial-data.js?v=20260713-dynamic-tutorial-v8";
+} from "./technique-tutorial-data.js?v=20260731-ahs-number-first-v10";
 import {
   buildAuditedStepExplanationPayload,
   buildAuditedTechniqueGuide,
-} from "./step-explanation.js?v=20260713-dynamic-tutorial-audit-v8";
+} from "./step-explanation.js?v=20260731-ahs-number-first-audit-v10";
 import {
   appStatusDescriptor,
   difficultyDescriptor,
@@ -43,12 +43,13 @@ import {
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
 
-const APP_VERSION = "wasm-c152f269d213021c";
+const APP_VERSION = "wasm-344e4443cbd019d1";
 const UI_RELEASE_VERSION = "ui-20260729-phase8.3-ocr-keyboard-candidate-theme";
 const MANUAL_VERSION = "manual-20260729-phase8.3-ocr-keyboard-candidate-theme";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
+const TRAINING_AHS_ANY_KIND = "AHSXZ|AHSXYWing|AHSWWing";
 const TRAINING_OTP_STORAGE_KEY = "yzf-training-otp-v1";
 const OCR_ASSET_VERSION = "20260630-role-glyph-core-v8";
 const OCR_CORRECTION_UI_VERSION = "20260629-ocr-correction-v7.1-gridfix";
@@ -1469,6 +1470,7 @@ for (const [key, zh, en] of [
   ["lastRating", "，最后评分 {rating}", ", last rating {rating}"],
   ["generatedPuzzle", "已生成 {difficulty}：{clues} 个已知数，{rating}。", "Generated {difficulty}: {clues} givens, {rating}."],
   ["noTrainingTechnique", "未指定技巧", "No specific technique"],
+  ["trainingAhsAny", "AHS 三技巧（任一）", "Any AHS technique (XZ / XY-Wing / W-Wing)"],
   ["difficultyTitle", "生成题目时使用参考项目的 ER 难度分档", "Use the reference ER difficulty bands when generating puzzles"],
   ["trainingTitle", "生成解题路径中包含指定技巧的题目", "Generate a puzzle whose solve path contains the selected technique"],
   ["unrated", "未评分", "Unrated"],
@@ -9334,9 +9336,6 @@ function stepExplainBuildLines(step = {}) {
 function stepTutorialCardKey(step = {}) {
   const aliases = {
     RankMultifish: "Multifish",
-    AHSChain: "ALSChain",
-    AHSXYWing: "ALSXYWing",
-    AHSWWing: "ALSWWing",
   };
   const direct = aliases[step.kind] || step.kind;
   if (direct && TECHNIQUE_TUTORIAL_CARDS[direct]) return direct;
@@ -9756,10 +9755,10 @@ function colorCandidateMapForCell(hint, index, suppressedStructuralColor = 0) {
     if (Number(item?.index) !== index) continue;
     const color = Number(item?.color || item?.colorIndex || 0);
     if (!Number.isInteger(color) || color < 1 || color > 14) continue;
-    // When a JE role is represented by an FB-style whole-cell background,
-    // suppress every role-level candidate fill in that cell.  This also
-    // neutralizes stale Double-JE payloads that used 4/5/6 for the second
-    // Base/Target/Cross instead of FB's 6/7/1 mapping.
+    // When a structural role is represented by an FB-style whole-cell
+    // background, suppress duplicate role-level candidate fills in that cell.
+    // This keeps AHS local-HLS fills readable and also neutralizes stale
+    // Double-JE payloads that used 4/5/6 for the second Base/Target/Cross.
     if (suppressedStructuralColor && EXOCET_STRUCTURAL_CELL_COLORS.has(color)) continue;
     for (const digit of item?.candidates || []) {
       const parsed = Number(digit);
@@ -9783,6 +9782,7 @@ function colorCandidateMapForCell(hint, index, suppressedStructuralColor = 0) {
       result.set(parsed, mark);
     }
   }
+
   return result;
 }
 
@@ -9853,6 +9853,20 @@ function colorCandidateRoleCells(hint) {
     byColor.get(color).add(index);
   }
   return byColor;
+}
+
+function backendCellColorMap(hint) {
+  const result = new Map();
+  for (const item of hint?.colorCells || []) {
+    const index = Number(item?.index);
+    const color = Number(item?.color ?? item?.colorIndex ?? 0);
+    if (!Number.isInteger(index) || index < 0 || index >= 81) continue;
+    if (!Number.isInteger(color) || color < 1 || color > 12) continue;
+    const colors = result.get(index) || [];
+    if (!colors.includes(color)) colors.push(color);
+    result.set(index, colors);
+  }
+  return result;
 }
 
 function exocetCellColorMap(hint) {
@@ -9939,11 +9953,42 @@ function exocetCellColorMap(hint) {
   return result;
 }
 
-function applySolverCellColor(node, color) {
-  if (!node || !Number.isInteger(color) || color < 1 || color > 12) return;
-  node.classList.add("solver-cell-bkclr", `solver-cell-bkclr-${color}`);
-  node.dataset.solverCellColor = String(color);
-  node.style.setProperty("--solver-cell-bg", FB_EXOCET_CELL_COLORS[color] || FB_BACK_COLORS[color] || "#eef5ff");
+function solverCellColorMap(hint) {
+  // Exocet keeps its established role/group recovery path byte-for-byte.
+  // Generic StepResult.colorCells is used only by non-Exocet techniques such
+  // as AHS Wing, so enabling HLS/Hall whole-cell fills cannot alter Exocet.
+  if (isExocetStructureHint(hint)) return exocetCellColorMap(hint);
+  return backendCellColorMap(hint);
+}
+
+function applySolverCellColor(node, value) {
+  if (!node) return;
+  const colors = (Array.isArray(value) ? value : [value])
+    .map((item) => Number(item))
+    .filter((color, index, all) => Number.isInteger(color) && color >= 1 && color <= 12 && all.indexOf(color) === index);
+  if (colors.length === 0) return;
+  node.dataset.solverCellColors = colors.join(",");
+  if (colors.length === 1) {
+    const color = colors[0];
+    node.classList.add("solver-cell-bkclr", `solver-cell-bkclr-${color}`);
+    node.dataset.solverCellColor = String(color);
+    node.style.setProperty("--solver-cell-bg", FB_EXOCET_CELL_COLORS[color] || FB_BACK_COLORS[color] || "#eef5ff");
+    return;
+  }
+  // Multiple bands are shown only when the backend emitted multiple explicit
+  // colorCells entries for the same physical cell (for example a W-Wing pivot
+  // shared by both pair links).  No AHS group or candidate semantics are
+  // reconstructed in the browser.
+  const width = 100 / colors.length;
+  const stops = [];
+  colors.forEach((color, index) => {
+    const start = (index * width).toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+    const end = ((index + 1) * width).toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+    const cssColor = FB_EXOCET_CELL_COLORS[color] || FB_BACK_COLORS[color] || "#eef5ff";
+    stops.push(`${cssColor} ${start}%`, `${cssColor} ${end}%`);
+  });
+  node.classList.add("solver-cell-role-fill");
+  node.style.setProperty("--solver-cell-role-bg", `linear-gradient(90deg, ${stops.join(", ")})`);
 }
 
 function avoidableRectangleValueHighlightClass(hint, cell, value, structureCells = null) {
@@ -10067,7 +10112,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
   const eliminations = hintEliminationMap(hint);
   const isChainHint = stepResultHasRenderableChain(hint);
   const structure = hintStructureSet(hint);
-  const solverCellColors = exocetCellColorMap(hint);
+  const solverCellColors = solverCellColorMap(hint);
   const cells = snapshot.cells || [];
   const filled = [...snapshot.board].filter((ch) => ch >= "1" && ch <= "9").length;
   const revision = snapshot.revision ?? snapshot.version ?? 0;
@@ -10079,14 +10124,18 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     const node = document.createElement("div");
     node.className = makeCellClass(index, hint);
     node.dataset.cellIndex = String(index);
-    const solverCellColor = Number(solverCellColors.get(index) || 0);
+    const solverCellFill = solverCellColors.get(index) || 0;
+    const solverCellColor = Number(Array.isArray(solverCellFill) ? solverCellFill[0] || 0 : solverCellFill);
     if (isExocetStructureHint(hint)) node.classList.remove("hint-structure");
-    applySolverCellColor(node, solverCellColor);
+    applySolverCellColor(node, solverCellFill);
     // FB-aligned 17-track grid: odd tracks are equal cell content areas;
     // even tracks are independently sized normal/box lines.
     node.style.gridColumn = String((index % 9) * 2 + 1);
     node.style.gridRow = String(Math.floor(index / 9) * 2 + 1);
     node.title = `r${Math.floor(index / 9) + 1}c${(index % 9) + 1}`;
+    if (Array.isArray(solverCellFill) && solverCellFill.length > 0) {
+      node.title += ` [cell colors ${solverCellFill.join(" / ")}]`;
+    }
     node.addEventListener("pointerdown", (event) => {
       node.dataset.boardPointerType = event.pointerType || "";
       setBoardPointerMode(event.pointerType || "");
@@ -10161,8 +10210,9 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
       if (structureValueClass) valueClasses.push(structureValueClass);
       node.appendChild(renderValue(cell.value, valueClasses.join(" ")));
     } else {
+      const suppressedStructuralColor = isExocetStructureHint(hint) ? solverCellColor : 0;
       const colorMap = hasColorCandidateData(hint)
-        ? colorCandidateMapForCell(hint, index, solverCellColor)
+        ? colorCandidateMapForCell(hint, index, suppressedStructuralColor)
         : null;
       node.appendChild(renderCandidates(
         cell.candidates,
@@ -11016,6 +11066,15 @@ function renderTrainingTechniqueOptionsOnly() {
   noneOption.style.backgroundColor = "#fff";
   noneOption.style.color = "#1d2430";
   trainingTechniqueSelect.appendChild(noneOption);
+  const ahsKinds = new Set(state.filter((tech) => tech.implemented !== false).map((tech) => tech.kind));
+  if (["AHSXZ", "AHSXYWing", "AHSWWing"].every((kind) => ahsKinds.has(kind))) {
+    const ahsAnyOption = document.createElement("option");
+    ahsAnyOption.value = TRAINING_AHS_ANY_KIND;
+    ahsAnyOption.textContent = ui("trainingAhsAny");
+    ahsAnyOption.style.backgroundColor = techniqueBackgroundColor("AHSXZ");
+    ahsAnyOption.style.color = "#1d2430";
+    trainingTechniqueSelect.appendChild(ahsAnyOption);
+  }
   for (const item of state.filter((tech) => tech.implemented !== false)) {
     const option = document.createElement("option");
     option.value = item.kind;
@@ -11315,7 +11374,10 @@ if (trainingOtp) trainingOtp.checked = loadTrainingOtp();
 
 function updateTrainingTechniqueSelectColor() {
   if (!trainingTechniqueSelect) return;
-  trainingTechniqueSelect.style.backgroundColor = techniqueBackgroundColor(trainingTechniqueSelect.value);
+  const visualKind = trainingTechniqueSelect.value === TRAINING_AHS_ANY_KIND
+    ? "AHSXZ"
+    : trainingTechniqueSelect.value;
+  trainingTechniqueSelect.style.backgroundColor = techniqueBackgroundColor(visualKind);
 }
 
 function generateTrainingPuzzleInWorker(
@@ -11421,6 +11483,7 @@ function selectedTrainingTechniqueName() {
 function trainingTechniqueNameForKind(kind) {
   const normalized = String(kind || "");
   if (!normalized) return "";
+  if (normalized === TRAINING_AHS_ANY_KIND) return ui("trainingAhsAny");
   const state = techniqueState.length ? techniqueState : loadTechniqueState();
   const item = state.find((technique) => technique.kind === normalized);
   return item ? techniqueName(item) : normalized;
@@ -11468,10 +11531,17 @@ function generatedYzfScore(result) {
     ?? "";
 }
 
-function batchLine(result, index) {
+function batchLine(result, trainingMode = false) {
+  const library = trainingMode
+    ? String(result?.trainingLibrary || "")
+    : generatedLibraryPuzzleString(result?.puzzle);
+  if (!library) {
+    throw new Error(trainingMode
+      ? "training result is missing the matched-step Library record"
+      : "generated puzzle cannot be converted to Library format");
+  }
   return [
-    index,
-    generatedLibraryPuzzleString(result?.puzzle),
+    library,
     generatedYzfScore(result),
     formatSkfrScore(result?.rating?.er),
   ].join("\t") + "\n";
@@ -11496,9 +11566,11 @@ async function stopBatchOnInvalidStep(writer, result, trainingKind) {
   }
   const detail = invalidStepDetail(result);
   const puzzle = result.puzzle || result.solve?.initial?.board || result.initial?.board || "";
+  const terminalStatus = uif("batchInvalidStep", { detail });
   await writer.write(`# invalid_step\t${trainingKind || ""}\t${puzzle}\t${detail}\n`);
-  updateBatchStatus(uif("batchInvalidStep", { detail }));
+  updateBatchStatus(terminalStatus);
   console.error("batch invalid step", result);
+  return terminalStatus;
 }
 
 async function openBatchWriter(filename) {
@@ -11718,7 +11790,7 @@ async function runBatchTaskInMainEngine(config, handlers) {
         };
         if (solve?.status === "invalid_step") {
           result.solve = solve;
-          handlers.onInvalidStep?.(result);
+          await handlers.onInvalidStep?.(result);
           return { status: "invalid_step", generated, failed, attempts, target };
         }
       }
@@ -11744,7 +11816,7 @@ async function runBatchTaskInMainEngine(config, handlers) {
           const solve = parseJson(engine.solve_summary_json(500));
           result.solve = solve;
           if (solve?.status === "invalid_step") {
-            handlers.onInvalidStep?.(result);
+            await handlers.onInvalidStep?.(result);
             return { status: "invalid_step", generated, failed, attempts, target };
           }
         }
@@ -11753,7 +11825,7 @@ async function runBatchTaskInMainEngine(config, handlers) {
       } else {
         failed += 1;
         if (result?.status === "invalid_step") {
-          handlers.onInvalidStep?.(result);
+          await handlers.onInvalidStep?.(result);
           return { status: "invalid_step", generated, failed, attempts, target };
         }
       }
@@ -17162,6 +17234,7 @@ btnBatchGenerate?.addEventListener("click", async () => {
   let lastPuzzleAttempts = "";
   const startTime = Date.now();
   let timer = null;
+  let invalidStepTerminalStatus = "";
 
   batchAbortRequested = false;
   setBatchRunning(true);
@@ -17183,7 +17256,7 @@ btnBatchGenerate?.addEventListener("click", async () => {
       return trainingMode ? uif("batchTrainingProgress", values) : uif("batchProgress", values);
     };
     timer = window.setInterval(() => {
-      updateBatchStatus(batchProgressStatus());
+      if (!invalidStepTerminalStatus) updateBatchStatus(batchProgressStatus());
     }, 1000);
 
     const config = {
@@ -17209,7 +17282,7 @@ btnBatchGenerate?.addEventListener("click", async () => {
           lastPuzzleAttempts = result?.status || "";
         } else {
           generated += 1;
-          await writer.write(batchLine(result, generated));
+          await writer.write(batchLine(result, trainingMode));
           lastPuzzleAttempts = trainingMode
             ? uif("batchSearchAttempts", { attempts: result.attempts ?? "?" })
             : uif("batchGenerateAttempts", { attempts: result.attempts ?? "?" });
@@ -17224,13 +17297,19 @@ btnBatchGenerate?.addEventListener("click", async () => {
         updateBatchStatus(batchProgressStatus());
       },
       onInvalidStep: async (result) => {
-        await stopBatchOnInvalidStep(writer, result, trainingKind);
+        if (timer != null) {
+          window.clearInterval(timer);
+          timer = null;
+        }
+        invalidStepTerminalStatus = await stopBatchOnInvalidStep(writer, result, trainingKind);
       },
     });
 
     await writer.close();
     const outMode = writer.direct ? ui("batchWrittenDirect") : ui("batchDownloadReady");
-    if (final?.status === "cancelled" || batchAbortRequested) {
+    if (final?.status === "invalid_step") {
+      updateBatchStatus(invalidStepTerminalStatus || uif("batchInvalidStep", { detail: ui("invalidStep") }));
+    } else if (final?.status === "cancelled" || batchAbortRequested) {
       updateBatchStatus(ui("batchCancelled"));
     } else if (mode === "solve") {
       updateBatchStatus(uif("batchSolveDone", { mode: outMode, filename, generated, target: puzzles.length, failed, elapsed: formatElapsedSeconds(startTime) }));
@@ -17339,8 +17418,8 @@ btnGenerateTraining?.addEventListener("click", async () => {
     }
 
     if (result.otp) {
-      const otpSnapshot = result.otpState || null;
-      const otpLibrary = snapshotToLibraryString(otpSnapshot);
+      const otpSnapshot = result.trainingState || result.otpState || null;
+      const otpLibrary = String(result.trainingLibrary || "") || snapshotToLibraryString(otpSnapshot);
       const imported = otpLibrary ? parseJson(engine.import_puzzle_json(otpLibrary)) : null;
       if (!otpSnapshot || !otpLibrary || !imported?.ok) {
         setStatus(ui("trainingSyncFailed"));
@@ -17367,9 +17446,9 @@ btnGenerateTraining?.addEventListener("click", async () => {
 
     const matchedIndex = Math.max(0, Number(result.matchedStepIndex || 0) - 1);
     const matchedRecord = Array.isArray(result.solve?.path) ? result.solve.path[matchedIndex] : null;
-    const trainingSnapshot = matchedRecord?.before || null;
+    const trainingSnapshot = result.trainingState || matchedRecord?.before || null;
     originalBoard = result.puzzle;
-    const trainingLibrary = snapshotToLibraryString(trainingSnapshot);
+    const trainingLibrary = String(result.trainingLibrary || "") || snapshotToLibraryString(trainingSnapshot);
     const imported = trainingLibrary ? parseJson(engine.import_puzzle_json(trainingLibrary)) : null;
     if (!trainingSnapshot || !trainingLibrary || !imported?.ok) {
       setStatus(ui("trainingSyncFailed"));

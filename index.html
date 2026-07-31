@@ -1665,6 +1665,9 @@
     .sudoku-cell.solver-cell-bkclr-10 { background: #FFA500 !important; }
     .sudoku-cell.solver-cell-bkclr-11 { background: #FF7684 !important; }
     .sudoku-cell.solver-cell-bkclr-12 { background: #EB0000 !important; }
+    .sudoku-cell.solver-cell-role-fill {
+      background: var(--solver-cell-role-bg, #eef5ff) !important;
+    }
     .sudoku-cell.hint-peer { background: #f8fafc; }
     .cell-value {
       font-family: Tahoma, Arial, sans-serif;
@@ -5619,7 +5622,7 @@
     }
 
 </style>
-  <link rel="stylesheet" href="./ui-foundation.css" />
+  <link rel="stylesheet" href="./ui-foundation.css?v=ahs-role6-endpoints-20260731" />
   <link rel="stylesheet" href="./ocr-correction.css" />
 </head>
 <body>
@@ -6236,6 +6239,6 @@
   <div id="appStatusToast" class="app-status-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=wasm-c152f269d213021c"></script>
+    <script type="module" src="./app.js?v=wasm-344e4443cbd019d1"></script>
   </body>
 </html>

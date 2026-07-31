@@ -889,7 +889,7 @@ export const TECHNIQUE_TUTORIAL_CARDS = {
       "AHS-XZ 是隐藏待定集合版本的 XZ 逻辑。",
       "若若干数字几乎只被困在一组格子里，公共受限数字会让端点候选至少一边成立。",
       "AHS 是 ALS 的对偶：n 个数字只分布在 n+1 个格中，必有一个格不承载这组数字。AHS-XZ 通过受限公共格/候选把两个 AHS 连接起来，使某些候选或格位不可能同时缺席；目标删数来自两个 AHS 都会排除它的共同结果。",
-      "① 选数字集合；② 看它们可落格；③ 找受限公共候选；④ 删除共同目标。",
+      "① 先读候选数组合@house；② 再看这些数字的全部可落格；③ 找受限公共位置/候选；④ 删除共同目标。",
       "高亮重点是数字集合及其可落格，而不是显性候选集合。",
       "确认这是“数字被困住”，不是“格子候选少”的 ALS 读法。"
     ],
@@ -900,6 +900,42 @@ export const TECHNIQUE_TUTORIAL_CARDS = {
       "1. Choose the digit sets. 2. Locate their possible cells. 3. Identify the restricted common element. 4. Apply the common elimination.",
       "The visual emphasis is on digit sets and their possible locations, not on low-candidate cell sets.",
       "Confirm that this is a hidden-set relation—digits confined to cells—rather than an ALS read from cell candidates."
+    ]
+  },
+  "AHSXYWing": {
+    "zh": [
+      "AHS-XY-Wing 用三组 AHS 和两条严格 rank-1 Extra 事件连接，中间 AHS 充当枢纽。",
+      "两条 RCC 分别给出外翼 Extra 或枢纽 Extra 事件；枢纽两事件互斥，因此两个外翼 Extra 至少一个成立。",
+      "设两条边为 (E_A ∨ E_BX) 与 (E_C ∨ E_BY)。若 E_BX 与 E_BY 不能同时成立，且两条边不复用同一 Hall/HLS 证明资源，则推出 E_A ∨ E_C。分别枚举两个外翼事件下的全部合法 AHS 匹配，取共同删数。",
+      "① 先按候选数组合@house找三组AHS，再查看承载格；② 核对两条RCC的Extra、HLS与逐数字支撑；③ 确认枢纽事件互斥且证明资源独立；④ 删除两个外翼事件共同排除的目标。",
+      "整格底色按 RCC 配对：RCC X 两端使用同一种底色，RCC Y 两端使用另一种底色；同一格同时参加两条 RCC 时显示后端给出的双色条带。候选数颜色表示端点独有、共有及真实支撑位置；AHS 本体按候选数组合@house 阅读。",
+      "不能套普通候选强链模板。两条 RCC 都必须是严格 rank-1 事件，合法匹配中的支撑位置不能漏标。"
+    ],
+    "en": [
+      "AHS-XY-Wing uses three AHS nodes and two strict rank-1 Extra-event links, with the middle AHS as pivot.",
+      "Each RCC gives an outer Extra-event or a pivot Extra-event. The two pivot events are mutually exclusive, so at least one outer Extra-event holds.",
+      "Write the edges as (E_A or E_BX) and (E_C or E_BY). If E_BX and E_BY cannot both hold and the edges do not reuse the same Hall/HLS proof resource, then E_A or E_C. Enumerate every legal AHS matching under both outer branches and keep only common eliminations.",
+      "1. Identify the three AHSs by digit set and house. 2. Verify Extra cells, local HLS witnesses, and per-digit supports on both RCCs. 3. Confirm pivot-event exclusivity and proof-resource independence. 4. Remove only common branch targets.",
+      "Cell fills encode RCC pairing: both endpoints of RCC X share one fill and both endpoints of RCC Y share another. A cell explicitly assigned to both links by the backend shows both bands. Candidate colours encode endpoint-only/common digits and exact supports. Read each AHS as digits@house.",
+      "Do not reuse an ordinary candidate strong-link template. Both RCCs must be strict rank-1 events and no legal support position may be omitted."
+    ]
+  },
+  "AHSWWing": {
+    "zh": [
+      "AHS-W-Wing 用一个单格枢纽把自身全部候选完整分到两侧 AHS 的 Extra 事件；双值枢纽只是最小特例。",
+      "枢纽每个候选都必须看见所属端支撑数字的全部有效位置；该候选成立会排除这些支撑位置，从而强制相应 AHS 的 Extra 事件。",
+      "令枢纽候选集 P=P_A∪P_B 且无遗漏。对 p∈P_A 有 p⇒E_A，对 p∈P_B 有 p⇒E_B；枢纽必取一个候选，所以 E_A∨E_B。分别枚举两个 Extra 事件下的全部合法 AHS 匹配，取共同删数。",
+      "① 先按候选数组合@house找两端AHS，再查看承载格；② 完整分组枢纽候选；③ 核对两端Extra、局部HLS格组与逐数字支撑；④ 删除两个分支共同排除的目标。",
+      "整格底色按枢纽配对：A端局部HLS与枢纽使用第一种底色，B端局部HLS与枢纽使用第二种底色，因此枢纽显示后端给出的双色条带。候选数颜色表示真实支撑位置，枢纽候选按 A/B 端分组显示。",
+      "这不是两个集合由外部强链直接连接。枢纽不必双值，但所有候选必须被完整分组，并看见所属端全部有效支撑位置。"
+    ],
+    "en": [
+      "AHS-W-Wing uses one single-cell pivot whose entire candidate set is partitioned between two AHS Extra-events; a bivalue pivot is only the smallest case.",
+      "Every pivot value must see every valid support position of its assigned endpoint. Taking that value removes those supports and forces the endpoint Extra-event.",
+      "Let P=P_A union P_B with no uncovered value. For p in P_A, p implies E_A; for p in P_B, p implies E_B. The pivot takes one value, hence E_A or E_B. Enumerate every legal AHS matching under both events and keep only common eliminations.",
+      "1. Identify both AHS endpoints by digit set and house. 2. Partition all pivot values. 3. Verify Extra cells, local HLS cells, and per-digit supports on both sides. 4. Remove only common branch targets.",
+      "Cell fills encode pivot pairing: the A-side local HLS and pivot share the first fill, while the B-side local HLS and pivot share the second, so the pivot carries both backend bands. Candidate colours mark exact supports and pivot candidates by side.",
+      "This is not two set nodes joined directly by an external strong link. The pivot need not be bivalue, but every value must be covered and must see all valid supports of its assigned endpoint."
     ]
   },
   "XChain": {
