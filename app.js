@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-344e4443cbd019d1";
+import createModule from "./sudoku_wasm.js?v=wasm-6a54a86baaa68ba8";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -43,16 +43,16 @@ import {
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
 
-const APP_VERSION = "wasm-344e4443cbd019d1";
-const UI_RELEASE_VERSION = "ui-20260729-phase8.3-ocr-keyboard-candidate-theme";
-const MANUAL_VERSION = "manual-20260729-phase8.3-ocr-keyboard-candidate-theme";
+const APP_VERSION = "wasm-6a54a86baaa68ba8";
+const UI_RELEASE_VERSION = "ui-20260801-manual-entry-hybrid-input";
+const MANUAL_VERSION = "manual-20260801-manual-entry-hybrid-input";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
 const TRAINING_AHS_ANY_KIND = "AHSXZ|AHSXYWing|AHSWWing";
 const TRAINING_OTP_STORAGE_KEY = "yzf-training-otp-v1";
 const OCR_ASSET_VERSION = "20260630-role-glyph-core-v8";
-const OCR_CORRECTION_UI_VERSION = "20260629-ocr-correction-v7.1-gridfix";
+const OCR_CORRECTION_UI_VERSION = "20260801-ocr-correction-v8.1-manual-hybrid-input";
 const APP_OVERVIEW_GUIDE_STEPS = [
   { target: "#boardStage", titleZh: "盘面始终是操作中心", bodyZh: "加载、生成或恢复题目后，出数、候选和技巧高亮都会在这里呈现。", titleEn: "The board is the center of every workflow", bodyEn: "After loading, generating, or restoring a puzzle, values, candidates, and technique highlights all appear here." },
   { target: ".global-actions", titleZh: "高频操作集中在盘面下方", bodyZh: "生成、加载、撤销、自动解题、提示一步和应用提示都在同一行；耗时任务可在任务状态中持续查看。", titleEn: "Frequent actions stay below the board", bodyEn: "Generate, load, undo, solve, hint, and apply share one row; long-running work remains visible in Task Status." },
@@ -227,6 +227,7 @@ const btnGenerateTraining = document.getElementById("btnGenerateTraining");
 const btnBatchGenerate = document.getElementById("btnBatchGenerate");
 const btnBatchStop = document.getElementById("btnBatchStop");
 const btnLoad = document.getElementById("btnLoad");
+const btnManualPuzzleEntry = document.getElementById("btnManualPuzzleEntry");
 const btnImageOcrClipboard = document.getElementById("btnImageOcrClipboard");
 const preferClipboardLoad = document.getElementById("preferClipboardLoad");
 const btnClearSavedSession = document.getElementById("btnClearSavedSession");
@@ -559,6 +560,10 @@ let ocrCorrectionState = null;
 let ocrCorrectionRoot = null;
 let ocrCorrectionSelectedIndex = 0;
 let ocrCorrectionMode = "given";
+// 手工录入在桌面端采用与主盘一致的鼠标/键盘语义：普通数字写入当前
+// 数字身份，Ctrl/Cmd+数字切换候选。候选模式只作为触屏大按钮保留，
+// 因此需要单独记住最近一次选择的“提示数/出数”身份。
+let manualEntryValueRole = "given";
 let ocrCorrectionHistory = [];
 let ocrCorrectionHistoryIndex = -1;
 let ocrGuideReplayPending = false;
@@ -1321,6 +1326,10 @@ for (const [key, zh, en] of [
   ["moreInput", "更多：题面输入与导出评分", "More: puzzle input, export, and rating"],
   ["preferClipboardLoad", "剪贴板优先", "Clipboard first"],
   ["preferClipboardLoadTitle", "加载题目时优先使用剪贴板，失败后再用文本框", "Prefer clipboard when loading puzzles, then fall back to the text box"],
+  ["manualPuzzleEntry", "手工录入", "Manual entry"],
+  ["manualPuzzleEntryTitle", "从满候选盘开始设置提示数、出数或删减候选", "Start from a full candidate grid and set givens, solved digits, or candidate eliminations"],
+  ["manualPuzzleEntryOpened", "已打开手工录入：从满候选盘开始编辑。", "Manual entry opened with a full candidate grid."],
+  ["manualCandidateBlocked", "该候选受当前行、列或宫中的已填数字限制。", "That candidate is blocked by a current value in its row, column, or box."],
   ["exportPuzzle", "导出题串", "Export puzzle"],
   ["sharePuzzle", "分享题面", "Share puzzle"],
   ["sharePuzzleTitle", "生成包含当前盘面定长编码的链接，并复制到剪贴板。", "Create a link containing the fixed-length encoding of the current board and copy it to the clipboard."],
@@ -4496,11 +4505,12 @@ function applyStaticLanguage() {
   const moreSummary = [...document.querySelectorAll(".input-panel summary")].find((el) => /更多|More/i.test(el.textContent));
   if (moreSummary) moreSummary.textContent = ui("moreInput");
   setLocalizedTexts([
-    ["preferClipboardLoadLabel", "preferClipboardLoad"], ["btnExportPuzzle", "exportPuzzle"], ["btnSharePuzzle", "sharePuzzle"],
+    ["preferClipboardLoadLabel", "preferClipboardLoad"], ["btnManualPuzzleEntry", "manualPuzzleEntry"], ["btnExportPuzzle", "exportPuzzle"], ["btnSharePuzzle", "sharePuzzle"],
     ["btnClearSavedSession", "clearSavedSession"], ["btnImageOcrPickText", "ocrPickImage"],
     ["btnImageOcrCameraText", "ocrCameraImage"], ["btnImageOcrClipboard", "ocrClipboardImage"],
   ]);
   setTitleAndAria(document.getElementById("preferClipboardLoadChip"), ui("preferClipboardLoadTitle"));
+  setTitleAndAria(btnManualPuzzleEntry, ui("manualPuzzleEntryTitle"));
   setTitleAndAria(btnSharePuzzle, ui("sharePuzzleTitle"));
   updateExportFormatLabels();
   setTitleAndAria(btnClearSavedSession, ui("clearSavedSessionTitle"));
@@ -16411,18 +16421,23 @@ function ocrCorrectionText(key) {
     zh: {
       title: "OCR 对照校正",
       subtitle: "左侧对照识别图片，右侧直接修改识别结果。点图片或盘面可同步选格。",
+      manualTitle: "手工录入 Sukaku",
+      manualSubtitle: "从满候选盘开始：可设置提示数、出数，或逐格删减候选数。",
       source: "识别图片",
       board: "校正盘面",
+      manualBoard: "手工候选盘",
       selected: "当前格",
       given: "提示数",
       solved: "出数",
       candidate: "候选数",
       clear: "清空",
+      manualClear: "恢复本格候选",
       previous: "上一格",
       next: "下一格",
       undo: "撤销",
       redo: "重做",
       reset: "恢复识别结果",
+      manualReset: "恢复满候选盘",
       fullscreen: "全屏校正",
       exitFullscreen: "退出全屏",
       cancel: "取消",
@@ -16432,25 +16447,37 @@ function ocrCorrectionText(key) {
       candidateCount: "候选格 {candidate}",
       empty: "空格",
       candidateHint: "候选模式下，数字键用于添加或删除候选数。",
+      manualCandidateHint: "候选模式下，数字键用于保留或删除候选；已填数字会自动限制同行、同列和同宫候选。",
+      manualDesktopHint: "桌面操作：左键点候选以当前身份填数，右键切换候选；方向键移动，数字键填数，Ctrl/Cmd+数字切换候选，0/Delete 清除。",
+      manualTouchValueHint: "先选择提示数或出数，再点数字键填入当前格；候选增删请切换到候选数模式。",
       valueHint: "提示数和出数模式下，点击数字直接替换当前格。",
       closeConfirm: "放弃本次 OCR 校正结果？",
+      manualCloseConfirm: "放弃本次手工录入结果？",
       noPreview: "没有可显示的识别图片",
+      manualDuplicate: "已填数字在行、列或宫中冲突：{cells}",
+      manualEmptyCandidates: "以下空格没有任何候选：{cells}",
+      manualCandidateAbsent: "该候选当前不存在；可在对应位置右键恢复。",
     },
     en: {
       title: "OCR Review & Correction",
       subtitle: "Compare the recognized image on the left and edit the grid on the right. Tapping either side selects the same cell.",
+      manualTitle: "Manual Sukaku Entry",
+      manualSubtitle: "Start from a full candidate grid, then set givens, solved digits, or remove candidates cell by cell.",
       source: "Recognized image",
       board: "Correction grid",
+      manualBoard: "Manual candidate grid",
       selected: "Selected cell",
       given: "Given",
       solved: "Solved digit",
       candidate: "Candidates",
       clear: "Clear",
+      manualClear: "Restore cell candidates",
       previous: "Previous",
       next: "Next",
       undo: "Undo",
       redo: "Redo",
       reset: "Reset OCR result",
+      manualReset: "Reset full candidate grid",
       fullscreen: "Fullscreen review",
       exitFullscreen: "Exit fullscreen",
       cancel: "Cancel",
@@ -16460,9 +16487,16 @@ function ocrCorrectionText(key) {
       candidateCount: "Candidate cells {candidate}",
       empty: "Empty",
       candidateHint: "In candidate mode, number keys toggle candidates.",
+      manualCandidateHint: "In candidate mode, number keys keep or remove candidates. Current values automatically restrict peers.",
+      manualDesktopHint: "Desktop: left-click a candidate to enter it with the current role; right-click toggles candidates. Arrow keys move, digits enter values, Ctrl/Cmd+digit toggles candidates, and 0/Delete clears.",
+      manualTouchValueHint: "Choose Given or Solved, then tap a number to fill the selected cell. Switch to Candidates to add or remove candidates.",
       valueHint: "In Given or Solved mode, a number replaces the selected cell.",
       closeConfirm: "Discard this OCR correction?",
+      manualCloseConfirm: "Discard this manual entry?",
       noPreview: "No recognized image is available",
+      manualDuplicate: "Values conflict in a row, column, or box: {cells}",
+      manualEmptyCandidates: "These empty cells have no candidates: {cells}",
+      manualCandidateAbsent: "This candidate is currently absent; right-click its slot to restore it.",
     },
   };
   return dict[ocrCorrectionLanguage()]?.[key] || dict.zh[key] || key;
@@ -16472,18 +16506,41 @@ function ocrCorrectionIsActive() {
   return Boolean(ocrCorrectionState && ocrCorrectionRoot?.isConnected);
 }
 
+function ocrCorrectionIsManualEntry() {
+  return ocrCorrectionState?.entryKind === "manual";
+}
+
+function manualEntryUsesDesktopInput() {
+  return Boolean(window.matchMedia?.("(hover: hover) and (pointer: fine)")?.matches);
+}
+
+function setOcrCorrectionMode(mode) {
+  if (!["given", "solved", "candidate"].includes(mode)) return false;
+  ocrCorrectionMode = mode;
+  if (ocrCorrectionIsManualEntry() && (mode === "given" || mode === "solved")) {
+    manualEntryValueRole = mode;
+  }
+  scheduleOcrCorrectionDraftSave();
+  renderOcrCorrection();
+  return true;
+}
+
 function ocrCorrectionCloneCells(cells) {
   return (cells || []).map((cell, index) => ({
     index,
     value: Number(cell?.value || 0),
     role: cell?.role === "given" || cell?.role === "solved" ? cell.role : "candidate",
     candidateMask: Number(cell?.candidateMask || 0) & 0x3fe,
+    manualCandidateMask: cell?.manualCandidateMask != null && Number.isFinite(Number(cell.manualCandidateMask))
+      ? (Number(cell.manualCandidateMask) & 0x3fe)
+      : null,
     originalConfidence: Number.isFinite(Number(cell?.originalConfidence)) ? Number(cell.originalConfidence) : null,
   }));
 }
 
 
 function currentOcrCorrectionDraftPayload() {
+  if (ocrCorrectionState?.persistDraft === false) return null;
   if (!ocrCorrectionState || !Array.isArray(ocrCorrectionState.cells) || ocrCorrectionState.cells.length !== 81) return null;
   return {
     cells: ocrCorrectionCloneCells(ocrCorrectionState.cells),
@@ -16495,6 +16552,7 @@ function currentOcrCorrectionDraftPayload() {
 }
 
 function scheduleOcrCorrectionDraftSave() {
+  if (ocrCorrectionState?.persistDraft === false) return;
   if (ocrDraftSaveTimer) window.clearTimeout(ocrDraftSaveTimer);
   const payload = currentOcrCorrectionDraftPayload();
   if (!payload) return;
@@ -16505,6 +16563,7 @@ function scheduleOcrCorrectionDraftSave() {
 }
 
 async function flushOcrCorrectionDraftSave() {
+  if (ocrCorrectionState?.persistDraft === false) return false;
   if (ocrDraftSaveTimer) {
     window.clearTimeout(ocrDraftSaveTimer);
     ocrDraftSaveTimer = 0;
@@ -16521,9 +16580,12 @@ async function restoreSavedOcrCorrectionDraft(options = {}) {
   const root = ensureOcrCorrectionUi();
   ocrCorrectionState = {
     ocr: { coachJson: {} },
+    entryKind: "ocr",
+    persistDraft: true,
     cells: ocrCorrectionCloneCells(draft.cells),
     originalCells: ocrCorrectionCloneCells(draft.originalCells),
     previewUrl: String(draft.previewUrl || ""),
+    invalidCells: [],
   };
   ocrCorrectionSelectedIndex = Math.max(0, Math.min(80, Number(draft.selectedIndex || 0)));
   ocrCorrectionMode = ["given", "solved", "candidate"].includes(draft.mode) ? draft.mode : "given";
@@ -16571,6 +16633,101 @@ function ocrCorrectionCellsFromResult(ocr) {
       originalConfidence: null,
     };
   });
+}
+
+const MANUAL_ENTRY_FULL_MASK = 0x3fe;
+
+function manualPuzzleEntryCells() {
+  return Array.from({ length: 81 }, (_, index) => ({
+    index,
+    value: 0,
+    role: "candidate",
+    candidateMask: MANUAL_ENTRY_FULL_MASK,
+    manualCandidateMask: MANUAL_ENTRY_FULL_MASK,
+    originalConfidence: null,
+  }));
+}
+
+function manualEntryBoardText(cells = ocrCorrectionState?.cells) {
+  if (!Array.isArray(cells) || cells.length !== 81) return ".".repeat(81);
+  return cells.map((cell) => {
+    const value = Number(cell?.value || 0);
+    return value >= 1 && value <= 9 ? String(value) : ".";
+  }).join("");
+}
+
+function recomputeManualEntryCandidates(cells = ocrCorrectionState?.cells) {
+  if (!ocrCorrectionIsManualEntry() || !Array.isArray(cells) || cells.length !== 81) return;
+  const boardText = manualEntryBoardText(cells);
+  cells.forEach((cell, index) => {
+    const value = Number(cell?.value || 0);
+    if (value >= 1 && value <= 9) {
+      cell.candidateMask = 0;
+      return;
+    }
+    cell.value = 0;
+    cell.role = "candidate";
+    const explicitMask = cell?.manualCandidateMask != null && Number.isFinite(Number(cell.manualCandidateMask))
+      ? (Number(cell.manualCandidateMask) & MANUAL_ENTRY_FULL_MASK)
+      : MANUAL_ENTRY_FULL_MASK;
+    cell.manualCandidateMask = explicitMask;
+    cell.candidateMask = explicitMask & legalCandidateMaskForBoard(boardText, index);
+  });
+}
+
+function manualEntryCellName(index) {
+  const row = Math.floor(index / 9) + 1;
+  const col = index % 9 + 1;
+  return `r${row}c${col}`;
+}
+
+function manualEntryValidation(cells = ocrCorrectionState?.cells) {
+  const invalid = new Set();
+  const duplicate = new Set();
+  const empty = new Set();
+  if (!Array.isArray(cells) || cells.length !== 81) {
+    return { ok: false, invalid, message: ui("importUnknownFormat") };
+  }
+
+  const houses = [];
+  for (let row = 0; row < 9; row += 1) houses.push(Array.from({ length: 9 }, (_, col) => row * 9 + col));
+  for (let col = 0; col < 9; col += 1) houses.push(Array.from({ length: 9 }, (_, row) => row * 9 + col));
+  for (let boxRow = 0; boxRow < 3; boxRow += 1) {
+    for (let boxCol = 0; boxCol < 3; boxCol += 1) {
+      const house = [];
+      for (let dr = 0; dr < 3; dr += 1) {
+        for (let dc = 0; dc < 3; dc += 1) house.push((boxRow * 3 + dr) * 9 + boxCol * 3 + dc);
+      }
+      houses.push(house);
+    }
+  }
+  for (const house of houses) {
+    const byDigit = new Map();
+    for (const index of house) {
+      const value = Number(cells[index]?.value || 0);
+      if (value < 1 || value > 9) continue;
+      if (!byDigit.has(value)) byDigit.set(value, []);
+      byDigit.get(value).push(index);
+    }
+    for (const indexes of byDigit.values()) {
+      if (indexes.length < 2) continue;
+      for (const index of indexes) duplicate.add(index);
+    }
+  }
+  cells.forEach((cell, index) => {
+    if (!Number(cell?.value || 0) && (Number(cell?.candidateMask || 0) & MANUAL_ENTRY_FULL_MASK) === 0) empty.add(index);
+  });
+  for (const index of duplicate) invalid.add(index);
+  for (const index of empty) invalid.add(index);
+  if (duplicate.size) {
+    const cellsText = [...duplicate].sort((a, b) => a - b).map(manualEntryCellName).join("、");
+    return { ok: false, invalid, message: ocrCorrectionText("manualDuplicate").replace("{cells}", cellsText) };
+  }
+  if (empty.size) {
+    const cellsText = [...empty].sort((a, b) => a - b).map(manualEntryCellName).join("、");
+    return { ok: false, invalid, message: ocrCorrectionText("manualEmptyCandidates").replace("{cells}", cellsText) };
+  }
+  return { ok: true, invalid, message: "" };
 }
 
 function ocrCorrectionAllCandidateMasks(cells = ocrCorrectionState?.cells) {
@@ -16663,6 +16820,8 @@ function ocrCorrectionRestoreHistory(index) {
   if (!ocrCorrectionState || index < 0 || index >= ocrCorrectionHistory.length) return;
   ocrCorrectionHistoryIndex = index;
   ocrCorrectionState.cells = ocrCorrectionCloneCells(ocrCorrectionHistory[index]);
+  ocrCorrectionState.invalidCells = [];
+  recomputeManualEntryCandidates();
   scheduleOcrCorrectionDraftSave();
   renderOcrCorrection();
 }
@@ -16766,21 +16925,59 @@ function ensureOcrCorrectionUi() {
     keypad.appendChild(button);
   }
 
+  root.addEventListener("pointerdown", (event) => {
+    if (!ocrCorrectionIsManualEntry()) return;
+    const target = event.target instanceof Element
+      ? event.target.closest(".ocr-correction-candidate-slot,.ocr-correction-cell")
+      : null;
+    if (!target) return;
+    target.dataset.boardPointerType = event.pointerType || "";
+    setBoardPointerMode(event.pointerType || "");
+  }, true);
+
   root.addEventListener("click", async (event) => {
-    const target = event.target instanceof Element ? event.target.closest("button") : null;
+    const rawTarget = event.target instanceof Element ? event.target : null;
+    const candidateSlot = rawTarget?.closest?.(".ocr-correction-candidate-slot") || null;
+    if (ocrCorrectionIsManualEntry() && candidateSlot) {
+      const cellButton = candidateSlot.closest(".ocr-correction-cell");
+      const index = Number(cellButton?.dataset.index || -1);
+      const digit = Number(candidateSlot.dataset.digit || 0);
+      const mouseInput = boardEventUsesMouse(event, candidateSlot);
+      if (index >= 0 && digit >= 1 && digit <= 9) {
+        event.preventDefault();
+        event.stopPropagation();
+        ocrCorrectionSelectedIndex = index;
+        if (mouseInput) {
+          const cell = ocrCorrectionState?.cells?.[index];
+          if ((Number(cell?.candidateMask || 0) & (1 << digit)) === 0) {
+            renderOcrCorrection();
+            setStatus(ocrCorrectionText("manualCandidateAbsent"));
+            return;
+          }
+          editManualEntryCell(digit, manualEntryValueRole);
+        } else {
+          selectOcrCorrectionCell(index);
+        }
+        return;
+      }
+    }
+    const target = rawTarget?.closest?.("button") || null;
     if (!target) return;
     if (target.matches(".ocr-correction-image-cell,.ocr-correction-cell")) {
       selectOcrCorrectionCell(Number(target.dataset.index || 0));
       return;
     }
     if (target.dataset.mode) {
-      ocrCorrectionMode = target.dataset.mode;
-      scheduleOcrCorrectionDraftSave();
-      renderOcrCorrection();
+      setOcrCorrectionMode(target.dataset.mode);
       return;
     }
     if (target.dataset.digit) {
-      editOcrCorrectionCell(Number(target.dataset.digit));
+      const digit = Number(target.dataset.digit);
+      if (ocrCorrectionIsManualEntry() && manualEntryUsesDesktopInput()) {
+        editManualEntryCell(digit, manualEntryValueRole);
+      } else {
+        editOcrCorrectionCell(digit);
+      }
       return;
     }
     if (target.matches(".ocr-correction-clear")) { clearOcrCorrectionCell(); return; }
@@ -16790,6 +16987,8 @@ function ensureOcrCorrectionUi() {
     if (target.matches(".ocr-correction-redo")) { ocrCorrectionRestoreHistory(ocrCorrectionHistoryIndex + 1); return; }
     if (target.matches(".ocr-correction-reset")) {
       ocrCorrectionState.cells = ocrCorrectionCloneCells(ocrCorrectionState.originalCells);
+      ocrCorrectionState.invalidCells = [];
+      recomputeManualEntryCandidates();
       ocrCorrectionPushHistory();
       renderOcrCorrection();
       return;
@@ -16799,11 +16998,35 @@ function ensureOcrCorrectionUi() {
     if (target.matches(".ocr-correction-confirm")) { await confirmOcrCorrection(); }
   });
 
+  root.addEventListener("contextmenu", (event) => {
+    if (!ocrCorrectionIsManualEntry()) return;
+    const candidateSlot = event.target instanceof Element
+      ? event.target.closest(".ocr-correction-candidate-slot")
+      : null;
+    if (!candidateSlot || !boardEventUsesMouse(event, candidateSlot)) return;
+    const cellButton = candidateSlot.closest(".ocr-correction-cell");
+    const index = Number(cellButton?.dataset.index || -1);
+    const digit = Number(candidateSlot.dataset.digit || 0);
+    if (index < 0 || digit < 1 || digit > 9) return;
+    event.preventDefault();
+    event.stopPropagation();
+    ocrCorrectionSelectedIndex = index;
+    editManualEntryCell(digit, "candidate");
+  });
+
   root.addEventListener("keydown", (event) => {
     if (!ocrCorrectionIsActive()) return;
-    if (/^[1-9]$/.test(event.key)) {
+    const commandModifier = event.ctrlKey || event.metaKey;
+    if (ocrCorrectionIsManualEntry() && commandModifier && !event.altKey && !event.shiftKey && /^[1-9]$/.test(event.key)) {
       event.preventDefault();
-      editOcrCorrectionCell(Number(event.key));
+      editManualEntryCell(Number(event.key), "candidate");
+    } else if (/^[1-9]$/.test(event.key) && !event.altKey && !commandModifier) {
+      event.preventDefault();
+      if (ocrCorrectionIsManualEntry() && manualEntryUsesDesktopInput()) {
+        editManualEntryCell(Number(event.key), manualEntryValueRole);
+      } else {
+        editOcrCorrectionCell(Number(event.key));
+      }
     } else if (event.key === "Backspace" || event.key === "Delete" || event.key === "0") {
       event.preventDefault();
       clearOcrCorrectionCell();
@@ -16819,9 +17042,12 @@ function ensureOcrCorrectionUi() {
     } else if (event.key === "ArrowDown") {
       event.preventDefault();
       selectOcrCorrectionCell(ocrCorrectionSelectedIndex + 9);
-    } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+    } else if (commandModifier && event.key.toLowerCase() === "z") {
       event.preventDefault();
       ocrCorrectionRestoreHistory(ocrCorrectionHistoryIndex + (event.shiftKey ? 1 : -1));
+    } else if (commandModifier && event.key.toLowerCase() === "y") {
+      event.preventDefault();
+      ocrCorrectionRestoreHistory(ocrCorrectionHistoryIndex + 1);
     } else if (event.key === "Escape") {
       event.preventDefault();
       closeOcrCorrection(true);
@@ -16838,9 +17064,51 @@ function selectOcrCorrectionCell(index) {
   button?.focus?.({ preventScroll: true });
 }
 
-function editOcrCorrectionCell(digit) {
+function editManualEntryCell(digit, mode = ocrCorrectionMode) {
   const cell = ocrCorrectionState?.cells?.[ocrCorrectionSelectedIndex];
-  if (!cell || digit < 1 || digit > 9) return;
+  if (!cell || digit < 1 || digit > 9) return false;
+  const actionMode = mode === "candidate" ? "candidate" : (mode === "solved" ? "solved" : "given");
+  ocrCorrectionState.invalidCells = [];
+  if (actionMode === "candidate") {
+    const previous = {
+      value: cell.value,
+      role: cell.role,
+      candidateMask: cell.candidateMask,
+      manualCandidateMask: cell.manualCandidateMask,
+    };
+    cell.value = 0;
+    cell.role = "candidate";
+    if (!Number.isFinite(Number(cell.manualCandidateMask))) cell.manualCandidateMask = MANUAL_ENTRY_FULL_MASK;
+    recomputeManualEntryCandidates();
+    const legalMask = legalCandidateMaskForBoard(manualEntryBoardText(), ocrCorrectionSelectedIndex);
+    const bit = 1 << digit;
+    if ((legalMask & bit) === 0) {
+      Object.assign(cell, previous);
+      recomputeManualEntryCandidates();
+      setStatus(ui("manualCandidateBlocked"));
+      renderOcrCorrection();
+      return false;
+    }
+    cell.manualCandidateMask = (Number(cell.manualCandidateMask) & MANUAL_ENTRY_FULL_MASK) ^ bit;
+  } else {
+    const same = cell.value === digit && cell.role === actionMode;
+    cell.value = same ? 0 : digit;
+    cell.role = same ? "candidate" : actionMode;
+    if (!Number.isFinite(Number(cell.manualCandidateMask))) cell.manualCandidateMask = MANUAL_ENTRY_FULL_MASK;
+  }
+  recomputeManualEntryCandidates();
+  ocrCorrectionPushHistory();
+  renderOcrCorrection();
+  return true;
+}
+
+function editOcrCorrectionCell(digit, options = {}) {
+  const cell = ocrCorrectionState?.cells?.[ocrCorrectionSelectedIndex];
+  if (!cell || digit < 1 || digit > 9) return false;
+  ocrCorrectionState.invalidCells = [];
+  if (ocrCorrectionIsManualEntry()) {
+    return editManualEntryCell(digit, options.mode || ocrCorrectionMode);
+  }
   if (ocrCorrectionMode === "candidate") {
     cell.value = 0;
     cell.role = "candidate";
@@ -16853,14 +17121,21 @@ function editOcrCorrectionCell(digit) {
   }
   ocrCorrectionPushHistory();
   renderOcrCorrection();
+  return true;
 }
 
 function clearOcrCorrectionCell() {
   const cell = ocrCorrectionState?.cells?.[ocrCorrectionSelectedIndex];
   if (!cell) return;
+  ocrCorrectionState.invalidCells = [];
   cell.value = 0;
   cell.role = "candidate";
-  cell.candidateMask = 0;
+  if (ocrCorrectionIsManualEntry()) {
+    cell.manualCandidateMask = MANUAL_ENTRY_FULL_MASK;
+    recomputeManualEntryCandidates();
+  } else {
+    cell.candidateMask = 0;
+  }
   ocrCorrectionPushHistory();
   renderOcrCorrection();
 }
@@ -16868,17 +17143,19 @@ function clearOcrCorrectionCell() {
 function renderOcrCorrection() {
   const root = ensureOcrCorrectionUi();
   if (!ocrCorrectionState || root.hidden) return;
-  root.querySelector(".ocr-correction-title").textContent = ocrCorrectionText("title");
-  root.querySelector(".ocr-correction-subtitle").textContent = ocrCorrectionText("subtitle");
+  const manualEntry = ocrCorrectionIsManualEntry();
+  root.classList.toggle("manual-entry-mode", manualEntry);
+  root.querySelector(".ocr-correction-title").textContent = ocrCorrectionText(manualEntry ? "manualTitle" : "title");
+  root.querySelector(".ocr-correction-subtitle").textContent = ocrCorrectionText(manualEntry ? "manualSubtitle" : "subtitle");
   root.querySelector(".ocr-correction-source-title").textContent = ocrCorrectionText("source");
-  root.querySelector(".ocr-correction-board-title").textContent = ocrCorrectionText("board");
+  root.querySelector(".ocr-correction-board-title").textContent = ocrCorrectionText(manualEntry ? "manualBoard" : "board");
   root.querySelector(".ocr-correction-cancel").textContent = ocrCorrectionText("cancel");
   root.querySelector(".ocr-correction-confirm").textContent = ocrCorrectionText("confirm");
   root.querySelector(".ocr-correction-fullscreen").textContent = ocrCorrectionText(isFullscreen() ? "exitFullscreen" : "fullscreen");
   root.querySelector(".ocr-correction-previous").textContent = ocrCorrectionText("previous");
   root.querySelector(".ocr-correction-next").textContent = ocrCorrectionText("next");
-  root.querySelector(".ocr-correction-clear").textContent = ocrCorrectionText("clear");
-  root.querySelector(".ocr-correction-reset").textContent = ocrCorrectionText("reset");
+  root.querySelector(".ocr-correction-clear").textContent = ocrCorrectionText(manualEntry ? "manualClear" : "clear");
+  root.querySelector(".ocr-correction-reset").textContent = ocrCorrectionText(manualEntry ? "manualReset" : "reset");
   root.querySelector(".ocr-correction-undo").textContent = ocrCorrectionText("undo");
   root.querySelector(".ocr-correction-redo").textContent = ocrCorrectionText("redo");
   root.querySelector(".ocr-correction-undo").disabled = ocrCorrectionHistoryIndex <= 0;
@@ -16890,7 +17167,13 @@ function renderOcrCorrection() {
     button.classList.toggle("active", mode === ocrCorrectionMode);
     button.setAttribute("aria-pressed", mode === ocrCorrectionMode ? "true" : "false");
   }
-  root.querySelector(".ocr-correction-hint").textContent = ocrCorrectionText(ocrCorrectionMode === "candidate" ? "candidateHint" : "valueHint");
+  let hintKey = ocrCorrectionMode === "candidate" ? "candidateHint" : "valueHint";
+  if (manualEntry) {
+    hintKey = manualEntryUsesDesktopInput()
+      ? "manualDesktopHint"
+      : (ocrCorrectionMode === "candidate" ? "manualCandidateHint" : "manualTouchValueHint");
+  }
+  root.querySelector(".ocr-correction-hint").textContent = ocrCorrectionText(hintKey);
 
   const source = root.querySelector(".ocr-correction-source-image");
   const noPreview = root.querySelector(".ocr-correction-no-preview");
@@ -16930,10 +17213,11 @@ function renderOcrCorrection() {
 
   const boardButtons = root.querySelectorAll(".ocr-correction-cell");
   const imageButtons = root.querySelectorAll(".ocr-correction-image-cell");
+  const invalidCells = new Set(Array.isArray(ocrCorrectionState.invalidCells) ? ocrCorrectionState.invalidCells : []);
   ocrCorrectionState.cells.forEach((cell, index) => {
     const button = boardButtons[index];
     const roleClass = cell.value ? `ocr-role-${cell.role}` : "ocr-role-candidate";
-    button.className = `ocr-correction-cell ${roleClass}${index === ocrCorrectionSelectedIndex ? " selected" : ""}`;
+    button.className = `ocr-correction-cell ${roleClass}${index === ocrCorrectionSelectedIndex ? " selected" : ""}${invalidCells.has(index) ? " invalid" : ""}`;
     button.setAttribute("aria-label", ocrCorrectionCellLabel(cell, index));
     button.innerHTML = "";
     if (cell.value) {
@@ -16941,12 +17225,19 @@ function renderOcrCorrection() {
       value.className = "ocr-value";
       value.textContent = String(cell.value);
       button.appendChild(value);
-    } else if (cell.candidateMask) {
+    } else if (cell.candidateMask || manualEntry) {
       const grid = document.createElement("span");
       grid.className = "ocr-correction-candidates";
       for (let digit = 1; digit <= 9; digit += 1) {
         const slot = document.createElement("span");
-        slot.textContent = cell.candidateMask & (1 << digit) ? String(digit) : "";
+        const present = Boolean(cell.candidateMask & (1 << digit));
+        slot.className = `ocr-correction-candidate-slot ${present ? "candidate-present" : "candidate-absent"}`;
+        slot.dataset.digit = String(digit);
+        slot.textContent = present ? String(digit) : "";
+        if (manualEntry) {
+          slot.title = `${manualEntryCellName(index)} #${digit}`;
+          slot.setAttribute("aria-hidden", "true");
+        }
         grid.appendChild(slot);
       }
       button.appendChild(grid);
@@ -16964,9 +17255,12 @@ async function openOcrCorrection(ocr, options = {}) {
   const cells = ocrCorrectionCellsFromResult(ocr);
   ocrCorrectionState = {
     ocr,
+    entryKind: "ocr",
+    persistDraft: true,
     cells,
     originalCells: ocrCorrectionCloneCells(cells),
     previewUrl: preview.warpedDataUrl || preview.warped || "",
+    invalidCells: [],
   };
   ocrCorrectionSelectedIndex = 0;
   ocrCorrectionMode = "given";
@@ -16984,9 +17278,39 @@ async function openOcrCorrection(ocr, options = {}) {
   return { ok: true, correction: true };
 }
 
+async function openManualPuzzleEntry() {
+  if (mobileSolveActive) await exitMobileSolveMode({ exitFullscreen: false });
+  const root = ensureOcrCorrectionUi();
+  const cells = manualPuzzleEntryCells();
+  ocrCorrectionState = {
+    ocr: null,
+    entryKind: "manual",
+    persistDraft: false,
+    cells,
+    originalCells: ocrCorrectionCloneCells(cells),
+    previewUrl: "",
+    invalidCells: [],
+  };
+  ocrCorrectionSelectedIndex = 0;
+  ocrCorrectionMode = "given";
+  manualEntryValueRole = "given";
+  ocrCorrectionHistory = [];
+  ocrCorrectionHistoryIndex = -1;
+  recomputeManualEntryCandidates();
+  ocrCorrectionPushHistory();
+  root.hidden = false;
+  document.body.classList.add("ocr-correction-mode");
+  renderOcrCorrection();
+  root.querySelector(".ocr-correction-cell")?.focus?.({ preventScroll: true });
+  setStatus(ui("manualPuzzleEntryOpened"));
+  return { ok: true, manualEntry: true };
+}
+
 function closeOcrCorrection(confirmDiscard = false) {
   if (!ocrCorrectionIsActive()) return true;
-  if (confirmDiscard && ocrCorrectionHistoryIndex > 0 && !window.confirm(ocrCorrectionText("closeConfirm"))) return false;
+  const manualEntry = ocrCorrectionIsManualEntry();
+  const persistDraft = ocrCorrectionState?.persistDraft !== false;
+  if (confirmDiscard && ocrCorrectionHistoryIndex > 0 && !window.confirm(ocrCorrectionText(manualEntry ? "manualCloseConfirm" : "closeConfirm"))) return false;
   if (ocrDraftSaveTimer) {
     window.clearTimeout(ocrDraftSaveTimer);
     ocrDraftSaveTimer = 0;
@@ -16996,12 +17320,25 @@ function closeOcrCorrection(confirmDiscard = false) {
   ocrCorrectionState = null;
   ocrCorrectionHistory = [];
   ocrCorrectionHistoryIndex = -1;
-  void clearOcrCorrectionDraft();
+  if (persistDraft) void clearOcrCorrectionDraft();
   return true;
 }
 
 async function confirmOcrCorrection() {
   if (!ocrCorrectionState) return;
+  const manualEntry = ocrCorrectionIsManualEntry();
+  if (manualEntry) {
+    recomputeManualEntryCandidates();
+    const validation = manualEntryValidation();
+    ocrCorrectionState.invalidCells = [...validation.invalid];
+    if (!validation.ok) {
+      const first = ocrCorrectionState.invalidCells[0];
+      if (Number.isInteger(first)) ocrCorrectionSelectedIndex = first;
+      renderOcrCorrection();
+      setStatus(validation.message);
+      return { ok: false, error: validation.message };
+    }
+  }
   const cells = ocrCorrectionCloneCells(ocrCorrectionState.cells);
   const allCandidateMasks = ocrCorrectionAllCandidateMasks(cells);
   const importFormat = allCandidateMasks ? "sukaku" : "library";
@@ -17023,11 +17360,16 @@ async function confirmOcrCorrection() {
     // otherwise normalized by the generic loader to a plain 81-char puzzle,
     // hiding which import path was used.
     givens.value = importText;
-    result.source = "local-image-ocr";
-    result.ocrImportFormat = importFormat;
-    const attribution = await localSudokuOcrAttributionSafe();
-    if (attribution) debugLog(uif("ocrDoneLog", { attribution }));
-    else debugLog(ui("ocrDoneLogNoAttribution"));
+    if (manualEntry) {
+      result.source = "manual-entry";
+      result.manualEntryFormat = importFormat;
+    } else {
+      result.source = "local-image-ocr";
+      result.ocrImportFormat = importFormat;
+      const attribution = await localSudokuOcrAttributionSafe();
+      if (attribution) debugLog(uif("ocrDoneLog", { attribution }));
+      else debugLog(ui("ocrDoneLogNoAttribution"));
+    }
   } else {
     // Keep the correction session alive after an invalid/non-unique import so
     // the user can repair the OCR result instead of losing all edits.
@@ -17144,6 +17486,10 @@ async function prepareOcrGuideReplay() {
 
 btnImageOcrClipboard?.addEventListener("click", async () => {
   await recognizeFirstClipboardImage();
+});
+
+btnManualPuzzleEntry?.addEventListener("click", async () => {
+  await openManualPuzzleEntry();
 });
 
 imageOcrInput?.addEventListener("change", async () => {

@@ -879,6 +879,15 @@
 <li>勾选“剪贴板优先”时，加载按钮会先尝试读取剪贴板文本；读取或导入失败后才使用文本框。</li>
 </ol>
 <p>电脑浏览器拒绝剪贴板权限时，可取消“剪贴板优先”后直接加载文本框。手机做题模式中的“题面输入”会返回分析界面并自动展开输入面板。</p>
+<h3>从满候选盘手工录入</h3>
+<ol>
+<li>展开输入面板，点击<strong>手工录入</strong>。编辑器以 81 格全候选 <code>1–9</code> 开始。</li>
+<li><strong>电脑：</strong>按钮主要用于选择<strong>提示数</strong>或<strong>出数</strong>身份。鼠标左键直接点击格内候选即可填数，右键候选可删除或恢复；方向键移动选格，数字键填数，<span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+数字切换候选，0/Delete/Backspace 清除当前大数。</li>
+<li><strong>手机和平板：</strong>继续使用<strong>提示数</strong>、<strong>出数</strong>、<strong>候选数</strong>三个大按钮。先点格，再用下方大数字盘输入；候选模式用于保留或删除候选。</li>
+<li>设置提示数或出数后，同行、同列和同宫的候选会立即按合法性更新；清除该数字时，被临时限制但未手工删除的候选会恢复。</li>
+<li>点击<strong>确认并导入</strong>。程序会先检查行列宫数字冲突和空候选格，再按实际内容导入 Sukaku 或 Library。</li>
+</ol>
+<p>手工录入复用 OCR 校正器的三角色盘面，但不会写入或清除 OCR 校正草稿。OCR 图片校正仍保留原图对照和识别 mask，不会套用手工录入的自动候选更新。</p>
 <h3>自动保存现场</h3>
 <p>程序会在本机浏览器保存当前盘面、候选状态、语言、技巧配置和完整手工标记，下次打开时自动恢复。现场格式 v2 可保存整格/候选着色、圆圈、预删数、正式删数、强弱链、构造链、微型区域、区块草稿和当前标记模式，同时兼容旧版 v1 现场。</p>
 <p>“帮助与现场”还能继续未确认导入的 OCR 对照校正草稿，并保留最多 12 条去重后的近期题目。空白启动盘不会进入近期列表。</p>
@@ -901,6 +910,15 @@
 <li>When Prefer Clipboard is checked, Load first tries clipboard text and falls back to the text area if reading or import fails.</li>
 </ol>
 <p>If desktop clipboard permission is denied, disable Prefer Clipboard and load the text area directly. Puzzle Input inside mobile solve mode returns to the analysis view and opens the input panel.</p>
+<h3>Manual Entry from a Full Candidate Grid</h3>
+<ol>
+<li>Open the input panel and press <strong>Manual Entry</strong>. The editor starts with candidates <code>1–9</code> in all 81 cells.</li>
+<li><strong>Desktop:</strong> the role buttons primarily choose <strong>Given</strong> or <strong>Solved digit</strong>. Left-click a candidate to enter it, right-click a candidate to remove or restore it, use arrow keys to move, number keys to enter values, <span class="kbd">Ctrl</span>/<span class="kbd">Cmd</span>+number to toggle candidates, and 0/Delete/Backspace to clear a value.</li>
+<li><strong>Phone and tablet:</strong> the large <strong>Given</strong>, <strong>Solved digit</strong>, and <strong>Candidates</strong> buttons remain available. Select a cell, then use the large number pad; Candidate mode keeps or removes pencil marks.</li>
+<li>After setting a given or solved digit, peer candidates update immediately. Clearing that value restores candidates that were only temporarily blocked, while preserving explicit manual eliminations.</li>
+<li>Press <strong>Confirm &amp; import</strong>. Row/column/box conflicts and empty candidate cells are checked before the state is imported as Sukaku or Library.</li>
+</ol>
+<p>Manual Entry reuses the three-role OCR editor but does not save over or clear an OCR correction draft. Image OCR keeps its source-image comparison and recognized masks; it does not use Manual Entry's automatic candidate normalization.</p>
 <h3>Automatic Session Restore</h3>
 <p>The browser locally saves the current board, candidate state, language, technique configuration, and complete Manual Marks state. Session format v2 includes cell and candidate colors, circles, pending and applied eliminations, chain lines, construction lines, Mini-Regions, blocks, and the current marking tools, while remaining compatible with legacy v1 sessions.</p>
 <p>Help &amp; Workspaces can also resume an unfinished OCR correction draft and up to 12 recent puzzle snapshots. Recent puzzles are deduplicated, and the initial empty board is never added to the list. Clear Saved Session removes the board, language, technique data, and saved manual marks used for the next restore, but does not clear the board currently on screen.</p>
