@@ -1103,7 +1103,7 @@
 <h3>训练生成与 OTP</h3>
 <p>生成配置保持在同一行：<strong>Difficulty、训练技巧、OTP、文字过滤</strong>。Difficulty 会按当前名称紧凑显示，把主要空间留给训练技巧；文字过滤仍通过弹出面板设置。</p>
 <ul>
-<li><strong>不勾选 OTP：</strong>选择一个训练技巧后点击“训练生成”，程序反复生成并完整解题，直到路径中包含该技巧。</li>
+<li><strong>不勾选 OTP：</strong>选择一个训练技巧后点击“训练生成”，程序反复生成并完整解题，直到路径中包含该技巧。训练解题严格继承当前技巧开关，不会自行开启其它技巧；若目标技巧本身已停用，程序会先询问是否只开启该目标后继续。</li>
 <li><strong>勾选 OTP 且指定训练技巧：</strong>程序先只用 Basic 技巧解到无法推进，再仅搜索所选技巧；只要存在一个该技巧步骤，应用后可由 Full House、Hidden Single、Naked Single 一路解到终盘，就接受为该技巧的 OTP。</li>
 <li><strong>勾选 OTP 且未指定技巧：</strong>Basic 停滞后搜索全部非 Basic、非 BruteForce 逻辑技巧；命中任意 STTE 关键步骤即接受。</li>
 </ul>
@@ -1111,7 +1111,7 @@
 <p>OTP 只要求<strong>至少存在一个</strong>合格关键步骤，不要求 STTE 解释唯一。同一个删数由不同技巧、构型或链路解释，不影响 OTP 验收。文字过滤会作用于关键步骤本身。</p>
 <h3>评分当前题目</h3>
 <p>“评分当前题目”会优先识别文本框或当前盘面的格式。普通题使用 puzzle 评分；含候选状态的 Library/Sukaku/Coach 输入使用候选盘评分。结果通常包含 <code>ER</code>、<code>EP</code>、<code>ED</code>，并可能显示 <code>YZFRate</code>。</p>
-<div class="note">普通训练和 OTP 生成都使用当前启用的技巧配置及相关子选项。OTP 开关会本地记忆；唯一数、区块、数组和 BruteForce 不能作为 OTP 的指定关键技巧。</div>
+<div class="note">普通训练和 OTP 生成都严格使用当前启用的技巧配置及相关子选项，不会为训练而重置成“全部开启”。若所选目标技巧已关闭，确认后只开启目标技巧；其它已关闭技巧仍保持关闭。因此停用较早的竞争技巧，可以让后续技巧按真实求解顺序进入训练路径。OTP 开关会本地记忆；唯一数、区块、数组和 BruteForce 不能作为 OTP 的指定关键技巧。</div>
 </div>
 <div class="en">
 <h3>Normal Generation</h3>
@@ -1119,7 +1119,7 @@
 <h3>Training Generation and OTP</h3>
 <p>The four generation controls stay on one line: <strong>Difficulty, Training technique, OTP, and Text filter</strong>. Difficulty uses a compact content-sized field so the technique selector retains most of the available width.</p>
 <ul>
-<li><strong>OTP off:</strong> select a training technique and press Training Generate. The program generates and solves until the path contains that technique.</li>
+<li><strong>OTP off:</strong> select a training technique and press Training Generate. The program generates and solves until the path contains that technique. The training solve strictly inherits the current technique switches and never enables unrelated techniques. If the target itself is disabled, the program first asks whether to enable only that target.</li>
 <li><strong>OTP on with a selected technique:</strong> Basic techniques run to a stall, then only the selected technique is searched. The puzzle is accepted when one matching step leads to Full House, Hidden Single, and Naked Single all the way to the end.</li>
 <li><strong>OTP on with no selected technique:</strong> after the Basic stall, all non-Basic, non-BruteForce logical techniques are searched; any matching STTE key step accepts the puzzle.</li>
 </ul>
@@ -1127,7 +1127,7 @@
 <p>OTP requires <strong>at least one</strong> valid key step, not a unique explanation. Multiple techniques, constructions, or chains explaining the same elimination do not disqualify the puzzle. Text filtering applies to the key step.</p>
 <h3>Rate Current Puzzle</h3>
 <p>Rate Current Puzzle detects the text-area or current-board format. Plain puzzles use puzzle rating, while Library/Sukaku/Coach inputs with candidate state use candidate-grid rating. Results normally include <code>ER</code>, <code>EP</code>, <code>ED</code>, and may include <code>YZFRate</code>.</p>
-<div class="note">Normal training and OTP generation both use the enabled technique configuration and sub-options. The OTP switch is remembered locally; singles, locked candidates, subsets, and BruteForce cannot be selected as the OTP key technique.</div>
+<div class="note">Normal training and OTP generation strictly use the enabled technique configuration and sub-options; they never reset the solver to “all techniques enabled.” If the selected target is off, confirmation enables only that target while every other disabled technique stays off. Disabling an earlier competing technique can therefore allow a later technique to appear on the real solve path. The OTP switch is remembered locally; singles, locked candidates, subsets, and BruteForce cannot be selected as the OTP key technique.</div>
 </div>
 </div>
 </section>
@@ -1491,7 +1491,7 @@
 <h3>批量出题</h3>
 <ol>
 <li>选择“批量出题”、输出文件名和主界面的难度。</li>
-<li>未勾选 OTP 时，选择单个训练技巧会批量输出包含该技巧的普通训练题；选择“AHS 三技巧（任一）”时，命中 AHS-XZ、AHS-XY-Wing、AHS-W-Wing 任意一种即成功；未选择技巧则普通批量生成。</li>
+<li>未勾选 OTP 时，选择单个训练技巧会批量输出包含该技巧的普通训练题；选择“AHS 三技巧（任一）”时，命中当前已启用的 AHS-XZ、AHS-XY-Wing、AHS-W-Wing 任意一种即成功；若三者均关闭，会先询问是否只开启这三个目标。未选择技巧则普通批量生成。</li>
 <li>勾选 OTP 时，批量任务沿用主界面的训练技巧和文字过滤：指定技巧则生成该技巧 OTP，未指定则生成任意技巧 OTP。</li>
 <li>主界面的普通训练生成会显示目标技巧出现前的盘面；OTP 生成会显示 Basic 无法继续的关键盘面。两者都不保留临时步骤高亮。</li>
 <li>点击“开始”持续生成，点击“停止”结束并关闭/下载文件。</li>
@@ -1512,7 +1512,7 @@
 <h3>Batch Generation</h3>
 <ol>
 <li>Select Batch Generate, an output filename, and the main difficulty.</li>
-<li>With OTP off, a selected Training technique emits ordinary training puzzles containing that technique; no selection performs unrestricted generation.</li>
+<li>With OTP off, a selected Training technique emits ordinary training puzzles containing that technique. “Any AHS technique” accepts any currently enabled AHS-XZ, AHS-XY-Wing, or AHS-W-Wing target; if all three are off, the program asks whether to enable only those targets. No selection performs unrestricted generation.</li>
 <li>With OTP on, batch generation reuses the main Training technique and text filter: a selected technique generates that technique's OTP puzzles, while no selection generates any-technique OTP puzzles.</li>
 <li>Realtime normal training opens immediately before the target technique; OTP generation opens at the Basic-stalled key position. Temporary step highlights are not retained.</li>
 <li>Press Start to generate continuously and Stop to finish and close/download the file.</li>

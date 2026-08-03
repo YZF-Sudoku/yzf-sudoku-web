@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-6a54a86baaa68ba8";
+import createModule from "./sudoku_wasm.js?v=wasm-c19313e4edd31e22";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -43,7 +43,7 @@ import {
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
 
-const APP_VERSION = "wasm-6a54a86baaa68ba8";
+const APP_VERSION = "wasm-c19313e4edd31e22";
 const UI_RELEASE_VERSION = "ui-20260801-manual-entry-hybrid-input";
 const MANUAL_VERSION = "manual-20260801-manual-entry-hybrid-input";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
@@ -1508,6 +1508,9 @@ for (const [key, zh, en] of [
   ["batchInvalidStep", "批量出题发现技巧错误，已停止：{detail}", "Batch stopped on an invalid step: {detail}"],
   ["invalidStep", "步骤无效", "Invalid step"],
   ["trainingNeedTechnique", "请先在“训练”下拉框选择一个技巧，或勾选 OTP 搜索全部 OTP。", "Choose a technique in the Training dropdown, or enable OTP to search all OTP puzzles."],
+  ["trainingEnableTargetConfirm", "训练目标“{technique}”当前已停用。是否只开启该目标技巧后继续？其它技巧保持当前开关状态。", "The training target “{technique}” is disabled. Enable only that target and continue? All other technique switches will remain unchanged."],
+  ["trainingTargetStillDisabled", "训练目标“{technique}”仍处于停用状态，已取消训练生成。", "The training target “{technique}” is still disabled, so training generation was cancelled."],
+  ["trainingTargetEnabled", "已开启训练目标“{technique}”；其它技巧保持原设置。", "Enabled training target “{technique}”; all other techniques remain unchanged."],
   ["trainingSearching", "正在搜索包含 {technique} 的训练题，已用时 {elapsed}...", "Searching for a training puzzle containing {technique}; elapsed {elapsed}..."],
   ["otpSearching", "正在搜索 {technique}，已用时 {elapsed}...", "Searching for {technique}; elapsed {elapsed}..."],
   ["trainingInvalidSyncFailed", "训练生成发现技巧错误，但失败谜题同步到主引擎失败。", "Training generation found an invalid technique, but syncing the failed puzzle to the main engine failed."],
@@ -11407,10 +11410,16 @@ function generateTrainingPuzzleInWorker(
     : "generate_training_puzzle_json";
   const otp = Boolean(normalizedFilter.otp);
   const requestKind = otp ? String(kind || "") : String(kind || "BruteForce");
+  const techniqueConfig = getTechniqueConfigPayload(
+    techniqueState.length ? techniqueState : loadTechniqueState()
+  );
 
   if (window.YZF_STANDALONE || !window.Worker) {
     if (!engine) {
       throw new Error(ui("wasmLoadFailed"));
+    }
+    if (typeof engine.set_techniques_json === "function") {
+      engine.set_techniques_json(JSON.stringify(techniqueConfig));
     }
     if (typeof engine[filteredMethod] === "function") {
       return Promise.resolve(engine[filteredMethod](
@@ -11447,7 +11456,15 @@ function generateTrainingPuzzleInWorker(
     worker.addEventListener("error", (event) => {
       finish(reject, new Error(event.message || ui("trainingWorkerRuntimeFailed")));
     });
-    worker.postMessage({ type: "generate", kind, difficulty, maxAttempts, summary, textFilter: normalizedFilter });
+    worker.postMessage({
+      type: "generate",
+      kind,
+      difficulty,
+      maxAttempts,
+      summary,
+      textFilter: normalizedFilter,
+      techniqueConfig,
+    });
   });
 }
 
@@ -11497,6 +11514,39 @@ function trainingTechniqueNameForKind(kind) {
   const state = techniqueState.length ? techniqueState : loadTechniqueState();
   const item = state.find((technique) => technique.kind === normalized);
   return item ? techniqueName(item) : normalized;
+}
+
+function trainingTargetKinds(kind) {
+  return String(kind || "")
+    .split("|")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function ensureTrainingTargetEnabled(kind, statusWriter = setStatus) {
+  const targetKinds = trainingTargetKinds(kind);
+  if (!targetKinds.length) return true;
+
+  const state = techniqueState.length ? techniqueState : loadTechniqueState();
+  const targetSet = new Set(targetKinds);
+  const targets = state.filter((item) => targetSet.has(item.kind) && item.implemented !== false);
+  if (!targets.length || targets.some((item) => item.enabled)) return true;
+
+  const targetLabel = kind === TRAINING_AHS_ANY_KIND
+    ? ui("trainingAhsAny")
+    : targets.map((item) => techniqueName(item)).join(ui("listSeparator"));
+  const accepted = window.confirm(uif("trainingEnableTargetConfirm", { technique: targetLabel }));
+  if (!accepted) {
+    statusWriter(uif("trainingTargetStillDisabled", { technique: targetLabel }));
+    return false;
+  }
+
+  const nextState = state.map((item) => (
+    targetSet.has(item.kind) ? { ...item, enabled: true } : item
+  ));
+  applyTechniqueState(nextState);
+  statusWriter(uif("trainingTargetEnabled", { technique: targetLabel }));
+  return true;
 }
 
 function defaultBatchFilename() {
@@ -17562,6 +17612,9 @@ btnBatchGenerate?.addEventListener("click", async () => {
     updateBatchStatus(ui("trainingOtpUnsupported"));
     return;
   }
+  if (trainingKind && !ensureTrainingTargetEnabled(trainingKind, updateBatchStatus)) {
+    return;
+  }
   const selectedTrainingLabel = selectedTrainingTechniqueName() || trainingKind;
   const trainingLabel = otp
     ? (selectedTrainingLabel ? `${selectedTrainingLabel} OTP` : ui("trainingOtpAll"))
@@ -17695,6 +17748,9 @@ btnGenerateTraining?.addEventListener("click", async () => {
   }
   if (otp && kind && !isOtpEligibleTechnique(kind)) {
     setStatus(ui("trainingOtpUnsupported"));
+    return;
+  }
+  if (kind && !ensureTrainingTargetEnabled(kind, setStatus)) {
     return;
   }
   const selectedLabel = selectedTrainingTechniqueName() || kind;

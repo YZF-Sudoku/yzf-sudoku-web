@@ -476,6 +476,21 @@ phase4Cases.push(
     g("ExtraY(B)", [c(17)], "1"), g("HlsY(B)", [c(17)], "1"), g("SupportY(B)", [c(17)], "1"),
     g("Targets", [c(35)], "4")
   ], [1, 2, 4, 5, 7, 8]), "两条RCC都是AHS的Extra事件析取"],
+  ["AHS-XY-Wing triple linked rank zero", phase4Step("AHSXYWing", "AHS-XY-Wing", "Triple-Linked Rank-0", [
+    g("AhsA", [c(0), c(18), c(27)], "34@c1"),
+    g("AhsB(Pivot)", [c(0), c(2), c(3)], "12@r1"),
+    g("AhsC", [c(2), c(10), c(18)], "56@b1"),
+    g("RccX", [c(0)], "Shared-Cell"),
+    g("ExtraX(A)", [c(0)], "r1c1"), g("HlsX(A)", [c(0)], "r1c1"), g("SupportX(A)", [c(0)], "4"),
+    g("ExtraX(B)", [c(0)], "r1c1"), g("HlsX(B)", [c(0)], "r1c1"), g("SupportX(B)", [c(0)], "1"),
+    g("RccY", [c(2)], "Shared-Cell"),
+    g("ExtraY(C)", [c(2)], "r1c3"), g("HlsY(C)", [c(2)], "r1c3"), g("SupportY(C)", [c(2)], "6"),
+    g("ExtraY(B)", [c(2)], "r1c3"), g("HlsY(B)", [c(2)], "r1c3"), g("SupportY(B)", [c(2)], "2"),
+    g("RccZ", [c(18)], "Shared-Cell"),
+    g("ExtraZ(A)", [c(18)], "r3c1"), g("HlsZ(A)", [c(18)], "r3c1"), g("SupportZ(A)", [c(18)], "3"),
+    g("ExtraZ(C)", [c(18)], "r3c1"), g("HlsZ(C)", [c(18)], "r3c1"), g("SupportZ(C)", [c(18)], "5"),
+    g("Targets", [c(3)], "7")
+  ], [1, 2, 3, 4, 5, 6, 7]), "不能因外翼有一个重叠格就直接标Triple-Linked"],
   ["AHS-W-Wing event partition", phase4Step("AHSWWing", "AHS-W-Wing", "Pivot-Partition", [
     g("AhsA", [c(16), c(34), c(43), c(61)], "167@c8"),
     g("PivotA", [c(8)], "1"), g("Pivot", [c(8)], "126"), g("PivotB", [c(8)], "26"),
@@ -484,6 +499,17 @@ phase4Cases.push(
     g("ExtraB", [c(44), c(53)], "2/6"), g("HlsB", [c(33), c(44), c(53)], "2/6"), g("SupportB", [c(43), c(53)], "2/6"),
     g("Targets", [c(34), c(44), c(61)], "3/6")
   ], [1, 2, 3, 6, 7, 8]), "这不是两个集合由外部强链直接连接"],
+  ["AHS-W-Wing triple linked rank zero", phase4Step("AHSWWing", "AHS-W-Wing", "Triple-Linked Rank-0 Cell Strong Inference Bivalue", [
+    g("AhsA", [c(0), c(3), c(4)], "13@r1"),
+    g("PivotA", [c(18)], "1"), g("Pivot", [c(18)], "12"), g("PivotB", [c(18)], "2"),
+    g("AhsB", [c(4), c(22), c(31)], "24@c5"),
+    g("ExtraA", [c(0)], "r1c1"), g("HlsA", [c(0)], "r1c1"), g("SupportA", [c(0)], "1"),
+    g("ExtraB", [c(22)], "r3c5"), g("HlsB", [c(22)], "r3c5"), g("SupportB", [c(22)], "2"),
+    g("RccZ", [c(4)], "Shared-Cell"),
+    g("ExtraZ(A)", [c(4)], "r1c5"), g("HlsZ(A)", [c(4)], "r1c5"), g("SupportZ(A)", [c(4)], "3"),
+    g("ExtraZ(B)", [c(4)], "r1c5"), g("HlsZ(B)", [c(4)], "r1c5"), g("SupportZ(B)", [c(4)], "4"),
+    g("Targets", [c(14)], "3")
+  ], [1, 2, 3, 4]), "端点重叠本身不能证明Rank 0"],
   ["Sue de Coq standard", phase4Step("SueDeCoq", "Sue de Coq", "Standard", [g("ActiveSector", [c(0), c(1)], "1/2/3"), g("SueB", [c(9), c(10)], "1/2"), g("SueL", [c(18)], "3/4"), g("SueInsular", [], "4")], [1, 2, 3, 4]), "候选容量等式"],
   ["Sue de Coq cannibal", phase4Step("SueDeCoq", "Cannibalized Sue de Coq", "Cannibalized", [g("ActiveSector", [c(0), c(1)], "1/2/3"), g("SueB", [c(9), c(10)], "1/2"), g("SueL", [c(18)], "2/3"), g("CannibalTargets", [c(1)], "2")], [1, 2, 3]), "Cannibalized分支要单独显示"],
 );

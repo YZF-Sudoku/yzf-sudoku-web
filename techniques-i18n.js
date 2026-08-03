@@ -346,20 +346,20 @@
       "Confirm that this is a hidden-set relation—digits confined to cells—rather than an ALS read from cell candidates."
     ),
     AHSXYWing: entry(
-      "AHS-XY-Wing links three Almost Hidden Sets with two strict rank-1 RCC events; the middle AHS is the pivot.",
-      "The two pivot-side Extra events are mutually exclusive, so at least one outer Extra event must occur and every target rejected by both outer branches can be removed.",
-      "Each RCC proves an OR relation between an outer Extra event and a pivot Extra event. When the two pivot event cell groups are disjoint and the proof resources are independent, the pivot cannot satisfy both events; therefore one outer event is forced.",
-      "1. Find the pivot AHS. 2. Verify both rank-1 RCC proofs. 3. Confirm that the pivot events are disjoint and do not reuse proof resources. 4. Intersect the eliminations from the two outer Extra-event branches.",
-      "Read the candidate-first AHS labels and house tags, then inspect both Extra events, Hall/HLS witnesses, and all valid support positions.",
-      "Two edges alone are insufficient: both RCCs must be valid, the pivot events must be mutually exclusive, and their proof resources must remain independent."
+      "AHS-XY-Wing links three Almost Hidden Sets with two strict rank-1 RCC events; an independent third outer RCC upgrades it to Triple-Linked Rank-0.",
+      "The two pivot-side Extra events are mutually exclusive, so at least one outer event occurs. With a valid independent outer RCC, the triangle collapses to two alternating global states and closes all link capacity at rank 0.",
+      "Every RCC is an OR relation between Extra events proved by Hall deficiency or exact positional HLS support. A third link counts only when the incident events and proof resources are independent and the resulting global states are feasible.",
+      "1. Find the pivot AHS. 2. Verify RCC X and Y. 3. Check pivot-event/resource independence. 4. Search for a valid independent A-C RCC Z. 5. For Triple-Linked, enumerate both alternating states and apply rank-0 eliminations; otherwise intersect the two outer branches.",
+      "Read candidate-first AHS labels and house tags, then inspect X/Y/Z Extra events, Hall/HLS witnesses, exact supports, and the separately coloured third RCC.",
+      "Visible overlap is not enough. A shared cell that can still take a digit common to both AHSs is not a Shared-Cell RCC; all links and global states must be valid."
     ),
     AHSWWing: entry(
-      "AHS-W-Wing uses one pivot cell whose entire candidate set is partitioned between two AHS endpoint events; a bivalue pivot is only the smallest special case.",
-      "Every pivot candidate assigned to side A forces the A-side Extra event, and every candidate assigned to side B forces the B-side event. Since the pivot must take one candidate, at least one endpoint event occurs.",
-      "Each endpoint is a conditional local hidden set of at most three cells. Support positions are calculated separately for each digit across all valid AHS matchings, and every pivot candidate must be covered by one side of the partition.",
-      "1. Find a pivot cell with at least two candidates. 2. Partition all its candidates between sides A and B. 3. Verify both AHS endpoints. 4. Check every digit against all exact support positions. 5. Keep eliminations common to both Extra-event branches.",
-      "The pivot's A/B candidate groups, both Extra events, local HLS cells, exact per-digit supports, and common targets are highlighted separately.",
-      "The pivot need not be bivalue. The structure fails if any pivot candidate is uncovered, any valid support position is omitted, or a pivot candidate cannot see every required support position."
+      "AHS-W-Wing partitions every candidate of one pivot cell between two AHS endpoint events; an independent direct endpoint RCC upgrades it to Triple-Linked Rank-0.",
+      "Each pivot group forces one endpoint Extra event. A direct endpoint RCC supplies the third link; when its events are independent of the pivot events, only two alternating global states remain.",
+      "Endpoint support is calculated per digit across all valid AHS matchings. Triple-Linked additionally requires a genuine rank-1 endpoint RCC, disjoint event/proof resources, and feasible rank-0 states.",
+      "1. Find and completely partition a pivot cell. 2. Verify both AHS endpoint implications. 3. Search for an independent direct endpoint RCC Z. 4. Validate both alternating states. 5. Apply their common rank-0 eliminations, or use the ordinary two-branch intersection when Z is absent.",
+      "The pivot groups and endpoint HLS supports retain their pair colours; a valid endpoint RCC Z receives a third explicit proof colour.",
+      "The pivot need not be bivalue. Triple-Linked is invalid if any pivot value is uncovered, a support is omitted, the endpoint RCC is not strict rank 1, or incident events/resources are reused."
     ),
     XChain: chainLogic(
       "X-Chain",

@@ -2080,12 +2080,15 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
   }
 
   if (kind === "AHSXYWing") {
+    const triple = /triple-linked/i.test(branch);
     const a = firstGroup(step, /^ahsa$/i), b = firstGroup(step, /^ahsb(?:\(pivot\))?$/i), c = firstGroup(step, /^ahsc$/i);
-    const rccX = firstGroup(step, /^rccx$/i), rccY = firstGroup(step, /^rccy$/i);
+    const rccX = firstGroup(step, /^rccx$/i), rccY = firstGroup(step, /^rccy$/i), rccZ = firstGroup(step, /^rccz$/i);
     const extraXA = firstGroup(step, /^extrax\(a\)$/i), hlsXA = firstGroup(step, /^hlsx\(a\)$/i), supportXA = firstGroup(step, /^supportx\(a\)$/i);
     const extraXB = firstGroup(step, /^extrax\(b\)$/i), hlsXB = firstGroup(step, /^hlsx\(b\)$/i), supportXB = firstGroup(step, /^supportx\(b\)$/i);
     const extraYC = firstGroup(step, /^extray\(c\)$/i), hlsYC = firstGroup(step, /^hlsy\(c\)$/i), supportYC = firstGroup(step, /^supporty\(c\)$/i);
     const extraYB = firstGroup(step, /^extray\(b\)$/i), hlsYB = firstGroup(step, /^hlsy\(b\)$/i), supportYB = firstGroup(step, /^supporty\(b\)$/i);
+    const extraZA = firstGroup(step, /^extraz\(a\)$/i), hlsZA = firstGroup(step, /^hlsz\(a\)$/i), supportZA = firstGroup(step, /^supportz\(a\)$/i);
+    const extraZC = firstGroup(step, /^extraz\(c\)$/i), hlsZC = firstGroup(step, /^hlsz\(c\)$/i), supportZC = firstGroup(step, /^supportz\(c\)$/i);
     const ahsLabel = (group) => `${digitText(group?.digits, "") || "?"}@${group?.houses?.join("/") || "house"}{${cellNames(group?.cells)}}`;
     const endpoint = (extra, hls, support, label) => [
       extra ? `${label}${zh ? "Extra格" : " Extra"}=${cellNames(extra.cells)}` : "",
@@ -2096,58 +2099,104 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
     const xB = endpoint(extraXB, hlsXB, supportXB, zh ? "枢纽X端" : "pivot-X");
     const yC = endpoint(extraYC, hlsYC, supportYC, zh ? "C端" : "C-side");
     const yB = endpoint(extraYB, hlsYB, supportYB, zh ? "枢纽Y端" : "pivot-Y");
+    const zA = endpoint(extraZA, hlsZA, supportZA, zh ? "A端" : "A-side");
+    const zC = endpoint(extraZC, hlsZC, supportZC, zh ? "C端" : "C-side");
     return zh ? [
-      `AHS-XY-Wing：AHS A=${ahsLabel(a)}、枢纽AHS B=${ahsLabel(b)}、AHS C=${ahsLabel(c)}；RCC X=${rccX?.tail || "高亮事件"}，RCC Y=${rccY?.tail || "高亮事件"}。`,
-      "两条RCC都是AHS的Extra事件析取，不是普通候选强链。RCC X保证A端Extra或枢纽X事件成立，RCC Y保证C端Extra或枢纽Y事件成立；枢纽的X、Y事件互斥，因此A端Extra与C端Extra至少一个成立。",
-      "记两条边为 (E_A ∨ E_BX) 与 (E_C ∨ E_BY)。若 E_BX ∧ E_BY 不可能，且两条边没有复用同一Hall/HLS证明资源，则推出 E_A ∨ E_C。分别枚举满足E_A与满足E_C的全部合法AHS匹配；两个分支都排除的候选才可删除。",
-      `① 按候选数组合与house确认A、B、C三组AHS；② 核对RCC X两端：${xA || "A端见证"}${xB ? `；${xB}` : ""}；③ 核对RCC Y两端：${yC || "C端见证"}${yB ? `；${yB}` : ""}；④ 确认枢纽事件互斥且证明资源不复用；⑤ 取两个外翼Extra分支的共同删数${targets ? `（${targets}）` : ""}。`,
-      "整格底色按RCC配对：RCC X两端的局部HLS/Hall见证格使用同一种底色，RCC Y两端使用另一种底色；同一格同时属于两条RCC时，只显示后端明确输出的双色条带。候选数颜色区分端点独有、共有及逐数字真实支撑位置。AHS本体应按“候选数组合@house”阅读，不能按格子候选并集阅读。",
-      "不能只因三组AHS之间存在两条边就判定成立。两条RCC必须各自是严格rank-1事件，枢纽事件必须互斥，且不能复用同一HLS/Hall证明资源；任何合法匹配中的支撑位置都不能漏标。",
+      `AHS-XY-Wing${triple ? " Triple-Linked Rank-0" : ""}：AHS A=${ahsLabel(a)}、枢纽AHS B=${ahsLabel(b)}、AHS C=${ahsLabel(c)}；RCC X=${rccX?.tail || "高亮事件"}，RCC Y=${rccY?.tail || "高亮事件"}${triple ? `，RCC Z=${rccZ?.tail || "高亮事件"}` : ""}。`,
+      triple
+        ? "X、Y、Z都是AHS Extra事件的独立rank-1析取。每组AHS恰有一个Extra格，同一AHS上属于两条边的事件互斥且不复用Hall/HLS证明资源，因此三角形只能落入两个交替全局状态，全部链接容量闭合为Rank 0。"
+        : "两条RCC都是AHS的Extra事件析取，不是普通候选强链。RCC X保证A端Extra或枢纽X事件成立，RCC Y保证C端Extra或枢纽Y事件成立；枢纽的X、Y事件互斥，因此A端Extra与C端Extra至少一个成立。",
+      triple
+        ? "三条边可写成(E_AX∨E_BX)、(E_CY∨E_BY)、(E_AZ∨E_CZ)。端点互斥后只剩E_AX/E_BY/E_CZ与E_AZ/E_BX/E_CY两个状态。程序对两个状态中的全部合法AHS匹配求共同结论；所有状态都不能容纳的结构内候选，以及所有状态都必被同数字看见的外部候选，均可删除。"
+        : "记两条边为 (E_A ∨ E_BX) 与 (E_C ∨ E_BY)。若 E_BX ∧ E_BY 不可能，且两条边没有复用同一Hall/HLS证明资源，则推出 E_A ∨ E_C。分别枚举满足E_A与满足E_C的全部合法AHS匹配；两个分支都排除的候选才可删除。",
+      triple
+        ? `① 按候选数组合与house确认A、B、C；② 核对RCC X：${xA || "A端见证"}${xB ? `；${xB}` : ""}；③ 核对RCC Y：${yC || "C端见证"}${yB ? `；${yB}` : ""}；④ 核对RCC Z：${zA || "A端见证"}${zC ? `；${zC}` : ""}；⑤ 确认各端点事件互斥、证明资源独立及两个全局状态可行；⑥ 应用Rank-0删数${targets ? `（${targets}）` : ""}。`
+        : `① 按候选数组合与house确认A、B、C三组AHS；② 核对RCC X两端：${xA || "A端见证"}${xB ? `；${xB}` : ""}；③ 核对RCC Y两端：${yC || "C端见证"}${yB ? `；${yB}` : ""}；④ 确认枢纽事件互斥且证明资源不复用；⑤ 取两个外翼Extra分支的共同删数${targets ? `（${targets}）` : ""}。`,
+      triple
+        ? "整格底色分别标出RCC X、Y、Z的Hall/HLS证明格；第三条RCC使用独立的后端颜色。候选色仍只标真实支撑位置、端点独有/共有候选以及删数。"
+        : "整格底色按RCC配对：RCC X两端的局部HLS/Hall见证格使用同一种底色，RCC Y两端使用另一种底色；同一格同时属于两条RCC时，只显示后端明确输出的双色条带。候选数颜色区分端点独有、共有及逐数字真实支撑位置。AHS本体应按“候选数组合@house”阅读，不能按格子候选并集阅读。",
+      triple
+        ? "不能因外翼有一个重叠格就直接标Triple-Linked。X/Y/Z必须分别是严格rank-1 RCC；若共享格仍能取两组AHS共有数字，它就不是Shared-Cell RCC。还必须验证同端事件与证明资源独立，并确认至少一个交替状态存在。"
+        : "不能只因三组AHS之间存在两条边就判定成立。两条RCC必须各自是严格rank-1事件，枢纽事件必须互斥，且不能复用同一HLS/Hall证明资源；任何合法匹配中的支撑位置都不能漏标。",
     ] : [
-      `AHS-XY-Wing: AHS A=${ahsLabel(a)}, pivot AHS B=${ahsLabel(b)}, and AHS C=${ahsLabel(c)}; RCC X=${rccX?.tail || "highlighted event"}, RCC Y=${rccY?.tail || "highlighted event"}.`,
-      "The two RCCs are AHS Extra-event disjunctions, not ordinary candidate strong links. RCC X gives A-Extra or pivot-X; RCC Y gives C-Extra or pivot-Y. The two pivot events are mutually exclusive, so A-Extra or C-Extra must hold.",
-      "Write the edges as (E_A or E_BX) and (E_C or E_BY). If E_BX and E_BY cannot both hold and the edges do not reuse the same Hall/HLS proof resource, then E_A or E_C. Enumerate every legal AHS matching under each outer event; only common eliminations are valid.",
-      `1. Verify A, B, and C by digit set and house. 2. Verify RCC X: ${xA || "A witness"}${xB ? `; ${xB}` : ""}. 3. Verify RCC Y: ${yC || "C witness"}${yB ? `; ${yB}` : ""}. 4. Check pivot-event exclusivity and proof-resource independence. 5. Keep only common branch eliminations${targets ? ` (${targets})` : ""}.`,
-      "Cell fills encode RCC pairing: every local-HLS/Hall witness cell on RCC X uses one backend fill, and every cell on RCC Y uses another. A cell in both links shows only the two colours explicitly emitted by the backend. Candidate colours distinguish endpoint-only/common digits and exact per-digit supports. Read each AHS as digits@house, not as a cell-candidate union.",
-      "Two visible links are not enough. Both must be strict rank-1 events, the pivot events must be disjoint, proof resources must not be reused, and no support position from a legal matching may be omitted.",
+      `AHS-XY-Wing${triple ? " Triple-Linked Rank-0" : ""}: AHS A=${ahsLabel(a)}, pivot AHS B=${ahsLabel(b)}, and AHS C=${ahsLabel(c)}; RCC X=${rccX?.tail || "highlighted event"}, RCC Y=${rccY?.tail || "highlighted event"}${triple ? `, RCC Z=${rccZ?.tail || "highlighted event"}` : ""}.`,
+      triple
+        ? "X, Y, and Z are independent rank-1 AHS Extra-event disjunctions. Each AHS has exactly one Extra cell; incident events and Hall/HLS proof resources are disjoint, so the triangle has only two alternating global states and closes to rank 0."
+        : "The two RCCs are AHS Extra-event disjunctions, not ordinary candidate strong links. RCC X gives A-Extra or pivot-X; RCC Y gives C-Extra or pivot-Y. The two pivot events are mutually exclusive, so A-Extra or C-Extra must hold.",
+      triple
+        ? "Write the edges as (E_AX or E_BX), (E_CY or E_BY), and (E_AZ or E_CZ). Endpoint exclusivity leaves only the two alternating states E_AX/E_BY/E_CZ and E_AZ/E_BX/E_CY. Enumerate every legal AHS matching in both states; remove internal candidates absent from all states and external candidates seen by the digit in every state."
+        : "Write the edges as (E_A or E_BX) and (E_C or E_BY). If E_BX and E_BY cannot both hold and the edges do not reuse the same Hall/HLS proof resource, then E_A or E_C. Enumerate every legal AHS matching under each outer event; only common eliminations are valid.",
+      triple
+        ? `1. Verify A, B, and C by digit set and house. 2. Verify RCC X: ${xA || "A witness"}${xB ? `; ${xB}` : ""}. 3. Verify RCC Y: ${yC || "C witness"}${yB ? `; ${yB}` : ""}. 4. Verify RCC Z: ${zA || "A witness"}${zC ? `; ${zC}` : ""}. 5. Check incident-event/resource independence and global-state feasibility. 6. Apply rank-0 eliminations${targets ? ` (${targets})` : ""}.`
+        : `1. Verify A, B, and C by digit set and house. 2. Verify RCC X: ${xA || "A witness"}${xB ? `; ${xB}` : ""}. 3. Verify RCC Y: ${yC || "C witness"}${yB ? `; ${yB}` : ""}. 4. Check pivot-event exclusivity and proof-resource independence. 5. Keep only common branch eliminations${targets ? ` (${targets})` : ""}.`,
+      triple
+        ? "Cell fills separately mark the Hall/HLS proof cells of RCC X, Y, and Z; the third RCC uses its own backend colour. Candidate colours still mark exact supports, endpoint-only/common candidates, and eliminations."
+        : "Cell fills encode RCC pairing: every local-HLS/Hall witness cell on RCC X uses one backend fill, and every cell on RCC Y uses another. A cell in both links shows only the two colours explicitly emitted by the backend. Candidate colours distinguish endpoint-only/common digits and exact per-digit supports. Read each AHS as digits@house, not as a cell-candidate union.",
+      triple
+        ? "Do not label Triple-Linked from a visible outer overlap alone. X/Y/Z must each be a strict rank-1 RCC. A shared cell that can still take a digit common to both AHSs is not a Shared-Cell RCC. Incident events/resources must be independent and at least one alternating state must be feasible."
+        : "Two visible links are not enough. Both must be strict rank-1 events, the pivot events must be disjoint, proof resources must not be reused, and no support position from a legal matching may be omitted.",
     ];
   }
 
   if (kind === "AHSWWing") {
+    const triple = /triple-linked/i.test(branch);
     const a = firstGroup(step, /^ahsa$/i), b = firstGroup(step, /^ahsb$/i), pivot = firstGroup(step, /^pivot$/i);
     const pivotA = firstGroup(step, /^pivota$/i), pivotB = firstGroup(step, /^pivotb$/i);
     const extraA = firstGroup(step, /^extraa$/i), hlsA = firstGroup(step, /^hlsa$/i), supportA = firstGroup(step, /^supporta$/i);
     const extraB = firstGroup(step, /^extrab$/i), hlsB = firstGroup(step, /^hlsb$/i), supportB = firstGroup(step, /^supportb$/i);
+    const rccZ = firstGroup(step, /^rccz$/i);
+    const extraZA = firstGroup(step, /^extraz\(a\)$/i), hlsZA = firstGroup(step, /^hlsz\(a\)$/i), supportZA = firstGroup(step, /^supportz\(a\)$/i);
+    const extraZB = firstGroup(step, /^extraz\(b\)$/i), hlsZB = firstGroup(step, /^hlsz\(b\)$/i), supportZB = firstGroup(step, /^supportz\(b\)$/i);
     const ahsLabel = (group) => `${digitText(group?.digits, "") || "?"}@${group?.houses?.join("/") || "house"}{${cellNames(group?.cells)}}`;
     const aGroup = digitText(pivotA?.digits) || "?";
     const bGroup = digitText(pivotB?.digits) || "?";
     const pivotDigits = digitText(pivot?.digits) || `${aGroup}/${bGroup}`;
-    const aWitness = [
-      extraA ? `${zh ? "Extra格" : "Extra cells"}=${cellNames(extraA.cells)}` : "",
-      hlsA ? `${zh ? "局部HLS格组" : "local HLS"}=${cellNames(hlsA.cells)}` : "",
-      supportA ? `${zh ? "逐数字支撑" : "per-digit support"}=${digitText(supportA.digits)}@${cellNames(supportA.cells)}` : "",
+    const endpointWitness = (extra, hls, support) => [
+      extra ? `${zh ? "Extra格" : "Extra cells"}=${cellNames(extra.cells)}` : "",
+      hls ? `${zh ? "局部HLS格组" : "local HLS"}=${cellNames(hls.cells)}` : "",
+      support ? `${zh ? "支撑位置" : "support positions"}=${digitText(support.digits)}@${cellNames(support.cells)}` : "",
     ].filter(Boolean).join(zh ? "，" : ", ");
-    const bWitness = [
-      extraB ? `${zh ? "Extra格" : "Extra cells"}=${cellNames(extraB.cells)}` : "",
-      hlsB ? `${zh ? "局部HLS格组" : "local HLS"}=${cellNames(hlsB.cells)}` : "",
-      supportB ? `${zh ? "逐数字支撑" : "per-digit support"}=${digitText(supportB.digits)}@${cellNames(supportB.cells)}` : "",
-    ].filter(Boolean).join(zh ? "，" : ", ");
+    const aWitness = endpointWitness(extraA, hlsA, supportA);
+    const bWitness = endpointWitness(extraB, hlsB, supportB);
+    const zAWitness = endpointWitness(extraZA, hlsZA, supportZA);
+    const zBWitness = endpointWitness(extraZB, hlsZB, supportZB);
     return zh ? [
-      `AHS-W-Wing：AHS A=${ahsLabel(a)}，单格枢纽${cellNames(pivot?.cells)}{${pivotDigits}}的全部候选完整分为A端组${aGroup}与B端组${bGroup}，AHS B=${ahsLabel(b)}。`,
-      "这不是两个集合由外部强链直接连接。枢纽中每个候选都被指派到一侧AHS端点，并且必须看见该侧支撑数字在全部合法匹配中的所有位置；枢纽取该候选时，会排除这些支撑位置并强制相应AHS的Extra事件。",
-      `令枢纽候选集P=P_A∪P_B且无遗漏。对任意p∈P_A有p⇒E_A，对任意p∈P_B有p⇒E_B；枢纽必取P中的一个候选，所以E_A∨E_B。分别枚举E_A与E_B条件下的全部合法AHS匹配，两个分支共同排除的目标为假。双值枢纽只是|P_A|=|P_B|=1的最小特例。`,
-      `① 按候选数组合与house确认两端AHS；② 确认枢纽${cellNames(pivot?.cells)}的候选${pivotDigits}被完整分成${aGroup}|${bGroup}；③ 核对A端${aWitness || "HLS与支撑"}；④ 核对B端${bWitness || "HLS与支撑"}；⑤ 比较两个Extra事件分支并保留共同删数${targets ? `（${targets}）` : ""}。`,
-      "整格底色按枢纽配对：A端局部HLS与枢纽同用第一种底色，B端局部HLS与枢纽同用第二种底色，枢纽因同时连接两端而显示后端明确输出的双色条带。候选数颜色只标逐数字真实支撑位置，枢纽候选按A/B分组单独着色。不要把HLS格组、支撑候选和AHS本体混成一个普通集合节点。",
-      "枢纽不要求恰好双值，但其每个候选必须归入至少一侧且最终分组完整。每个枢纽候选都必须看见所属端支撑数字的全部有效位置；漏掉合法匹配位置、只存在普通弱可见关系或直接套普通W-Wing强链模板，结构都不成立。",
+      `AHS-W-Wing${triple ? " Triple-Linked Rank-0" : ""}：AHS A=${ahsLabel(a)}，单格枢纽${cellNames(pivot?.cells)}{${pivotDigits}}的全部候选完整分为A端组${aGroup}与B端组${bGroup}，AHS B=${ahsLabel(b)}${triple ? `；端点RCC Z=${rccZ?.tail || "高亮事件"}` : ""}。`,
+      triple
+        ? "枢纽候选分组给出A、B两条条件Extra链接，端点RCC Z再给出第三条独立rank-1析取。同一端点的枢纽事件与Z事件互斥，因此只剩“枢纽取A组、B走Z”和“枢纽取B组、A走Z”两个交替状态，结构闭合为Rank 0。"
+        : "这不是两个集合由外部强链直接连接。枢纽中每个候选都被指派到一侧AHS端点，并且必须看见该侧支撑数字在全部合法匹配中的所有位置；枢纽取该候选时，会排除这些支撑位置并强制相应AHS的Extra事件。",
+      triple
+        ? "令枢纽分组为P_A、P_B，端点RCC为E_AZ∨E_BZ。P_A分支强制E_A并排除E_AZ，所以必须E_BZ；P_B分支同理必须E_AZ。程序枚举两个状态下的枢纽取值与AHS匹配，所有状态共同排除的候选为假。"
+        : "令枢纽候选集P=P_A∪P_B且无遗漏。对任意p∈P_A有p⇒E_A，对任意p∈P_B有p⇒E_B；枢纽必取P中的一个候选，所以E_A∨E_B。分别枚举E_A与E_B条件下的全部合法AHS匹配，两个分支共同排除的目标为假。双值枢纽只是|P_A|=|P_B|=1的最小特例。",
+      triple
+        ? `① 按候选数组合与house确认两端AHS；② 确认枢纽${cellNames(pivot?.cells)}候选${pivotDigits}完整分成${aGroup}|${bGroup}；③ 核对A端${aWitness || "HLS与支撑"}；④ 核对B端${bWitness || "HLS与支撑"}；⑤ 核对RCC Z的A端${zAWitness || "见证"}与B端${zBWitness || "见证"}；⑥ 验证端点事件独立与两个全局状态后应用删数${targets ? `（${targets}）` : ""}。`
+        : `① 按候选数组合与house确认两端AHS；② 确认枢纽${cellNames(pivot?.cells)}的候选${pivotDigits}被完整分成${aGroup}|${bGroup}；③ 核对A端${aWitness || "HLS与支撑"}；④ 核对B端${bWitness || "HLS与支撑"}；⑤ 比较两个Extra事件分支并保留共同删数${targets ? `（${targets}）` : ""}。`,
+      triple
+        ? "A、B端局部HLS与枢纽继续使用两种配对底色；第三条端点RCC Z使用独立底色标出Hall/HLS见证。候选色只标真实逐数字支撑、枢纽分组与删数。"
+        : "整格底色按枢纽配对：A端局部HLS与枢纽同用第一种底色，B端局部HLS与枢纽同用第二种底色，枢纽因同时连接两端而显示后端明确输出的双色条带。候选数颜色只标逐数字真实支撑位置，枢纽候选按A/B分组单独着色。不要把HLS格组、支撑候选和AHS本体混成一个普通集合节点。",
+      triple
+        ? "除完整覆盖枢纽候选外，RCC Z必须是真实rank-1关系；同端枢纽事件与Z事件及其证明资源必须互斥、独立，两个全局状态至少一个可行。端点重叠本身不能证明Rank 0。"
+        : "枢纽不要求恰好双值，但其每个候选必须归入至少一侧且最终分组完整。每个枢纽候选都必须看见所属端支撑数字的全部有效位置；漏掉合法匹配位置、只存在普通弱可见关系或直接套普通W-Wing强链模板，结构都不成立。",
     ] : [
-      `AHS-W-Wing: AHS A=${ahsLabel(a)}; every candidate of single-cell pivot ${cellNames(pivot?.cells)}{${pivotDigits}} is partitioned into A-side ${aGroup} and B-side ${bGroup}; AHS B=${ahsLabel(b)}.`,
-      "This is not two set nodes joined directly by an external strong link. Every pivot value is assigned to an AHS endpoint and must see every valid support position for that endpoint; taking the value removes those supports and forces the endpoint Extra-event.",
-      "Let P=P_A union P_B with no uncovered pivot value. For p in P_A, p implies E_A; for p in P_B, p implies E_B. The pivot takes one value, hence E_A or E_B. Enumerate every legal AHS matching under each event; only eliminations common to both branches are valid. A bivalue pivot is only the smallest |P_A|=|P_B|=1 case.",
-      `1. Verify both AHS endpoints by digit set and house. 2. Confirm pivot ${cellNames(pivot?.cells)} candidates ${pivotDigits} are completely partitioned as ${aGroup}|${bGroup}. 3. Verify A-side ${aWitness || "HLS and supports"}. 4. Verify B-side ${bWitness || "HLS and supports"}. 5. Keep only common Extra-branch eliminations${targets ? ` (${targets})` : ""}.`,
-      "Cell fills encode pivot pairing: the A-side local HLS and pivot share one backend fill, and the B-side local HLS and pivot share another; the pivot therefore shows both explicit backend bands. Candidate colours mark exact per-digit supports and pivot candidates by side. Do not merge HLS cells, supports, and the AHS body into one ordinary set node.",
-      "The pivot need not be bivalue, but every value must be covered by the complete partition. Each value must see every valid support position of its assigned endpoint. Missing a legal support, having only an ordinary weak visibility relation, or reusing an ordinary W-Wing strong-link template invalidates the structure.",
+      `AHS-W-Wing${triple ? " Triple-Linked Rank-0" : ""}: AHS A=${ahsLabel(a)}; every candidate of single-cell pivot ${cellNames(pivot?.cells)}{${pivotDigits}} is partitioned into A-side ${aGroup} and B-side ${bGroup}; AHS B=${ahsLabel(b)}${triple ? `; endpoint RCC Z=${rccZ?.tail || "highlighted event"}` : ""}.`,
+      triple
+        ? "The pivot partition supplies two conditional Extra links and endpoint RCC Z supplies the third independent rank-1 disjunction. At each endpoint the pivot event and Z event are mutually exclusive, leaving only pivot-A with B-Z or pivot-B with A-Z; the structure closes to rank 0."
+        : "This is not two set nodes joined directly by an external strong link. Every pivot value is assigned to an AHS endpoint and must see every valid support position for that endpoint; taking the value removes those supports and forces the endpoint Extra-event.",
+      triple
+        ? "Let the pivot groups be P_A and P_B and the endpoint RCC be E_AZ or E_BZ. A P_A value forces E_A and excludes E_AZ, hence E_BZ; the P_B branch symmetrically forces E_AZ. Enumerate pivot values and AHS matchings in both states; candidates excluded by every state are false."
+        : "Let P=P_A union P_B with no uncovered pivot value. For p in P_A, p implies E_A; for p in P_B, p implies E_B. The pivot takes one value, hence E_A or E_B. Enumerate every legal AHS matching under each event; only eliminations common to both branches are valid. A bivalue pivot is only the smallest |P_A|=|P_B|=1 case.",
+      triple
+        ? `1. Verify both AHSs by digit set and house. 2. Confirm pivot ${cellNames(pivot?.cells)} candidates ${pivotDigits} are fully partitioned as ${aGroup}|${bGroup}. 3. Verify A-side ${aWitness || "HLS and supports"}. 4. Verify B-side ${bWitness || "HLS and supports"}. 5. Verify RCC Z at A (${zAWitness || "witness"}) and B (${zBWitness || "witness"}). 6. Check event/resource independence and global-state feasibility, then apply eliminations${targets ? ` (${targets})` : ""}.`
+        : `1. Verify both AHS endpoints by digit set and house. 2. Confirm pivot ${cellNames(pivot?.cells)} candidates ${pivotDigits} are completely partitioned as ${aGroup}|${bGroup}. 3. Verify A-side ${aWitness || "HLS and supports"}. 4. Verify B-side ${bWitness || "HLS and supports"}. 5. Keep only common Extra-branch eliminations${targets ? ` (${targets})` : ""}.`,
+      triple
+        ? "The A/B local HLS groups and pivot retain their two pair fills; endpoint RCC Z uses an independent fill for its Hall/HLS witness. Candidate colours mark only exact supports, pivot groups, and eliminations."
+        : "Cell fills encode pivot pairing: the A-side local HLS and pivot share one backend fill, and the B-side local HLS and pivot share another; the pivot therefore shows both explicit backend bands. Candidate colours mark exact per-digit supports and pivot candidates by side. Do not merge HLS cells, supports, and the AHS body into one ordinary set node.",
+      triple
+        ? "Besides complete pivot coverage, RCC Z must be a genuine rank-1 relation. The pivot and Z events/resources at each endpoint must be disjoint and independent, and at least one global state must be feasible. Endpoint overlap alone does not prove rank 0."
+        : "The pivot need not be bivalue, but every value must be covered by the complete partition. Each value must see every valid support position of its assigned endpoint. Missing a legal support, having only an ordinary weak visibility relation, or reusing an ordinary W-Wing strong-link template invalidates the structure.",
     ];
   }
+
 
   if (kind === "AHSXZ") {
     const a = firstGroup(step, /^ahsa$/i), b = firstGroup(step, /^ahsb$/i), rcc = firstGroup(step, /^rcc$/i);
