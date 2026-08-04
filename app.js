@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-00cc10fa7274d5df";
+import createModule from "./sudoku_wasm.js?v=wasm-42476e53915856f3";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -43,7 +43,7 @@ import {
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
 
-const APP_VERSION = "wasm-00cc10fa7274d5df";
+const APP_VERSION = "wasm-42476e53915856f3";
 const UI_RELEASE_VERSION = "ui-20260801-manual-entry-hybrid-input";
 const MANUAL_VERSION = "manual-20260801-manual-entry-hybrid-input";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
@@ -1222,7 +1222,8 @@ for (const [key, zh, en] of [
   ["tlgLinkRemoved", "已移除 link：{value}", "Removed link: {value}"],
   ["tlgCellTruthAdded", "已添加 cell truth：{value}", "Added cell truth: {value}"],
   ["tlgCellTruthRemoved", "已移除 cell truth：{value}", "Removed cell truth: {value}"],
-  ["tlgTruthPairInvalid", "未添加 truth：Truth 模式只接受同一单元格的两个不同候选，或同一 house 中同数字的两个候选。", "Truth not added: Truth mode only accepts two different candidates in one cell, or two same-digit candidates in one house."],
+  ["tlgTruthPairInvalid", "未添加 Truth：Truth 模式只接受同一单元格的两个不同候选，或同一 house 中同数字的两个候选。", "Truth not added: Truth mode only accepts two different candidates in one cell, or two same-digit candidates in one house."],
+  ["tlgLinkPairInvalid", "未添加 Link：双端点必须能唯一识别同一个标准 Link（同格不同数字，或同行/同列/同宫同数字），并且至少一端是当前 Truth 或 Virtual Set 候选。另一端可以在结构外，作为潜在删数。", "Link not added: the endpoints must uniquely identify one standard Link (different digits in one cell, or the same digit in one row, column, or box), and at least one endpoint must be a current Truth or Virtual Set candidate. The other endpoint may remain outside the structure footprint as a potential elimination."],
   ["tlgUnavailable", "tlgSolverFindEliminationsV440 不可用；应用 v440/v441 后需要重新编译 wasm。", "tlgSolverFindEliminationsV440 is not available; rebuild wasm after applying v440/v441."],
   ["tlgResponse", "TLG Solver 响应", "TLG Solver response"],
   ["tlgParseFailed", "TLG_SOLVER_RESPONSE_PARSE_FAILED", "TLG_SOLVER_RESPONSE_PARSE_FAILED"],
@@ -13483,6 +13484,7 @@ function installTlgCandidateProtectedTouch(candidate, cellIndex) {
 
 let tlgContextMenuNode = null;
 let tlgContextMenuListenersInstalled = false;
+let tlgContextMenuScrollGuardUntil = 0;
 
 function tlgSelectedCandidatePoints() {
   return [...tlgSolverState.selectedCandidates].map((key) => {
@@ -13562,6 +13564,55 @@ function tlgDescriptorForCandidate(cellIndex, digit, family) {
   return "";
 }
 
+function tlgCandidateMatchesDescriptor(cellIndex, digit, rawDescriptor) {
+  const descriptor = tlgCanonicalDescriptor(rawDescriptor);
+  const match = /^([1-9])([rcnb])([1-9])$/.exec(descriptor);
+  if (!match) return false;
+  const first = Number(match[1]);
+  const family = match[2];
+  const last = Number(match[3]);
+  const row = Math.floor(cellIndex / 9) + 1;
+  const column = (cellIndex % 9) + 1;
+  if (family === "r") return digit === first && row === last;
+  if (family === "c") return digit === first && column === last;
+  if (family === "b") return digit === first && tlgSolverBoxIndex(cellIndex) === last;
+  return row === first && column === last;
+}
+
+function tlgCandidateIsCurrentTruthMember(cellIndex, digit) {
+  return (tlgSolverState.truths || []).some((truth) =>
+    tlgCandidateMatchesDescriptor(cellIndex, digit, truth));
+}
+
+function tlgCandidateIsCurrentVirtualSetMember(cellIndex, digit) {
+  const key = tlgSolverCandidateKey(cellIndex, digit);
+  return (tlgSolverState.virtualSets || []).some((group) => group?.has?.(key));
+}
+
+function tlgCandidateIsCurrentLinkAnchor(cellIndex, digit) {
+  return tlgCandidateIsCurrentTruthMember(cellIndex, digit) ||
+    tlgCandidateIsCurrentVirtualSetMember(cellIndex, digit);
+}
+
+function tlgLinkDescriptorHasCurrentAnchorMember(rawDescriptor) {
+  const descriptor = tlgCanonicalDescriptor(rawDescriptor);
+  if (!descriptor) return false;
+  const activeKeys = tlgSolverState.candidateGrid?.activeCandidates
+    ? [...tlgSolverState.candidateGrid.activeCandidates]
+    : (tlgSolverEffectiveSnapshot()?.cells || []).flatMap((cell, cellIndex) => {
+        if (Number(cell?.value || 0) > 0) return [];
+        return (Array.isArray(cell?.candidates) ? cell.candidates : [])
+          .map((digit) => tlgSolverCandidateKey(cellIndex, Number(digit)));
+      });
+  return activeKeys.some((key) => {
+    const [cellText, digitText] = String(key).split(":");
+    const cellIndex = Number(cellText);
+    const digit = Number(digitText);
+    return tlgCandidateMatchesDescriptor(cellIndex, digit, descriptor) &&
+      tlgCandidateIsCurrentLinkAnchor(cellIndex, digit);
+  });
+}
+
 function tlgBatchToggleDescriptors(kind, tokens, label = kind) {
   const normalizedState = tlgCanonicalDescriptorState(
     kind === "links" ? tlgSolverState.links : tlgSolverState.truths,
@@ -13575,6 +13626,15 @@ function tlgBatchToggleDescriptors(kind, tokens, label = kind) {
   const tokenSet = new Set(normalized);
   const existing = new Set(target.map(tlgCanonicalDescriptor).filter(Boolean));
   const remove = normalized.every((token) => existing.has(token));
+  if (kind === "links" && !remove) {
+    const accepted = normalized.filter((token) =>
+      existing.has(token) || tlgLinkDescriptorHasCurrentAnchorMember(token));
+    if (!accepted.length) {
+      setTlgSolverStatus(ui("tlgLinkPairInvalid"), "error");
+      return;
+    }
+    normalized.splice(0, normalized.length, ...accepted);
+  }
   let changedCount = 0;
   if (remove) {
     const next = target.filter((item) => {
@@ -13761,7 +13821,29 @@ function installTlgContextMenuListeners() {
   });
   window.addEventListener("blur", closeTlgSolverContextMenu);
   window.addEventListener("resize", closeTlgSolverContextMenu);
-  window.addEventListener("scroll", closeTlgSolverContextMenu, true);
+  window.addEventListener("scroll", () => {
+    // Opening the menu updates selection/status and may cause the controls
+    // scroller to settle by a few pixels.  That programmatic scroll must not
+    // kill the menu; genuine user scrolling after the short opening window
+    // still closes it normally.
+    if (tlgContextMenuNode && performance.now() < tlgContextMenuScrollGuardUntil) return;
+    closeTlgSolverContextMenu();
+  }, true);
+}
+
+function refreshTlgSolverSelectionMarksWithoutRender() {
+  document.querySelectorAll("#board .candidate[data-digit]").forEach((node) => {
+    const cellNode = node.closest(".sudoku-cell[data-cell-index]");
+    const cellIndex = Number(cellNode?.dataset?.cellIndex);
+    const digit = Number(node.dataset.digit || 0);
+    const key = tlgSolverCandidateKey(cellIndex, digit);
+    node.classList.toggle("tlg-selected-candidate", tlgSolverState.selectedCandidates.has(key));
+    const endpoint = tlgSolverState.selectedEndpoint;
+    node.classList.toggle(
+      "tlg-selected-endpoint",
+      !!endpoint && endpoint.cellIndex === cellIndex && endpoint.digit === digit,
+    );
+  });
 }
 
 function openTlgSolverContextMenu(cellIndex, digit, event, candidate) {
@@ -13775,6 +13857,7 @@ function openTlgSolverContextMenu(cellIndex, digit, event, candidate) {
   if (!tlgSolverCellAcceptsInput(cellIndex)) return true;
   if (!digit || !candidate?.textContent?.trim()) return true;
   installTlgContextMenuListeners();
+  tlgContextMenuScrollGuardUntil = performance.now() + 250;
 
   const key = tlgSolverCandidateKey(cellIndex, digit);
   const additive = !!(event?.ctrlKey || event?.metaKey);
@@ -13784,7 +13867,11 @@ function openTlgSolverContextMenu(cellIndex, digit, event, candidate) {
   }
   tlgSolverState.selectedEndpoint = null;
   selectedIndex = cellIndex;
-  renderBoardSnapshot(currentSnapshot, currentHint);
+  // Opening a menu must not rebuild the board: renderBoardSnapshot can emit an
+  // internal scroll event, and the global scroll-to-close handler would remove
+  // the menu immediately.  Selection marks are purely visual, so refresh them
+  // in place and keep normal user-scroll closing intact.
+  refreshTlgSolverSelectionMarksWithoutRender();
 
   const points = tlgSelectedCandidatePoints();
   const root = document.createElement("div");
@@ -13859,23 +13946,54 @@ function openTlgSolverContextMenu(cellIndex, digit, event, candidate) {
 function inferTlgSetFromEndpoints(a, b, mode) {
   const ar = Math.floor(a.cellIndex / 9), ac = a.cellIndex % 9;
   const br = Math.floor(b.cellIndex / 9), bc = b.cellIndex % 9;
+  const sameCandidate = a.cellIndex === b.cellIndex && a.digit === b.digit;
   const sameCell = a.cellIndex === b.cellIndex;
   const sameDigit = a.digit === b.digit;
   const sameRow = ar === br;
   const sameCol = ac === bc;
   const sameBox = tlgSolverBoxIndex(a.cellIndex) === tlgSolverBoxIndex(b.cellIndex);
   if (mode === "links") {
+    // Geometry is inferred independently here.  The caller then requires at
+    // least one selected endpoint to be a current Truth candidate; the other
+    // endpoint may remain outside Truths as a potential elimination.
+    if (sameCandidate) return "";
     const forced = tlgSolverLinkType?.value || "auto";
-    if ((forced === "cell" || forced === "auto") && sameCell) {
+    if (forced === "cell") {
+      return sameCell && !sameDigit
+        ? `cell-link:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`
+        : "";
+    }
+    if (forced === "row") {
+      return sameDigit && sameRow
+        ? `row-link:r${ar + 1}:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`
+        : "";
+    }
+    if (forced === "column") {
+      return sameDigit && sameCol
+        ? `column-link:c${ac + 1}:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`
+        : "";
+    }
+    if (forced === "box") {
+      return sameDigit && sameBox
+        ? `box-link:b${tlgSolverBoxIndex(a.cellIndex)}:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`
+        : "";
+    }
+    if (sameCell && !sameDigit) {
       return `cell-link:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
     }
-    if (forced === "box" && sameBox) return `box-link:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
-    if (sameRow) return `row-link:r${ar + 1}:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
-    if (sameCol) return `column-link:c${ac + 1}:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
-    if (sameBox) return `box-link:b${tlgSolverBoxIndex(a.cellIndex)}:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
-    return `link:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
+    if (sameDigit && sameRow) {
+      return `row-link:r${ar + 1}:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
+    }
+    if (sameDigit && sameCol) {
+      return `column-link:c${ac + 1}:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
+    }
+    if (sameDigit && sameBox) {
+      return `box-link:b${tlgSolverBoxIndex(a.cellIndex)}:${tlgSolverNrc(a.cellIndex, a.digit)}~${tlgSolverNrc(b.cellIndex, b.digit)}`;
+    }
+    return "";
   }
-  if (sameCell) return `cell-truth:${tlgSolverCellText(a.cellIndex)}`;
+  if (sameCandidate) return "";
+  if (sameCell && !sameDigit) return `cell-truth:${tlgSolverCellText(a.cellIndex)}`;
   if (sameDigit && sameRow) return `row-truth:${a.digit}r${ar + 1}`;
   if (sameDigit && sameCol) return `column-truth:${a.digit}c${ac + 1}`;
   if (sameDigit && sameBox) return `box-truth:${a.digit}b${tlgSolverBoxIndex(a.cellIndex)}`;
@@ -13995,12 +14113,18 @@ function handleTlgSolverCandidateClick(cellIndex, digit, event, candidate) {
     updateTlgSolverUi();
     return true;
   }
-  const value = inferTlgSetFromEndpoints(tlgSolverState.selectedEndpoint, point, mode);
-  if (!value) {
+  const firstEndpoint = tlgSolverState.selectedEndpoint;
+  const value = inferTlgSetFromEndpoints(firstEndpoint, point, mode);
+  const linkHasAnchorEndpoint = mode !== "links" ||
+    tlgCandidateIsCurrentLinkAnchor(firstEndpoint.cellIndex, firstEndpoint.digit) ||
+    tlgCandidateIsCurrentLinkAnchor(point.cellIndex, point.digit);
+  if (!value || !linkHasAnchorEndpoint) {
     tlgSolverState.selectedEndpoint = null;
-    setTlgSolverStatus(ui("tlgTruthPairInvalid"), "error");
     renderBoardSnapshot(currentSnapshot, currentHint);
     updateTlgSolverUi();
+    // Rendering refreshes the TLG state summary; publish the validation error
+    // afterwards so it is not replaced by the previous endpoint message.
+    setTlgSolverStatus(ui(mode === "links" ? "tlgLinkPairInvalid" : "tlgTruthPairInvalid"), "error");
     return true;
   }
   const added = mode === "links" ? toggleTlgDescriptorValue(tlgSolverState.links, value, "links") : toggleTlgDescriptorValue(tlgSolverState.truths, value, "truths");

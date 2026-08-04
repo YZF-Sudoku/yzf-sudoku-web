@@ -1590,7 +1590,8 @@
 <ul>
 <li><strong>推荐默认：</strong>先保持用户 Links 为空，让程序自动生成；这是增加 Truth 后反复查找时最稳妥的工作流。</li>
 <li><strong>显式 Link：</strong>只有在复现指定 TLG、限制搜索结构或人工整理 Rank 时才输入。House Link 通常应由同数字候选定义；Cell Link 由同一格内不同候选定义。</li>
-<li><strong>两端点输入：</strong>切换到 Links 模式，选择 Link 类型，再点两个候选。自动模式优先把同格端点解释为 Cell Link；否则按共享行、列、宫解释。</li>
+<li><strong>两端点输入：</strong>切换到 Links 模式，选择 Link 类型，再点两个候选。自动模式优先把同格不同数字解释为 Cell Link；否则要求同数字并按共享行、列、宫解释。两个端点只用于识别描述符，<strong>不要求属于 Truth</strong>；允许一端在 Truth 外。</li>
+<li><strong>待用 Link：</strong>人工建模不按“当前是否立刻产生删数”设门禁。暂时与 Truth 不相交的 Link 也会保留，方便随后补充 Truth；右键或长按单个候选后，可直接按行、列、单元格或宫添加描述符。只有执行“移除未使用 Links”时，程序才会按完整证明等价性主动精简。</li>
 <li><strong>批量输入更可靠：</strong>批选后从菜单明确选择行/列/单元格/宫，避免端点几何存在多种解释。</li>
 <li>只要存在一个用户 Link，本轮查找就不会自动混入其它 Links。需要自动模式时必须把用户 Links 删到 0。</li>
 </ul>
@@ -1840,7 +1841,8 @@ GUR 枚举约束 = 1
 <ul>
 <li><strong>Recommended default:</strong> leave User Links empty and let the engine derive them.</li>
 <li><strong>Explicit Links:</strong> use for reproducing a specified TLG, constraining the structure, or manual Rank cleanup. House Links normally use same-digit candidates; a Cell Link uses candidates in one cell.</li>
-<li><strong>Endpoint input:</strong> switch to Links, select Link Type, and click two candidates. Auto prioritizes a Cell Link for one-cell endpoints and otherwise interprets shared geometry.</li>
+<li><strong>Endpoint input:</strong> switch to Links, select Link Type, and click two candidates. Auto treats different digits in one cell as a Cell Link; otherwise the endpoints must use the same digit and share a row, column, or box. Endpoints only identify the descriptor and <strong>do not need to belong to a Truth</strong>; one endpoint may be outside the Truth footprint.</li>
+<li><strong>Pending Links:</strong> manual construction is not gated by whether a Link produces an immediate conclusion. A Link with no current Truth intersection is retained so that Truths may be added later. Right-click or long-press one candidate to add a row, column, cell, or box descriptor directly. Only the explicit Remove Unused Links action prunes Links after proof-equivalence checking.</li>
 <li><strong>Batch input is safer:</strong> explicitly choose Row/Column/Cell/Box when geometry could be ambiguous.</li>
 <li>One User Link is enough to disable automatic Link mixing for that Find. Delete all User Links to restore automatic mode.</li>
 </ul>
