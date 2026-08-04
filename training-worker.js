@@ -8,9 +8,9 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-c19313e4edd31e22";
+import createModule from "./sudoku_wasm.js?v=wasm-00cc10fa7274d5df";
 
-const APP_VERSION = "wasm-c19313e4edd31e22";
+const APP_VERSION = "wasm-00cc10fa7274d5df";
 
 let enginePromise = null;
 
@@ -39,7 +39,7 @@ self.addEventListener("message", async (event) => {
     applyTechniqueConfig(engine, message.techniqueConfig);
     const textFilter = message.textFilter && typeof message.textFilter === "object"
       ? message.textFilter
-      : { includeText: "", excludeText: "", caseSensitive: false, otp: false };
+      : { includeText: "", excludeText: "", caseSensitive: false, findAll: true, otp: false };
     const filteredMethod = message.summary
       ? "generate_training_puzzle_summary_filtered_json"
       : "generate_training_puzzle_filtered_json";

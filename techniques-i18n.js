@@ -255,7 +255,14 @@
     ),
     AvoidableRectangle: uniqueness("Avoidable Rectangle", "rectangle that may include solved values"),
     UniqueRectangle: uniqueness("Unique Rectangle", "four-cell two-digit rectangle in two rows, two columns, and two boxes"),
-    UniqueLoop: uniqueness("Unique Loop", "closed alternating loop of bivalue cells"),
+    UniqueLoop: entry(
+      "A Unique Loop is a connected even bipartite cycle for one deadly digit pair; every participating row, column, or box contains exactly two body cells.",
+      "If only the deadly pair remained on the loop, the two digits could alternate in two interchangeable completions. Ordinary Types 1–4 use internal escape candidates; External Guardians prove that at least one escape outside the loop is true.",
+      "Every body cell must contain the deadly pair in both base_cand and the current candidates; extra candidates are allowed, but either deadly digit may not be missing. For a declared GuardianCover family, assuming all external deadly-digit Guardians false leaves only the two body cells as positions for both digits in every cover house. House completeness forces the pair, and connected bipartiteness leaves the two complementary colourings. External Tests 1, 2/4, 3, 3H and External XY-Wing then combine that guardian disjunction with a forced guardian cell, common visibility, naked-subset capacity, hidden-subset capacity, or two bivalue wings.",
+      "1. Verify the complete deadly pair in both base_cand and current candidates. 2. Confirm an even connected bipartite body with exactly two cells in every used house. 3. Verify that the declared GuardianCover family contains exactly the reported external deadly-digit Guardians. 4. Check the subtype-specific visibility or capacity proof. 5. Apply only the reported target.",
+      "ULBody marks the loop. GuardianCover:Rows/Columns/Boxes records the cover family used by the B8 proof. Guardians or GuardiansA/B mark external exits; Test 3/3H adds subset roles and External XY-Wing adds WingA/B.",
+      "Use this only on a confirmed unique puzzle. Original clues cannot enter the body, extra body candidates are allowed, both deadly digits must remain in every body cell, ordinary UL Types keep priority, and an External result requires a strict body, an exact GuardianCover proof, and the subtype deduction."
+    ),
     ExtendedRectangle: uniqueness("Extended Rectangle", "larger reversible rectangle-like structure"),
     BivalueOddagon: entry(
       "A Bivalue Oddagon is an odd cycle of bivalue relations that would be impossible without an escape candidate. It is a negative-rank contradiction, not a uniqueness proof.",

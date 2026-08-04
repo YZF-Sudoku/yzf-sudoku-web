@@ -352,6 +352,37 @@ for (const [name, step, expectedZh] of phase1BranchCases) {
   assert.ok(!/[\u4e00-\u9fff]/.test([enPayload.structure, enPayload.principle, enPayload.deduction, ...enGuide].join("\n")), `${name}: English contains CJK`);
 }
 
+const ulExternalTitles = [
+  "UL External Test 1",
+  "UL External Test 2/4",
+  "UL External Test 3",
+  "UL External Test 3H",
+  "UL External Test + XY-Wing",
+];
+for (const title of ulExternalTitles) {
+  const step = base({
+    kind: "UniqueLoop", title,
+    description: `${title}: 1/2 in r1c14,r2c24,r4c12 => r5c5<>3`,
+    candidates: [3], cells: [c(0), c(3), c(10), c(12), c(27), c(28), c(1), c(11), c(36), c(38)],
+    actions: [], eliminations: [elim(40, [3])],
+    groups: [
+      { label: "ULBody:12", cells: [c(0), c(3), c(10), c(12), c(27), c(28)] },
+      { label: "Guardians:12", cells: [c(1), c(11)] },
+      { label: "GuardiansA:1", cells: [c(1)] }, { label: "GuardiansB:2", cells: [c(11)] },
+      { label: "WingA:13", cells: [c(36)] }, { label: "WingB:23", cells: [c(38)] },
+      { label: "NakedSubset:123", cells: [c(20)] }, { label: "HiddenSubset:3", cells: [c(20)] },
+    ],
+  });
+  const zhPayload = buildAuditedStepExplanationPayload(step, "zh");
+  const enPayload = buildAuditedStepExplanationPayload(step, "en");
+  const zhText = [zhPayload.structure, zhPayload.principle, zhPayload.deduction, ...(zhPayload.checks || [])].join("\n");
+  const enText = [enPayload.structure, enPayload.principle, enPayload.deduction, ...(enPayload.checks || [])].join("\n");
+  assert.ok(zhText.includes("唯一环"), `${title}: missing Unique Loop terminology`);
+  assert.ok(!/矩形|四角/.test(zhText), `${title}: leaked rectangle-only terminology\n${zhText}`);
+  assert.ok(enText.includes("Unique Loop"), `${title}: missing English Unique Loop terminology`);
+  assert.ok(!/rectangle|four corners|deadly UR/i.test(enText), `${title}: leaked UR-only English terminology\n${enText}`);
+}
+
 
 const phase2FoundationCases = [
   ["Full House", base({ kind: "FullHouse", title: "Full House", house: "r1", candidates: [9], cells: [c(8)], actions: [place(8, 9)], eliminations: [], groups: [{ label: "House:r1", cells: [] }, { label: "Target:9", cells: [c(8)] }] }), "恰好一个未解格"],

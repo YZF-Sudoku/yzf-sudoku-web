@@ -1110,7 +1110,7 @@
 <p>OTP 的 Basic 集合包括 Full House、Hidden Single、Naked Single、Locked Candidates，以及显性/隐性 Pair、Triple、Quad。生成成功后，主盘面停在 Basic 无法继续的状态，方便直接训练关键一步。</p>
 <p>OTP 只要求<strong>至少存在一个</strong>合格关键步骤，不要求 STTE 解释唯一。同一个删数由不同技巧、构型或链路解释，不影响 OTP 验收。文字过滤会作用于关键步骤本身。</p>
 <h3>评分当前题目</h3>
-<p>“评分当前题目”会优先识别文本框或当前盘面的格式。普通题使用 puzzle 评分；含候选状态的 Library/Sukaku/Coach 输入使用候选盘评分。结果通常包含 <code>ER</code>、<code>EP</code>、<code>ED</code>，并可能显示 <code>YZFRate</code>。</p>
+<p>“评分当前题目”始终评分用户眼见的当前盘面，包括已填数字和当前候选状态；初始盘面类型只决定执行线程。标准数独在主线程直接评分以加快响应，真正的 Sukaku 交给 Worker 避免界面长时间阻塞。结果通常包含 <code>ER</code>、<code>EP</code>、<code>ED</code>，并可能显示 <code>YZFRate</code>。</p>
 <div class="note">普通训练和 OTP 生成都严格使用当前启用的技巧配置及相关子选项，不会为训练而重置成“全部开启”。若所选目标技巧已关闭，确认后只开启目标技巧；其它已关闭技巧仍保持关闭。因此停用较早的竞争技巧，可以让后续技巧按真实求解顺序进入训练路径。OTP 开关会本地记忆；唯一数、区块、数组和 BruteForce 不能作为 OTP 的指定关键技巧。</div>
 </div>
 <div class="en">
@@ -1126,7 +1126,7 @@
 <p>The OTP Basic set is Full House, Hidden Single, Naked Single, Locked Candidates, plus Naked/Hidden Pair, Triple, and Quad. On success, the live board opens at the Basic-stalled position for immediate key-step training.</p>
 <p>OTP requires <strong>at least one</strong> valid key step, not a unique explanation. Multiple techniques, constructions, or chains explaining the same elimination do not disqualify the puzzle. Text filtering applies to the key step.</p>
 <h3>Rate Current Puzzle</h3>
-<p>Rate Current Puzzle detects the text-area or current-board format. Plain puzzles use puzzle rating, while Library/Sukaku/Coach inputs with candidate state use candidate-grid rating. Results normally include <code>ER</code>, <code>EP</code>, <code>ED</code>, and may include <code>YZFRate</code>.</p>
+<p>Rate Current Puzzle always rates the board currently visible to the user, including entered values and the current candidate state. The initial puzzle type only chooses the execution thread: standard Sudoku is rated directly on the main thread for faster response, while a true Sukaku uses a Worker to avoid blocking the UI. Results normally include <code>ER</code>, <code>EP</code>, <code>ED</code>, and may include <code>YZFRate</code>.</p>
 <div class="note">Normal training and OTP generation strictly use the enabled technique configuration and sub-options; they never reset the solver to “all techniques enabled.” If the selected target is off, confirmation enables only that target while every other disabled technique stays off. Disabling an earlier competing technique can therefore allow a later technique to appear on the real solve path. The OTP switch is remembered locally; singles, locked candidates, subsets, and BruteForce cannot be selected as the OTP key technique.</div>
 </div>
 </div>

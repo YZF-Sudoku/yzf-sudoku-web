@@ -1325,6 +1325,21 @@
       background: #fff;
       box-shadow: 0 10px 28px rgba(15, 23, 42, 0.2);
     }
+    /* Keep the pointer inside the submenu owner while it crosses the visual
+       4px gutter. Without this invisible bridge, :hover drops for one frame
+       and the nested TLG menu vanishes before the pointer can enter it. */
+    .tlg-context-submenu::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: -6px;
+      width: 6px;
+    }
+    .tlg-context-open-left .tlg-context-submenu::before {
+      right: -6px;
+      left: auto;
+    }
     .tlg-context-submenu-wrap:hover > .tlg-context-submenu,
     .tlg-context-submenu-wrap:focus-within > .tlg-context-submenu,
     .tlg-context-submenu-wrap.tlg-context-submenu-open > .tlg-context-submenu {
@@ -3901,6 +3916,13 @@
       font-size: 12px;
     }
     .training-text-filter-case input { margin: 0; }
+    .training-text-filter-mode-hint {
+      display: block;
+      margin: -4px 0 0 24px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
     .training-text-filter-actions {
       display: flex;
       align-items: center;
@@ -5690,6 +5712,11 @@
               <textarea id="trainingTextFilterExclude" rows="4" spellcheck="false" placeholder="每行一个条件；命中任意一项即排除"></textarea>
               <small id="trainingTextFilterExcludeHint">每行一个条件，命中任意一项即排除。</small>
             </label>
+            <label class="training-text-filter-case training-text-filter-findall">
+              <input id="trainingTextFilterFindAll" type="checkbox" checked />
+              <span id="trainingTextFilterFindAllLabel">Find All：首个步骤不匹配时，继续搜索同一技巧的其它步骤</span>
+            </label>
+            <small id="trainingTextFilterFindAllHint" class="training-text-filter-mode-hint">关闭后为 First hit：只检测正常优先级返回的首个步骤。</small>
             <label class="training-text-filter-case">
               <input id="trainingTextFilterCaseSensitive" type="checkbox" />
               <span id="trainingTextFilterCaseSensitiveLabel">区分英文字母大小写</span>
@@ -6240,6 +6267,6 @@
   <div id="appStatusToast" class="app-status-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=wasm-c19313e4edd31e22"></script>
+    <script type="module" src="./app.js?v=wasm-00cc10fa7274d5df"></script>
   </body>
 </html>

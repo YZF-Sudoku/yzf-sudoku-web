@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-c19313e4edd31e22";
+import createModule from "./sudoku_wasm.js?v=wasm-00cc10fa7274d5df";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -43,7 +43,7 @@ import {
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
 
-const APP_VERSION = "wasm-c19313e4edd31e22";
+const APP_VERSION = "wasm-00cc10fa7274d5df";
 const UI_RELEASE_VERSION = "ui-20260801-manual-entry-hybrid-input";
 const MANUAL_VERSION = "manual-20260801-manual-entry-hybrid-input";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
@@ -446,6 +446,7 @@ const trainingTextFilterDialog = document.getElementById("trainingTextFilterDial
 const trainingTextFilterInclude = document.getElementById("trainingTextFilterInclude");
 const trainingTextFilterExclude = document.getElementById("trainingTextFilterExclude");
 const trainingTextFilterCaseSensitive = document.getElementById("trainingTextFilterCaseSensitive");
+const trainingTextFilterFindAll = document.getElementById("trainingTextFilterFindAll");
 const btnTrainingTextFilterClose = document.getElementById("btnTrainingTextFilterClose");
 const btnTrainingTextFilterClear = document.getElementById("btnTrainingTextFilterClear");
 const btnTrainingTextFilterApply = document.getElementById("btnTrainingTextFilterApply");
@@ -501,7 +502,7 @@ const appStatusToast = document.getElementById("appStatusToast");
 const mobileBackDepthBadge = document.getElementById("mobileBackDepthBadge");
 
 let engine = null;
-let trainingTextFilter = { includeText: "", excludeText: "", caseSensitive: false };
+let trainingTextFilter = { includeText: "", excludeText: "", caseSensitive: false, findAll: true };
 let solverWorker = null;
 let solverTaskSeq = 0;
 const solverWorkerRequests = new Map();
@@ -1046,6 +1047,8 @@ for (const [key, zh, en] of [
   ["trainingTextFilterExcludeLabel", "不得包含", "Must not contain"],
   ["trainingTextFilterExcludeHint", "每行一个条件；同一步命中任意一项即排除。", "One condition per line; a step is rejected if any condition occurs."],
   ["trainingTextFilterExcludePlaceholder", "例如：\nS-Ring", "Example:\nS-Ring"],
+  ["trainingTextFilterFindAll", "Find All：首个步骤不匹配时，继续搜索同一技巧的其它步骤", "Find All: if the first step does not match, search other steps from the same technique"],
+  ["trainingTextFilterFindAllHint", "关闭后为 First hit：只检测正常优先级返回的首个步骤。", "Off means First hit: only the normal-priority first step is tested."],
   ["trainingTextFilterCaseSensitive", "区分英文字母大小写", "Case-sensitive English matching"],
   ["trainingTextFilterClear", "清空", "Clear"],
   ["trainingTextFilterCancel", "取消", "Cancel"],
@@ -1355,6 +1358,7 @@ for (const [key, zh, en] of [
   ["rateCancelled", "评分已取消。", "Rating cancelled."],
   ["rateWorkerFailed", "后台评分失败：{error}", "Background rating failed: {error}"],
   ["rateForegroundFallback", "当前环境不支持后台 Worker，评分将在前台运行，期间界面可能暂时无响应。", "Background Worker is unavailable in this environment. Rating will run on the main thread and the page may temporarily stop responding."],
+  ["rateForegroundStandard", "正在前台评分当前标准数独状态……", "Rating the current standard-Sudoku state on the main thread..."],
   ["allStepsFilterPlaceholder", "过滤：技巧、删数或描述", "Filter: technique / action / description"],
   ["allTechniques", "全部技巧", "All techniques"],
   ["defaultSort", "默认排序", "Default order"],
@@ -4418,7 +4422,9 @@ function applyStaticLanguage() {
     ["trainingTextFilterButtonText", "trainingTextFilterButton"],
     ["trainingTextFilterDialogTitle", "trainingTextFilterTitle"],
     "trainingTextFilterIntro", "trainingTextFilterIncludeLabel", "trainingTextFilterIncludeHint",
-    "trainingTextFilterExcludeLabel", "trainingTextFilterExcludeHint", ["trainingTextFilterCaseSensitiveLabel", "trainingTextFilterCaseSensitive"],
+    "trainingTextFilterExcludeLabel", "trainingTextFilterExcludeHint",
+    ["trainingTextFilterFindAllLabel", "trainingTextFilterFindAll"], "trainingTextFilterFindAllHint",
+    ["trainingTextFilterCaseSensitiveLabel", "trainingTextFilterCaseSensitive"],
     ["btnTrainingTextFilterClear", "trainingTextFilterClear"],
     ["btnTrainingTextFilterCancel", "trainingTextFilterCancel"],
     ["btnTrainingTextFilterApply", "trainingTextFilterApply"],
@@ -10976,11 +10982,11 @@ function cancelRatingTask() {
   return true;
 }
 
-async function runRatingTask(input, fallbackPuzzle) {
-  const canUseWorker = !window.YZF_STANDALONE && typeof Worker !== "undefined";
+async function runRatingTask(input, fallbackPuzzle, { useWorker = true } = {}) {
+  const canUseWorker = useWorker && !window.YZF_STANDALONE && typeof Worker !== "undefined";
   if (!canUseWorker) {
     setRatingBusy(true);
-    setStatus(ui("rateForegroundFallback"));
+    setStatus(useWorker ? ui("rateForegroundFallback") : ui("rateForegroundStandard"));
     // Let the warning paint before entering the synchronous WASM call.
     await new Promise((resolve) => window.setTimeout(resolve, 0));
     try {
@@ -11275,6 +11281,7 @@ function normalizeTrainingTextFilter(value) {
     includeText: String(value?.includeText || "").replace(/\r\n?/g, "\n").trim(),
     excludeText: String(value?.excludeText || "").replace(/\r\n?/g, "\n").trim(),
     caseSensitive: Boolean(value?.caseSensitive),
+    findAll: value?.findAll !== false,
     otp: Boolean(value?.otp),
   };
 }
@@ -11354,6 +11361,7 @@ function openTrainingTextFilterDialog() {
   if (trainingTextFilterInclude) trainingTextFilterInclude.value = trainingTextFilter.includeText;
   if (trainingTextFilterExclude) trainingTextFilterExclude.value = trainingTextFilter.excludeText;
   if (trainingTextFilterCaseSensitive) trainingTextFilterCaseSensitive.checked = trainingTextFilter.caseSensitive;
+  if (trainingTextFilterFindAll) trainingTextFilterFindAll.checked = trainingTextFilter.findAll !== false;
   if (typeof trainingTextFilterDialog.showModal === "function") {
     trainingTextFilterDialog.showModal();
   } else {
@@ -11376,6 +11384,7 @@ function applyTrainingTextFilterDialog() {
     includeText: trainingTextFilterInclude?.value || "",
     excludeText: trainingTextFilterExclude?.value || "",
     caseSensitive: trainingTextFilterCaseSensitive?.checked,
+    findAll: trainingTextFilterFindAll?.checked !== false,
   });
   saveTrainingTextFilter();
   updateTrainingTextFilterButton();
@@ -13682,25 +13691,48 @@ function tlgMenuButton(label, handler, className = "") {
 function tlgMenuSubmenu(label, entries) {
   const wrapper = document.createElement("div");
   wrapper.className = "tlg-context-submenu-wrap";
+  let closeTimer = 0;
   const trigger = document.createElement("button");
   trigger.type = "button";
   trigger.className = "tlg-context-item tlg-context-submenu-trigger";
   trigger.setAttribute("aria-haspopup", "menu");
   trigger.setAttribute("aria-expanded", "false");
   trigger.textContent = label;
+
+  const setOpen = (open) => {
+    if (closeTimer) {
+      window.clearTimeout(closeTimer);
+      closeTimer = 0;
+    }
+    if (open) {
+      wrapper.parentElement?.querySelectorAll?.(".tlg-context-submenu-wrap.tlg-context-submenu-open").forEach((node) => {
+        if (node !== wrapper) {
+          node.classList.remove("tlg-context-submenu-open");
+          node.querySelector?.(".tlg-context-submenu-trigger")?.setAttribute("aria-expanded", "false");
+        }
+      });
+    }
+    wrapper.classList.toggle("tlg-context-submenu-open", open);
+    trigger.setAttribute("aria-expanded", open ? "true" : "false");
+  };
+  const scheduleClose = () => {
+    if (closeTimer) window.clearTimeout(closeTimer);
+    closeTimer = window.setTimeout(() => {
+      closeTimer = 0;
+      if (!wrapper.matches(":hover") && !wrapper.matches(":focus-within")) setOpen(false);
+    }, 180);
+  };
+
   trigger.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    const open = !wrapper.classList.contains("tlg-context-submenu-open");
-    wrapper.parentElement?.querySelectorAll?.(".tlg-context-submenu-wrap.tlg-context-submenu-open").forEach((node) => {
-      if (node !== wrapper) {
-        node.classList.remove("tlg-context-submenu-open");
-        node.querySelector?.(".tlg-context-submenu-trigger")?.setAttribute("aria-expanded", "false");
-      }
-    });
-    wrapper.classList.toggle("tlg-context-submenu-open", open);
-    trigger.setAttribute("aria-expanded", open ? "true" : "false");
+    setOpen(!wrapper.classList.contains("tlg-context-submenu-open"));
   });
+  wrapper.addEventListener("pointerenter", () => setOpen(true));
+  wrapper.addEventListener("pointerleave", scheduleClose);
+  wrapper.addEventListener("focusin", () => setOpen(true));
+  wrapper.addEventListener("focusout", scheduleClose);
+
   const submenu = document.createElement("div");
   submenu.className = "tlg-context-submenu";
   submenu.setAttribute("role", "menu");
@@ -16285,6 +16317,7 @@ btnTrainingTextFilterClear?.addEventListener("click", () => {
   if (trainingTextFilterInclude) trainingTextFilterInclude.value = "";
   if (trainingTextFilterExclude) trainingTextFilterExclude.value = "";
   if (trainingTextFilterCaseSensitive) trainingTextFilterCaseSensitive.checked = false;
+  if (trainingTextFilterFindAll) trainingTextFilterFindAll.checked = true;
   trainingTextFilterInclude?.focus();
 });
 trainingTextFilterDialog?.addEventListener("click", (event) => {
@@ -17912,20 +17945,26 @@ btnRate.addEventListener("click", async () => {
   }
   if (!engine) return;
 
-  const rawInput = String(givens.value || "").trim();
-  const rawLooksLikeCandidateState = rawInput.includes(":") || rawInput.includes("\t") || rawInput.includes("|") || rawInput.includes("userCellCandidates") || rawInput.length >= 729;
-  const currentExported = exportedPuzzleString();
-  const input = rawLooksLikeCandidateState
-    ? rawInput
-    : (currentExported || rawInput || snapshotBoardString(currentSnapshot));
-
-  if (!input) {
+  // Rating always follows the state currently shown on the board.  This also
+  // covers a selected solve-path/Find-All step, where currentSnapshot is the
+  // exact board before that highlighted step.  Never fall back to the original
+  // text box merely because it still contains the imported starting puzzle.
+  const ratingSnapshot = currentSnapshot || getCurrentSnapshot();
+  const input = snapshotToLibraryString(ratingSnapshot);
+  const fallbackPuzzle = snapshotToKnownDigitsString(ratingSnapshot);
+  if (!input || !fallbackPuzzle) {
     setStatus(ui("rateNoPuzzle"));
     return;
   }
 
+  // Both branches rate this exact visible candidate state through the same
+  // rate_import_text_json interface.  The initial puzzle type only chooses the
+  // execution thread: standard Sudoku stays on the main thread for fast startup,
+  // while an originally imported Sukaku uses a Worker to avoid blocking the UI.
+  const useWorker = Boolean(initialCandidateSukaku);
+
   try {
-    const message = await runRatingTask(input, normalizePuzzle(input));
+    const message = await runRatingTask(input, fallbackPuzzle, { useWorker });
     const result = parseJson(message.resultText);
     if (!result) {
       setStatus(ui("rateFailedSimple"));
@@ -17936,7 +17975,12 @@ btnRate.addEventListener("click", async () => {
       ? uif("rateInputSuffix", { format: result.inputFormat, mode: result.usedCandidateState ? ui("rateUseCandidateState") : ui("rateUsePuzzle") })
       : "";
     setStatus(`${formatRating(result)}${suffix}`);
-    debugLog(JSON.stringify({ ...result, backgroundElapsedMs: message.elapsedMs }, null, 2));
+    debugLog(JSON.stringify({
+      ...result,
+      ratingElapsedMs: message.elapsedMs,
+      ratingExecution: useWorker ? "worker" : "main-thread",
+      ratedSnapshotHash: ratingSnapshot?.stateHash || "",
+    }, null, 2));
   } catch (error) {
     if (String(error?.message || "") === "rating_cancelled") return;
     setStatus(uif("rateWorkerFailed", { error: error instanceof Error ? error.message : String(error) }));

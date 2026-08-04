@@ -8,9 +8,9 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-c19313e4edd31e22";
+import createModule from "./sudoku_wasm.js?v=wasm-00cc10fa7274d5df";
 
-const APP_VERSION = "wasm-c19313e4edd31e22";
+const APP_VERSION = "wasm-00cc10fa7274d5df";
 let enginePromise = null;
 let cancelRequested = false;
 
@@ -42,7 +42,7 @@ function makeGeneratedItem(engine, config) {
   const difficulty = Number(config.difficulty || 0);
   const textFilter = config.trainingTextFilter && typeof config.trainingTextFilter === "object"
     ? config.trainingTextFilter
-    : { includeText: "", excludeText: "", caseSensitive: false, otp: false };
+    : { includeText: "", excludeText: "", caseSensitive: false, findAll: true, otp: false };
   const otp = Boolean(textFilter.otp || config.otp);
   const trainingMode = Boolean(trainingKind || otp);
   const resultText = trainingMode

@@ -756,13 +756,13 @@ function uniquenessExplanation(step, locale) {
       ? `外部守护候选至少一真。第一组任一守护为真会迫使第一翼取共同数字${targetDigit}；第二组任一守护为真会迫使第二翼取${targetDigit}。所以两翼中的${targetDigit}至少一真，同时看见两翼的目标${targetDigit}可删。${therefore}`
       : `At least one external guardian is true. A guardian in group A forces wing A to shared digit ${targetDigit}; a guardian in group B forces wing B to ${targetDigit}. Thus at least one wing contains ${targetDigit}, and a target seeing both wings can be removed. ${therefore}`;
     extraChecks.push(zh
-      ? "致命数字组与删数数字必须分开：删数数字是两翼共同数字，不是唯一矩形的致命数字。"
-      : "Keep the deadly pair separate from the eliminated digit: the target is the wings' shared digit, not a deadly UR digit.");
+      ? `致命数字组与删数数字必须分开：删数数字是两翼共同数字，不是${pattern}的致命数字。`
+      : `Keep the deadly pair separate from the eliminated digit: the target is the wings' shared digit, not a deadly digit of the ${pattern}.`);
     extraChecks.push(zh
       ? "核对每个翼格看见对应数字的全部守护候选，且每个删数目标同时看见两个翼格。"
       : "Verify each wing sees every guardian of its associated deadly digit and every target sees both wings.");
   } else if (/external test 1/.test(key)) deduction = zh
-    ? `矩形外只有一个守护格；若该格不取致命数字之一，全部外部破坏点消失，主体成为致命矩形。因此该格必须保留致命数字，其他候选可删。${therefore}`
+    ? `${pattern}外只有一个守护格；若该格不取致命数字之一，全部外部破坏点消失，主体成为致命结构。因此该格必须保留致命数字，其他候选可删。${therefore}`
     : `There is only one external guardian cell. If it took no deadly digit, every external escape would disappear and the body would become deadly; therefore it must keep a deadly digit and its other candidates are removed. ${therefore}`;
   else if (/external test 2\/4/.test(key)) deduction = zh
     ? `一个致命数字没有外部守护位置，所以另一数字的守护候选中至少一个必须为真；同时看见全部守护位置的该数字可以删除。${therefore}`
