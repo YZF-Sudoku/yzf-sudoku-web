@@ -485,6 +485,7 @@ phase4Cases.push(
   ["Almost Pair line ALS", phase4Step("AlmostPair", "Almost Pair", "Line-ALS / Box-AHS", [g("ActiveSector", [c(0), c(1)], "1/2"), g("ALS", [c(9)], "1/2"), g("AHS", [c(10)], "1/2")], [1, 2]), "Line-ALS / Box-AHS"],
   ["Almost Triple box ALS", phase4Step("AlmostTriple", "Almost Triple", "Box-ALS / Line-AHS", [g("ActiveSector", [c(0), c(1)], "1/2/3"), g("ALS", [c(9), c(10)], "1/2/3"), g("AHS", [c(18), c(19)], "1/2/3")], [1, 2, 3]), "2格/3数ALS"],
   ["Almost Triple line ALS", phase4Step("AlmostTriple", "Almost Triple", "Line-ALS / Box-AHS", [g("ActiveSector", [c(0), c(1)], "1/2/3"), g("ALS", [c(9), c(10)], "1/2/3"), g("AHS", [c(18), c(19)], "1/2/3")], [1, 2, 3]), "必须按Branch区分"],
+  ["Almost Triple double intersection", phase4Step("AlmostTriple", "Almost Triple", "Box-ALS / Line-AHS", [g("Subtype", [], "Double-Intersection"), g("IntersectionOccupancy", [], "2"), g("ActiveSector", [c(0), c(1), c(2)], "1/2/3"), g("ALS", [c(9)], "1/2/3"), g("AHS", [c(18)], "1/2/3")], [1, 2, 3]), "1格/3数ALS"],
 
   ["ALS-XZ single RCC", phase4Step("ALSXZ", "ALS-XZ", "Single-RCC XZ", [g("AlsA", [c(0), c(1)], "1/3/7"), g("AlsB", [c(9), c(10)], "2/3/7"), g("Rcc", [], "3"), g("Z", [], "7"), g("Targets", [c(20)], "7")], [3, 7]), "RCC要求A中的全部X"],
   ["ALS-XZ double RCC", phase4Step("ALSXZ", "ALS-XZ", "Double-RCC Rank-0", [g("AlsA", [c(0), c(1)], "1/3/7"), g("AlsB", [c(9), c(10)], "2/3/7"), g("Rcc", [], "3/7"), g("CannibalTargets", [c(1)], "7")], [3, 7]), "Double-RCC分支不能再套单Z删数解释"],

@@ -1997,22 +1997,30 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
     const sector = firstGroup(step, /^activesector$/i);
     const ahs = firstGroup(step, /^ahs$/i);
     const als = firstGroup(step, /^als$/i);
+    const subtype = firstGroup(step, /^subtype$/i)?.tail || "";
+    const doubleIntersection = /double-intersection/i.test(subtype);
     const digits = digitText(sector?.digits) || primaryDigits(step);
     const n = kind === "AlmostPair" ? 2 : 3;
+    const intersectionOccupancy = doubleIntersection ? 2 : 1;
+    const outerCells = n - intersectionOccupancy;
     return zh ? [
-      `${kind === "AlmostPair" ? "Almost Pair" : "Almost Triple"}（${branch}）：宫线交区${cellNames(sector?.cells)}承载数字组{${digits}}；交区一侧是ALS ${cellNames(als?.cells)}，另一侧是AHS ${cellNames(ahs?.cells)}。`,
-      `源码要求ALS由${n - 1}格容纳${n}个数字，AHS由${n - 1}格锁住同一组${n}个数字。两侧共同迫使宫线交区中的这组数字占用固定容量，因此ALS同侧的其余{${digits}}和AHS格中的额外候选可删。`,
-      `设D为${n}个活动数字，A为${n - 1}格ALS，H为${n - 1}格AHS。A需要D中的至少一个数字落入交区，H又只允许D占据H的${n - 1}个位置；宫线两侧容量相加后，目标候选若成立会使D的所需位置数超过可用容量。`,
-      `① 选宫与相交行/列；② 在非交区一侧找${n - 1}格/${n}数ALS；③ 在另一侧找${n - 1}格AHS；④ 核对交区至少有两个活动候选；⑤ 删除ALS同侧其余活动数字及AHS格中的额外数字${targets ? `（${targets}）` : ""}。`,
+      `${kind === "AlmostPair" ? "Almost Pair" : "Almost Triple"}（${branch}${subtype ? ` / ${subtype}` : ""}）：宫线交区${cellNames(sector?.cells)}承载数字组{${digits}}；交区一侧是ALS ${cellNames(als?.cells)}，另一侧是AHS ${cellNames(ahs?.cells)}。`,
+      doubleIntersection
+        ? `Double-Intersection子类要求1格/${n}数ALS、三格交区全部含{${digits}}，以及另一侧唯一1格AHS承载同一组数字。ALS外格先占1个活动数字，因而交区恰占2个，AHS格必须承接剩余1个。`
+        : `源码要求ALS由${outerCells}格容纳${n}个数字，AHS由${outerCells}格锁住同一组${n}个数字。两侧共同迫使宫线交区中的这组数字恰占${intersectionOccupancy}个位置，因此ALS同侧的其余{${digits}}和AHS格中的额外候选可删。`,
+      `设D为${n}个活动数字，A为${outerCells}格ALS，H为${outerCells}格AHS。A中的格都只能取D，所以A占用${outerCells}个D，交区必须占用${intersectionOccupancy}个D；H是另一house域外全部D的唯一${outerCells}个承载格，因此H中的额外候选可删。`,
+      `① 选宫与相交行/列；② 在非交区一侧找${outerCells}格/${n}数ALS；③ 在另一侧确认恰有${outerCells}格包含全部活动数字；④ ${doubleIntersection ? "核对三格交区全部含活动数字" : "核对交区至少有两个活动格"}；⑤ 删除ALS同侧其余活动数字及AHS格中的额外数字${targets ? `（${targets}）` : ""}。`,
       `FB配色：活动交区候选cNormal(1)，AHS全部候选cFins(2)，ALS全部候选cEdoFins(3)，普通删数cToDel(11)。`,
-      `必须按Branch区分“Box-ALS / Line-AHS”与“Line-ALS / Box-AHS”；Almost Pair/Triple不是朋友项目的通用ALC，也不能只凭格数套用。`,
+      `必须按Branch区分“Box-ALS / Line-AHS”与“Line-ALS / Box-AHS”，并按Subtype区分Single-Intersection与Double-Intersection；Almost Pair/Triple不是朋友项目的通用ALC。`,
     ] : [
-      `${kind === "AlmostPair" ? "Almost Pair" : "Almost Triple"} (${branch}): the box-line intersection ${cellNames(sector?.cells)} carries digit set {${digits}}; one side contains ALS ${cellNames(als?.cells)}, the other AHS ${cellNames(ahs?.cells)}.`,
-      `The detector requires an ${n - 1}-cell/${n}-digit ALS and an ${n - 1}-cell AHS locking the same ${n} digits. Together they fix the box-line capacity, eliminating those digits on the ALS side and extra candidates inside the AHS.`,
-      `Let D be the ${n} active digits, A the ${n - 1}-cell ALS and H the ${n - 1}-cell AHS. A forces at least one D into the intersection while H reserves its ${n - 1} positions for D; a target would exceed available capacity.`,
-      `1. Choose a box and crossing line. 2. Find the ${n - 1}-cell/${n}-digit ALS on one side. 3. Find the matching AHS on the other. 4. Verify at least two active intersection candidates. 5. Apply eliminations${targets ? ` (${targets})` : ""}.`,
+      `${kind === "AlmostPair" ? "Almost Pair" : "Almost Triple"} (${branch}${subtype ? ` / ${subtype}` : ""}): the box-line intersection ${cellNames(sector?.cells)} carries digit set {${digits}}; one side contains ALS ${cellNames(als?.cells)}, the other AHS ${cellNames(ahs?.cells)}.`,
+      doubleIntersection
+        ? `The Double-Intersection subtype requires a one-cell/${n}-digit ALS, all three intersection cells carrying {${digits}}, and exactly one AHS carrier on the other side. The ALS consumes one active digit, forcing two into the intersection and the last into the AHS carrier.`
+        : `The detector requires an ${outerCells}-cell/${n}-digit ALS and an ${outerCells}-cell AHS locking the same ${n} digits. Together they force exactly ${intersectionOccupancy} active digit into the intersection, eliminating those digits on the ALS side and extra candidates inside the AHS.`,
+      `Let D be the ${n} active digits, A the ${outerCells}-cell ALS and H the ${outerCells}-cell AHS. Every A cell must take D, so A consumes ${outerCells} D placements and the intersection consumes ${intersectionOccupancy}; H is the only outside-intersection carrier set for the remaining D placements.`,
+      `1. Choose a box and crossing line. 2. Find the ${outerCells}-cell/${n}-digit ALS on one side. 3. Verify exactly ${outerCells} outside carriers on the other. 4. ${doubleIntersection ? "Verify that all three intersection cells carry active digits" : "Verify at least two active intersection cells"}. 5. Apply eliminations${targets ? ` (${targets})` : ""}.`,
       `FB colours: active intersection cNormal(1), AHS cFins(2), ALS cEdoFins(3), eliminations cToDel(11).`,
-      `Respect the Branch orientation. This FB Almost Pair/Triple is not a generic Almost Locked Candidates pattern and cannot be inferred from cell counts alone.`,
+      `Respect both Branch orientation and the Single-/Double-Intersection Subtype. This FB Almost Pair/Triple is not a generic Almost Locked Candidates pattern.`,
     ];
   }
 

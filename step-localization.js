@@ -853,9 +853,11 @@ function formatAlsZh(step, name) {
   if (step?.kind === "AlmostPair" || step?.kind === "AlmostTriple") {
     const ahs = findGroup(step, /^ahs$/i);
     const als = findGroup(step, /^als$/i);
+    const subtype = findGroup(step, /^subtype$/i)?.tail || "";
     const parts = [];
     if (ahs) parts.push(`隐性待定部分为${groupCellsText(ahs)}`);
     if (als) parts.push(`显性待定部分为${groupCellsText(als)}`);
+    if (subtype) parts.push(`交区占用子类为${subtype}`);
     const detail = parts.length ? `${parts.join("；")}。` : "相关格比锁定数组多一个自由候选。";
     return `${name}：${detail}两部分共同占用的候选容量受到同一单元约束。${conclusionTextZh(step)}`;
   }

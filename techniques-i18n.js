@@ -289,12 +289,12 @@
       "The candidate count must be exactly one more than the number of cells."
     ),
     AlmostTriple: entry(
-      "Almost Triple is an almost locked set whose candidate count is one greater than its cell count.",
-      "Once a restricted candidate is fixed or removed, the set becomes an ordinary triple and produces eliminations.",
-      "Every valid branch is one step away from a locked three-digit allocation. If all branches eliminate the same outside candidate, that candidate is false.",
-      "1. Outline the ALS. 2. Count its cells and candidates. 3. Find the restricted common candidate or external condition. 4. Apply the common elimination.",
-      "Read the ALS as one set node rather than separate candidate links.",
-      "Confirm that all cells form a valid ALS region and that candidate count equals cell count plus one."
+      "In this project, Almost Triple is a box-line ALS+AHS capacity pattern.",
+      "The explicit side fixes how many of the three active digits must occupy the intersection; the hidden carrier side takes the remaining digits.",
+      "Single-Intersection uses two outer ALS cells and two outer AHS carriers, forcing one active digit into the intersection. Double-Intersection uses one outer cell on each side and all three active intersection cells, forcing exactly two active digits into the intersection.",
+      "1. Choose a box and crossing line. 2. Verify the Branch orientation. 3. Identify Single- or Double-Intersection. 4. Check exact ALS/intersection/AHS counts. 5. Apply eliminations.",
+      "Highlights separate the active intersection, AHS, ALS and target candidates.",
+      "Do not treat this as a generic ALC; Double-Intersection requires all three intersection cells and exactly one outside carrier on each side."
     ),
     SueDeCoq: entry(
       "Sue de Coq is a candidate-capacity lock at the intersection of a box and a row or column.",

@@ -760,20 +760,20 @@ export const TECHNIQUE_TUTORIAL_CARDS = {
   },
   "AlmostTriple": {
     "zh": [
-      "准三数组是格子数与候选数相差 1 的待定数组。",
-      "一旦某个受限候选被确定或排除，集合会退化为普通数组并产生删数。",
-      "Almost Triple 同理：三个格的候选差一点被三个数字完全锁住。任何会迫使它成为标准三数组的分支，都会让集合外同数字候选失去机会；若所有可能分支都排除同一候选，该候选可删。",
-      "① 圈定 ALS；② 数格子/候选；③ 找受限公共候选；④ 应用外部删数。",
-      "高亮重点是整个 ALS，而不是每个候选单独成链。",
-      "确认所有格子在同一区域或同一 ALS 允许范围内。"
+      "本项目的 Almost Triple 是宫线交区两侧的 ALS+AHS 容量结构。",
+      "一侧的显性待定格组决定三个活动数字有几个必须落入交区，另一侧的隐性承载格组接住其余数字。",
+      "Single-Intersection 使用外侧 2 格 ALS 与 2 格 AHS，迫使交区占 1 个活动数字；Double-Intersection 使用外侧各 1 格，并要求三格交区全部含活动数字，迫使交区恰占 2 个。由此可删 ALS 同侧其余活动数字及 AHS 格内额外候选。",
+      "① 选宫与相交行/列；② 确认 Branch 方向；③ 核对 Single/Double-Intersection 子类；④ 检查 ALS、交区和 AHS 的精确格数；⑤ 应用删数。",
+      "高亮区分活动交区候选、AHS 全部候选、ALS 全部候选与删数。",
+      "不能把它当成通用 ALC；Double-Intersection 必须是三格交区全部含活动数字，且两侧域外各恰好 1 格。"
     ],
     "en": [
-      "Almost Triple is an almost locked set whose candidate count is one greater than its cell count.",
-      "Once a restricted candidate is fixed or removed, the set becomes an ordinary triple and produces eliminations.",
-      "Every valid branch is one step away from a locked three-digit allocation. If all branches eliminate the same outside candidate, that candidate is false.",
-      "1. Outline the ALS. 2. Count its cells and candidates. 3. Find the restricted common candidate or external condition. 4. Apply the common elimination.",
-      "Read the ALS as one set node rather than separate candidate links.",
-      "Confirm that all cells form a valid ALS region and that candidate count equals cell count plus one."
+      "In this project, Almost Triple is a box-line ALS+AHS capacity pattern.",
+      "The explicit set on one side determines how many of the three active digits must lie in the intersection, while the hidden carrier set on the other side takes the rest.",
+      "Single-Intersection uses two outer ALS cells and two outer AHS carriers, forcing one active digit into the intersection. Double-Intersection uses one outer cell on each side and all three active intersection cells, forcing exactly two active digits into the intersection.",
+      "1. Choose a box and crossing line. 2. Verify the Branch orientation. 3. Identify the Single- or Double-Intersection subtype. 4. Check the exact ALS, intersection and AHS cell counts. 5. Apply the eliminations.",
+      "Highlights separate active intersection candidates, all AHS candidates, all ALS candidates, and eliminations.",
+      "Do not read this as a generic ALC. Double-Intersection requires all three intersection cells to carry active digits and exactly one outside carrier on each side."
     ]
   },
   "SueDeCoq": {
