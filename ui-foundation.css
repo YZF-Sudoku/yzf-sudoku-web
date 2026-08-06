@@ -2036,3 +2036,34 @@ html[lang="en"] .yzf-lang-zh { display: none !important; }
   box-shadow: none;
 }
 :root[data-yzf-theme="contrast"] .yzf-copyright-card a { color: LinkText; }
+
+
+/*
+ * V520 技巧配置等级底色恢复。
+ * 选择器严格限制在 #techniqueList，避免影响步骤树、训练下拉框、提示高亮及共用技巧配色。
+ */
+#techniqueList .technique-row[data-technique-level="1"] { --yzf-technique-config-bg: rgb(255, 255, 255); }
+#techniqueList .technique-row[data-technique-level="2"] { --yzf-technique-config-bg: rgb(100, 255, 100); }
+#techniqueList .technique-row[data-technique-level="3"] { --yzf-technique-config-bg: rgb(255, 255, 100); }
+#techniqueList .technique-row[data-technique-level="4"] { --yzf-technique-config-bg: rgb(255, 150, 80); }
+#techniqueList .technique-row[data-technique-level="5"] { --yzf-technique-config-bg: rgb(255, 100, 100); }
+
+#techniqueList .technique-row[data-technique-level] > td,
+#techniqueList .technique-row[data-technique-level]:hover > td {
+  background: var(--yzf-technique-config-bg) !important;
+}
+
+#techniqueList .technique-row[data-technique-level]:hover > td {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border)) !important;
+}
+
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+  #techniqueList .technique-row[data-technique-level="1"] { --yzf-technique-config-bg: #121c2d; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+  #techniqueList .technique-row[data-technique-level="2"] { --yzf-technique-config-bg: #143d2b; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+  #techniqueList .technique-row[data-technique-level="3"] { --yzf-technique-config-bg: #443b12; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+  #techniqueList .technique-row[data-technique-level="4"] { --yzf-technique-config-bg: #4a2b16; }
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
+  #techniqueList .technique-row[data-technique-level="5"] { --yzf-technique-config-bg: #4a2025; }

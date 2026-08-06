@@ -11171,6 +11171,7 @@ function renderTechniques() {
     const row = document.createElement("tr");
     row.className = "technique-row";
     row.classList.toggle("disabled", item.implemented === false);
+    row.dataset.techniqueLevel = String(techniqueColorLevel(item.kind));
     row.style.backgroundColor = techniqueBackgroundColor(item.kind);
     row.title = `${categoryName(item.category || "Other")} / ${uif("difficultyLevel", { level: techniqueColorLevel(item.kind) })} / ${ui("scoreHeader")} ${item.score ?? 0}`;
 
