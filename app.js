@@ -29,6 +29,7 @@ import {
   appStatusDescriptor,
   difficultyDescriptor,
   difficultyLevels,
+  localizeBackendMessage,
 } from "./ui-localization.js?v=ui-d5a841241e91";
 import { createTlgDiagramRenderer } from "./tlg-diagram-renderer.js?v=tlg-e2f97cdd3860";
 import { applyPwaLaunchAction, installUiFoundation } from "./ui-foundation.js";
@@ -184,6 +185,7 @@ const btnTlgLibrary = document.getElementById("btnTlgLibrary");
 const tlgLibraryDialog = document.getElementById("tlgLibraryDialog");
 const btnTlgLibraryClose = document.getElementById("btnTlgLibraryClose");
 const btnTlgLibraryRead = document.getElementById("btnTlgLibraryRead");
+const btnTlgLibraryLoadSolver = document.getElementById("btnTlgLibraryLoadSolver");
 const btnTlgLibraryInsert = document.getElementById("btnTlgLibraryInsert");
 const btnTlgLibraryReplace = document.getElementById("btnTlgLibraryReplace");
 const btnTlgLibraryAppend = document.getElementById("btnTlgLibraryAppend");
@@ -502,6 +504,7 @@ const appStatusToast = document.getElementById("appStatusToast");
 const mobileBackDepthBadge = document.getElementById("mobileBackDepthBadge");
 
 let engine = null;
+let wasmModule = null;
 let trainingTextFilter = { includeText: "", excludeText: "", caseSensitive: false, findAll: true };
 let solverWorker = null;
 let solverTaskSeq = 0;
@@ -1087,6 +1090,12 @@ for (const [key, zh, en] of [
   ["tlgLibraryButton", "TLG 题库", "TLG Library"],
   ["tlgLibraryDialogTitle", "TLG 逻辑题库", "TLG Logic Library"],
   ["tlgLibraryReadAction", "读取", "Read"],
+  ["tlgLibraryLoadSolverAction", "载入解题器", "Load into Solver"],
+  ["tlgLibraryLoadSolverChecking", "正在验证并载入解题器：{title}", "Validating and loading into Solver: {title}"],
+  ["tlgLibraryLoadSolverSuccess", "已载入解题器：{title}（{mode}）", "Loaded into Solver: {title} ({mode})"],
+  ["tlgLibraryLoadSolverFailed", "无法载入解题器：{title}。{error}", "Could not load into Solver: {title}. {error}"],
+  ["tlgLibraryLoadSolverUniqueMode", "唯一解样例", "unique-solution case"],
+  ["tlgLibraryLoadSolverTrainingMode", "训练盘", "training candidate grid"],
   ["tlgLibraryInsertAction", "插入", "Insert"],
   ["tlgLibraryReplaceAction", "替换", "Replace"],
   ["tlgLibraryAppendAction", "追加", "Append"],
@@ -1130,7 +1139,7 @@ for (const [key, zh, en] of [
   ["tlgLibraryUntitled", "未命名记录 {index}", "Untitled Record {index}"],
   ["tlgLibraryUntitledPlain", "未命名记录", "Untitled Record"],
   ["tlgLibraryResultUnit", "结论", " results"],
-  ["tlgLibraryRecordSummary", "类型：{type}\nTruths：{truths}　Links：{links}\n活动候选：{candidates}　结论：{results}\n最后修改：{date}", "Type: {type}\nTruths: {truths}  Links: {links}\nActive candidates: {candidates}  Results: {results}\nLast modified: {date}"],
+  ["tlgLibraryRecordSummary", "类型：{type}\n前提：{premise}\nTruths：{truths}　Links：{links}\n活动候选：{candidates}　结论：{results}\n最后修改：{date}", "Type: {type}\nPremise: {premise}\nTruths: {truths}  Links: {links}\nActive candidates: {candidates}  Results: {results}\nLast modified: {date}"],
   ["tlgLibraryLoadedToSolver", "已从题库恢复：{title}", "Restored from library: {title}"],
   ["tlgLibraryNoGrid", "当前没有可保存的数独盘面或候选状态。", "There is no Sudoku grid or candidate state to save."],
   ["tlgLibraryTextTooLong", "{field} 超过固定记录上限（最多 {limit} 个 UTF-8 字节）。", "{field} exceeds the fixed-record limit ({limit} UTF-8 bytes maximum)."],
@@ -4446,7 +4455,7 @@ function applyStaticLanguage() {
     ["btnTlgImportCandidates", "tlgImportCandidates"], ["btnTlgFindEliminations", "tlgFindEliminations"],
     ["btnTlgConvertTruths", "tlgConvertTruths"], ["btnTlgRemoveUnused", "tlgRemoveUnused"],
     ["btnTlgClear", "tlgClearState"], ["btnTlgLibrary", "tlgLibraryButton"], "tlgLibraryDialogTitle",
-    ["btnTlgLibraryRead", "tlgLibraryReadAction"], ["btnTlgLibraryInsert", "tlgLibraryInsertAction"],
+    ["btnTlgLibraryRead", "tlgLibraryReadAction"], ["btnTlgLibraryLoadSolver", "tlgLibraryLoadSolverAction"], ["btnTlgLibraryInsert", "tlgLibraryInsertAction"],
     ["btnTlgLibraryReplace", "tlgLibraryReplaceAction"], ["btnTlgLibraryAppend", "tlgLibraryAppendAction"],
     ["btnTlgLibraryDelete", "tlgLibraryDeleteAction"], "tlgLibraryImportModeLabel",
     ["btnTlgLibraryImport", "tlgLibraryImportAction"],
@@ -15795,6 +15804,7 @@ function tlgLibraryFillEditor(record = null) {
     tlgLibraryRecordSummary.textContent = record
       ? uif("tlgLibraryRecordSummary", {
           type: tlgLibraryTypeLabel(record),
+          premise: ui(record.premiseMode === "candidate-grid-asserted" ? "tlgLibraryLoadSolverTrainingMode" : "tlgLibraryLoadSolverUniqueMode"),
           truths: record.truths.length,
           links: record.links.length,
           candidates: record.activeCandidates.size,
@@ -15808,7 +15818,7 @@ function tlgLibraryFillEditor(record = null) {
 function tlgLibraryUpdateButtons() {
   const selected = !!tlgLibrarySelectedEntry();
   const solverBusy = !!tlgSolverState.busyTask;
-  [btnTlgLibraryRead, btnTlgLibraryReplace, btnTlgLibraryDelete].forEach((button) => {
+  [btnTlgLibraryRead, btnTlgLibraryLoadSolver, btnTlgLibraryReplace, btnTlgLibraryDelete].forEach((button) => {
     if (button) button.disabled = tlgLibraryBusy || solverBusy || !selected;
   });
   if (btnTlgLibraryExportSelected) btnTlgLibraryExportSelected.disabled = tlgLibraryBusy || !selected;
@@ -15951,6 +15961,129 @@ function tlgLibraryApplyRecord(record) {
   selectedIndex = -1;
   renderBoardSnapshot(currentSnapshot, null);
   updateTlgSolverUi();
+}
+
+
+function tlgLibrarySolverImportText(record) {
+  const givensText = String(record?.givens || "").padEnd(81, ".").slice(0, 81);
+  const valuesText = String(record?.values || "").padEnd(81, ".").slice(0, 81);
+  if (!/^[.1-9]{81}$/.test(givensText) || !/^[.1-9]{81}$/.test(valuesText)) {
+    throw new Error(ui("tlgLibraryNoGrid"));
+  }
+
+  const activeMasks = new Array(81).fill(0);
+  for (const key of record?.activeCandidates || []) {
+    const [cellText, digitText] = String(key).split(":");
+    const cell = Number(cellText);
+    const digit = Number(digitText);
+    if (Number.isInteger(cell) && cell >= 0 && cell < 81 && Number.isInteger(digit) && digit >= 1 && digit <= 9) {
+      activeMasks[cell] |= 1 << digit;
+    }
+  }
+
+  // Training records assert the currently visible candidate grid as the
+  // starting state. Unique-puzzle-derived records retain their saved original
+  // candidate universe so later candidate removals remain real solver history.
+  const baselineMasks = new Array(81).fill(0);
+  const baselineSource = record?.premiseMode === "candidate-grid-asserted"
+    ? record?.activeCandidates
+    : ((record?.initialCandidates?.size || 0) ? record.initialCandidates : record?.activeCandidates);
+  for (const key of baselineSource || []) {
+    const [cellText, digitText] = String(key).split(":");
+    const cell = Number(cellText);
+    const digit = Number(digitText);
+    if (Number.isInteger(cell) && cell >= 0 && cell < 81 && Number.isInteger(digit) && digit >= 1 && digit <= 9) {
+      baselineMasks[cell] |= 1 << digit;
+    }
+  }
+  // Be defensive toward legacy records: every active candidate and every fixed
+  // value must belong to the original Sukaku universe or :0000:s: will reject
+  // its own state during import.
+  for (let cell = 0; cell < 81; cell += 1) {
+    baselineMasks[cell] |= activeMasks[cell];
+    const value = Number(valuesText[cell] || 0);
+    if (value >= 1 && value <= 9) baselineMasks[cell] |= 1 << value;
+    const given = Number(givensText[cell] || 0);
+    if (given >= 1 && given <= 9 && value !== given) {
+      throw new Error(`TLG record has inconsistent given/value at r${Math.floor(cell / 9) + 1}c${(cell % 9) + 1}`);
+    }
+  }
+
+  const initialSukaku = candidateSukakuFromMasks(baselineMasks);
+  let boardPart = "";
+  for (let cell = 0; cell < 81; cell += 1) {
+    const value = valuesText[cell];
+    if (!/[1-9]/.test(value)) {
+      boardPart += ".";
+    } else {
+      boardPart += givensText[cell] === value ? value : `+${value}`;
+    }
+  }
+
+  const removed = [];
+  // A training record starts exactly from its asserted active grid, so there
+  // is no earlier elimination history to replay. Unique records preserve the
+  // difference between initialCandidates and activeCandidates.
+  if (record?.premiseMode !== "candidate-grid-asserted") {
+    for (let cell = 0; cell < 81; cell += 1) {
+      if (/[1-9]/.test(valuesText[cell])) continue;
+      const availableMask = baselineMasks[cell] & legalCandidateMaskForBoard(valuesText, cell);
+      const removedMask = availableMask & ~activeMasks[cell];
+      const row = Math.floor(cell / 9) + 1;
+      const column = (cell % 9) + 1;
+      for (let digit = 1; digit <= 9; digit += 1) {
+        if ((removedMask & (1 << digit)) !== 0) removed.push(`${digit}${row}${column}`);
+      }
+    }
+  }
+  return `:0000:s:${initialSukaku}:${boardPart}:${removed.join(" ")}::`;
+}
+
+async function tlgLibraryLoadSelectedIntoSolver() {
+  const selected = tlgLibrarySelectedEntry();
+  if (!selected || tlgLibraryBusy || tlgSolverState.busyTask) return;
+  const record = selected.decoded;
+  const title = record.meta?.title || ui("tlgLibraryUntitledPlain");
+  const modeKey = record.premiseMode === "candidate-grid-asserted"
+    ? "tlgLibraryLoadSolverTrainingMode"
+    : "tlgLibraryLoadSolverUniqueMode";
+  let probe = null;
+  try {
+    const libraryText = tlgLibrarySolverImportText(record);
+    tlgLibrarySetStatus(uif("tlgLibraryLoadSolverChecking", { title }));
+
+    // Preflight with a temporary Engine so a training/malformed record that is
+    // not uniquely solvable cannot disturb the user's current solver session.
+    if (!wasmModule || typeof wasmModule.Engine !== "function") throw new Error(ui("tlgUnavailable"));
+    probe = new wasmModule.Engine();
+    const checked = parseJson(probe.import_puzzle_json(libraryText));
+    if (!checked?.ok) throw new Error(localizeBackendMessage(checked, lang.value, { errorCode: checked?.errorCode }) || checked?.error || ui("importUnknownFormat"));
+
+    // Leave the dedicated TLG proof view before importing into the main solver.
+    if (tlgSolverEnable?.checked) {
+      tlgSolverEnable.checked = false;
+      tlgSolverEnable.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    givens.value = libraryText;
+    const imported = await importPuzzleFromCurrentInput({
+      clipboardFallback: false,
+      preferClipboardFirst: false,
+      clipboardAlreadyTried: true,
+    });
+    if (!imported?.ok) throw new Error(imported?.error || ui("importUnknownFormat"));
+    if (tlgLibraryDialog?.open) tlgLibraryDialog.close();
+    const message = uif("tlgLibraryLoadSolverSuccess", { title, mode: ui(modeKey) });
+    setStatus(message);
+    tlgLibrarySetStatus(message, "ok");
+  } catch (error) {
+    const message = uif("tlgLibraryLoadSolverFailed", {
+      title,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    tlgLibrarySetStatus(message, "error");
+  } finally {
+    try { probe?.delete?.(); } catch {}
+  }
 }
 
 function tlgLibraryCheckDuplicate(recordBytes, excludedId = null) {
@@ -16351,6 +16484,7 @@ function initTlgLibraryControls() {
     if (event.target === tlgLibraryDialog) tlgLibraryDialog.close();
   });
   btnTlgLibraryRead?.addEventListener("click", tlgLibraryReadSelected);
+  btnTlgLibraryLoadSolver?.addEventListener("click", () => { void tlgLibraryLoadSelectedIntoSolver(); });
   btnTlgLibraryInsert?.addEventListener("click", () => { void tlgLibrarySave("insert"); });
   btnTlgLibraryReplace?.addEventListener("click", () => { void tlgLibrarySave("replace"); });
   btnTlgLibraryAppend?.addEventListener("click", () => { void tlgLibrarySave("append"); });
@@ -16431,6 +16565,7 @@ function createWasmModuleOptions() {
 
 async function init() {
   const mod = await createModule(createWasmModuleOptions());
+  wasmModule = mod;
   engine = new mod.Engine();
   if (APP_DEBUG_MODE) {
     window.manualAdvancedStepTest = manualAdvancedStepTest;
