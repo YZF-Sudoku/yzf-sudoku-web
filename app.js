@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-3bb31db04136a91e";
+import createModule from "./sudoku_wasm.js?v=wasm-f51c450abbd791b1";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -43,7 +43,7 @@ import {
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
 
-const APP_VERSION = "wasm-3bb31db04136a91e";
+const APP_VERSION = "wasm-f51c450abbd791b1";
 const UI_RELEASE_VERSION = "ui-20260801-manual-entry-hybrid-input";
 const MANUAL_VERSION = "manual-20260801-manual-entry-hybrid-input";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
@@ -1365,6 +1365,10 @@ for (const [key, zh, en] of [
   ["defaultSort", "默认排序", "Default order"],
   ["conclusionSort", "出数/删数优先", "Placements/eliminations first"],
   ["replaceable", "可替换", "Replaceable"],
+  ["optionalStepOperation", "操作", "Action"],
+  ["optionalStepReplaceAction", "右键/长按：替换路径并从此处重算", "Right-click/long-press: replace this path step and recompute from here"],
+  ["optionalStepSameAsCurrent", "与当前路径步骤相同", "Same as the current path step"],
+  ["chainLength", "链长", "chainLength"],
   ["clear", "清除", "Clear"],
   ["noAllSteps", "暂无可选步骤。", "No available steps yet."],
   ["overlayLegend", "图例", "Overlay legend"],
@@ -9442,12 +9446,40 @@ function createCurrentStepGroup() {
 
 function buildStepExplanationContent(step, snapshot = currentSnapshot) {
   const zh = lang.value === "zh";
-  // Audited families use the source-verified browser model first. This keeps
-  // explanations correct even when an older cached WASM still contains the
-  // former one-template-per-category text. Non-audited families continue to
-  // use the authoritative backend payload until their source audit is closed.
+  // The technique guide above is deliberately reusable theory.  The current-
+  // step explanation, however, must describe the exact StepResult that the
+  // current engine produced.  Prefer the bilingual payload emitted by this
+  // WASM build and keep the browser audited model only as a compatibility
+  // fallback for old/imported JSON that has no explanation payload.
+  //
+  // V523 used the opposite priority for audited families.  That allowed a
+  // stale browser template to mask newer backend branches (Irregular MSLS was
+  // the concrete regression) and made a supposedly dynamic explanation look
+  // like one template per technique family.
   const audited = buildAuditedStepExplanationPayload(step, zh ? "zh" : "en");
-  const backend = audited || step?.explanation?.[zh ? "zh" : "en"];
+  const backendRaw = step?.explanation?.[zh ? "zh" : "en"] || null;
+  const hasHan = (value) => /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/u.test(String(value || ""));
+  const localeSafe = (value, fallback = "") => {
+    const text = String(value || "");
+    // English mode has no legitimate reason to surface Chinese prose.  If an
+    // old/debug backend payload leaks it, fall back to the audited English
+    // model instead of displaying a cross-language fragment.
+    if (!zh && hasHan(text)) return String(fallback || "");
+    return text || String(fallback || "");
+  };
+  const backend = backendRaw || audited ? {
+    structure: localeSafe(backendRaw?.structure, audited?.structure),
+    principle: localeSafe(backendRaw?.principle, audited?.principle),
+    deduction: localeSafe(backendRaw?.deduction, audited?.deduction),
+    conclusion: localeSafe(backendRaw?.conclusion, audited?.conclusion),
+    eureka: localeSafe(backendRaw?.eureka, audited?.eureka),
+    checks: (Array.isArray(backendRaw?.checks) && backendRaw.checks.length ? backendRaw.checks : (audited?.checks || []))
+      .map((item) => localeSafe(item, ""))
+      .filter(Boolean),
+    meta: (Array.isArray(backendRaw?.meta) && backendRaw.meta.length ? backendRaw.meta : (audited?.meta || []))
+      .map((item) => localeSafe(item, ""))
+      .filter(Boolean),
+  } : null;
   const legacyWhipBraidRankPayload = isWhipOrBraidStep(step) &&
     step?.rankAvailable !== true &&
     !Number.isInteger(step?.chainLength) &&
@@ -12383,7 +12415,7 @@ function renderStepNode(record, index) {
   }
   const chainLength = stepChainLength(step);
   if (chainLength > 0) {
-    children.push(renderLeaf(lang.value === "zh" ? "链长" : "chainLength", String(chainLength), "number"));
+    children.push(renderLeaf(ui("chainLength"), String(chainLength), "number"));
   }
   if (stepHasStrictRank(step)) {
     children.push(renderLeaf("rank", String(stepStrictRank(step)), "number"));
@@ -12395,9 +12427,9 @@ function renderStepNode(record, index) {
   const replaceable = canReplaceOptionalStep(record);
   const sameAsOriginal = branchable && !replaceable;
   if (replaceable) {
-    children.push(renderLeaf("操作", "右键/长按：替换路径并从此处重算", "string"));
+    children.push(renderLeaf(ui("optionalStepOperation"), ui("optionalStepReplaceAction"), "string"));
   } else if (sameAsOriginal) {
-    children.push(renderLeaf("操作", "与当前路径步骤相同", "string"));
+    children.push(renderLeaf(ui("optionalStepOperation"), ui("optionalStepSameAsCurrent"), "string"));
   }
 
   // Keep Chinese path rows compact.  The localized explanation and complete
@@ -12412,8 +12444,8 @@ function renderStepNode(record, index) {
   const detailParts = [];
   if (!summaryText && step.house) detailParts.push(`house=${step.house}`);
   if (summaryText && step.house) detailParts.push(`house=${step.house}`);
-  if (replaceable) detailParts.push("可替换");
-  if (sameAsOriginal) detailParts.push("当前步骤");
+  if (replaceable) detailParts.push(ui("replaceable"));
+  if (sameAsOriginal) detailParts.push(ui("stepTutorialCurrent"));
   const rowClass = `step-row step-difficulty-${stepDifficultyLevel(step)}${replaceable ? " branchable-step-row" : ""}`;
   const item = renderBranch(label, detailParts.join(", "), children, false, () => {
     currentHint = step;

@@ -9,7 +9,9 @@
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { buildStepExplanationModel, buildAuditedStepExplanationPayload, buildAuditedTechniqueGuide, explanationCategoryForStep } from "../step-explanation.js";
+import { localizedStepDescription, techniqueNameForStep } from "../step-localization.js";
 
 const c = (index) => ({ index, row: Math.floor(index / 9), col: index % 9 });
 const elim = (index, candidates) => ({ ...c(index), candidates });
@@ -482,9 +484,9 @@ const g = (label, cells = [], digits = "") => ({ label: `${label}${digits ? `:${
 
 phase4Cases.push(
   ["Almost Pair box ALS", phase4Step("AlmostPair", "Almost Pair", "Box-ALS / Line-AHS", [g("ActiveSector", [c(0), c(1)], "1/2"), g("ALS", [c(9)], "1/2"), g("AHS", [c(10)], "1/2"), g("Targets", [c(20)], "1/2")], [1, 2]), "不是朋友项目的通用ALC"],
-  ["Almost Pair line ALS", phase4Step("AlmostPair", "Almost Pair", "Line-ALS / Box-AHS", [g("ActiveSector", [c(0), c(1)], "1/2"), g("ALS", [c(9)], "1/2"), g("AHS", [c(10)], "1/2")], [1, 2]), "Line-ALS / Box-AHS"],
+  ["Almost Pair line ALS", phase4Step("AlmostPair", "Almost Pair", "Line-ALS / Box-AHS", [g("ActiveSector", [c(0), c(1)], "1/2"), g("ALS", [c(9)], "1/2"), g("AHS", [c(10)], "1/2")], [1, 2]), "线 ALS / 宫 AHS"],
   ["Almost Triple box ALS", phase4Step("AlmostTriple", "Almost Triple", "Box-ALS / Line-AHS", [g("ActiveSector", [c(0), c(1)], "1/2/3"), g("ALS", [c(9), c(10)], "1/2/3"), g("AHS", [c(18), c(19)], "1/2/3")], [1, 2, 3]), "2格/3数ALS"],
-  ["Almost Triple line ALS", phase4Step("AlmostTriple", "Almost Triple", "Line-ALS / Box-AHS", [g("ActiveSector", [c(0), c(1)], "1/2/3"), g("ALS", [c(9), c(10)], "1/2/3"), g("AHS", [c(18), c(19)], "1/2/3")], [1, 2, 3]), "必须按Branch区分"],
+  ["Almost Triple line ALS", phase4Step("AlmostTriple", "Almost Triple", "Line-ALS / Box-AHS", [g("ActiveSector", [c(0), c(1)], "1/2/3"), g("ALS", [c(9), c(10)], "1/2/3"), g("AHS", [c(18), c(19)], "1/2/3")], [1, 2, 3]), "必须按实际分支区分"],
   ["Almost Triple double intersection", phase4Step("AlmostTriple", "Almost Triple", "Box-ALS / Line-AHS", [g("Subtype", [], "Double-Intersection"), g("IntersectionOccupancy", [], "2"), g("ActiveSector", [c(0), c(1), c(2)], "1/2/3"), g("ALS", [c(9)], "1/2/3"), g("AHS", [c(18)], "1/2/3")], [1, 2, 3]), "1格/3数ALS"],
 
   ["ALS-XZ single RCC", phase4Step("ALSXZ", "ALS-XZ", "Single-RCC XZ", [g("AlsA", [c(0), c(1)], "1/3/7"), g("AlsB", [c(9), c(10)], "2/3/7"), g("Rcc", [], "3"), g("Z", [], "7"), g("Targets", [c(20)], "7")], [3, 7]), "RCC要求A中的全部X"],
@@ -574,9 +576,9 @@ for (const [branch, marker] of [
 
 phase4Cases.push(
   ["Death Blossom classic", phase4Step("DeathBlossom", "Death Blossom", "Classic Stem/Petals", [g("Stem", [c(0)], "1/2/3"), g("Victim", [c(20)], "5"), g("Petals", [c(1), c(9), c(10)], "1/2/3/5")], [5]), "Stem的每个候选分支"],
-  ["Death Blossom complex 1", phase4Step("DeathBlossom", "Death Blossom Complex Type 1", "Complex Type 1", [g("Set", [c(0), c(1)], "1/2/3"), g("Petal", [c(9), c(10)], "1")], [3]), "核心Set具有给定自由度"],
-  ["Death Blossom complex 2", phase4Step("DeathBlossom", "Death Blossom Complex Type 2", "Complex Type 2", [g("Set", [c(0), c(1)], "1/2/3"), g("Petal", [c(9), c(10)], "1"), g("Petal", [c(18), c(19)], "2")], [3]), "花瓣提供f个独立链接"],
-  ["Death Blossom complex 3", phase4Step("DeathBlossom", "Death Blossom Complex Type 3", "Complex Type 3 (MSLS)", [g("Set", [c(0), c(1)], "1/2/3"), g("Petal", [c(9), c(10)], "1")], [3]), "Type 3(MSLS)必须按Rank 0"],
+  ["Death Blossom complex 1", phase4Step("DeathBlossom", "Death Blossom Complex Type 1", "Complex Type 1", [g("Set", [c(0), c(1)], "1/2/3"), g("Freedom", [], "1"), g("StemDigit", [], "3"), g("WorkDigits", [], "1/2"), g("Z", [], "3"), g("Petal", [c(9), c(10)], "1/3"), g("PetalRCC", [], "1")], [3]), "Stem数字仍属于原始Set候选"],
+  ["Death Blossom complex 2", phase4Step("DeathBlossom", "Death Blossom Complex Type 2", "Complex Type 2", [g("Set", [c(0), c(1)], "1/2/3"), g("Freedom", [], "1"), g("StemDigit", [], "3"), g("WorkDigits", [], "1/2/3"), g("Z", [], "3"), g("Petal", [c(9), c(10)], "1/3"), g("PetalRCC", [], "1"), g("Petal", [c(18), c(19)], "2/3"), g("PetalRCC", [], "2")], [3]), "不采用1型的Set+Stem特殊基底"],
+  ["Death Blossom complex 3", phase4Step("DeathBlossom", "Death Blossom Complex Type 3", "Complex Type 3 (MSLS)", [g("Set", [c(0), c(1)], "1/2/3"), g("Freedom", [], "1"), g("StemDigit", [], "3"), g("WorkDigits", [], "1/2/3"), g("Z", [], "3"), g("Petal", [c(9), c(10)], "1/3"), g("PetalRCC", [], "1")], [3]), "完整MSLS Rank-0校验"],
   ["Blossom Loop cell", phase4Step("BlossomLoop", "Cell Type Blossom Loop", "Cell Type", [g("Focus", [c(0)], "1/2/3"), g("BurringLoop", [c(1), c(10)], "5"), g("BurrBranch1", [c(9)], "1")], [5]), "Cell Type、Region Type、AALS Type"],
   ["Blossom Loop region", phase4Step("BlossomLoop", "Region Type Blossom Loop", "Region Type", [g("Focus", [c(0), c(1)], "5"), g("BurringLoop", [c(9), c(10)], "5"), g("BurrBranch1", [c(18)], "5")], [5]), "house中同数字位置"],
   ["Blossom Loop AALS", phase4Step("BlossomLoop", "AALS Type Blossom Loop", "AALS Type", [g("Focus", [c(0), c(1)], "1/2/3"), g("BurringLoop", [c(9), c(10)], "5"), g("BurrBranch1", [c(18)], "1")], [5]), "AALS唯一候选"],
@@ -714,12 +716,12 @@ const phase6Cases = [
     kind: "DynamicChain", title: "Dynamic Chain", candidates: [5], actions: [], eliminations: [elim(0, [5])],
     chainBranches: [{ label: "ON conclusion", nodes: [], edges: [] }, { label: "OFF conclusion", nodes: [], edges: [] }],
     groups: [{ label: "DynamicMode:Contradiction", cells: [] }, { label: "Source:5", cells: [c(0)] }, { label: "SourceState:ON", cells: [c(0)] }, { label: "Collision:8", cells: [c(20)] }, { label: "BranchCount:2", cells: [] }],
-  }), "否定源ON就删去源候选"],
+  }), "否定源成立就删去源候选"],
   ["Dynamic contradiction OFF", base({
     kind: "DynamicChain", title: "Dynamic Chain", candidates: [5], actions: [place(0, 5)], eliminations: [],
     chainBranches: [{ label: "ON conclusion", nodes: [], edges: [] }, { label: "OFF conclusion", nodes: [], edges: [] }],
     groups: [{ label: "DynamicMode:Contradiction", cells: [] }, { label: "Source:5", cells: [c(0)] }, { label: "SourceState:OFF", cells: [c(0)] }, { label: "Collision:8", cells: [c(20)] }, { label: "BranchCount:2", cells: [] }],
-  }), "否定源OFF就确定源候选"],
+  }), "否定源不成立就确定源候选"],
   ["Dynamic verity placement", base({
     kind: "DynamicChain", title: "Dynamic Chain", candidates: [6], actions: [place(20, 6)], eliminations: [],
     chainBranches: [{ label: "Source ON branch", nodes: [], edges: [] }, { label: "Source OFF branch", nodes: [], edges: [] }],
@@ -798,6 +800,16 @@ const phase7Cases = [
       { label: "PermutableDigits:2/4", cells: [] }, { label: "Link:2r1", cells: [] }, { label: "Link:4c2", cells: [] },
     ],
   }), "浮动数字枚举行侧/列侧分配"],
+  ["MSLS Irregular", base({
+    kind: "MSLS", title: "MSLS", candidates: [3, 4, 5, 7, 8, 9], actions: [], eliminations: [elim(7, [5])], rank: 0,
+    groups: [
+      { label: "Branch:Irregular Rank-0", cells: [] }, { label: "CellCount:8", cells: [] },
+      { label: "LinkCount:8", cells: [] }, { label: "UnionLinkCount:9", cells: [] },
+      { label: "CoverFamilyCount:2", cells: [] }, { label: "Rank:0", cells: [] },
+      { label: "Core", cells: [c(8), c(25), c(53), c(64), c(67), c(70), c(71), c(80)] },
+      { label: "Link:3c8", cells: [] }, { label: "Link:5r8", cells: [] }, { label: "Link:7c9", cells: [] },
+    ],
+  }), "严格最小cover"],
   ["Junior Exocet checks", base({
     kind: "JE", title: "Junior Exocet", candidates: [1, 2, 5, 9], actions: [], eliminations: [elim(40, [5])],
     groups: [
@@ -903,6 +915,63 @@ for (const [name, step, expectedZh] of phase7Cases) {
   assert.ok(text.includes("不是T邻规则"), "Weak Exocet Mirror Check must not be called Adjacent Target");
 }
 
+// Chinese dynamic explanation must not leak backend enum spellings.
+// Technical abbreviations such as ALS/AHS/RCC/AIC/MSLS/Rank are intentionally allowed.
+const bilingualLeakBan = /\b(?:SingleSpine|Branching|Contradiction|VerityPlacement|VerityElimination|Double-Intersection|Single-Intersection|Row-Based|Column-Based|CompleteSolution|Verified-Solution Placement|Complex Type [123]|Advanced Rank-0 with Attachment|Irregular Rank-0|Exact Rank-0)\b/;
+const bilingualAuditSteps = [
+  ...cases,
+  ...auditedUniquenessCases,
+  ...phase1BranchCases,
+  ...phase2FoundationCases,
+  ...phase2StructureWingCases,
+  ...phase3Cases,
+  ...phase4Cases,
+  ...phase5Cases,
+  ...phase6Cases,
+  ...phase7Cases,
+].map((entry) => {
+  if (entry && !Array.isArray(entry) && typeof entry === "object" && typeof entry.kind === "string") return entry;
+  if (Array.isArray(entry)) return entry.find((item) => item && typeof item === "object" && typeof item.kind === "string") || null;
+  return null;
+}).filter(Boolean);
+const hanLeak = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/u;
+for (const step of bilingualAuditSteps) {
+  const payload = buildAuditedStepExplanationPayload(step, "zh");
+  const guide = buildAuditedTechniqueGuide(step, "zh");
+  const text = [
+    techniqueNameForStep(step, "zh"),
+    localizedStepDescription(step, "zh"),
+    payload?.structure || "",
+    payload?.principle || "",
+    payload?.deduction || "",
+    ...(payload?.checks || []),
+    ...(guide || []),
+  ].join("\n");
+  assert.ok(!bilingualLeakBan.test(text), `Chinese explanation leaks raw enum metadata for ${step.kind}/${step.title}\n${text}`);
+
+  // The reverse direction matters just as much: an English UI must never
+  // surface Chinese prose from a bilingual fallback, guide or metadata path.
+  const enPayload = buildAuditedStepExplanationPayload(step, "en");
+  const enGuide = buildAuditedTechniqueGuide(step, "en");
+  const enModel = buildStepExplanationModel(step, "en");
+  const enText = [
+    techniqueNameForStep(step, "en"),
+    localizedStepDescription(step, "en"),
+    enPayload?.structure || "",
+    enPayload?.principle || "",
+    enPayload?.deduction || "",
+    enPayload?.conclusion || "",
+    enPayload?.eureka || "",
+    ...(enPayload?.checks || []),
+    ...(enPayload?.meta || []),
+    ...(enGuide || []),
+    ...enModel.sections.map((section) => section.text),
+    ...(enModel.checks || []),
+    ...(enModel.meta || []),
+  ].join("\n");
+  assert.ok(!hanLeak.test(enText), `English explanation leaks Chinese text for ${step.kind}/${step.title}\n${enText}`);
+}
+
 // Every technique in the V486 engine registry must have an intentional category.
 const registryKinds = [
   "FullHouse", "HiddenSingle", "NakedSingle", "LockedCandidates", "GSP",
@@ -932,3 +1001,26 @@ assert.match(unknownText, /不猜测|不补造/);
 assert.ok(!/枢轴格为|翼格为|基准区域为|覆盖区域为/.test(unknownText));
 
 console.log(`test-step-explanation: ok (${cases.length} baseline + ${auditedUniquenessCases.length} regression + ${phase1BranchCases.length} phase-1 + ${phase2FoundationCases.length} phase-2 foundation + ${phase2StructureWingCases.length} phase-2 structure/wing + ${phase3Cases.length} phase-3 fixtures + ${phase4Cases.length} phase-4 entity branches + ${phase5Cases.length} phase-5 chain branches + ${phase6Cases.length} phase-6 forcing/dynamic/whip/braid branches + ${phase7Cases.length} phase-7 rank/exocet/fallback branches, x2 locales)`);
+
+
+// Available-Steps tree must not hard-code one locale.  This tree is a separate
+// UI path from the dynamic-explanation model, so bilingual explanation fixtures
+// alone cannot catch leaks such as an English row displaying "可替换".
+{
+  const appSource = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+  const begin = appSource.indexOf("function renderStepNode(");
+  const end = appSource.indexOf("\nfunction syncCollapsedButtons", begin);
+  assert.ok(begin >= 0 && end > begin, "renderStepNode source must be discoverable for bilingual UI audit");
+  const renderSource = appSource.slice(begin, end);
+  assert.ok(!/[\u4e00-\u9fff]/.test(renderSource), "Available Steps renderStepNode must not contain hard-coded Chinese user-facing text");
+  for (const token of [
+    'ui("replaceable")',
+    'ui("optionalStepOperation")',
+    'ui("optionalStepReplaceAction")',
+    'ui("optionalStepSameAsCurrent")',
+    'ui("stepTutorialCurrent")',
+    'ui("chainLength")',
+  ]) {
+    assert.ok(renderSource.includes(token), `Available Steps renderStepNode must localize via ${token}`);
+  }
+}

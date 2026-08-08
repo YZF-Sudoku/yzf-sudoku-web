@@ -272,13 +272,13 @@ function localizeKnownFamilyVariantZh(step, title) {
   if ((match = title.match(/^Bivalue Oddagon\s*\(\s*Type\s*(\d+)\s*\)$/i))) return `双值死环 ${match[1]} 型`;
   if ((match = title.match(/^Bivalue Oddagon\s+Type\s*(\d+)$/i))) return `双值死环 ${match[1]} 型`;
   if ((match = title.match(/^Triplet Oddagon\s+Type\s*(\d+)$/i))) return `三值死环 ${match[1]} 型`;
-  if (/^Dual Bivalue Oddagon$/i.test(title)) return "双值死环（Dual Bivalue Oddagon）";
+  if (/^Dual Bivalue Oddagon$/i.test(title)) return "双值死环（双环型）";
   if ((match = title.match(/^BUG\s*\+\s*(\d+)(.*)$/i))) {
     const suffix = translateTypeSuffixZh(match[2]).trim();
     return suffix ? `BUG + ${match[1]}（${suffix}）` : `BUG + ${match[1]}`;
   }
   if (/^Double (?:JExocet|Junior Exocet|JE|Exocet)$/i.test(title)) return "双飞鱼";
-  if (/^Almost JE4$/i.test(title)) return "Almost JE4";
+  if (/^Almost JE4$/i.test(title)) return "近似 JE4";
   if (/Nice Loop|Complex Grouped X-Chain/i.test(title)) {
     const base = TECHNIQUE_NAMES.zh?.[step?.kind] || "链";
     return `${base}（${title}）`;
@@ -289,12 +289,29 @@ function localizeKnownFamilyVariantZh(step, title) {
     const separator = /^[A-Za-z0-9]/.test(inner || match[1]) ? " " : "";
     return `区块${separator}${inner || match[1]}`;
   }
-  if (/^(?:Half|Complete) XYZ-Ring$/i.test(title)) return `XYZ-Ring（${title.startsWith("Half") ? "Half" : "Complete"}）`;
-  if (/^(?:Dual )?Fireworks\b/i.test(title)) return `烟花数组（${title}）`;
+  if (/^(?:Half|Complete) XYZ-Ring$/i.test(title)) return `XYZ-Ring（${title.startsWith("Half") ? "半环" : "完整环"}）`;
+  if ((match = title.match(/^Fireworks\s+(Dual ER|Dual S-Wing|Triple|Quadruple|Dual ALP|Dual W-Wing|Exocet)$/i)) ||
+      (match = title.match(/^(Dual ER|Dual S-Wing|Triple|Quadruple|Dual ALP|Dual W-Wing|Exocet)\s+Fireworks$/i))) {
+    const key = match[1].toLowerCase();
+    const subtype = ({
+      "dual er": "双 ER 型",
+      "dual s-wing": "双 S-Wing 型",
+      "triple": "三数字型",
+      "quadruple": "四数字型",
+      "dual alp": "双 ALP 型",
+      "dual w-wing": "双 W-Wing 型",
+      "exocet": "Exocet 型",
+    })[key] || match[1];
+    return `烟花数组（${subtype}）`;
+  }
+  if (/^(?:Dual )?Fireworks\b/i.test(title)) return `烟花数组（${title.replace(/^Dual\s+/i, "双 ").replace(/^Fireworks\s*/i, "")}）`;
   if (/^Cell Type Blossom Loop$/i.test(title)) return "单元格型绽放环";
   if (/^Region Type Blossom Loop$/i.test(title)) return "区域型绽放环";
-  if (/^AALS Type Blossom Loop$/i.test(title)) return "绽放环（AALS Type Blossom Loop）";
-  if (/^Death Blossom\b/i.test(title)) return title === "Death Blossom" ? "死亡绽放" : `死亡绽放（${title}）`;
+  if (/^AALS Type Blossom Loop$/i.test(title)) return "AALS型绽放环";
+  if ((match = title.match(/^Death Blossom Complex Type\s*(\d+)(\s*\(MSLS\))?$/i))) {
+    return `死亡绽放（复杂 ${match[1]} 型${match[2] ? "，MSLS" : ""}）`;
+  }
+  if (/^Death Blossom$/i.test(title)) return "死亡绽放";
   if (/^(?:Cell|Region|UR|Triplet Oddagon) Force Chain$/i.test(title)) {
     return title
       .replace(/^Cell Force Chain$/i, "单元格强制链")
@@ -303,6 +320,7 @@ function localizeKnownFamilyVariantZh(step, title) {
       .replace(/^Triplet Oddagon Force Chain$/i, "三值死环强制链");
   }
   if (/^AUR \+ /i.test(title)) return title;
+  if (/^Dynamic Contradiction Chain$/i.test(title)) return "动态矛盾链";
   return "";
 }
 
@@ -853,7 +871,10 @@ function formatAlsZh(step, name) {
   if (step?.kind === "AlmostPair" || step?.kind === "AlmostTriple") {
     const ahs = findGroup(step, /^ahs$/i);
     const als = findGroup(step, /^als$/i);
-    const subtype = findGroup(step, /^subtype$/i)?.tail || "";
+    const subtypeRaw = findGroup(step, /^subtype$/i)?.tail || "";
+    const subtype = subtypeRaw
+      .replace(/\bDouble-Intersection\b/gi, "双交区")
+      .replace(/\bSingle-Intersection\b/gi, "单交区");
     const parts = [];
     if (ahs) parts.push(`隐性待定部分为${groupCellsText(ahs)}`);
     if (als) parts.push(`显性待定部分为${groupCellsText(als)}`);
@@ -1048,6 +1069,12 @@ function localizeDescriptionTitlePrefixesZh(step, text) {
     const match = line.match(/^(\s*)([^:\n]{1,140})(:)(.*)$/);
     if (!match) return line;
     const [, indent, prefix, , rest] = match;
+    // These are proof-line labels, not technique titles.  Let the dedicated
+    // bilingual replacements below translate them instead of turning e.g.
+    // "Chain 1:" into "动态链（Chain 1）：".
+    if (/^(?:Chain\s*\d+|ON conclusion|OFF conclusion|Burring Loop|Burr Branch\s*\d+|Anti-phase AIC)$/i.test(prefix.trim())) {
+      return line;
+    }
     const candidateStep = { ...step, title: prefix.trim(), description: "" };
     const localized = localizeTechniqueTitleZh(candidateStep, prefix.trim());
     const plausible = TITLE_PREFIX_FAMILIES.test(prefix) || TITLE_VARIANT_MARKERS.test(prefix) ||
@@ -1082,6 +1109,10 @@ function localizeBackendDescriptionZh(step) {
   // Only replace terms whose Chinese names are verified or whose meaning is
   // structurally unambiguous. Unknown technique names remain in English.
   const replacements = [
+    [/Set have degrees of freedom of\s*/gi, "集合自由度为 "],
+    [/\bDouble-Intersection\b/gi, "双交区"],
+    [/\bSingle-Intersection\b/gi, "单交区"],
+    [/If\s+([^\n.]+?)\s+then\s+contradiction\./gi, "若 $1 成立则产生矛盾。"],
     [/Double JE - second Junior Exocet:/gi, "双飞鱼－第二个初级飞鱼："],
     [/Double JE - See all target\/base cells:/gi, "双飞鱼－同时看见全部目标单元格/基准单元格："],
     [/Double JE - True Base Cands in non-'S' cells:/gi, "双飞鱼－非 S-cell 中基准单元格里的真数："],
