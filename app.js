@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-298d92f5529c52c3";
+import createModule from "./sudoku_wasm.js?v=wasm-d75e3aa1e3bc718e";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -43,7 +43,7 @@ import {
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
 
-const APP_VERSION = "wasm-298d92f5529c52c3";
+const APP_VERSION = "wasm-d75e3aa1e3bc718e";
 const UI_RELEASE_VERSION = "ui-20260801-manual-entry-hybrid-input";
 const MANUAL_VERSION = "manual-20260801-manual-entry-hybrid-input";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
@@ -1565,6 +1565,7 @@ for (const [key, zh, en] of [
   ["whipMemoryTitle", "影响 Whip/gWhip 队列上限：普通 Whip 19000、gWhip 50000；大内存 99000。", "Controls Whip/gWhip queue limits: normal Whip 19000, gWhip 50000; large memory 99000."],
   ["whipCompareGWhipLabel", "gWhip 参与最短长度比较", "Compare shortest length with gWhip"],
   ["whipCompareGWhipTitle", "启用后，当 Whip 与 gWhip 同时开启时比较两者的全局最短长度；仅当 gWhip 更短时返回 gWhip，同长度仍优先 Whip。", "When both Whip and gWhip are enabled, compare their globally shortest lengths. gWhip is returned only when strictly shorter; Whip wins ties."],
+  ["mslsIrregularOption", "启用异型MSLS搜索", "Enable irregular MSLS search"],
   ["techniqueHeader", "技巧", "Technique"],
   ["scoreHeader", "评分", "Score"],
   ["difficultyLevel", "难度 {level}", "Difficulty {level}"],
@@ -10823,6 +10824,9 @@ function getTechniqueConfigPayload(state = techniqueState) {
     if (item.kind === "JE") {
       payload.JEWithJEPOM = Boolean(item.withJEPOM);
     }
+    if (item.kind === "MSLS") {
+      payload.MSLSWithIrregular = Boolean(item.withIrregular);
+    }
   }
   return payload;
 }
@@ -11063,6 +11067,7 @@ function mergeReferenceTechniques(engineTechniques, previousState = techniqueSta
       enabled: engineItem ? Boolean(engineItem.enabled) : Boolean(previous?.enabled),
       withAMSLS: engineItem?.withAMSLS ?? previous?.withAMSLS ?? false,
       withJEPOM: engineItem?.withJEPOM ?? previous?.withJEPOM ?? false,
+      withIrregular: engineItem?.withIrregular ?? previous?.withIrregular ?? false,
       implemented: Boolean(engineItem),
     };
   });
@@ -11215,6 +11220,7 @@ function renderTechniques() {
     };
     if (item.kind === "ComplexAIC") addSubOption("withAMSLS", "with AMSLS");
     if (item.kind === "JE") addSubOption("withJEPOM", "with JEPOM");
+    if (item.kind === "MSLS") addSubOption("withIrregular", ui("mslsIrregularOption"));
 
     const scoreCell = document.createElement("td");
     scoreCell.className = "technique-score-cell";
@@ -19246,6 +19252,7 @@ function applyTechniquePreset(mode) {
       enabled: enabledFor(item),
       withAMSLS: item.kind === "ComplexAIC" ? false : item.withAMSLS,
       withJEPOM: item.kind === "JE" ? false : item.withJEPOM,
+      withIrregular: item.kind === "MSLS" ? false : item.withIrregular,
     }))
     .sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
   const nextWhipMemoryMode = mode === "whipRating" ? "large" : (whipMemoryMode === "large" ? "large" : "auto");
