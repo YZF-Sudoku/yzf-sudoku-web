@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-d75e3aa1e3bc718e";
+import createModule from "./sudoku_wasm.js?v=wasm-3bb31db04136a91e";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -43,7 +43,7 @@ import {
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
 
-const APP_VERSION = "wasm-d75e3aa1e3bc718e";
+const APP_VERSION = "wasm-3bb31db04136a91e";
 const UI_RELEASE_VERSION = "ui-20260801-manual-entry-hybrid-input";
 const MANUAL_VERSION = "manual-20260801-manual-entry-hybrid-input";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
@@ -4824,8 +4824,20 @@ function deriveInitialCandidateMasksFromGivens(givensText) {
 function setInitialCandidateBaselineFromImport(result) {
   const supplied = parseInitialCandidateSukaku(result?.initialCandidates || "");
   if (supplied) {
-    initialCandidateMasks = supplied.masks;
-    initialCandidateSukaku = supplied.text;
+    // Some candidate-grid/Coach imports promote singleton cells to fixed puzzle
+    // values while older WASM builds leave those cells empty in
+    // initialCandidates.  Preserve the imported candidate universe, but make
+    // sure every already-fixed value is represented in its own original cell.
+    // A valid :0000:s: import has already passed the backend consistency check,
+    // so this is a no-op there and only repairs candidate-grid baselines.
+    const masks = [...supplied.masks];
+    const fixedText = normalizePuzzle(result?.puzzle || result?.state?.givens || result?.givens || "");
+    for (let index = 0; index < 81; index += 1) {
+      const digit = Number(fixedText[index] || 0);
+      if (digit >= 1 && digit <= 9) masks[index] |= 1 << digit;
+    }
+    initialCandidateMasks = masks;
+    initialCandidateSukaku = candidateSukakuFromMasks(masks);
     return;
   }
   const givensText = result?.state?.givens || result?.givens || result?.puzzle || snapshotGivensString();
@@ -17747,6 +17759,13 @@ function generatePuzzleAtDifficulty(difficulty) {
     return result || { ok: false };
   }
 
+  // A generated standard Sudoku starts a brand-new puzzle lifecycle.  Never
+  // carry a previous Sukaku/729 original-candidate baseline into it: solve-path
+  // and Find-All serialize the visible snapshot through snapshotToLibraryString(),
+  // where a stale Sukaku baseline would incorrectly turn the generated Sudoku
+  // into :0000:s:<old candidates>:<new board> and fail validation.
+  setInitialCandidateBaselineFromImport(result);
+  clearAppEditHistory();
   originalBoard = result.state?.givens || result.puzzle;
   givens.value = result.puzzle;
   resetBoardContextForSnapshot(result.state, { resetSelectedIndex: true });
