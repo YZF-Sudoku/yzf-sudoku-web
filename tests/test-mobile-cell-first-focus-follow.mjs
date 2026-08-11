@@ -123,6 +123,22 @@ const lifecycle = extractFunction(app, "finishMobileSolveDigitInteraction");
 assert.match(lifecycle, /mobileSolveFocusPadKeepsOpenAfterDigit\(\)/);
 assert.match(lifecycle, /closeMobileSolveFocusPad\(\)/);
 
+
+const rebuildMap = extractFunction(app, "rebuildMobileSolveFocusPadPositionMap");
+assert.match(rebuildMap, /new Array\(81\)\.fill\(null\)/, "focus-follow layout must precompute all 81 cell positions");
+assert.match(rebuildMap, /mobileSolveFocusPadDirectionPriority\(index\)/);
+assert.match(rebuildMap, /mobileSolveFocusPadPositionMap = nextMap/);
+assert.match(rebuildMap, /positionMapBuild/);
+assert.doesNotMatch(rebuildMap, /boardRect\.left[\s\S]*boardRect\.top[\s\S]*boardRect\.right - panelWidth/,
+  "position map must not reintroduce global board-corner candidates");
+const positionPad = extractFunction(app, "positionMobileSolveFocusPad");
+assert.match(positionPad, /mobileSolveFocusPadPositionMap\[index\]/);
+assert.doesNotMatch(positionPad, /getBoundingClientRect|rawCandidates|protectedRects|Math\.hypot/,
+  "per-tap positioning must be a pure cached lookup, not a fresh geometry score");
+const directionPriority = extractFunction(app, "mobileSolveFocusPadDirectionPriority");
+assert.match(directionPriority, /row >= 6[\s\S]*?\["up"/, "bottom three rows, including r9c5, must prefer the pad above");
+assert.match(directionPriority, /row <= 2[\s\S]*?\["down"/, "top three rows must prefer the pad below");
+
 const layout = extractFunction(app, "applyMobileSolveLayout");
 assert.match(layout, /const floatingControls = mobileSolveFocusFollow;/);
 assert.match(layout, /const pad = floatingControls \? 0/);

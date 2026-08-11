@@ -560,6 +560,9 @@ let mobileSolveLastDigit = 0;
 let mobileSolveFocusFollow = false;
 let mobileSolveFocusPadOpen = false;
 let mobileSolveFocusPadAnchorIndex = -1;
+let mobileSolveFocusPadPositionMap = new Array(81).fill(null);
+let mobileSolveFocusPadPositionSignature = "";
+let mobileSolveFocusPadPositionBuildCount = 0;
 let mobileSolveKeepScreenAwake = true;
 let mobileSolveScreenWakeLock = null;
 let mobileSolveWakeLockRequest = null;
@@ -19213,75 +19216,115 @@ function mobileSolveFocusPadOverlapArea(a, b) {
   return Math.max(0, right - left) * Math.max(0, bottom - top);
 }
 
-function positionMobileSolveFocusPad() {
-  if (!mobileSolveFocusPadOpen || !mobileSolveFocusFollow || !mobileSolveFocusPad || !mobileSolveShell) return false;
-  const index = mobileSolveFocusPadAnchorIndex >= 0 ? mobileSolveFocusPadAnchorIndex : selectedIndex;
-  const cell = board?.querySelector(`.sudoku-cell[data-cell-index="${index}"]`);
-  if (!cell) return false;
+function mobileSolveFocusPadDirectionPriority(index) {
+  const row = Math.floor(index / 9);
+  const col = index % 9;
+  const inwardHorizontal = col <= 4 ? "right" : "left";
+  const outwardHorizontal = inwardHorizontal === "right" ? "left" : "right";
+  if (row <= 2) return ["down", inwardHorizontal, outwardHorizontal, "up"];
+  if (row >= 6) return ["up", inwardHorizontal, outwardHorizontal, "down"];
+  if (col <= 2) return ["right", row <= 4 ? "down" : "up", row <= 4 ? "up" : "down", "left"];
+  if (col >= 6) return ["left", row <= 4 ? "down" : "up", row <= 4 ? "up" : "down", "right"];
+  if (row <= 3) return ["down", inwardHorizontal, outwardHorizontal, "up"];
+  if (row >= 5) return ["up", inwardHorizontal, outwardHorizontal, "down"];
+  return [inwardHorizontal, "up", "down", outwardHorizontal];
+}
+
+function rebuildMobileSolveFocusPadPositionMap(force = false) {
+  if (!mobileSolveFocusFollow || !mobileSolveFocusPad || !mobileSolveShell || !board) return false;
+  const cells = Array.from(board.querySelectorAll('.sudoku-cell[data-cell-index]'));
+  if (cells.length < 81) return false;
 
   const shellRect = mobileSolveShell.getBoundingClientRect();
-  const cellRect = cell.getBoundingClientRect();
-  const boardRect = board?.getBoundingClientRect?.() || cellRect;
-  const keySize = Math.max(28, Math.min(cellRect.width || 0, cellRect.height || 0));
+  const boardRect = board.getBoundingClientRect();
+  const firstCellRect = cells[0]?.getBoundingClientRect();
+  if (!firstCellRect?.width || !firstCellRect?.height || !shellRect.width || !shellRect.height) return false;
+
+  const keySize = Math.max(28, Math.min(firstCellRect.width, firstCellRect.height));
   const panelWidth = keySize * 4;
   const panelHeight = keySize * 4;
   const margin = Math.max(2, keySize * 0.16);
-  mobileSolveFocusPad.style.setProperty("--mobile-focus-key-size", `${keySize}px`);
-
-  const local = (x, y) => ({ x: x - shellRect.left, y: y - shellRect.top });
-  const cellCenterX = (cellRect.left + cellRect.right) / 2;
-  const cellCenterY = (cellRect.top + cellRect.bottom) / 2;
   const minX = 2;
   const minY = 2;
   const maxX = Math.max(minX, shellRect.width - panelWidth - 2);
   const maxY = Math.max(minY, shellRect.height - panelHeight - 2);
-  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
+  const round10 = (value) => Math.round(value * 10) / 10;
+  const localRect = (rect) => ({
+    left: rect.left - shellRect.left,
+    top: rect.top - shellRect.top,
+    right: rect.right - shellRect.left,
+    bottom: rect.bottom - shellRect.top,
+  });
 
-  const rawCandidates = [
-    local(cellRect.right + margin, cellCenterY - panelHeight / 2),
-    local(cellRect.left - margin - panelWidth, cellCenterY - panelHeight / 2),
-    local(cellCenterX - panelWidth / 2, cellRect.bottom + margin),
-    local(cellCenterX - panelWidth / 2, cellRect.top - margin - panelHeight),
-    local(boardRect.left, boardRect.top),
-    local(boardRect.right - panelWidth, boardRect.top),
-    local(boardRect.left, boardRect.bottom - panelHeight),
-    local(boardRect.right - panelWidth, boardRect.bottom - panelHeight),
-  ];
-
-  const focusBoxRow = Math.floor(index / 27) * 3;
-  const focusBoxCol = Math.floor((index % 9) / 3) * 3;
-  const boxFirst = board?.querySelector(`.sudoku-cell[data-cell-index="${focusBoxRow * 9 + focusBoxCol}"]`)?.getBoundingClientRect();
-  const boxLast = board?.querySelector(`.sudoku-cell[data-cell-index="${(focusBoxRow + 2) * 9 + focusBoxCol + 2}"]`)?.getBoundingClientRect();
-  const boxRect = boxFirst && boxLast ? {
-    left: boxFirst.left, top: boxFirst.top, right: boxLast.right, bottom: boxLast.bottom,
-  } : cellRect;
-  const marksRect = !mobileSolveMarksHost?.hidden ? mobileSolveMarksHost.getBoundingClientRect() : null;
-  const topbarRect = mobileSolveShell.querySelector(".mobile-solve-topbar")?.getBoundingClientRect() || null;
-  const statusRect = mobileSolveStatus?.getBoundingClientRect() || null;
-  const protectedRects = [topbarRect, statusRect, marksRect].filter(Boolean);
-
-  let best = null;
-  for (const candidate of rawCandidates) {
-    const x = clamp(candidate.x, minX, maxX);
-    const y = clamp(candidate.y, minY, maxY);
-    const rect = {
-      left: shellRect.left + x,
-      top: shellRect.top + y,
-      right: shellRect.left + x + panelWidth,
-      bottom: shellRect.top + y + panelHeight,
-    };
-    const selectedOverlap = mobileSolveFocusPadOverlapArea(rect, cellRect);
-    const boxOverlap = mobileSolveFocusPadOverlapArea(rect, boxRect);
-    const boardOverlap = mobileSolveFocusPadOverlapArea(rect, boardRect);
-    const protectedOverlap = protectedRects.reduce((sum, protectedRect) => sum + mobileSolveFocusPadOverlapArea(rect, protectedRect), 0);
-    const dx = ((rect.left + rect.right) / 2) - cellCenterX;
-    const dy = ((rect.top + rect.bottom) / 2) - cellCenterY;
-    const score = selectedOverlap * 100000 + protectedOverlap * 1000 + boxOverlap * 8 + boardOverlap * 0.12 + Math.hypot(dx, dy) * 0.05;
-    if (!best || score < best.score) best = { x, y, score };
+  const boardLocal = localRect(boardRect);
+  const protectedRects = [
+    mobileSolveShell.querySelector('.mobile-solve-topbar')?.getBoundingClientRect(),
+    mobileSolveStatus?.getBoundingClientRect(),
+    !mobileSolveMarksHost?.hidden ? mobileSolveMarksHost.getBoundingClientRect() : null,
+  ].filter(Boolean).map(localRect);
+  const signature = JSON.stringify([
+    round10(shellRect.width), round10(shellRect.height),
+    round10(boardLocal.left), round10(boardLocal.top), round10(boardLocal.right), round10(boardLocal.bottom),
+    round10(keySize), round10(panelWidth), round10(panelHeight),
+    ...protectedRects.flatMap((rect) => [round10(rect.left), round10(rect.top), round10(rect.right), round10(rect.bottom)]),
+  ]);
+  if (!force && signature === mobileSolveFocusPadPositionSignature && mobileSolveFocusPadPositionMap.every(Boolean)) {
+    return false;
   }
-  if (!best) return false;
-  mobileSolveFocusPad.style.left = `${best.x}px`;
-  mobileSolveFocusPad.style.top = `${best.y}px`;
+
+  const nextMap = new Array(81).fill(null);
+  for (let index = 0; index < 81; index += 1) {
+    const cellRectViewport = cells[index]?.getBoundingClientRect();
+    if (!cellRectViewport) continue;
+    const cellRect = localRect(cellRectViewport);
+    const cellCenterX = (cellRect.left + cellRect.right) / 2;
+    const cellCenterY = (cellRect.top + cellRect.bottom) / 2;
+    const rawByDirection = {
+      right: { x: cellRect.right + margin, y: cellCenterY - panelHeight / 2 },
+      left: { x: cellRect.left - margin - panelWidth, y: cellCenterY - panelHeight / 2 },
+      down: { x: cellCenterX - panelWidth / 2, y: cellRect.bottom + margin },
+      up: { x: cellCenterX - panelWidth / 2, y: cellRect.top - margin - panelHeight },
+    };
+    const priority = mobileSolveFocusPadDirectionPriority(index);
+    const candidates = priority.map((direction, rank) => {
+      const raw = rawByDirection[direction];
+      const x = clamp(raw.x, minX, maxX);
+      const y = clamp(raw.y, minY, maxY);
+      const rect = { left: x, top: y, right: x + panelWidth, bottom: y + panelHeight };
+      const selectedOverlap = mobileSolveFocusPadOverlapArea(rect, cellRect);
+      const protectedOverlap = protectedRects.reduce((sum, protectedRect) => sum + mobileSolveFocusPadOverlapArea(rect, protectedRect), 0);
+      const boardOverlap = mobileSolveFocusPadOverlapArea(rect, boardLocal);
+      return { x, y, direction, rank, selectedOverlap, protectedOverlap, boardOverlap };
+    });
+    const clean = candidates.find((candidate) => candidate.selectedOverlap < 0.5 && candidate.protectedOverlap < 0.5);
+    const best = clean || candidates.reduce((winner, candidate) => {
+      const score = candidate.selectedOverlap * 1000000 + candidate.protectedOverlap * 1000 + candidate.rank * 10 + candidate.boardOverlap * 0.001;
+      if (!winner || score < winner.score) return { ...candidate, score };
+      return winner;
+    }, null);
+    if (best) nextMap[index] = { left: best.x, top: best.y, direction: best.direction };
+  }
+
+  if (!nextMap.every(Boolean)) return false;
+  mobileSolveFocusPadPositionMap = nextMap;
+  mobileSolveFocusPadPositionSignature = signature;
+  mobileSolveFocusPadPositionBuildCount += 1;
+  mobileSolveFocusPad.style.setProperty('--mobile-focus-key-size', `${keySize}px`);
+  mobileSolveFocusPad.dataset.positionMapBuild = String(mobileSolveFocusPadPositionBuildCount);
+  return true;
+}
+
+function positionMobileSolveFocusPad() {
+  if (!mobileSolveFocusPadOpen || !mobileSolveFocusFollow || !mobileSolveFocusPad) return false;
+  const index = mobileSolveFocusPadAnchorIndex >= 0 ? mobileSolveFocusPadAnchorIndex : selectedIndex;
+  if (!Number.isInteger(index) || index < 0 || index >= 81) return false;
+  const position = mobileSolveFocusPadPositionMap[index];
+  if (!position) return false;
+  mobileSolveFocusPad.style.left = `${position.left}px`;
+  mobileSolveFocusPad.style.top = `${position.top}px`;
+  mobileSolveFocusPad.dataset.anchorIndex = String(index);
+  mobileSolveFocusPad.dataset.positionDirection = position.direction;
   return true;
 }
 
@@ -19337,6 +19380,7 @@ function setMobileSolveFocusFollow(enabled, options = {}) {
     mobileSolveFocusFollowToggle.setAttribute("aria-checked", mobileSolveFocusFollow ? "true" : "false");
   }
   mountMobileSolveFocusControls();
+  if (mobileSolveActive && mobileSolveFocusFollow) rebuildMobileSolveFocusPadPositionMap(true);
   if (mobileSolveActive && mobileSolveFocusFollow && selectedIndex >= 0 && !mobileSolveDrawerOpen && !mobileSolveNewPuzzleOpen) {
     openMobileSolveFocusPad(selectedIndex);
   } else {
@@ -19821,6 +19865,11 @@ function applyMobileSolveLayout() {
     // to its tested 150px minimum instead of reserving an arbitrary 38%/360px.
     const minimumControlWidth = 150;
     setMobileSolveBoardSize(Math.min(availableHeight, availableWidth - minimumControlWidth - 8));
+    window.requestAnimationFrame(() => {
+      if (!mobileSolveActive || !mobileSolveFocusFollow) return;
+      rebuildMobileSolveFocusPadPositionMap();
+      if (mobileSolveFocusPadOpen) positionMobileSolveFocusPad();
+    });
     return;
   }
 
@@ -19847,7 +19896,8 @@ function applyMobileSolveLayout() {
     const gapCount = floatingControls ? (marks > 0 ? 3 : 2) : (marks > 0 ? 5 : 4);
     const fixedHeight = top + status + pad + actions + marks + gap * gapCount;
     setMobileSolveBoardSize(Math.min(availableWidth, availableHeight - fixedHeight));
-    if (mobileSolveFocusPadOpen) window.requestAnimationFrame(positionMobileSolveFocusPad);
+    if (mobileSolveFocusFollow) rebuildMobileSolveFocusPadPositionMap();
+    if (mobileSolveFocusPadOpen) positionMobileSolveFocusPad();
   });
 }
 
