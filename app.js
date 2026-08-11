@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-f51c450abbd791b1";
+import createModule from "./sudoku_wasm.js?v=wasm-a6080a3d4de0bdcc";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -44,18 +44,19 @@ import {
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
 
-const APP_VERSION = "wasm-f51c450abbd791b1";
-const UI_RELEASE_VERSION = "ui-20260801-manual-entry-hybrid-input";
-const MANUAL_VERSION = "manual-20260801-manual-entry-hybrid-input";
+const APP_VERSION = "wasm-a6080a3d4de0bdcc";
+const UI_RELEASE_VERSION = "ui-20260811-mobile-clear-hint-apply-toggle";
+const MANUAL_VERSION = "manual-20260811-mobile-clear-hint-apply-toggle";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
 const TRAINING_AHS_ANY_KIND = "AHSXZ|AHSXYWing|AHSWWing";
+const TRAINING_REAL_SAMPLES_KIND = "__YZF_ALL_REAL_SAMPLES__";
 const TRAINING_OTP_STORAGE_KEY = "yzf-training-otp-v1";
 const OCR_ASSET_VERSION = "20260630-role-glyph-core-v8";
 const OCR_CORRECTION_UI_VERSION = "20260801-ocr-correction-v8.1-manual-hybrid-input";
 const APP_OVERVIEW_GUIDE_STEPS = [
-  { target: "#boardStage", titleZh: "盘面始终是操作中心", bodyZh: "加载、生成或恢复题目后，出数、候选和技巧高亮都会在这里呈现。", titleEn: "The board is the center of every workflow", bodyEn: "After loading, generating, or restoring a puzzle, values, candidates, and technique highlights all appear here." },
+  { target: "#boardStage", titleZh: "盘面始终是操作中心", bodyZh: "加载、生成或恢复题目后，出数、候选和技巧高亮都会在这里呈现。手机做题统一采用格优先：先点目标格，再点数字；“更多”可开启焦点跟随，4×4 操作盘第四行是“清除｜提示/应用｜标记｜更多”，提示取得有效步骤后会原地切换成应用。", titleEn: "The board is the center of every workflow", bodyEn: "After loading, generating, or restoring a puzzle, values, candidates, and technique highlights all appear here. Mobile solving is cell-first: tap the target cell, then a digit. Enable Focus-follow keypad under More for a 4×4 pad whose last row is Clear | Hint/Apply | Marks | More; Hint changes in place to Apply only while a valid preview is pending." },
   { target: ".global-actions", titleZh: "高频操作集中在盘面下方", bodyZh: "生成、加载、撤销、自动解题、提示一步和应用提示都在同一行；耗时任务可在任务状态中持续查看。", titleEn: "Frequent actions stay below the board", bodyEn: "Generate, load, undo, solve, hint, and apply share one row; long-running work remains visible in Task Status." },
   { target: "#hintPanel", titleZh: "提示区解释当前状态", bodyZh: "这里显示加载结果、技巧结论、错误和下一步建议；可解释步骤还能使用顶部的“解释”。", titleEn: "The hint panel explains the current state", bodyEn: "It shows load results, technique conclusions, errors, and next actions; explainable steps can also use Explain in the top bar." },
   { target: "#btnAppHub", titleZh: "低频功能统一放在帮助与现场", bodyZh: "手册、技巧说明、自动保存、OCR 草稿、近期题目、引导重播、语言和诊断都从这里进入。", titleEn: "Less-frequent tools live in Help & workspaces", bodyEn: "Manuals, technique notes, autosave, OCR drafts, recent puzzles, guide replay, language, and diagnostics are all available here." },
@@ -124,7 +125,7 @@ const TLG_EDITOR_GUIDE_STEPS = [
   { target: "#tlgSolverMode", titleZh: "先确定 TLG 输入模式", bodyZh: "Truth、Link、Virtual Set、AUR、DAUR 与 GUR 使用不同输入语义；AUR/GUR 还可通过盘面右键菜单补充通用格。", titleEn: "Choose the TLG input mode first", bodyEn: "Truth, Link, Virtual Set, AUR, DAUR, and GUR use different input semantics; AUR/GUR generic cells are also available from the board context menu." },
   { target: "#boardStage", titleZh: "在盘面上输入证明结构", bodyZh: "TLG 启用时盘面点击由 TLG 接管，普通出数、候选编辑和手工标记暂时让位；退出 TLG 后原现场会恢复。", titleEn: "Enter the proof structure on the board", bodyEn: "While TLG is enabled, it owns board input and temporarily supersedes ordinary value, candidate, and manual-mark editing; the previous view returns after TLG is disabled." },
   { target: ".tlg-solver-state-panel", titleZh: "随时核对当前结构", bodyZh: "当前 Truth、Link、Virtual Set、AUR/GUR 与门控状态会集中列出，先检查结构再运行验证。", titleEn: "Review the current structure", bodyEn: "The current Truths, Links, Virtual Sets, AUR/GUR data, and gate state are listed together; verify the structure before running validation." },
-  { target: "#btnTlgFindEliminations", titleZh: "最后查找共同结论", bodyZh: "只有满足全部 Truth、Link 与唯一性前提的投影才参与共同删数或出数；结果应结合结构列表和图形一起核对。", titleEn: "Find common conclusions last", bodyEn: "Only projections satisfying every Truth, Link, and uniqueness premise contribute common eliminations or assignments; review the result together with the structure list and diagram." },
+  { target: "#btnTlgFindEliminations", titleZh: "最后查找共同结论", bodyZh: "只有满足全部 Truth、Link 与唯一性前提的投影才参与共同删数或出数；完成后可存入 TLG 题库。“读取”恢复独立 TLG 视图，“载入解题器”会先验证记录，再把可用盘面切入主解题器。", titleEn: "Find common conclusions last", bodyEn: "Only projections satisfying every Truth, Link, and uniqueness premise contribute common eliminations or assignments. Save finished cases in the TLG Library: Read restores the isolated TLG view, while Load into Solver validates a record before switching the main solver to it." },
 ];
 const OTP_INELIGIBLE_TECHNIQUES = new Set([
   "FullHouse", "HiddenSingle", "NakedSingle", "LockedCandidates",
@@ -464,7 +465,9 @@ const btnFullscreen = document.getElementById("btnFullscreen");
 const btnMobileSolveMode = document.getElementById("btnMobileSolveMode");
 const mobileSolveShell = document.getElementById("mobileSolveShell");
 const mobileSolveBoardHost = document.getElementById("mobileSolveBoardHost");
+const mobileSolveFocusPad = document.getElementById("mobileSolveFocusPad");
 const mobileSolveNumpadHost = document.getElementById("mobileSolveNumpadHost");
+const mobileSolveActions = document.getElementById("mobileSolveActions");
 const mobileSolveMarksHost = document.getElementById("mobileSolveMarksHost");
 const mobileSolveMarksDrawerHost = document.getElementById("mobileSolveMarksDrawerHost");
 const mobileSolveStatus = document.getElementById("mobileSolveStatus");
@@ -472,6 +475,7 @@ const mobileSolveInputState = document.getElementById("mobileSolveInputState");
 const mobileSolveDrawer = document.getElementById("mobileSolveDrawer");
 const mobileSolveBackdrop = document.getElementById("mobileSolveBackdrop");
 const mobileSolveLang = document.getElementById("mobileSolveLang");
+const mobileSolveFocusFollowToggle = document.getElementById("mobileSolveFocusFollowToggle");
 const mobileSolveWakeLockToggle = document.getElementById("mobileSolveWakeLockToggle");
 const mobileSolveWakeLockStatus = document.getElementById("mobileSolveWakeLockStatus");
 const btnMobileSolveExit = document.getElementById("btnMobileSolveExit");
@@ -492,7 +496,6 @@ const btnMobileSolveMarks = document.getElementById("btnMobileSolveMarks");
 const btnMobileSolveMore = document.getElementById("btnMobileSolveMore");
 const btnMobileSolveDrawerClose = document.getElementById("btnMobileSolveDrawerClose");
 const btnMobileSolveHint = document.getElementById("btnMobileSolveHint");
-const btnMobileSolveApply = document.getElementById("btnMobileSolveApply");
 const btnMobileSolveAllSteps = document.getElementById("btnMobileSolveAllSteps");
 const btnMobileSolveInput = document.getElementById("btnMobileSolveInput");
 const btnMobileSolveCandidates = document.getElementById("btnMobileSolveCandidates");
@@ -546,12 +549,17 @@ let mobileSolveLayoutRaf = 0;
 let mobileSolveScrollY = 0;
 let mobileSolveBoardHomeMarker = null;
 let mobileSolveNumpadHomeMarker = null;
+let mobileSolveActionsHomeMarker = null;
 let mobileSolveManualMarksHomeMarker = null;
 let mobileSolveManualMarksWasOpen = false;
 let mobileSolveMarksOpen = false;
 let mobileSolveMarksPlacement = "";
 let mobileSolveCandidatesVisible = true;
 let mobileSolveSameDigitHighlight = true;
+let mobileSolveLastDigit = 0;
+let mobileSolveFocusFollow = false;
+let mobileSolveFocusPadOpen = false;
+let mobileSolveFocusPadAnchorIndex = -1;
 let mobileSolveKeepScreenAwake = true;
 let mobileSolveScreenWakeLock = null;
 let mobileSolveWakeLockRequest = null;
@@ -913,6 +921,7 @@ for (const [key, zh, en] of [
   ["stepExplainUnavailable", "当前没有可解释的步骤。", "No explainable step is selected."],
   ["stepTutorialGuide", "技巧原理", "Technique guide"],
   ["stepTutorialCurrent", "当前步骤", "Current step"],
+  ["stepTutorialBackendDetails", "后端结构化详情", "Backend structured details"],
   ["close", "关闭", "Close"],
   ["fullscreen", "全屏", "Fullscreen"],
   ["exitFullscreen", "退出全屏", "Exit fullscreen"],
@@ -930,6 +939,9 @@ for (const [key, zh, en] of [
   ["mobileSolveNewPuzzleDifficulty", "难度", "Difficulty"],
   ["mobileSolveMore", "更多", "More"],
   ["mobileSolveMoreTitle", "更多功能", "More tools"],
+  ["mobileSolveFocusFollow", "焦点跟随操作盘", "Focus-follow keypad"],
+  ["mobileSolveFocusFollowHint", "点格后在焦点附近显示 4×4 操作盘", "Show the 4×4 keypad near the selected cell"],
+  ["mobileSolveFocusPad", "焦点跟随操作盘", "Focus-follow keypad"],
   ["mobileSolveHelp", "帮助与现场", "Help & workspaces"],
   ["appHubButton", "帮助与现场", "Help & workspaces"],
   ["appHubTitle", "帮助与现场", "Help & workspaces"],
@@ -1033,6 +1045,9 @@ for (const [key, zh, en] of [
   ["mobileSolveWakeLockFailed", "启用失败；关闭再开启可重试", "Activation failed; toggle off and on to retry"],
   ["mobileSolveWakeLockUnsupported", "当前浏览器不支持屏幕常亮", "Screen Wake Lock is unavailable in this browser"],
   ["mobileInputState", "{mode} · {digit}", "{mode} · {digit}"],
+  ["mobileInputStateCell", "{mode} · {cell}", "{mode} · {cell}"],
+  ["mobileNoCell", "未选格", "No cell"],
+  ["mobileCellSelected", "已选择 {cell}，请选择数字。", "Selected {cell}. Choose a digit."],
   ["mobileSelectCellFirst", "请先选择一个单元格。", "Select a cell first."],
   ["mobileNothingToClear", "当前单元格没有可清除的内容。", "There is nothing to clear in this cell."],
   ["difficulty", "难度", "Difficulty"],
@@ -1326,6 +1341,14 @@ for (const [key, zh, en] of [
   ["tlgDaurCleared", "已清空 DAUR 候选池。", "Cleared the DAUR candidate pool."],
   ["tlgGurCleared", "已清空 GUR 通用候选云。", "Cleared the GUR candidate cloud."],
   ["tlgLogicCleared", "已清空全部 TLG 逻辑；候选盘面保持不变。", "Cleared all TLG logic; the candidate grid was preserved."],
+  ["generateRealSamples", "全技巧样例", "Real samples"],
+  ["generateRealSamplesTitle", "一键生成所有已实现技巧及已登记子技巧的真实训练样例；输出 JSONL，保存 trainingLibrary 与 matchedStep。", "Generate real training samples for every implemented technique and registered subtype. Outputs JSONL with trainingLibrary and matchedStep."],
+  ["realSamplesStart", "真实样例库开始：共 {count} 个目标；每个目标由训练生成器实际命中后保存。", "Real sample library started: {count} targets; each record is saved only after a real training-generator hit."],
+  ["realSamplesProgress", "真实样例 {done}/{count}：{label}；成功 {ok}，未命中 {failed}，已用时 {elapsed}。", "Real samples {done}/{count}: {label}; success {ok}, missed {failed}, elapsed {elapsed}."],
+  ["realSamplesDone", "真实样例库完成：成功 {ok}/{count}，未命中 {failed}；文件 {filename}。", "Real sample library complete: {ok}/{count} succeeded, {failed} missed; file {filename}."],
+  ["realSamplesStopped", "真实样例库已停止：已完成 {done}/{count}，成功 {ok}。已写入当前结果。", "Real sample library stopped: {done}/{count} completed, {ok} succeeded. Current results were written."],
+  ["realSamplesFailed", "真实样例库失败：{error}", "Real sample library failed: {error}"],
+  ["realSamplesStop", "停止样例", "Stop samples"],
   ["batchGenerate", "批量任务", "Batch tasks"],
   ["batchMode", "模式", "Mode"],
   ["batchModeGenerate", "批量出题", "Batch generation"],
@@ -1396,7 +1419,7 @@ for (const [key, zh, en] of [
   ["keyboardCandidateShortcutHint", "Ctrl/Cmd+数字切换当前格候选；若浏览器占用该快捷键，可使用数字小键盘或安装后的 PWA/Standalone。", "Ctrl/Cmd+digit toggles a candidate in the selected cell. If the browser reserves that shortcut, use the numeric keypad or the installed PWA/Standalone."],
   ["candidateMode", "候选", "Candidates"],
   ["valueMode", "出数", "Values"],
-  ["inputModeTitle", "触摸/触控笔：切换出数/候选模式，先选数字再点格。鼠标直接在盘面使用左/右键。", "Touch/pen: toggle Value/Candidate, choose a digit, then tap a cell. Mouse input uses direct left/right clicks on the board."],
+  ["inputModeTitle", "触摸/触控笔：先点目标格，再用数字键按当前出数/候选模式输入；手机“更多”可开启焦点跟随操作盘。鼠标直接在盘面使用左/右键。", "Touch/pen: tap the target cell first, then use a digit in the current Value/Candidate mode; mobile More can enable the focus-follow keypad. Mouse input uses direct left/right clicks on the board."],
   ["currentInput", "当前", "Current"],
   ["techPresetAll", "全选", "All In"],
   ["techPresetHighSpeed", "高速", "High Speed"],
@@ -1828,6 +1851,7 @@ function currentAppBackState() {
   if (trainingTextFilterDialog?.open) layers.push("closeDialog");
   if (tlgLibraryDialog?.open) layers.push("closeDialog");
   if (mobileSolveNewPuzzleOpen) layers.push("closeNewPuzzle");
+  if (mobileSolveFocusPadOpen) layers.push("closeDrawer");
   if (mobileSolveMarksOpen) layers.push("closeMarks");
   else if (mobileSolveDrawerOpen) layers.push("closeDrawer");
   if (mobileSolveActive) layers.push("exitSolve");
@@ -1886,6 +1910,11 @@ async function closeTopAppUiLayer() {
   }
   if (mobileSolveNewPuzzleOpen) {
     setMobileSolveNewPuzzlePanel(false);
+    updateAppBackStatus();
+    return true;
+  }
+  if (mobileSolveFocusPadOpen) {
+    closeMobileSolveFocusPad();
     updateAppBackStatus();
     return true;
   }
@@ -2977,19 +3006,18 @@ function updateManualMarkControls() {
     button.classList.toggle("active", String(button.dataset.colorId) === String(manualMarkColorId));
   });
   if (manualMarkLineType) manualMarkLineType.disabled = !["chain", "construction"].includes(mode);
-  const actionKeys = mode === "chain"
-    ? ["markStrongAction", "markWeakAction"]
-    : mode === "construction"
-      ? ["markConstructionStrongAction", "markConstructionWeakAction"]
-      : mode === "miniRegion"
-        ? ["markMiniRegionGreenAction", "markMiniRegionBlueAction"]
-        : ["markPrimary", "markSecondary"];
+  const actionKeys = mobileSolveManualActionKeys(mode);
   setTextById("manualMarkPrimary", ui(actionKeys[0]));
   setTextById("manualMarkSecondary", ui(actionKeys[1]));
   if (manualMarkFinishBlock) manualMarkFinishBlock.disabled = mode !== "block";
   if (manualMarkUndoBlock) manualMarkUndoBlock.disabled = mode !== "block";
   if (manualMarkStatus && (!manualMarkStatus.textContent || manualMarkStatus.textContent === uiText.zh.markOffStatus || manualMarkStatus.textContent === uiText.en.markOffStatus)) {
     setManualMarkStatus(active ? ui("markModeHint") : ui("markOffStatus"));
+  }
+  if (mobileSolveActive) {
+    updateMobileSolveInputState();
+    syncMobileSolveCompletedDigitButtons();
+    if (mobileSolveFocusFollow && mode === "cellColor") closeMobileSolveFocusPad();
   }
 }
 
@@ -3147,6 +3175,10 @@ function attachManualMarkCandidateHandlers(cellNode, cellIndex) {
         selectedIndex = cellIndex;
         renderBoardSnapshot(currentSnapshot, currentHint);
         setManualMarkStatus(uif("markCellSelected", { cell: manualMarkCellText(cellIndex) }));
+        if (mobileSolveActive) {
+          updateMobileSolveInputState();
+          openMobileSolveFocusPad(cellIndex);
+        }
       },
       () => {
         const digit = Number(candidate.dataset.digit || 0);
@@ -4166,6 +4198,7 @@ function initManualMarksControls() {
   manualMarkMode?.addEventListener("change", () => {
     manualChainStart = null;
     manualMiniRegionStart = null;
+    if (mobileSolveActive) closeMobileSolveFocusPad();
     updateManualMarkControls();
     renderBoardSnapshot(currentSnapshot, currentHint);
     markManualMarksDirty();
@@ -4522,6 +4555,7 @@ function applyStaticLanguage() {
   setInputLabelByControl("batchFilename", ui("filename"));
   setInputLabelByControl("batchSolveFile", ui("batchSolveFile"));
   updateBatchModeLabels();
+  updateTrainingGenerationModeUi();
   setLocalizedTexts([["btnBatchGenerate", "startBatch"], ["btnBatchStop", "stop"]]);
   if (batchStatus && (batchStatus.textContent === uiText.zh.batchStatusIdle || batchStatus.textContent === uiText.en.batchStatusIdle)) {
     batchStatus.textContent = ui("batchStatusIdle");
@@ -9428,6 +9462,7 @@ function buildTechniqueTutorialGuide(step = {}) {
 
   const group = document.createElement("section");
   group.className = "step-tutorial-group step-tutorial-guide";
+  group.dataset.audited = auditedCard ? "1" : "0";
   const title = document.createElement("h3");
   title.className = "step-tutorial-group-title";
   title.textContent = ui("stepTutorialGuide");
@@ -9451,6 +9486,24 @@ function createCurrentStepGroup() {
   title.textContent = ui("stepTutorialCurrent");
   group.appendChild(title);
   return group;
+}
+
+function appendCurrentStepExplanation(fragment, currentGroup, collapseBackendDetails) {
+  if (!collapseBackendDetails) {
+    fragment.appendChild(currentGroup);
+    return;
+  }
+  // Audited technique guides are already current-step aware: they use the
+  // exact backend Branch/roles/conclusion.  Showing the backend
+  // Structure/Principle/Deduction/Conclusion cards immediately underneath
+  // repeats the same proof on the first screen.  Preserve the authoritative
+  // backend payload, but keep it collapsed as drill-down detail.
+  const details = document.createElement("details");
+  details.className = "step-explain-details step-explain-backend-details";
+  const summary = document.createElement("summary");
+  summary.textContent = ui("stepTutorialBackendDetails");
+  details.append(summary, currentGroup);
+  fragment.appendChild(details);
 }
 
 function buildStepExplanationContent(step, snapshot = currentSnapshot) {
@@ -9508,6 +9561,7 @@ function buildStepExplanationContent(step, snapshot = currentSnapshot) {
 
   const guide = buildTechniqueTutorialGuide(step);
   if (guide) fragment.appendChild(guide);
+  const collapseBackendDetails = guide?.dataset?.audited === "1";
 
   const currentGroup = createCurrentStepGroup();
 
@@ -9538,7 +9592,7 @@ function buildStepExplanationContent(step, snapshot = currentSnapshot) {
       });
       currentGroup.appendChild(meta);
     }
-    fragment.appendChild(currentGroup);
+    appendCurrentStepExplanation(fragment, currentGroup, collapseBackendDetails);
     return fragment;
   }
 
@@ -9593,7 +9647,7 @@ function buildStepExplanationContent(step, snapshot = currentSnapshot) {
     currentGroup.appendChild(meta);
   }
 
-  fragment.appendChild(currentGroup);
+  appendCurrentStepExplanation(fragment, currentGroup, collapseBackendDetails);
   return fragment;
 }
 
@@ -10178,6 +10232,7 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
     clearYzfBranchContext({ preserveHint: false });
     setYzfHintBaseText(ui("waitingWasm"));
     renderStepExplanation(null, null);
+    updateMobileSolveHintAction();
     invalidateManualScreenshotDomCache();
     return;
   }
@@ -10331,6 +10386,8 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
   applyManualChainEndpointHighlights();
   syncMobileSolveDigitHighlights();
   syncMobileSolveCompletedDigitButtons();
+  updateMobileSolveHintAction();
+  syncMobileSolveFocusPadAfterRender();
   invalidateManualScreenshotDomCache();
 }
 
@@ -10621,12 +10678,34 @@ function handleCellTap(index) {
   }
   if (manualMarksActive()) {
     if (manualMarkModeValue() === "cellColor") {
+      closeMobileSolveFocusPad();
       applyManualMarkTarget(index, 0, manualMarkButton);
     } else {
       selectedIndex = index;
       renderBoardSnapshot(currentSnapshot, currentHint);
       setManualMarkStatus(uif("markCellSelected", { cell: manualMarkCellText(index) }));
+      if (mobileSolveActive) {
+        updateMobileSolveInputState();
+        openMobileSolveFocusPad(index);
+      }
     }
+    return;
+  }
+  if (mobileSolveActive) {
+    // Mobile solve is deliberately cell-first: tapping the board only moves
+    // focus. A digit button performs the edit against this selected cell.
+    // This keeps the fixed keypad and the optional focus-follow keypad on the
+    // same input state machine and prevents a stale digit from editing a newly
+    // tapped cell.
+    selectedIndex = index;
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    if (isFixedCell(index)) {
+      setStatus(ui("fixedCell"));
+    } else {
+      setStatus(uif("mobileCellSelected", { cell: manualMarkCellText(index) }));
+    }
+    updateMobileSolveInputState();
+    openMobileSolveFocusPad(index);
     return;
   }
   if (inputMode === "candidate") {
@@ -10789,6 +10868,58 @@ function installDesktopBoardKeyboardInput() {
   });
 }
 
+function ensureMobileSolveSelection() {
+  if (!mobileSolveActive) return false;
+  if (!engine || !currentSnapshot || selectedIndex < 0 || selectedIndex >= 81) {
+    setStatus(ui("mobileSelectCellFirst"));
+    return false;
+  }
+  return true;
+}
+
+function applyMobileSolveDigit(digit) {
+  const value = Number(digit || 0);
+  if (!ensureMobileSolveSelection() || value < 1 || value > 9) return false;
+  selectedDigit = value;
+  mobileSolveLastDigit = value;
+
+  if (manualMarksActive()) {
+    const mode = manualMarkModeValue();
+    if (!manualMarkNeedsDigit(mode)) {
+      updateInputControls();
+      return false;
+    }
+    const changed = applyManualMarkTarget(selectedIndex, value, manualMarkButton);
+    updateInputControls();
+    finishMobileSolveDigitInteraction();
+    return changed !== false;
+  }
+
+  if (isFixedCell(selectedIndex)) {
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    setStatus(ui(inputMode === "candidate" ? "fixedCandidate" : "fixedCell"));
+    updateInputControls();
+    return false;
+  }
+
+  const cell = currentSnapshot.cells?.[selectedIndex];
+  let changed = false;
+  if (inputMode === "candidate") {
+    if (cell?.value > 0) {
+      renderBoardSnapshot(currentSnapshot, currentHint);
+      setStatus(ui("solvedCandidate"));
+    } else {
+      changed = executeSimpleEngineEdit(() => engine.toggle_candidate_json(selectedIndex, value));
+    }
+  } else {
+    const nextValue = Number(cell?.value || 0) === value ? 0 : value;
+    changed = executeValueEdit(selectedIndex, nextValue);
+  }
+  updateInputControls();
+  finishMobileSolveDigitInteraction();
+  return changed;
+}
+
 function buildNumpad() {
   numpad.replaceChildren();
   for (let digit = 1; digit <= 9; digit += 1) {
@@ -10797,6 +10928,10 @@ function buildNumpad() {
     button.textContent = digit;
     button.dataset.digit = String(digit);
     const applyNumpadDigit = () => {
+      if (mobileSolveActive) {
+        applyMobileSolveDigit(digit);
+        return;
+      }
       selectedDigit = digit;
       if (manualMarksActive() && manualMarkNeedsDigit() && selectedIndex >= 0) {
         applyManualMarkTarget(selectedIndex, digit, manualMarkButton);
@@ -10832,7 +10967,8 @@ function buildNumpad() {
 function updateInputControls() {
   numpad.classList.toggle("candidate-mode", inputMode === "candidate");
   numpad.querySelectorAll("button").forEach((button) => {
-    button.classList.toggle("active", Number(button.dataset.digit) === selectedDigit);
+    button.classList.toggle("active", !mobileSolveActive && Number(button.dataset.digit) === selectedDigit);
+    button.classList.toggle("mobile-last-digit", mobileSolveActive && Number(button.dataset.digit) === mobileSolveLastDigit);
     if (button.dataset.digit) {
       button.title = `${ui("chooseDigit")} ${button.dataset.digit}`;
     }
@@ -10843,7 +10979,9 @@ function updateInputControls() {
     modeButton.classList.toggle("active", inputMode === "candidate");
     modeButton.title = ui("inputModeTitle");
   }
-  numpad.title = `${ui("currentInput")}: ${inputMode === "candidate" ? ui("candidateMode") : ui("valueMode")} ${selectedDigit}. ${ui("inputModeTitle")}`;
+  numpad.title = mobileSolveActive
+    ? `${ui("currentInput")}: ${inputMode === "candidate" ? ui("candidateMode") : ui("valueMode")}. ${ui("mobileSelectCellFirst")}`
+    : `${ui("currentInput")}: ${inputMode === "candidate" ? ui("candidateMode") : ui("valueMode")} ${selectedDigit}. ${ui("inputModeTitle")}`;
   updateMobileSolveInputState();
   syncMobileSolveDigitHighlights();
   syncMobileSolveCompletedDigitButtons();
@@ -11144,6 +11282,13 @@ function renderTrainingTechniqueOptionsOnly() {
   noneOption.style.backgroundColor = "#fff";
   noneOption.style.color = "#1d2430";
   trainingTechniqueSelect.appendChild(noneOption);
+  const realSamplesOption = document.createElement("option");
+  realSamplesOption.value = TRAINING_REAL_SAMPLES_KIND;
+  realSamplesOption.textContent = ui("generateRealSamples");
+  realSamplesOption.title = ui("generateRealSamplesTitle");
+  realSamplesOption.style.backgroundColor = "#fff";
+  realSamplesOption.style.color = "#1d2430";
+  trainingTechniqueSelect.appendChild(realSamplesOption);
   const ahsKinds = new Set(state.filter((tech) => tech.implemented !== false).map((tech) => tech.kind));
   if (["AHSXZ", "AHSXYWing", "AHSWWing"].every((kind) => ahsKinds.has(kind))) {
     const ahsAnyOption = document.createElement("option");
@@ -11372,8 +11517,12 @@ function saveTrainingTextFilter() {
   }
 }
 
+function isRealSampleTrainingSelection() {
+  return trainingTechniqueSelect?.value === TRAINING_REAL_SAMPLES_KIND;
+}
+
 function trainingOtpEnabled() {
-  return Boolean(trainingOtp?.checked);
+  return !isRealSampleTrainingSelection() && Boolean(trainingOtp?.checked);
 }
 
 function loadTrainingOtp() {
@@ -11460,7 +11609,9 @@ function updateTrainingTechniqueSelectColor() {
   const visualKind = trainingTechniqueSelect.value === TRAINING_AHS_ANY_KIND
     ? "AHSXZ"
     : trainingTechniqueSelect.value;
-  trainingTechniqueSelect.style.backgroundColor = techniqueBackgroundColor(visualKind);
+  trainingTechniqueSelect.style.backgroundColor = visualKind === TRAINING_REAL_SAMPLES_KIND
+    ? "#fff"
+    : techniqueBackgroundColor(visualKind);
 }
 
 function generateTrainingPuzzleInWorker(
@@ -11468,7 +11619,8 @@ function generateTrainingPuzzleInWorker(
   difficulty,
   maxAttempts = 0,
   summary = false,
-  textFilter = currentTrainingTextFilterPayload()
+  textFilter = currentTrainingTextFilterPayload(),
+  options = {}
 ) {
   const normalizedFilter = normalizeTrainingTextFilter(textFilter);
   const filterJson = JSON.stringify(normalizedFilter);
@@ -11480,9 +11632,21 @@ function generateTrainingPuzzleInWorker(
     : "generate_training_puzzle_json";
   const otp = Boolean(normalizedFilter.otp);
   const requestKind = otp ? String(kind || "") : String(kind || "BruteForce");
-  const techniqueConfig = getTechniqueConfigPayload(
+  const normalTechniqueConfig = getTechniqueConfigPayload(
     techniqueState.length ? techniqueState : loadTechniqueState()
   );
+  const techniqueConfig = options?.techniqueConfig || normalTechniqueConfig;
+  const abortSignal = options?.signal || null;
+
+  if (abortSignal?.aborted) {
+    return Promise.reject(new DOMException("Aborted", "AbortError"));
+  }
+
+  const restoreMainEngineTechniqueConfig = () => {
+    if (options?.techniqueConfig && engine && typeof engine.set_techniques_json === "function") {
+      engine.set_techniques_json(JSON.stringify(normalTechniqueConfig));
+    }
+  };
 
   if (window.YZF_STANDALONE || !window.Worker) {
     if (!engine) {
@@ -11492,28 +11656,39 @@ function generateTrainingPuzzleInWorker(
       engine.set_techniques_json(JSON.stringify(techniqueConfig));
     }
     if (typeof engine[filteredMethod] === "function") {
-      return Promise.resolve(engine[filteredMethod](
-        requestKind,
-        Number(difficulty || 0),
-        Number(maxAttempts || 0),
-        filterJson
-      ));
+      try {
+        return Promise.resolve(engine[filteredMethod](
+          requestKind,
+          Number(difficulty || 0),
+          Number(maxAttempts || 0),
+          filterJson
+        ));
+      } finally {
+        restoreMainEngineTechniqueConfig();
+      }
     }
     if (otp || isTrainingTextFilterActive(normalizedFilter) || typeof engine[legacyMethod] !== "function") {
       throw new Error(ui("trainingWorkerFailed"));
     }
-    return Promise.resolve(engine[legacyMethod](requestKind, Number(difficulty || 0), Number(maxAttempts || 0)));
+    try {
+      return Promise.resolve(engine[legacyMethod](requestKind, Number(difficulty || 0), Number(maxAttempts || 0)));
+    } finally {
+      restoreMainEngineTechniqueConfig();
+    }
   }
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(`./training-worker.js?v=${APP_VERSION}`, { type: "module" });
     let settled = false;
+    const onAbort = () => finish(reject, new DOMException("Aborted", "AbortError"));
     const finish = (callback, value) => {
       if (settled) return;
       settled = true;
+      abortSignal?.removeEventListener?.("abort", onAbort);
       worker.terminate();
       callback(value);
     };
+    abortSignal?.addEventListener?.("abort", onAbort, { once: true });
 
     worker.addEventListener("message", (event) => {
       const message = event.data || {};
@@ -11536,6 +11711,482 @@ function generateTrainingPuzzleInWorker(
       techniqueConfig,
     });
   });
+}
+
+async function findBuiltinSuperhardSampleInWorker(kind, textFilter, options = {}) {
+  const normalizedFilter = normalizeTrainingTextFilter(textFilter);
+  const techniqueConfig = options?.techniqueConfig || realSampleTechniqueConfig();
+  const abortSignal = options?.signal || null;
+  const startIndex = Number(options?.startIndex || 0);
+  const maxPuzzles = Number(options?.maxPuzzles || 9999);
+  const maxSteps = Number(options?.maxSteps || 500);
+  if (abortSignal?.aborted) {
+    return Promise.reject(new DOMException("Aborted", "AbortError"));
+  }
+
+  if (window.YZF_STANDALONE || !window.Worker) {
+    if (!engine || typeof engine.find_builtin_superhard_sample_json !== "function") {
+      throw new Error("Built-in superhard sample search is unavailable in this build");
+    }
+    if (typeof engine.set_techniques_json === "function") {
+      engine.set_techniques_json(JSON.stringify(techniqueConfig));
+    }
+    return Promise.resolve(engine.find_builtin_superhard_sample_json(
+      String(kind || ""),
+      JSON.stringify(normalizedFilter),
+      startIndex,
+      maxPuzzles,
+      maxSteps
+    ));
+  }
+
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(`./training-worker.js?v=${APP_VERSION}`, { type: "module" });
+    let settled = false;
+    const onAbort = () => finish(reject, new DOMException("Aborted", "AbortError"));
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      abortSignal?.removeEventListener?.("abort", onAbort);
+      worker.terminate();
+      callback(value);
+    };
+    abortSignal?.addEventListener?.("abort", onAbort, { once: true });
+    worker.addEventListener("message", (event) => {
+      const message = event.data || {};
+      if (message.type === "result") finish(resolve, message.resultText);
+      else if (message.type === "error") finish(reject, new Error(message.error || ui("trainingWorkerFailed")));
+    });
+    worker.addEventListener("error", (event) => {
+      finish(reject, new Error(event.message || ui("trainingWorkerRuntimeFailed")));
+    });
+    worker.postMessage({
+      type: "find-builtin-sample",
+      kind,
+      textFilter: normalizedFilter,
+      techniqueConfig,
+      startIndex,
+      maxPuzzles,
+      maxSteps,
+    });
+  });
+}
+
+
+// Real-sample audit registry.  Top-level targets are generated automatically from
+// every implemented technique.  This table only lists sub-technique branches
+// that need an explicit native text filter to prove that a real branch, rather
+// than a hand-built StepResult, was reached.  Keep filters in native terminology:
+// training_step_search_text() deliberately excludes translated teaching prose.
+const REAL_SAMPLE_SUBTARGETS = [
+  ["LockedCandidates", "Pointing", "Branch:Pointing"],
+  ["LockedCandidates", "Claiming", "Branch:Claiming"],
+  ["Skyscraper", "Row-Based", "Branch:Row-Based"],
+  ["Skyscraper", "Column-Based", "Branch:Column-Based"],
+  ["TwoStringKite", "Standard", "Branch:Standard"],
+  ["TwoStringKite", "Grouped", "Branch:Grouped"],
+  ["WWing", "Standard", "Branch:Standard"],
+  ["WWing", "Grouped", "Branch:Grouped"],
+  ["XYZRing", "Complete", "Branch:Complete"],
+  ["XYZRing", "Half", "Branch:Half"],
+  ["WXYZWing", "Standard", "Branch:Standard"],
+  ["WXYZWing", "Restricted-Z", "Branch:Restricted-Z"],
+  // Chain-family subtypes are explicit targets too.  Earlier tutorial rounds
+  // exercised many of these with hand-built fixtures; the real-sample library
+  // must prove the native branch/title before an explanation is considered done.
+  ["XChain", "X-Chain", "Branch:X-Chain"],
+  ["XChain", "X-Cycle", "Branch:X-Cycle"],
+  ["AIC", "Type 1", "Branch:AIC Type 1"],
+  ["AIC", "Type 2", "Branch:AIC Type 2"],
+  ["AIC", "Continuous Nice Loop", "Branch:Continuous Nice Loop"],
+  ["AIC", "Discontinuous Nice Loop", "Branch:Discontinuous Nice Loop"],
+  ["AIC", "W-Wing", "Branch:W-Wing"],
+  ["AIC", "H-Wing", "Branch:H-Wing"],
+  ["AIC", "S-Ring", "Branch:S-Ring"],
+  ["AIC", "M2-Ring", "Branch:M2-Ring"],
+  ["AIC", "L1-Wing", "Branch:L1-Wing"],
+  ["AIC", "L2-Wing", "Branch:L2-Wing"],
+  ["AIC", "L3-Wing", "Branch:L3-Wing"],
+  ["GroupedAIC", "Grouped Continuous Nice Loop", "Branch:Grouped Continuous Nice Loop"],
+  ["GroupedAIC", "Grouped Discontinuous Nice Loop", "Branch:Grouped Discontinuous Nice Loop"],
+  ["GroupedAIC", "Grouped L1-Ring", "Branch:Grouped L1-Ring"],
+  ["GroupedAIC", "Grouped L2-Wing", "Branch:Grouped L2-Wing"],
+  ["GroupedAIC", "Grouped L3-Ring", "Branch:Grouped L3-Ring"],
+  ["GroupedAIC", "Grouped M2-Ring", "Branch:Grouped M2-Ring"],
+  ["ALSChain", "ALS Continuous Nice Loop", "Branch:ALS Continuous Nice Loop"],
+  ["ALSChain", "ALS Discontinuous Nice Loop", "Branch:ALS Discontinuous Nice Loop"],
+  ["ComplexAIC", "UR Guardian", "UR Guardian"],
+  ["ComplexAIC", "AMSLS", "EdgeReason:amsls"],
+  ["ComplexAIC", "Tridagon", "EdgeReason:tridagon"],
+  ["CellRegionFC", "Cell Force Chain", "ForceChainKind:Cell Force Chain"],
+  ["CellRegionFC", "Region Force Chain", "ForceChainKind:Region Force Chain"],
+  ["CellRegionFC", "UR Force Chain", "ForceChainKind:UR Force Chain"],
+  ["CellRegionFC", "Triplet Oddagon Force Chain", "ForceChainKind:Triplet Oddagon Force Chain"],
+  ["DynamicChain", "Grouped Dynamic", "Grouped Dynamic Chain"],
+  ["FinnedXWing", "Finned", "Finned X-Wing"],
+  ["FinnedXWing", "Sashimi", "Sashimi X-Wing"],
+  ["FinnedSwordfish", "Finned", "Finned Swordfish"],
+  ["FinnedSwordfish", "Sashimi", "Sashimi Swordfish"],
+  ["FinnedJellyfish", "Finned", "Finned Jellyfish"],
+  ["FinnedJellyfish", "Sashimi", "Sashimi Jellyfish"],
+  ["AlmostPair", "Box-ALS / Line-AHS", "Branch:Box-ALS / Line-AHS"],
+  ["AlmostPair", "Line-ALS / Box-AHS", "Branch:Line-ALS / Box-AHS"],
+  ["AlmostTriple", "Single-Intersection", "Subtype:Single-Intersection"],
+  ["AlmostTriple", "Double-Intersection", "Subtype:Double-Intersection"],
+  ["ALSXZ", "Single-RCC XZ", "Branch:Single-RCC XZ"],
+  ["ALSXZ", "Double-RCC Rank-0", "Branch:Double-RCC Rank-0"],
+  ["ALSXYWing", "Standard", "Branch:Standard"],
+  ["ALSXYWing", "Triple-Linked Rank-0", "Branch:Triple-Linked Rank-0"],
+  ["ALSWWing", "Standard", "Branch:Standard"],
+  ["ALSWWing", "Grouped", "Branch:Grouped", "Rank-0"],
+  ["ALSWWing", "Grouped Rank-0", "Branch:Grouped Rank-0"],
+  ["AHSXZ", "Single-RCC XZ", "Branch:Single-RCC XZ"],
+  ["AHSXZ", "Double-RCC Rank-0", "Branch:Double-RCC Rank-0"],
+  ["AHSXZ", "Rank-2 RCC", "Branch:Rank-2 RCC"],
+  ["AHSXZ", "Extended-RCC", "RccClass:Extended-RCC"],
+  ["AHSXYWing", "Standard", "Branch:Standard"],
+  ["AHSXYWing", "Extended-RCC", "RccClass:Extended-RCC"],
+  ["AHSXYWing", "Triple-Linked Rank-0", "Branch:Triple-Linked Rank-0"],
+  ["AHSWWing", "Bivalue", "Branch:Triple-Linked Rank-0 Cell Strong Inference Bivalue"],
+  ["AHSWWing", "Multi-Candidate", "Branch:Cell Strong Inference Multi-Candidate"],
+  ["AHSWWing", "Triple-Linked Rank-0", "Branch:Triple-Linked Rank-0"],
+  ["UniqueRectangle", "Type 1", "Branch:Unique Rectangle Type 1"],
+  ["UniqueRectangle", "Type 2", "Branch:Unique Rectangle Type 2"],
+  ["UniqueRectangle", "Type 3", "Branch:Unique Rectangle Type 3"],
+  ["UniqueRectangle", "Type 4", "Branch:Unique Rectangle Type 4"],
+  ["UniqueRectangle", "Type 5", "Branch:Unique Rectangle Type 5"],
+  ["UniqueRectangle", "Type 6", "Branch:Unique Rectangle Type 6"],
+  ["UniqueRectangle", "Type 7", "Branch:Unique Rectangle Type 7"],
+  ["UniqueRectangle", "Hidden Rectangle", "Branch:Hidden Rectangle"],
+  ["UniqueRectangle", "External Test 1", "Branch:External Test 1"],
+  ["UniqueRectangle", "External Test 2/4", "Branch:External Test 2/4"],
+  ["UniqueRectangle", "External Test 3", "Branch:External Test 3", "Branch:External Test 3H"],
+  ["UniqueRectangle", "External Test 3H", "Branch:External Test 3H"],
+  ["UniqueRectangle", "External + XY-Wing", "Branch:External Test + XY-Wing"],
+  ["UniqueRectangle", "AUR + XY-Wing", "Branch:AUR + XY-Wing"],
+  ["UniqueRectangle", "AUR + XYZ-Wing", "Branch:AUR + XYZ-Wing"],
+  ["UniqueRectangle", "AUR + WXYZ-Wing", "Branch:AUR + WXYZ-Wing"],
+  ["UniqueRectangle", "AUR + WXYZ-Ring", "Branch:AUR + WXYZ-Ring"],
+  ["AvoidableRectangle", "Type 1", "Branch:Type 1"],
+  ["AvoidableRectangle", "Type 2", "Branch:Type 2"],
+  ["BivalueOddagon", "Type 1 / Remote Pair", "Branch:Type 1 / Remote Pair"],
+  ["BivalueOddagon", "Type 2", "Branch:Type 2"],
+  ["BivalueOddagon", "Type 3 / Locked Set", "Branch:Type 3 / Locked Set"],
+  ["BivalueOddagon", "Dual", "Branch:Dual"],
+  ["ExtendedRectangle", "Type 1", "Branch:Type 1"],
+  ["ExtendedRectangle", "Type 2", "Branch:Type 2"],
+  ["ExtendedRectangle", "Type 3", "Branch:Type 3"],
+  ["ExtendedRectangle", "Type 4", "Branch:Type 4"],
+  ["UniqueLoop", "Type 1", "Branch:Type 1"],
+  ["UniqueLoop", "Type 2", "Branch:Type 2"],
+  ["UniqueLoop", "Type 3", "Branch:Type 3"],
+  ["UniqueLoop", "Type 4", "Branch:Type 4"],
+  ["UniqueLoop", "External Test 1", "Branch:External Test 1"],
+  ["UniqueLoop", "External Test 2/4", "Branch:External Test 2/4"],
+  ["UniqueLoop", "External Test 3", "Branch:External Test 3", "Branch:External Test 3H"],
+  ["UniqueLoop", "External Test 3H", "Branch:External Test 3H"],
+  ["UniqueLoop", "External + XY-Wing", "Branch:External Test + XY-Wing"],
+  ["BUGPlusN", "Type 1", "Branch:Type 1"],
+  ["BUGPlusN", "Type 2", "Branch:Type 2"],
+  ["BUGPlusN", "Type 3", "Branch:Type 3"],
+  ["BUGPlusN", "Type 4", "Branch:Type 4"],
+  ["BUGPlusN", "Cross-Guardian", "Branch:Cross-Guardian"],
+  ["BUGPlusN", "Generic", "Branch:Generic"],
+  ["Fireworks", "Dual ER", "Branch:Dual ER"],
+  ["Fireworks", "Dual S-Wing", "Branch:Dual S-Wing"],
+  ["Fireworks", "Triple", "Branch:Triple"],
+  ["Fireworks", "Quadruple", "Branch:Quadruple"],
+  ["Fireworks", "Dual ALP", "Branch:Dual ALP"],
+  ["Fireworks", "Dual W-Wing", "Branch:Dual W-Wing"],
+  ["Fireworks", "Exocet", "Branch:Exocet"],
+  ["BrokenWing", "Odd-Loop Guardians", "Branch:Odd-Loop Guardians"],
+  ["BlossomLoop", "Cell Type", "Branch:Cell Type"],
+  ["BlossomLoop", "Region Type", "Branch:Region Type"],
+  ["BlossomLoop", "AALS Type", "Branch:AALS Type"],
+  ["SKLoop", "Domino/SK Loop", "Branch:Domino/SK Loop"],
+  ["DynamicChain", "Contradiction", "Dynamic Contradiction Chain"],
+  ["DynamicChain", "Verity Placement", "Dynamic Verity Placement"],
+  ["DynamicChain", "Verity Elimination", "Dynamic Verity Elimination"],
+  ["DeathBlossom", "Classic Stem/Petals", "Branch:Classic Stem/Petals"],
+  ["DeathBlossom", "Complex Type 1", "Branch:Complex Type 1"],
+  ["DeathBlossom", "Complex Type 2", "Branch:Complex Type 2"],
+  ["DeathBlossom", "Complex Type 3 (MSLS)", "Branch:Complex Type 3 (MSLS)"],
+  ["MSLS", "Exact Rank-0", "Exact Rank-0"],
+  ["MSLS", "Advanced Rank-0", "Advanced Rank-0"],
+  ["MSLS", "Advanced Rank-0 with Attachment", "Advanced Rank-0 with Attachment"],
+  ["MSLS", "Irregular Rank-0", "Irregular Rank-0"],
+  ["SueDeCoq", "Standard", "Branch:Standard"],
+  ["SueDeCoq", "Cannibalized", "Branch:Cannibalized"],
+  ["Multifish", "Row-Based", "Branch:Row-Based"],
+  ["Multifish", "Column-Based", "Branch:Column-Based"],
+  ["ComplexSwordfish", "Franken", "Branch:Franken"],
+  ["ComplexSwordfish", "Mutant", "Branch:Mutant"],
+  ["ComplexSwordfish", "Finned Franken", "Finned Franken"],
+  ["ComplexSwordfish", "Finned Mutant", "Finned Mutant"],
+  ["ComplexSwordfish", "Sashimi Franken", "Sashimi Franken"],
+  ["ComplexSwordfish", "Sashimi Mutant", "Sashimi Mutant"],
+  ["ComplexJellyfish", "Franken", "Branch:Franken"],
+  ["ComplexJellyfish", "Mutant", "Branch:Mutant"],
+  ["ComplexJellyfish", "Finned Franken", "Finned Franken"],
+  ["ComplexJellyfish", "Finned Mutant", "Finned Mutant"],
+  ["ComplexJellyfish", "Sashimi Franken", "Sashimi Franken"],
+  ["ComplexJellyfish", "Sashimi Mutant", "Sashimi Mutant"],
+  ["ComplexSquirmbagFish", "Franken", "Branch:Franken"],
+  ["ComplexSquirmbagFish", "Mutant", "Branch:Mutant"],
+  ["ComplexSquirmbagFish", "Finned Franken", "Finned Franken"],
+  ["ComplexSquirmbagFish", "Finned Mutant", "Finned Mutant"],
+  ["ComplexSquirmbagFish", "Sashimi Franken", "Sashimi Franken"],
+  ["ComplexSquirmbagFish", "Sashimi Mutant", "Sashimi Mutant"],
+  ["JE", "Junior Exocet", "Branch:Junior Exocet"],
+  ["JE", "Almost JE4", "Branch:Almost JE4"],
+  ["JE", "Double JExocet", "Branch:Double JExocet"],
+  ["SeniorExocet", "Senior Exocet", "Branch:Senior Exocet"],
+  ["WeakExocet", "Weak Exocet", "Branch:Weak Exocet"],
+  ["TripletOddagon", "Type 1", "Branch:Type 1"],
+  ["TripletOddagon", "RT + Triplet Lock Set", "Branch:RT + Triplet Lock Set"],
+  ["TripletOddagon", "RT + Triplet ERI", "Branch:RT + Triplet ERI"],
+  ["TripletOddagon", "Type 2", "Branch:Type 2"],
+  ["TripletOddagon", "Almost Fireworks + Type 1", "Branch:Almost Fireworks + Type 1 RT"],
+  ["TripletOddagon", "Almost Fireworks + Type 2", "Branch:Almost Fireworks + Type 2"],
+  ["BruteForce", "Verified-Solution Placement", "Branch:Verified-Solution Placement"],
+].map(([kind, label, includeText, excludeText = ""]) => ({ kind, label, includeText, excludeText }));
+
+// Targets known to occur naturally in the built-in 9999-puzzle superhard bank.
+// Search the real solve path first and run target-only Find All on every snapshot;
+// only fall back to random training generation when the bank search misses.
+const REAL_SAMPLE_BUILTIN_FIRST_IDS = new Set([
+  "MSLS", "SKLoop", "JE", "SeniorExocet", "WeakExocet",
+  "BruteForce::Verified-Solution Placement",
+  "AIC::M2-Ring", "AIC::W-Wing", "AIC::L3-Wing",
+  "ComplexAIC::UR Guardian", "GroupedAIC::Grouped L3-Ring",
+  "CellRegionFC::Cell Force Chain", "CellRegionFC::Region Force Chain",
+  "CellRegionFC::UR Force Chain", "CellRegionFC::Triplet Oddagon Force Chain",
+]);
+const REAL_SAMPLE_BUILTIN_BUDGETS = new Map([
+  ["MSLS", 5], ["SKLoop", 10], ["JE", 1], ["SeniorExocet", 61], ["WeakExocet", 2],
+  ["BruteForce::Verified-Solution Placement", 1],
+  ["AIC::M2-Ring", 1], ["AIC::W-Wing", 1], ["AIC::L3-Wing", 1],
+  ["ComplexAIC::UR Guardian", 1], ["GroupedAIC::Grouped L3-Ring", 1],
+  ["CellRegionFC::Cell Force Chain", 1], ["CellRegionFC::Region Force Chain", 1],
+  ["CellRegionFC::UR Force Chain", 1],
+  // Five full solve paths are already a meaningful real-bank attempt here;
+  // this rare branch falls back to training generation if those paths miss.
+  ["CellRegionFC::Triplet Oddagon Force Chain", 5],
+]);
+
+let realSampleAbortController = null;
+
+function realSampleTechniqueConfig() {
+  const state = (techniqueState.length ? techniqueState : loadTechniqueState())
+    .filter((item) => item.implemented !== false)
+    .map((item) => ({
+      ...item,
+      enabled: true,
+      withAMSLS: item.kind === "ComplexAIC" ? true : item.withAMSLS,
+      withJEPOM: item.kind === "JE" ? true : item.withJEPOM,
+      withIrregular: item.kind === "MSLS" ? true : item.withIrregular,
+    }));
+  return getTechniqueConfigPayload(state);
+}
+
+function buildRealSampleTargets() {
+  const state = (techniqueState.length ? techniqueState : loadTechniqueState())
+    .filter((item) => item.implemented !== false);
+  const implemented = new Set(state.map((item) => item.kind));
+  const targets = state.map((item) => ({
+    id: item.kind,
+    kind: item.kind,
+    label: techniqueName(item),
+    subtype: "",
+    includeText: "",
+  }));
+  for (const sub of REAL_SAMPLE_SUBTARGETS) {
+    if (!implemented.has(sub.kind)) continue;
+    targets.push({
+      id: `${sub.kind}::${sub.label}`,
+      kind: sub.kind,
+      label: `${trainingTechniqueNameForKind(sub.kind) || sub.kind} / ${sub.label}`,
+      subtype: sub.label,
+      includeText: sub.includeText,
+      excludeText: sub.excludeText || "",
+    });
+  }
+  return targets;
+}
+
+function realSampleFilename() {
+  const now = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+  return `YZF_real_training_samples_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.jsonl`;
+}
+
+function realSampleOutputRecord(target, result, ordinal) {
+  const ok = Boolean(result?.ok && result?.trainingLibrary && result?.matchedStep);
+  return {
+    recordType: ok ? "real-training-sample" : "sample-miss",
+    schema: 1,
+    ordinal,
+    targetId: target.id,
+    kind: target.kind,
+    subtype: target.subtype || null,
+    filter: target.includeText ? { includeText: target.includeText, excludeText: target.excludeText || "", findAll: true } : null,
+    ok,
+    source: result?.source || (ok ? "training-generator" : null),
+    provenance: result?.provenance || (ok ? "training-generator-findall" : null),
+    bankIndex: Number.isInteger(result?.bankIndex) ? result.bankIndex : null,
+    solveStepIndex: Number.isInteger(result?.solveStepIndex) ? result.solveStepIndex : null,
+    testedPuzzles: Number.isFinite(Number(result?.testedPuzzles)) ? Number(result.testedPuzzles) : null,
+    testedStates: Number.isFinite(Number(result?.testedStates)) ? Number(result.testedStates) : null,
+    attempts: Number(result?.attempts || 0),
+    errorCode: ok ? null : (result?.errorCode || null),
+    error: ok ? null : (result?.error || null),
+    puzzle: result?.puzzle || null,
+    solution: result?.solution || null,
+    trainingLibrary: ok ? result.trainingLibrary : null,
+    matchedStepIndex: ok ? result.matchedStepIndex : null,
+    matchedStep: ok ? result.matchedStep : null,
+    rating: result?.rating || result?.lastRating || null,
+  };
+}
+
+function updateTrainingGenerationModeUi() {
+  const realSampleMode = isRealSampleTrainingSelection();
+  const realSampleRunning = Boolean(realSampleAbortController);
+  if (trainingTechniqueSelect) trainingTechniqueSelect.disabled = realSampleRunning;
+  if (trainingOtp) trainingOtp.disabled = realSampleRunning || realSampleMode;
+  if (!btnGenerateTraining) return;
+  btnGenerateTraining.classList.toggle("active", realSampleRunning);
+  setButtonText(btnGenerateTraining, realSampleRunning ? ui("realSamplesStop") : ui("generateTraining"));
+  if (!realSampleRunning && realSampleMode) {
+    btnGenerateTraining.title = ui("generateRealSamplesTitle");
+    btnGenerateTraining.setAttribute("aria-label", ui("generateRealSamplesTitle"));
+  }
+}
+
+async function generateRealTrainingSampleLibrary() {
+  if (realSampleAbortController) {
+    realSampleAbortController.abort();
+    return;
+  }
+  if (!engine) return;
+
+  const targets = buildRealSampleTargets();
+  const filename = realSampleFilename();
+  const techniqueConfig = realSampleTechniqueConfig();
+  const controller = new AbortController();
+  realSampleAbortController = controller;
+  let writer = null;
+  let done = 0;
+  let okCount = 0;
+  let failed = 0;
+  const startTime = Date.now();
+
+  updateTrainingGenerationModeUi();
+
+  try {
+    writer = await openBatchWriter(filename);
+    await writer.write(`${JSON.stringify({
+      recordType: "manifest",
+      schema: 2,
+      generatedAt: new Date().toISOString(),
+      generator: "YZF real-sample collector",
+      provenance: "Every successful record is a direct native backend hit: selected rare targets search the built-in 9999-puzzle superhard solve path with target-only Find All first; other targets and bank misses use the training generator. No synthetic StepResult is accepted.",
+      targetCount: targets.length,
+      topLevelCount: targets.filter((target) => !target.subtype).length,
+      subtypeCount: targets.filter((target) => target.subtype).length,
+      maxAttemptsPerTarget: 5000,
+    })}\n`);
+    setStatus(uif("realSamplesStart", { count: targets.length }));
+
+    for (let i = 0; i < targets.length; ++i) {
+      if (controller.signal.aborted) break;
+      const target = targets[i];
+      setStatus(uif("realSamplesProgress", {
+        done,
+        count: targets.length,
+        label: target.label,
+        ok: okCount,
+        failed,
+        elapsed: formatElapsedSeconds(startTime),
+      }));
+      const filter = {
+        includeText: target.includeText || "",
+        excludeText: target.excludeText || "",
+        caseSensitive: false,
+        findAll: true,
+        otp: false,
+      };
+      let result = null;
+      try {
+        if (REAL_SAMPLE_BUILTIN_FIRST_IDS.has(target.id)) {
+          const bankText = await findBuiltinSuperhardSampleInWorker(
+            target.kind,
+            filter,
+            { techniqueConfig, signal: controller.signal, startIndex: 0, maxPuzzles: REAL_SAMPLE_BUILTIN_BUDGETS.get(target.id) || 9999, maxSteps: 500 }
+          );
+          result = parseJson(bankText) || { ok: false, error: "invalid built-in bank JSON" };
+        }
+        if (!result?.ok) {
+          const resultText = await generateTrainingPuzzleInWorker(
+            target.kind,
+            0,
+            5000,
+            true,
+            filter,
+            { techniqueConfig, signal: controller.signal }
+          );
+          const generated = parseJson(resultText) || { ok: false, error: "invalid generator JSON" };
+          if (generated?.ok) {
+            result = { ...generated, source: "training-generator", provenance: "training-generator-findall" };
+          } else if (!result) {
+            result = generated;
+          } else {
+            result = {
+              ...generated,
+              bankMiss: result,
+              source: generated?.source || "training-generator",
+              provenance: generated?.provenance || "training-generator-findall-after-bank-miss",
+            };
+          }
+        }
+      } catch (error) {
+        if (error?.name === "AbortError") break;
+        result = { ok: false, errorCode: "SAMPLE_COLLECTOR_ERROR", error: error instanceof Error ? error.message : String(error) };
+      }
+      const record = realSampleOutputRecord(target, result, i + 1);
+      if (record.ok) okCount += 1;
+      else failed += 1;
+      done += 1;
+      await writer.write(`${JSON.stringify(record)}\n`);
+    }
+
+    await writer.write(`${JSON.stringify({
+      recordType: "summary",
+      schema: 1,
+      completed: done,
+      targetCount: targets.length,
+      successCount: okCount,
+      missCount: failed,
+      stopped: controller.signal.aborted,
+      elapsedSeconds: Math.floor((Date.now() - startTime) / 1000),
+    })}\n`);
+    await writer.close();
+    writer = null;
+    setStatus(controller.signal.aborted
+      ? uif("realSamplesStopped", { done, count: targets.length, ok: okCount })
+      : uif("realSamplesDone", { ok: okCount, count: targets.length, failed, filename }));
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      try { await writer?.close?.(); } catch { /* ignore */ }
+      setStatus(uif("realSamplesStopped", { done, count: targets.length, ok: okCount }));
+    } else {
+      try { await writer?.abort?.(); } catch { /* ignore */ }
+      setStatus(uif("realSamplesFailed", { error: error instanceof Error ? error.message : String(error) }));
+    }
+  } finally {
+    realSampleAbortController = null;
+    updateTrainingGenerationModeUi();
+  }
 }
 
 function startTrainingTimer(label, { otp = false } = {}) {
@@ -11569,6 +12220,7 @@ function sanitizeFilename(name) {
 function selectedTrainingTechniqueName() {
   const kind = trainingTechniqueSelect?.value || "";
   if (!kind) return "";
+  if (kind === TRAINING_REAL_SAMPLES_KIND) return ui("generateRealSamples");
   const state = techniqueState.length ? techniqueState : loadTechniqueState();
   const item = state.find((technique) => technique.kind === kind);
   if (item) return techniqueName(item);
@@ -11580,6 +12232,7 @@ function selectedTrainingTechniqueName() {
 function trainingTechniqueNameForKind(kind) {
   const normalized = String(kind || "");
   if (!normalized) return "";
+  if (normalized === TRAINING_REAL_SAMPLES_KIND) return ui("generateRealSamples");
   if (normalized === TRAINING_AHS_ANY_KIND) return ui("trainingAhsAny");
   const state = techniqueState.length ? techniqueState : loadTechniqueState();
   const item = state.find((technique) => technique.kind === normalized);
@@ -11709,7 +12362,7 @@ async function openBatchWriter(filename) {
       suggestedName: filename,
       types: [{
         description: "Text file",
-        accept: { "text/plain": [".txt", ".tsv"] },
+        accept: { "text/plain": [".txt", ".tsv", ".jsonl"] },
       }],
     });
     return {
@@ -16615,6 +17268,7 @@ for (const button of tabButtons) {
 
 trainingTechniqueSelect?.addEventListener("change", () => {
   updateTrainingTechniqueSelectColor();
+  updateTrainingGenerationModeUi();
   syncBatchFilenameDefault();
 });
 trainingOtp?.addEventListener("change", () => {
@@ -17946,6 +18600,10 @@ btnGenerate.addEventListener("click", () => {
 });
 
 btnBatchStop?.addEventListener("click", () => {
+  if (realSampleAbortController) {
+    realSampleAbortController.abort();
+    return;
+  }
   batchAbortRequested = true;
   updateBatchStatus(ui("stoppingBatch"));
   batchWorker?.postMessage({ type: "cancel" });
@@ -17954,6 +18612,10 @@ btnBatchStop?.addEventListener("click", () => {
 btnBatchGenerate?.addEventListener("click", async () => {
   if (!engine) return;
   const mode = batchMode?.value === "solve" ? "solve" : "generate";
+  if (mode === "generate" && isRealSampleTrainingSelection()) {
+    await generateRealTrainingSampleLibrary();
+    return;
+  }
   const filename = sanitizeFilename(batchFilename?.value || defaultBatchFilename());
   const difficulty = Number(difficultySelect.value || 0);
   const trainingKind = mode === "generate" ? (trainingTechniqueSelect?.value || "") : "";
@@ -18091,6 +18753,10 @@ btnGenerateTraining?.addEventListener("click", async () => {
   if (!engine) return;
   const difficulty = Number(difficultySelect.value || 0);
   const kind = trainingTechniqueSelect?.value || "";
+  if (kind === TRAINING_REAL_SAMPLES_KIND) {
+    await generateRealTrainingSampleLibrary();
+    return;
+  }
   const otp = trainingOtpEnabled();
   if (!kind && !otp) {
     setStatus(ui("trainingNeedTechnique"));
@@ -18494,6 +19160,10 @@ function ensureMobileSolveHomeMarkers() {
     mobileSolveNumpadHomeMarker = document.createComment("mobile-solve-numpad-home");
     numpad.parentNode.insertBefore(mobileSolveNumpadHomeMarker, numpad);
   }
+  if (!mobileSolveActionsHomeMarker && mobileSolveActions?.parentNode) {
+    mobileSolveActionsHomeMarker = document.createComment("mobile-solve-actions-home");
+    mobileSolveActions.parentNode.insertBefore(mobileSolveActionsHomeMarker, mobileSolveActions);
+  }
   if (!mobileSolveManualMarksHomeMarker && manualMarksPanel?.parentNode) {
     mobileSolveManualMarksHomeMarker = document.createComment("mobile-solve-manual-marks-home");
     manualMarksPanel.parentNode.insertBefore(mobileSolveManualMarksHomeMarker, manualMarksPanel);
@@ -18505,6 +19175,191 @@ function restoreMobileSolveElement(marker, element) {
   marker.parentNode.insertBefore(element, marker.nextSibling);
 }
 
+function mobileSolveManualActionKeys(mode = manualMarkModeValue()) {
+  if (mode === "chain") return ["markStrongAction", "markWeakAction"];
+  if (mode === "construction") return ["markConstructionStrongAction", "markConstructionWeakAction"];
+  if (mode === "miniRegion") return ["markMiniRegionGreenAction", "markMiniRegionBlueAction"];
+  return ["markPrimary", "markSecondary"];
+}
+
+function closeMobileSolveFocusPad() {
+  mobileSolveFocusPadOpen = false;
+  mobileSolveFocusPadAnchorIndex = -1;
+  if (mobileSolveFocusPad) mobileSolveFocusPad.hidden = true;
+  updateAppBackStatus();
+}
+
+function mountMobileSolveFocusControls() {
+  if (!mobileSolveShell || !numpad || !mobileSolveActions) return;
+  ensureMobileSolveHomeMarkers();
+  mobileSolveShell.classList.toggle("mobile-focus-follow", mobileSolveActive && mobileSolveFocusFollow);
+  if (mobileSolveActive && mobileSolveFocusFollow) {
+    if (mobileSolveFocusPad) {
+      mobileSolveFocusPad.appendChild(numpad);
+      mobileSolveFocusPad.appendChild(mobileSolveActions);
+    }
+  } else if (mobileSolveActive) {
+    closeMobileSolveFocusPad();
+    mobileSolveNumpadHost?.appendChild(numpad);
+    restoreMobileSolveElement(mobileSolveActionsHomeMarker, mobileSolveActions);
+  }
+}
+
+function mobileSolveFocusPadOverlapArea(a, b) {
+  const left = Math.max(a.left, b.left);
+  const right = Math.min(a.right, b.right);
+  const top = Math.max(a.top, b.top);
+  const bottom = Math.min(a.bottom, b.bottom);
+  return Math.max(0, right - left) * Math.max(0, bottom - top);
+}
+
+function positionMobileSolveFocusPad() {
+  if (!mobileSolveFocusPadOpen || !mobileSolveFocusFollow || !mobileSolveFocusPad || !mobileSolveShell) return false;
+  const index = mobileSolveFocusPadAnchorIndex >= 0 ? mobileSolveFocusPadAnchorIndex : selectedIndex;
+  const cell = board?.querySelector(`.sudoku-cell[data-cell-index="${index}"]`);
+  if (!cell) return false;
+
+  const shellRect = mobileSolveShell.getBoundingClientRect();
+  const cellRect = cell.getBoundingClientRect();
+  const boardRect = board?.getBoundingClientRect?.() || cellRect;
+  const keySize = Math.max(28, Math.min(cellRect.width || 0, cellRect.height || 0));
+  const panelWidth = keySize * 4;
+  const panelHeight = keySize * 4;
+  const margin = Math.max(2, keySize * 0.16);
+  mobileSolveFocusPad.style.setProperty("--mobile-focus-key-size", `${keySize}px`);
+
+  const local = (x, y) => ({ x: x - shellRect.left, y: y - shellRect.top });
+  const cellCenterX = (cellRect.left + cellRect.right) / 2;
+  const cellCenterY = (cellRect.top + cellRect.bottom) / 2;
+  const minX = 2;
+  const minY = 2;
+  const maxX = Math.max(minX, shellRect.width - panelWidth - 2);
+  const maxY = Math.max(minY, shellRect.height - panelHeight - 2);
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+  const rawCandidates = [
+    local(cellRect.right + margin, cellCenterY - panelHeight / 2),
+    local(cellRect.left - margin - panelWidth, cellCenterY - panelHeight / 2),
+    local(cellCenterX - panelWidth / 2, cellRect.bottom + margin),
+    local(cellCenterX - panelWidth / 2, cellRect.top - margin - panelHeight),
+    local(boardRect.left, boardRect.top),
+    local(boardRect.right - panelWidth, boardRect.top),
+    local(boardRect.left, boardRect.bottom - panelHeight),
+    local(boardRect.right - panelWidth, boardRect.bottom - panelHeight),
+  ];
+
+  const focusBoxRow = Math.floor(index / 27) * 3;
+  const focusBoxCol = Math.floor((index % 9) / 3) * 3;
+  const boxFirst = board?.querySelector(`.sudoku-cell[data-cell-index="${focusBoxRow * 9 + focusBoxCol}"]`)?.getBoundingClientRect();
+  const boxLast = board?.querySelector(`.sudoku-cell[data-cell-index="${(focusBoxRow + 2) * 9 + focusBoxCol + 2}"]`)?.getBoundingClientRect();
+  const boxRect = boxFirst && boxLast ? {
+    left: boxFirst.left, top: boxFirst.top, right: boxLast.right, bottom: boxLast.bottom,
+  } : cellRect;
+  const marksRect = !mobileSolveMarksHost?.hidden ? mobileSolveMarksHost.getBoundingClientRect() : null;
+  const topbarRect = mobileSolveShell.querySelector(".mobile-solve-topbar")?.getBoundingClientRect() || null;
+  const statusRect = mobileSolveStatus?.getBoundingClientRect() || null;
+  const protectedRects = [topbarRect, statusRect, marksRect].filter(Boolean);
+
+  let best = null;
+  for (const candidate of rawCandidates) {
+    const x = clamp(candidate.x, minX, maxX);
+    const y = clamp(candidate.y, minY, maxY);
+    const rect = {
+      left: shellRect.left + x,
+      top: shellRect.top + y,
+      right: shellRect.left + x + panelWidth,
+      bottom: shellRect.top + y + panelHeight,
+    };
+    const selectedOverlap = mobileSolveFocusPadOverlapArea(rect, cellRect);
+    const boxOverlap = mobileSolveFocusPadOverlapArea(rect, boxRect);
+    const boardOverlap = mobileSolveFocusPadOverlapArea(rect, boardRect);
+    const protectedOverlap = protectedRects.reduce((sum, protectedRect) => sum + mobileSolveFocusPadOverlapArea(rect, protectedRect), 0);
+    const dx = ((rect.left + rect.right) / 2) - cellCenterX;
+    const dy = ((rect.top + rect.bottom) / 2) - cellCenterY;
+    const score = selectedOverlap * 100000 + protectedOverlap * 1000 + boxOverlap * 8 + boardOverlap * 0.12 + Math.hypot(dx, dy) * 0.05;
+    if (!best || score < best.score) best = { x, y, score };
+  }
+  if (!best) return false;
+  mobileSolveFocusPad.style.left = `${best.x}px`;
+  mobileSolveFocusPad.style.top = `${best.y}px`;
+  return true;
+}
+
+function openMobileSolveFocusPad(index = selectedIndex) {
+  if (!mobileSolveActive || !mobileSolveFocusFollow || !mobileSolveFocusPad) return false;
+  if (mobileSolveDrawerOpen || mobileSolveNewPuzzleOpen) return false;
+  if (manualMarksActive() && manualMarkModeValue() === "cellColor") {
+    closeMobileSolveFocusPad();
+    return false;
+  }
+  if (!Number.isInteger(index) || index < 0 || index >= 81) return false;
+  mountMobileSolveFocusControls();
+  mobileSolveFocusPadAnchorIndex = index;
+  mobileSolveFocusPadOpen = true;
+  mobileSolveFocusPad.hidden = false;
+  updateMobileSolveInputState();
+  syncMobileSolveCompletedDigitButtons();
+  window.requestAnimationFrame(positionMobileSolveFocusPad);
+  updateAppBackStatus();
+  return true;
+}
+
+function syncMobileSolveFocusPadAfterRender() {
+  if (!mobileSolveFocusPadOpen) return;
+  if (!mobileSolveFocusFollow || selectedIndex < 0) {
+    closeMobileSolveFocusPad();
+    return;
+  }
+  mobileSolveFocusPadAnchorIndex = selectedIndex;
+  window.requestAnimationFrame(positionMobileSolveFocusPad);
+}
+
+function mobileSolveFocusPadKeepsOpenAfterDigit() {
+  if (!mobileSolveFocusFollow) return false;
+  if (!manualMarksActive()) return inputMode === "candidate";
+  return ["candidateColor", "circle", "preElim", "elim"].includes(manualMarkModeValue());
+}
+
+function finishMobileSolveDigitInteraction() {
+  if (!mobileSolveFocusFollow) return;
+  if (mobileSolveFocusPadKeepsOpenAfterDigit()) {
+    openMobileSolveFocusPad(selectedIndex);
+  } else {
+    closeMobileSolveFocusPad();
+  }
+}
+
+function setMobileSolveFocusFollow(enabled, options = {}) {
+  mobileSolveFocusFollow = Boolean(enabled);
+  if (options.persist !== false) saveMobileSolvePreferences();
+  if (mobileSolveFocusFollowToggle) {
+    mobileSolveFocusFollowToggle.checked = mobileSolveFocusFollow;
+    mobileSolveFocusFollowToggle.setAttribute("aria-checked", mobileSolveFocusFollow ? "true" : "false");
+  }
+  mountMobileSolveFocusControls();
+  if (mobileSolveActive && mobileSolveFocusFollow && selectedIndex >= 0 && !mobileSolveDrawerOpen && !mobileSolveNewPuzzleOpen) {
+    openMobileSolveFocusPad(selectedIndex);
+  } else {
+    closeMobileSolveFocusPad();
+  }
+  if (mobileSolveActive) scheduleMobileSolveLayout();
+  updateMobileSolveInputState();
+}
+
+function toggleMobileSolveContextAction() {
+  if (manualMarksActive()) {
+    const mode = manualMarkModeValue();
+    manualMarkButton = manualMarkButton === "primary" ? "secondary" : "primary";
+    if (manualMarkLineType && mode === "chain") manualMarkLineType.value = manualMarkButton === "primary" ? "strong" : "weak";
+    if (manualMarkLineType && mode === "construction") manualMarkLineType.value = manualMarkButton === "primary" ? "constructionStrong" : "constructionWeak";
+    updateManualMarkControls();
+    markManualMarksDirty();
+  } else {
+    inputMode = inputMode === "candidate" ? "value" : "candidate";
+    updateInputControls();
+  }
+}
+
 function loadMobileSolvePreferences() {
   try {
     const saved = JSON.parse(localStorage.getItem(MOBILE_SOLVE_PREFERENCES_KEY) || "null");
@@ -18513,6 +19368,9 @@ function loadMobileSolvePreferences() {
     }
     if (typeof saved?.sameDigitHighlight === "boolean") {
       mobileSolveSameDigitHighlight = saved.sameDigitHighlight;
+    }
+    if (typeof saved?.focusFollow === "boolean") {
+      mobileSolveFocusFollow = saved.focusFollow;
     }
     if (typeof saved?.keepScreenAwake === "boolean") {
       mobileSolveKeepScreenAwake = saved.keepScreenAwake;
@@ -18527,6 +19385,7 @@ function saveMobileSolvePreferences() {
     localStorage.setItem(MOBILE_SOLVE_PREFERENCES_KEY, JSON.stringify({
       candidatesVisible: mobileSolveCandidatesVisible,
       sameDigitHighlight: mobileSolveSameDigitHighlight,
+      focusFollow: mobileSolveFocusFollow,
       keepScreenAwake: mobileSolveKeepScreenAwake,
     }));
   } catch {
@@ -18668,7 +19527,7 @@ function clearMobileSolveDigitHighlights() {
 function syncMobileSolveDigitHighlights() {
   clearMobileSolveDigitHighlights();
   if (!mobileSolveActive || !mobileSolveSameDigitHighlight || !currentSnapshot) return;
-  const digit = Number(selectedDigit || 0);
+  const digit = Number(mobileSolveLastDigit || 0);
   if (!Number.isInteger(digit) || digit < 1 || digit > 9) return;
   for (const node of board?.querySelectorAll(".sudoku-cell[data-cell-index]") || []) {
     const index = Number(node.dataset.cellIndex);
@@ -18694,21 +19553,44 @@ function syncMobileSolveCompletedDigitButtons() {
       if (value >= 1 && value <= 9) counts[value] += 1;
     }
   }
+  const selectedCell = selectedIndex >= 0 && selectedIndex < 81 ? currentSnapshot?.cells?.[selectedIndex] : null;
+  const markMode = manualMarksActive() ? manualMarkModeValue() : "off";
   for (const button of numpad?.querySelectorAll("button[data-digit]") || []) {
     const digit = Number(button.dataset.digit || 0);
-    const complete = mobileSolveActive && digit >= 1 && digit <= 9 && counts[digit] >= 9;
-    button.disabled = complete;
+    let disabled = false;
+    let complete = false;
+    if (mobileSolveActive) {
+      if (!selectedCell || digit < 1 || digit > 9) {
+        disabled = true;
+      } else if (manualMarksActive()) {
+        if (!manualMarkNeedsDigit(markMode)) {
+          disabled = true;
+        } else if (manualMarkRequiresExistingCandidate(markMode)) {
+          disabled = !boardCandidateExists(selectedIndex, digit);
+        }
+      } else if (isFixedCell(selectedIndex) || (inputMode === "candidate" && Number(selectedCell.value || 0) > 0)) {
+        disabled = true;
+      } else {
+        complete = counts[digit] >= 9 && Number(selectedCell.value || 0) !== digit;
+        disabled = complete;
+      }
+    }
+    button.disabled = disabled;
     if (complete) {
       button.dataset.complete = "true";
-      button.setAttribute("aria-disabled", "true");
     } else {
       delete button.dataset.complete;
-      button.removeAttribute("aria-disabled");
     }
+    if (disabled) button.setAttribute("aria-disabled", "true");
+    else button.removeAttribute("aria-disabled");
   }
 }
 
 function updateMobileSolvePreferenceButtons() {
+  if (mobileSolveFocusFollowToggle) {
+    mobileSolveFocusFollowToggle.checked = mobileSolveFocusFollow;
+    mobileSolveFocusFollowToggle.setAttribute("aria-checked", mobileSolveFocusFollow ? "true" : "false");
+  }
   if (btnMobileSolveCandidates) {
     const candidatesHidden = !mobileSolveCandidatesVisible;
     const label = ui(candidatesHidden ? "mobileSolveShowCandidates" : "mobileSolveHideCandidates");
@@ -18729,6 +19611,7 @@ function updateMobileSolvePreferenceButtons() {
 
 function applyMobileSolvePreferences() {
   mobileSolveShell?.classList.toggle("mobile-hide-candidates", !mobileSolveCandidatesVisible);
+  mountMobileSolveFocusControls();
   updateMobileSolvePreferenceButtons();
   syncMobileSolveDigitHighlights();
   syncMobileSolveCompletedDigitButtons();
@@ -18792,9 +19675,10 @@ function mobileSolveInlineMarksSpace() {
   const availableHeight = Math.max(108, viewport.height - paddingY);
   const top = mobileSolveShell.querySelector(".mobile-solve-topbar")?.getBoundingClientRect().height || 44;
   const status = mobileSolveStatus?.getBoundingClientRect().height || 29;
-  const pad = mobileSolveNumpadHost?.getBoundingClientRect().height || 89;
-  const actions = mobileSolveShell.querySelector(".mobile-solve-actions")?.getBoundingClientRect().height || 38;
-  const fixedHeight = top + status + pad + actions + gap * 4;
+  const floatingControls = mobileSolveFocusFollow;
+  const pad = floatingControls ? 0 : (mobileSolveNumpadHost?.getBoundingClientRect().height || 89);
+  const actions = floatingControls ? 0 : (mobileSolveActions?.getBoundingClientRect().height || 38);
+  const fixedHeight = top + status + pad + actions + gap * (floatingControls ? 2 : 4);
   return availableHeight - availableWidth - fixedHeight;
 }
 
@@ -18816,6 +19700,7 @@ function shouldInlineMobileSolveMarks() {
 
 function openMobileSolveMarks() {
   if (!mobileSolveActive || !manualMarksPanel) return;
+  closeMobileSolveFocusPad();
   ensureMobileSolveHomeMarkers();
   mobileSolveManualMarksWasOpen = manualMarksPanel.open;
   mobileSolveMarksOpen = true;
@@ -18946,11 +19831,23 @@ function applyMobileSolveLayout() {
     if (!mobileSolveActive || !mobileSolveShell?.classList.contains("is-portrait")) return;
     const top = mobileSolveShell.querySelector(".mobile-solve-topbar")?.getBoundingClientRect().height || 0;
     const status = mobileSolveStatus?.getBoundingClientRect().height || 0;
-    const pad = mobileSolveNumpadHost?.getBoundingClientRect().height || 0;
-    const actions = mobileSolveShell.querySelector(".mobile-solve-actions")?.getBoundingClientRect().height || 0;
-    const marks = !mobileSolveMarksHost?.hidden ? (mobileSolveMarksHost.getBoundingClientRect().height || 0) : 0;
-    const fixedHeight = top + status + pad + actions + marks + gap * (marks > 0 ? 5 : 4);
+    const floatingControls = mobileSolveFocusFollow;
+    const pad = floatingControls ? 0 : (mobileSolveNumpadHost?.getBoundingClientRect().height || 0);
+    const actions = floatingControls ? 0 : (mobileSolveActions?.getBoundingClientRect().height || 0);
+    const marksHostHeight = !mobileSolveMarksHost?.hidden ? (mobileSolveMarksHost.getBoundingClientRect().height || 0) : 0;
+    // The inline host is a CSS-grid track. On short portrait screens its own
+    // assigned track can be smaller than the real manual-mark panel, which
+    // then visually overflows the viewport (most noticeably the Block finish/undo row).
+    // Budget against the actual panel footprint so marks stay fully visible; only
+    // the board is reduced, and only while the inline mark panel is open.
+    const marksPanelHeight = mobileSolveMarksOpen && manualMarksPanel?.isConnected
+      ? Math.max(manualMarksPanel.getBoundingClientRect().height || 0, manualMarksPanel.scrollHeight || 0)
+      : 0;
+    const marks = Math.max(marksHostHeight, marksPanelHeight);
+    const gapCount = floatingControls ? (marks > 0 ? 3 : 2) : (marks > 0 ? 5 : 4);
+    const fixedHeight = top + status + pad + actions + marks + gap * gapCount;
     setMobileSolveBoardSize(Math.min(availableWidth, availableHeight - fixedHeight));
+    if (mobileSolveFocusPadOpen) window.requestAnimationFrame(positionMobileSolveFocusPad);
   });
 }
 
@@ -18972,16 +19869,54 @@ function syncMobileSolveStatus() {
   mobileSolveStatus.title = text;
 }
 
+function mobileSolveHintActionIsApply() {
+  return Boolean(currentHint?.valid === true || (previewSnapshotActive && currentPreviewRecord));
+}
+
+function updateMobileSolveHintAction() {
+  if (!btnMobileSolveHint) return;
+  const applying = mobileSolveHintActionIsApply();
+  btnMobileSolveHint.textContent = ui(applying ? "mobileSolveApplyShort" : "mobileSolveHintShort");
+  setTitleAndAria(btnMobileSolveHint, ui(applying ? "apply" : "step"));
+  btnMobileSolveHint.dataset.action = applying ? "apply" : "hint";
+  }
+
+function runMobileSolveHintAction() {
+  setMobileSolveDrawer(false);
+  if (mobileSolveHintActionIsApply()) {
+    btnApply?.click();
+  } else {
+    btnStep?.click();
+  }
+  updateMobileSolveHintAction();
+}
+
 function updateMobileSolveInputState() {
   const mode = inputMode === "candidate" ? ui("candidateMode") : ui("valueMode");
   if (mobileSolveInputState) {
-    mobileSolveInputState.textContent = uif("mobileInputState", { mode, digit: selectedDigit });
+    const cell = selectedIndex >= 0 && selectedIndex < 81 ? manualMarkCellText(selectedIndex) : ui("mobileNoCell");
+    const label = manualMarksActive()
+      ? ui(mobileSolveManualActionKeys()[manualMarkButton === "secondary" ? 1 : 0])
+      : mode;
+    mobileSolveInputState.textContent = uif("mobileInputStateCell", { mode: label, cell });
   }
   if (btnMobileSolveInputMode) {
-    btnMobileSolveInputMode.textContent = ui(inputMode === "candidate" ? "mobileSolveCandidateShort" : "mobileSolveValueShort");
-    btnMobileSolveInputMode.title = ui("inputModeTitle");
-    btnMobileSolveInputMode.setAttribute("aria-label", ui("inputModeTitle"));
-    btnMobileSolveInputMode.setAttribute("aria-pressed", inputMode === "candidate" ? "true" : "false");
+    if (manualMarksActive()) {
+      const actionKeys = mobileSolveManualActionKeys();
+      const secondary = manualMarkButton === "secondary";
+      const label = ui(actionKeys[secondary ? 1 : 0]);
+      btnMobileSolveInputMode.textContent = label;
+      btnMobileSolveInputMode.title = label;
+      btnMobileSolveInputMode.setAttribute("aria-label", label);
+      btnMobileSolveInputMode.setAttribute("aria-pressed", secondary ? "true" : "false");
+      btnMobileSolveInputMode.dataset.context = "manual-mark";
+    } else {
+      btnMobileSolveInputMode.textContent = ui(inputMode === "candidate" ? "mobileSolveCandidateShort" : "mobileSolveValueShort");
+      btnMobileSolveInputMode.title = ui("inputModeTitle");
+      btnMobileSolveInputMode.setAttribute("aria-label", ui("inputModeTitle"));
+      btnMobileSolveInputMode.setAttribute("aria-pressed", inputMode === "candidate" ? "true" : "false");
+      delete btnMobileSolveInputMode.dataset.context;
+    }
   }
 }
 
@@ -19009,12 +19944,15 @@ function updateMobileSolveLanguage() {
   setTextById("btnMobileSolveUndo", ui("undo"));
   setTextById("btnMobileSolveRedo", ui("redo"));
   setTextById("btnMobileSolveMore", ui("mobileSolveMore"));
+  setTextById("mobileSolveFocusFollowLabel", ui("mobileSolveFocusFollow"));
+  setTextById("mobileSolveFocusFollowHint", ui("mobileSolveFocusFollowHint"));
+  if (mobileSolveFocusPad) {
+    mobileSolveFocusPad.setAttribute("aria-label", ui("mobileSolveFocusPad"));
+    mobileSolveFocusPad.title = ui("mobileSolveFocusPad");
+  }
   setTextById("mobileSolveDrawerTitle", ui("mobileSolveMoreTitle"));
   setTextById("btnMobileSolveDrawerClose", ui("close"));
-  setTextById("btnMobileSolveHint", ui("mobileSolveHintShort"));
-  setTitleAndAria(btnMobileSolveHint, ui("step"));
-  setTextById("btnMobileSolveApply", ui("mobileSolveApplyShort"));
-  setTitleAndAria(btnMobileSolveApply, ui("apply"));
+  updateMobileSolveHintAction();
   setTextById("btnMobileSolveAllSteps", ui("allSteps"));
   setTextById("btnMobileSolveInput", ui("mobileSolveInput"));
   setTextById("btnMobileSolveAnalysis", ui("mobileSolveAnalysis"));
@@ -19082,6 +20020,7 @@ function setMobileSolveNewPuzzlePanel(open) {
 
 function openMobileSolveNewPuzzlePanel() {
   if (!mobileSolveActive) return;
+  closeMobileSolveFocusPad();
   if (mobileSolveMarksOpen) closeMobileSolveMarks();
   setMobileSolveDrawer(false);
   setMobileSolveNewPuzzlePanel(true);
@@ -19114,6 +20053,7 @@ async function generateMobileSolveNewPuzzle() {
 
 function setMobileSolveDrawer(open, options = {}) {
   const { preserveMarks = false } = options;
+  if (open) closeMobileSolveFocusPad();
   if (!open && !preserveMarks && mobileSolveMarksOpen && mobileSolveMarksPlacement === "drawer") {
     mobileSolveMarksOpen = false;
     restoreMobileSolveManualMarks();
@@ -19144,8 +20084,10 @@ function enterMobileSolveMode() {
   mobileSolveScrollY = window.scrollY || 0;
   mobileSolveBoardHost?.appendChild(boardStage);
   mobileSolveNumpadHost?.appendChild(numpad);
+  restoreMobileSolveElement(mobileSolveActionsHomeMarker, mobileSolveActions);
   mobileSolveMarksOpen = false;
   mobileSolveMarksPlacement = "";
+  mobileSolveLastDigit = 0;
   if (mobileSolveMarksHost) mobileSolveMarksHost.hidden = true;
   if (mobileSolveMarksDrawerHost) mobileSolveMarksDrawerHost.hidden = true;
   mobileSolveActive = true;
@@ -19154,6 +20096,7 @@ function enterMobileSolveMode() {
   if (mobileSolveLang) mobileSolveLang.value = lang.value || "zh";
   updateMobileSolveLanguage();
   applyMobileSolvePreferences();
+  updateMobileSolveInputState();
   setMobileSolveNewPuzzlePanel(false);
   setMobileSolveDrawer(false);
   scheduleMobileSolveLayout();
@@ -19169,14 +20112,18 @@ async function exitMobileSolveMode(options = {}) {
   if (mobileSolveMarksOpen) closeMobileSolveMarks({ closeDrawer: false });
   setMobileSolveNewPuzzlePanel(false);
   setMobileSolveDrawer(false, { preserveMarks: true });
+  closeMobileSolveFocusPad();
   restoreMobileSolveElement(mobileSolveBoardHomeMarker, boardStage);
   restoreMobileSolveElement(mobileSolveNumpadHomeMarker, numpad);
+  restoreMobileSolveElement(mobileSolveActionsHomeMarker, mobileSolveActions);
   restoreMobileSolveManualMarks();
   clearMobileSolveDigitHighlights();
+  mobileSolveLastDigit = 0;
   mobileSolveActive = false;
   await releaseMobileSolveWakeLock();
   syncMobileSolveCompletedDigitButtons();
   mobileSolveShell.hidden = true;
+  mobileSolveShell.classList.remove("mobile-focus-follow");
   mobileSolveShell.style.removeProperty("left");
   mobileSolveShell.style.removeProperty("top");
   mobileSolveShell.style.removeProperty("width");
@@ -19204,9 +20151,9 @@ function clearMobileSolveSelection() {
   if (cell?.value > 0) {
     return executeValueEdit(selectedIndex, 0);
   }
-  if (inputMode === "candidate" && cell?.candidates?.includes(selectedDigit)) {
-    return executeSimpleEngineEdit(() => engine.toggle_candidate_json(selectedIndex, selectedDigit));
-  }
+  // In cell-first mode the last-used digit is highlight history, not an armed
+  // candidate. Candidate removal is therefore performed by pressing that
+  // digit again, never by Clear guessing from selectedDigit.
   setStatus(ui("mobileNothingToClear"));
   return false;
 }
@@ -19251,23 +20198,18 @@ function installMobileSolveMode() {
     updateDifficultySelectCompactWidth();
   });
   btnMobileSolveClear?.addEventListener("click", () => {
-    setMobileSolveDrawer(false);
     clearMobileSolveSelection();
   });
-  btnMobileSolveUndo?.addEventListener("click", () => btnUndo?.click());
-  btnMobileSolveRedo?.addEventListener("click", () => btnRedo?.click());
+  btnMobileSolveUndo?.addEventListener("click", () => { closeMobileSolveFocusPad(); btnUndo?.click(); });
+  btnMobileSolveRedo?.addEventListener("click", () => { closeMobileSolveFocusPad(); btnRedo?.click(); });
   btnMobileSolveMarks?.addEventListener("click", toggleMobileSolveMarks);
-  btnMobileSolveInputMode?.addEventListener("click", () => {
-    inputMode = inputMode === "candidate" ? "value" : "candidate";
-    updateInputControls();
-  });
+  btnMobileSolveInputMode?.addEventListener("click", toggleMobileSolveContextAction);
   btnMobileSolveMore?.addEventListener("click", () => {
     setMobileSolveDrawer(!mobileSolveDrawerOpen);
   });
   btnMobileSolveDrawerClose?.addEventListener("click", () => setMobileSolveDrawer(false));
   mobileSolveBackdrop?.addEventListener("click", () => setMobileSolveDrawer(false));
-  btnMobileSolveHint?.addEventListener("click", () => { setMobileSolveDrawer(false); btnStep?.click(); });
-  btnMobileSolveApply?.addEventListener("click", () => { setMobileSolveDrawer(false); btnApply?.click(); });
+  btnMobileSolveHint?.addEventListener("click", runMobileSolveHintAction);
   btnMobileSolveAllSteps?.addEventListener("click", () => {
     setMobileSolveDrawer(false);
     exitMobileSolveMode({ exitFullscreen: false }).then(() => btnAllSteps?.click());
@@ -19275,6 +20217,10 @@ function installMobileSolveMode() {
   btnMobileSolveInput?.addEventListener("click", openPuzzleInputFromMobile);
   btnMobileSolveCandidates?.addEventListener("click", toggleMobileSolveCandidates);
   btnMobileSolveSameDigit?.addEventListener("click", toggleMobileSolveSameDigitHighlight);
+  mobileSolveFocusFollowToggle?.addEventListener("change", () => {
+    setMobileSolveFocusFollow(mobileSolveFocusFollowToggle.checked);
+    setMobileSolveDrawer(false);
+  });
   mobileSolveWakeLockToggle?.addEventListener("change", () => {
     setMobileSolveKeepScreenAwake(mobileSolveWakeLockToggle.checked).catch(() => {});
   });
@@ -19298,6 +20244,9 @@ function installMobileSolveMode() {
     if (mobileSolveNewPuzzleOpen) {
       event.preventDefault();
       setMobileSolveNewPuzzlePanel(false);
+    } else if (mobileSolveFocusPadOpen) {
+      event.preventDefault();
+      closeMobileSolveFocusPad();
     } else if (mobileSolveDrawerOpen) {
       event.preventDefault();
       setMobileSolveDrawer(false);

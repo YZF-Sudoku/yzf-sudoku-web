@@ -50,10 +50,12 @@ Main files and folders:
 
 On phones and narrow touch devices, use the **Solve / 做题** button in the board header to enter the dedicated mobile solve layout.
 
-- Portrait: the board uses nearly the full screen width and the number pad remains docked at the bottom.
-- Landscape: the board uses nearly the full screen height and the number pad moves to the right side.
-- The solve viewport does not rely on document scrolling; the board and input controls remain visible together.
-- **More / 更多** opens hints, apply, all steps, puzzle input, language, and the return-to-analysis action without resizing the board.
+- Portrait: the board uses nearly the full screen width. With Focus-follow disabled, the number pad remains in the fixed control area.
+- Landscape: the board uses nearly the full screen height. With Focus-follow disabled, the fixed controls sit beside the board.
+- Mobile solving is **cell-first**: tap/select the target cell, then press a digit in Value or Candidate mode. The same ordering is used for candidate-style manual marks.
+- **More / 更多 → Focus-follow keypad / 焦点跟随操作盘** moves the live 1–9 and action controls into a 4×4 pad near the selected cell. The last row is **Clear / 清除 | Hint→Apply / 提示→应用 | Marks / 标记 | More / 更多**. Hint and Apply share one stateful button: it previews first, changes to Apply only while a valid hint is pending, then returns to Hint after the step is applied or invalidated. The pad uses roughly one cell per key and chooses a position that minimizes obstruction; turning the option off restores the fixed controls.
+- The solve viewport does not rely on document scrolling; the board and input controls remain available without switching to a second board copy.
+- **More / 更多** also opens hints, apply, all steps, puzzle input, language, and the return-to-analysis action without resizing the board.
 - On mobile viewports, the existing fullscreen button enters solve mode before requesting browser fullscreen. The solve layout still works if the browser declines fullscreen.
 
 The active puzzle, selected digit, input mode, undo/redo history, and language are preserved when rotating the device or returning to analysis mode.
@@ -74,7 +76,7 @@ The desktop input paths intentionally coexist without a global “cell-first / n
 
 - **Mouse:** preserves the existing FB-style direct operation. The clicked position inside a cell selects digit 1–9, while the left/right button determines value or candidate semantics. It does not read the persistent on-screen number-pad selection.
 - **Keyboard:** arrows select and move the current cell; `1–9` enters a value; `0`, `Delete`, or `Backspace` clears a user value; `Ctrl/Cmd+1–9` toggles the matching candidate; `Ctrl/Cmd+Z` undoes and `Ctrl+Y` or `Ctrl/Cmd+Shift+Z` redoes.
-- **Touch:** keeps the existing number-first workflow: choose a persistent on-screen digit, then tap one or more cells.
+- **Touch/mobile:** uses a cell-first workflow: tap the target cell, then press a digit in the current Value/Candidate mode. Focus-follow is only a control-placement option; it does not change this ordering.
 
 Keyboard board editing is disabled while focus is in an editable field, Mobile Solve Mode, OCR correction, TLG editing, Manual Marks, a step preview, a long solver task, or any open modal dialog. This prevents the same keystroke from reaching two state machines. Some browsers reserve main-keyboard `Ctrl+1–9`; the shortcut still works whenever the browser delivers it, especially from the numeric keypad or installed PWA/Standalone.
 

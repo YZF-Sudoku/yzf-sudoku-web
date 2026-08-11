@@ -810,11 +810,11 @@
 <thead><tr><th>功能</th><th>电脑</th><th>手机/触屏</th></tr></thead>
 <tbody>
 <tr><td>图片输入</td><td>文件、剪贴板按钮、<span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>选择图片或拍照识别</td></tr>
-<tr><td>普通出数/候选</td><td>鼠标左键候选出数、左键用户大数清除、右键切候选；键盘方向键选格，1–9 出数，0/Delete/Backspace 清除，Ctrl/Cmd+数字切候选</td><td>先选数字与“出数/候选”，再轻触格子</td></tr>
+<tr><td>普通出数/候选</td><td>鼠标左键候选出数、左键用户大数清除、右键切候选；键盘方向键选格，1–9 出数，0/Delete/Backspace 清除，Ctrl/Cmd+数字切候选</td><td>统一使用格优先：先轻触目标格，再按当前“出数/候选”模式点 1–9；“更多”可开启焦点跟随操作盘</td></tr>
 <tr><td>手工候选标记</td><td>按当前模式使用左/右键；链、构造链和微型区域由第二次点击的左右键决定类型</td><td>先点格子，再使用大数字键和面板按钮；长按可删除常规视觉标记</td></tr>
 <tr><td>替换解题路径</td><td>右键可替换步骤</td><td>长按约 0.65 秒</td></tr>
 <tr><td>标记截图</td><td>优先复制 PNG 到剪贴板，失败时下载</td><td>优先打开系统分享，失败时下载</td></tr>
-<tr><td>做题布局</td><td>通常使用分析主界面</td><td>可进入专用做题模式，盘面和数字区始终可见；底部为单行 1–9 数字带；下一行提供出数/候选、撤销、重做、提示、应用、标记和更多，清除操作位于“更多”中</td></tr>
+<tr><td>做题布局</td><td>通常使用分析主界面</td><td>可进入专用做题模式。默认使用固定数字区；开启“更多 → 焦点跟随操作盘”后，点格会在附近弹出与单元格同尺度的 4×4 操作盘（1–9、出数/候选、撤销/重做、清除、提示→应用、标记/更多），并自动选择较少遮挡盘面与当前宫的位置</td></tr>
 </tbody>
 </table>
 </div>
@@ -1023,7 +1023,7 @@
 <ul>
 <li>鼠标：右键候选位置切换该候选；存在时删除，不存在时在不违反行、列、宫约束的前提下恢复。</li>
 <li>键盘：Ctrl/Cmd+1–9 开关当前选中格的对应候选；该快捷键不读取屏幕数字盘当前是“出数”还是“候选”。某些浏览器可能保留主键盘 Ctrl+数字，可改用数字小键盘，或在安装后的 PWA/Standalone 中操作。</li>
-<li>触摸/触控笔：选择候选模式和数字后轻触空格，切换该候选。</li>
+<li>触摸/触控笔：先轻触目标格，再切到候选模式并点 1–9，切换当前格候选；手机开启焦点跟随时，数字和模式按钮会随焦点显示在格子附近。</li>
 <li>候选模式改的是<strong>真实当前候选盘</strong>，会直接影响后续提示、自动解题、评分和 TLG。</li>
 <li>“隐藏候选数”只改变显示，不会删除候选；再次显示后原候选仍在。</li>
 <li>手工标记中的“预备删数/正式删数”不是候选模式。前者纯视觉，后者只有点击“应用全部删数”才会写入真实候选盘。</li>
@@ -1040,7 +1040,7 @@
 <ul>
 <li><strong>鼠标：</strong>使用 FB 风格直接操作，数字盘自动隐藏。左键候选出数，左键用户大数清除，右键候选删除/恢复。</li>
 <li><strong>键盘：</strong>使用选格优先操作；方向键、数字键和删除键只在普通盘面生效。焦点位于输入框、OCR、TLG、手工标记、步骤预览或任意弹窗时，快捷键不会穿透修改主盘。</li>
-<li><strong>手机：</strong>普通做题优先使用“先选数字，再点格”的大按钮流程。精细候选标记则先选格子，再点大数字键，避免点不中小候选。</li>
+<li><strong>手机：</strong>普通做题与精细候选标记统一使用<strong>格优先</strong>：先选格子，再点大数字键。可在“更多”开启“焦点跟随操作盘”，点格后 4×4 操作盘会移动到焦点附近；第四行固定为“清除｜提示/应用｜标记｜更多”，其中同一按钮平时显示“提示”，取得有效提示后原地切换为“应用”，应用后恢复“提示”。关闭焦点跟随时继续使用固定操作区。</li>
 <li>开启 TLG 编辑后，盘面点击由 TLG 接管；要恢复普通出数/候选编辑，先关闭“启用 TLG 编辑”。</li>
 </ul>
 <div class="warn">不要把“画了一个删数标记”误认为候选已经删除。真正改变盘面的入口只有候选模式、应用提示、应用全部删数，以及其它明确写入盘面的操作。</div>
@@ -1051,7 +1051,7 @@
 <li><strong>Load a puzzle:</strong> paste a string, use OCR, restore a session, or generate one. Verify all black givens first; OCR puzzles may need given/user-digit role correction.</li>
 <li><strong>Mouse input:</strong> work directly on the board. Left-click an active candidate to set it; left-click a user value to clear it; right-click a candidate slot to remove or restore it.</li>
 <li><strong>Keyboard input:</strong> use an arrow key to establish and move the selected cell. Press 1–9 to set a value, 0/Delete/Backspace to clear a user value, Ctrl/Cmd+1–9 to toggle candidates, Ctrl/Cmd+Z to undo, and Ctrl+Y or Cmd+Shift+Z to redo. Mouse input remains direct and depends on the clicked candidate position plus the left/right button; neither mouse nor keyboard reads the persistent on-screen digit selection.</li>
-<li><strong>Touch/pen input:</strong> the solve layout shows a single-row 1–9 digit strip. The next row provides Value/Candidate, Undo, Redo, Hint, Apply, Marks, and More; Clear is under More. Choose Value/Candidate and 1–9, then tap the target cell.</li>
+<li><strong>Touch/pen input:</strong> mobile solving is cell-first: tap the target cell, choose Value/Candidate as needed, then press 1–9. With <strong>More → Focus-follow keypad</strong> enabled, a 4×4 control pad appears near the selected cell; with it disabled, the fixed control area remains in use.</li>
 <li><strong>Analyze manually:</strong> open Manual Marks for circles, colors, chains, blocks, or staged eliminations. Visual marks are separate from the real candidate grid.</li>
 <li><strong>Check logic:</strong> Hint only previews the next program step. Press Apply Hint to commit it. Available Steps can compare multiple legal options.</li>
 <li><strong>Continue or recover:</strong> formal values, candidate edits, and applied hints enter Undo history. Undo mistakes before continuing.</li>
@@ -1061,7 +1061,7 @@
 <ul>
 <li>Mouse: left-click an active candidate to enter it as a user value.</li>
 <li>Keyboard: use the arrow keys to select a cell, press 1–9 to enter a value, and press 0/Delete/Backspace to clear a user value.</li>
-<li>Touch/pen: choose a digit, then tap an empty cell.</li>
+<li>Touch/pen: tap an empty cell first, then press a digit in Value mode.</li>
 <li>Entering the cell's current user value again clears it. Original givens are protected from ordinary solving edits.</li>
 <li>Candidates update after a value is entered. A rule conflict is reported as an invalid position.</li>
 <li>When a user value is cleared or replaced, the cleared cell is rebuilt from the imported initial candidate baseline filtered by current row/column/box legality. Only the removed digit is restored in related peers. Unrelated manual candidate eliminations remain untouched, and no candidate outside the original puzzle/Sukaku baseline is invented.</li>
@@ -1754,14 +1754,16 @@ GUR 枚举约束 = 1
 <li>最近一次删数、出数结果，以及标题、标签、来源和学习笔记。</li>
 </ul>
 <div class="note">题库保存结构化数据，不保存依赖界面语言的结果长文本。读取后，程序会按当前中英文设置重新生成状态和结果说明。</div>
-<h4>读取、插入、替换、追加、删除</h4>
+<h4>读取、载入解题器、插入、替换、追加、删除</h4>
 <ul>
 <li><strong>读取：</strong>恢复所选案例的候选盘、全部 TLG 输入、操作选项和结果快照，并自动开启 TLG 编辑。题库盘面是独立的 TLG 视图；关闭 TLG 后，原来的主数独现场重新显示。</li>
+<li><strong>载入解题器：</strong>把选中记录转换为主解题器可识别的 Library/Sukaku 状态。程序先用临时 Engine 做完整导入预检；失败时不会关闭 TLG，也不会破坏当前主数独现场。验证成功后才退出 TLG 专用视图并导入主解题器。</li>
 <li><strong>插入：</strong>把当前 TLG 保存到所选记录之前；没有选中记录时按追加处理。</li>
 <li><strong>替换：</strong>用当前 TLG 覆盖所选记录，保留该记录的位置和首次创建时间。</li>
 <li><strong>追加：</strong>把当前 TLG 保存到题库末尾，生成新的记录 ID。</li>
 <li><strong>删除：</strong>删除所选记录；执行前会要求确认。</li>
 </ul>
+<div class="note"><strong>两种前提的导入语义：</strong>唯一解样例保留保存时的“初始候选 → 当前活动候选”差异，载入解题器时会把这些真实删数重建为求解历史；训练盘以当前活动候选盘本身作为起始 Sukaku 断言，不虚构更早的删数历史。题库摘要中的“前提”会标明“唯一解样例”或“训练盘”。</div>
 <p>标题、标签、来源和笔记来自题库窗口右侧。题库 v2 仍保持每条 2048 字节，为第二组 Virtual Set 预留位图后，各字段按 UTF-8 字节限制：标题 128、标签 96、来源 128、笔记 507 字节。导入旧版 v1 记录时仍兼容原来的 512 字节笔记。中文通常占 3 个字节；超过当前版本上限会明确报错，不会静默截断。</p>
 <h4>二进制题库导入与导出</h4>
 <ul>
@@ -2004,14 +2006,16 @@ GUR enumeration constraints = 1
 <li>the latest eliminations and assignments, plus title, tags, source, and study notes.</li>
 </ul>
 <div class="note">The library stores structured data rather than language-dependent result prose. After a record is read, status and result text are regenerated in the current UI language.</div>
-<h4>Read, Insert, Replace, Append, and Delete</h4>
+<h4>Read, Load into Solver, Insert, Replace, Append, and Delete</h4>
 <ul>
 <li><strong>Read:</strong> restores the candidate grid, all TLG inputs, options, and the result snapshot, then enables TLG editing. The library grid is an independent TLG view; disabling TLG reveals the previous main Sudoku session again.</li>
+<li><strong>Load into Solver:</strong> converts the selected record to a Library/Sukaku state understood by the main solver. A temporary Engine performs a full import preflight first; a failure leaves both the current TLG view and the existing main Sudoku session untouched. Only a successful preflight exits the dedicated TLG view and imports the case into the main solver.</li>
 <li><strong>Insert:</strong> saves the current TLG before the selected record. With no selection, it behaves like Append.</li>
 <li><strong>Replace:</strong> overwrites the selected record while preserving its position and original creation time.</li>
 <li><strong>Append:</strong> saves the current TLG at the end with a new record ID.</li>
 <li><strong>Delete:</strong> removes the selected record after confirmation.</li>
 </ul>
+<div class="note"><strong>Premise-aware import:</strong> a unique-solution case preserves the difference between its saved initial and active candidates, so Load into Solver reconstructs those real eliminations as solver history. A training candidate grid instead treats its current active candidates as the starting Sukaku assertion and invents no earlier elimination history. The record summary labels the premise as a unique-solution case or training candidate grid.</div>
 <p>Title, tags, source, and notes come from the editor on the right. Binary schema v2 remains fixed at 2048 bytes; after reserving the second Virtual Set bitmap, UTF-8 limits are 128 bytes for title, 96 for tags, 128 for source, and 507 for notes. Legacy v1 records with 512-byte notes remain importable. Text beyond the current limit is rejected explicitly.</p>
 <h4>Binary Library Import and Export</h4>
 <ul>
@@ -2139,20 +2143,20 @@ GUR enumeration constraints = 1
 <h3>手机手动做题的推荐顺序</h3>
 <ol>
 <li>载入或生成题目，检查提示数。</li>
-<li>选择“出数”或“候选”，再点大数字 1–9。</li>
-<li>轻触目标格写入出数或切换候选。候选小字难点时，不必直接点小字。</li>
+<li>先轻触目标格建立焦点；需要时切换“出数”或“候选”，再点大数字 1–9。</li>
+<li>手机普通做题、候选和候选类手工标记都使用格优先，不需要直接点小候选。若开启“更多 → 焦点跟随操作盘”，点格后 4×4 操作盘会出现在焦点附近；关闭时使用固定操作区。</li>
 <li>需要人工分析时点“标记”，按“先选格，再点大数字键”的方式圈候选、上色或暂存删数。</li>
-<li>不确定时点“提示一步”只看结论，确认后再“应用提示”。</li>
+<li>不确定时点“提示”只看结论；出现有效提示后同一按钮会变成“应用”，确认后再点一次才写入盘面。</li>
 <li>误操作立即撤销；完成阶段性分析后导出候选状态或截图。</li>
 </ol>
 <h3>顶部与底部按钮</h3>
 <ul>
 <li><strong>返回：</strong>优先关闭当前弹窗、更多抽屉或手工标记；没有内层界面时才退出做题模式并回到原滚动位置。标题栏返回图标右上角数字表示仍可关闭的层数。</li>
 <li><strong>新题：</strong>选择 ER 难度后生成；已有作答或标记时会警告，确认后清除进度和手工标记。</li>
-<li><strong>清除：</strong>清除当前选中格的大数字；候选模式下可清除当前选中的候选。</li>
+<li><strong>清除：</strong>清除当前选中格的用户大数字；空格不会猜测要删哪个候选。候选模式下再次点同一个数字即可删除该候选。</li>
 <li><strong>撤销/重做：</strong>与主界面共用历史。</li>
 <li><strong>标记：</strong>打开完整手工标记面板。</li>
-<li><strong>更多：</strong>打开提示、应用、可选步骤、题面输入、候选显示、同数字高亮、屏幕常亮、全屏、分析模式、帮助与现场和语言。</li>
+<li><strong>更多：</strong>打开可选步骤、题面输入、候选显示、同数字高亮、<strong>焦点跟随操作盘</strong>、屏幕常亮、全屏、分析模式、帮助与现场和语言。常用“清除”和“提示/应用”已经放在做题操作区，不再占用更多抽屉。焦点跟随开启后，点格会在附近弹出 4×4 操作盘；关闭后回到固定数字区。</li>
 </ul>
 <h3>标题栏状态图标</h3>
 <ul>
@@ -2165,7 +2169,7 @@ GUR enumeration constraints = 1
 <div class="note">这些图标只占标题栏固定位置，不新增纵向状态条。轻触图标会显示完整中文说明。</div>
 <h3>候选与手工标记</h3>
 <ul>
-<li>普通候选编辑：先选“候选”和数字，再轻触格子。</li>
+<li>普通候选编辑：先轻触目标格，再切到“候选”并点数字；焦点跟随开启时可直接在格子附近完成。</li>
 <li>候选标记：先选格子，再轻触大数字键添加；长按数字键约 0.5–0.6 秒删除标记。</li>
 <li>整格上色：轻触添加，长按格子约 0.6 秒删除。</li>
 <li>“隐藏候选数”只隐藏显示；进入候选类标记模式会自动重新显示。</li>
@@ -2182,9 +2186,9 @@ GUR enumeration constraints = 1
 <li><strong>空位置兜底：</strong>除 Cell Truth 的普通轻触外，空位置的右键、长按及其他模式点击都被忽略，不会恢复候选或填入数字。</li>
 </ul>
 <div class="note">TLG 与普通手工标记不能同时接管候选长按。开启 TLG 时手工标记暂时隐藏且不响应；关闭 TLG 后恢复。</div>
-<h3>“更多”里的功能</h3>
+<h3>提示/应用与“更多”功能</h3>
 <ul>
-<li><strong>提示一步 / 应用提示：</strong>提示只预览，应用才改盘。</li>
+<li><strong>提示 / 应用：</strong>手机共用同一个按钮：平时点“提示”只预览，出现有效步骤后该按钮原地变为“应用”；只有点“应用”才改盘，完成或提示失效后按钮恢复“提示”。</li>
 <li><strong>可选步骤：</strong>退出做题布局后打开“可选步骤”页签。</li>
 <li><strong>题面输入：</strong>退出做题布局后展开输入面板并聚焦文本框。</li>
 <li><strong>隐藏/显示候选数：</strong>只改变显示，不删除候选。</li>
@@ -2203,20 +2207,20 @@ GUR enumeration constraints = 1
 <h3>Recommended Mobile Solving Order</h3>
 <ol>
 <li>Load or generate a puzzle and verify the givens.</li>
-<li>Select Value or Candidate, then choose 1–9 on the large pad.</li>
-<li>Tap the target cell to enter a value or toggle a candidate. Tiny candidate glyphs do not need to be targeted for ordinary solving.</li>
+<li>Tap the target cell first; choose Value or Candidate as needed, then press 1–9 on the large pad.</li>
+<li>Ordinary values, candidates, and candidate-style manual marks all use the same cell-first model. With <strong>More → Focus-follow keypad</strong> enabled, tapping a cell opens the 4×4 controls near that focus. Its last row is <strong>Clear | Hint/Apply | Marks | More</strong>; the shared Hint/Apply button changes from Hint to Apply only while a valid preview is pending, then returns to Hint after applying or invalidation. Disable focus-follow to keep the fixed controls.</li>
 <li>For human analysis, open Marks and use “select cell, then large digit” for circles, colors, or staged eliminations.</li>
-<li>Use Hint for preview and Apply Hint only after confirming the conclusion.</li>
+<li>Use the shared Hint/Apply button: the first tap previews; while that preview is valid the same button becomes Apply, and the second tap commits it.</li>
 <li>Undo mistakes immediately; export candidate state or capture the diagram at useful milestones.</li>
 </ol>
 <h3>Top and Bottom Actions</h3>
 <ul>
 <li><strong>Back:</strong> first closes the current dialog, More drawer, or Manual Marks layer. It exits Solve Mode only when no inner layer remains. The badge on the title-bar Back icon shows the remaining depth.</li>
 <li><strong>New Puzzle:</strong> chooses an ER band and generates. Existing progress/marks trigger a warning.</li>
-<li><strong>Clear:</strong> clears the selected user value, or the selected candidate in Candidate mode.</li>
+<li><strong>Clear:</strong> clears the selected user-entered value. On an empty cell it never guesses which candidate to remove; in Candidate mode, press the same digit again to remove that candidate.</li>
 <li><strong>Undo/Redo:</strong> shares history with the main interface.</li>
 <li><strong>Marks:</strong> opens the full Manual Marks panel.</li>
-<li><strong>More:</strong> opens Hint, Apply, Available Steps, Puzzle Input, candidate visibility, same-digit highlighting, Screen Wake Lock, Fullscreen, Analysis Mode, Help &amp; Workspaces, and language.</li>
+<li><strong>More:</strong> opens Available Steps, Puzzle Input, candidate visibility, same-digit highlighting, <strong>Focus-follow keypad</strong>, Screen Wake Lock, Fullscreen, Analysis Mode, Help &amp; Workspaces, and language. Clear and the shared Hint/Apply action stay in the main solve controls instead of the More drawer. Focus-follow opens the 4×4 pad near the selected cell; turn it off to return to the fixed controls.</li>
 </ul>
 <h3>Title-Bar Status Icons</h3>
 <ul>
@@ -2229,7 +2233,7 @@ GUR enumeration constraints = 1
 <div class="note">These icons use fixed title-bar space and do not add a vertical status bar. Tap an icon to read the full English description.</div>
 <h3>Candidates and Manual Marks</h3>
 <ul>
-<li>Ordinary candidate editing: choose Candidate and a digit, then tap a cell.</li>
+<li>Ordinary candidate editing: tap the target cell first, switch to Candidate, then press a digit; with Focus-follow enabled the controls are available beside the selected cell.</li>
 <li>Candidate marks: select a cell, tap a large digit to add, or hold it about 0.5–0.6 seconds to erase the mark.</li>
 <li>Cell coloring: tap to add and hold the cell for about 0.6 seconds to erase.</li>
 <li>Hide Candidates is display-only; candidate mark modes reveal them automatically.</li>
@@ -2245,9 +2249,9 @@ GUR enumeration constraints = 1
 <li><strong>Cell Truth:</strong> tap the empty cell background in Truths mode.</li>
 </ul>
 <div class="note">TLG and Manual Marks cannot own candidate long-press simultaneously. Manual marks are hidden and inactive while TLG is enabled, then return afterward.</div>
-<h3>More Functions</h3>
+<h3>Hint/Apply and More Functions</h3>
 <ul>
-<li><strong>Hint / Apply Hint:</strong> Hint previews; Apply commits.</li>
+<li><strong>Hint / Apply:</strong> one shared button previews as Hint, changes in place to Apply while the preview is valid, and returns to Hint after commit or invalidation.</li>
 <li><strong>Available Steps:</strong> leaves Solve layout and opens the Available Steps tab.</li>
 <li><strong>Puzzle Input:</strong> leaves Solve Mode, opens the input panel, and focuses the text area.</li>
 <li><strong>Hide/Show Candidates:</strong> changes display only.</li>

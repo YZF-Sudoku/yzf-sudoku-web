@@ -8,9 +8,9 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-f51c450abbd791b1";
+import createModule from "./sudoku_wasm.js?v=wasm-a6080a3d4de0bdcc";
 
-const APP_VERSION = "wasm-f51c450abbd791b1";
+const APP_VERSION = "wasm-a6080a3d4de0bdcc";
 
 let enginePromise = null;
 
@@ -30,13 +30,30 @@ function applyTechniqueConfig(engine, config) {
 
 self.addEventListener("message", async (event) => {
   const message = event.data || {};
-  if (message.type !== "generate") {
+  if (message.type !== "generate" && message.type !== "find-builtin-sample") {
     return;
   }
 
   try {
     const engine = await getEngine();
     applyTechniqueConfig(engine, message.techniqueConfig);
+    if (message.type === "find-builtin-sample") {
+      if (typeof engine.find_builtin_superhard_sample_json !== "function") {
+        throw new Error("Built-in superhard sample search is unavailable in this WASM build");
+      }
+      const filter = message.textFilter && typeof message.textFilter === "object"
+        ? message.textFilter
+        : { includeText: "", excludeText: "", caseSensitive: false, findAll: true, otp: false };
+      const resultText = engine.find_builtin_superhard_sample_json(
+        String(message.kind || ""),
+        JSON.stringify(filter),
+        Number(message.startIndex || 0),
+        Number(message.maxPuzzles || 9999),
+        Number(message.maxSteps || 500)
+      );
+      self.postMessage({ type: "result", resultText });
+      return;
+    }
     const textFilter = message.textFilter && typeof message.textFilter === "object"
       ? message.textFilter
       : { includeText: "", excludeText: "", caseSensitive: false, findAll: true, otp: false };

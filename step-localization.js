@@ -263,6 +263,18 @@ function translateTypeSuffixZh(value) {
 
 function localizeKnownFamilyVariantZh(step, title) {
   let match;
+  // Canonical backend producer titles for ALS/AHS families.  These are not
+  // proof metadata; they are display names, so localize them here instead of
+  // surfacing an English parenthetical in the Chinese UI.
+  if (/^Almost Locked Set XZ(?:-Rule)?$/i.test(title)) return "ALS-XZ";
+  if (/^Almost Locked Set XY-Wing$/i.test(title)) return "ALS-XY-Wing";
+  if (/^Almost Locked Set W-Wing$/i.test(title)) return "ALS-W-Wing";
+  if (/^Almost Hidden Set XZ(?:-Rule)?$/i.test(title)) return "AHS-XZ";
+  if (/^Almost Hidden Set XY-Wing$/i.test(title)) return "AHS-XY-Wing";
+  if (/^Almost Hidden Set W-Wing$/i.test(title)) return "AHS-W-Wing";
+  if (/^Sashimi X-Wing$/i.test(title)) return "退化X翼";
+  if (/^Sashimi Swordfish$/i.test(title)) return "退化剑鱼";
+  if (/^Sashimi Jellyfish$/i.test(title)) return "退化水母";
   if ((match = title.match(/^Unique Rectangle\s+Type\s*(\d+)$/i))) return `唯一矩形 ${match[1]} 型`;
   if (/^Hidden Rectangle$/i.test(title)) return "隐性矩形";
   if ((match = title.match(/^Avoidable Rectangle\s+Type\s*(\d+)$/i))) return `可规避矩形 ${match[1]} 型`;
@@ -604,6 +616,23 @@ function findGroups(step, matcher) {
   return groupRecords(step).filter((group) => matcher.test(group.headKey));
 }
 
+
+function localizeAhsBranchZh(value) {
+  return String(value || "")
+    .replace(/\bSingle-RCC XZ\b/gi, "单 RCC XZ")
+    .replace(/\bDouble-RCC Rank-0\b/gi, "双 RCC 秩 0")
+    .replace(/\bRank-2 RCC Rank-0\b/gi, "二阶 RCC 秩 0")
+    .replace(/\bExtended-RCC\b/gi, "扩展 RCC");
+}
+
+function localizeAhsRccTypeZh(value) {
+  return String(value || "")
+    .replace(/\bLocked-Set Position\b/gi, "锁定数组位置型")
+    .replace(/\bShared-Cell\b/gi, "共享格型")
+    .replace(/\bshared-cell\b/gi, "共享格型")
+    .replace(/\bExtended-RCC\b/gi, "扩展 RCC");
+}
+
 function groupCellsText(group, max = 12) {
   return group ? cellList(group.cells, max) : "";
 }
@@ -858,7 +887,7 @@ function formatAlsZh(step, name) {
   const describeAhs = (group, label) => {
     if (!group) return "";
     const digitSet = validDigits(group.digits).join("") || "相关数字";
-    const house = group.houses.join("/") || "相关house";
+    const house = group.houses.join("/") || "元数据缺失";
     const positions = groupCellsText(group) || "相关格组";
     return `${label}=${digitSet}@${house}{${positions}}`;
   };
@@ -887,12 +916,12 @@ function formatAlsZh(step, name) {
     const a = findGroup(step, /^ahsa$/i);
     const b = findGroup(step, /^ahsb$/i);
     const rcc = findGroup(step, /^rcc$/i);
-    const branch = findGroup(step, /^branch$/i)?.tail || "AHS-XZ";
+    const branch = localizeAhsBranchZh(findGroup(step, /^branch$/i)?.tail || "AHS-XZ");
     const parts = [describeAhs(a, "AHS A"), describeAhs(b, "AHS B")].filter(Boolean);
     const x = slashDigits(rcc?.digits || []);
     if (x) parts.push(`受限公共候选数X=${x}`);
-    else if (rcc?.tail) parts.push(`RCC=${rcc.tail}`);
-    return `${name}（${branch}）：${parts.join("；")}。先按候选数组合与house确认AHS，再核对对应格位及RCC证明。${conclusionTextZh(step)}`;
+    else if (rcc?.tail) parts.push(`RCC=${localizeAhsRccTypeZh(rcc.tail)}`);
+    return `${name}（${branch}）：${parts.join("；")}。先按候选数组合与所属行、列或宫确认AHS，再核对对应格位及RCC证明。${conclusionTextZh(step)}`;
   }
 
   if (step?.kind === "AHSXYWing") {
@@ -902,9 +931,9 @@ function formatAlsZh(step, name) {
     const rccX = findGroup(step, /^rccx$/i);
     const rccY = findGroup(step, /^rccy$/i);
     const parts = [describeAhs(a, "AHS A"), describeAhs(b, "枢纽AHS B"), describeAhs(c, "AHS C")].filter(Boolean);
-    if (rccX?.tail) parts.push(`RCC X=${rccX.tail}`);
-    if (rccY?.tail) parts.push(`RCC Y=${rccY.tail}`);
-    return `${name}：${parts.join("；")}。AHS必须先读候选数组合@house，再核对Extra事件、局部HLS格组和逐数字支撑位置。${conclusionTextZh(step)}`;
+    if (rccX?.tail) parts.push(`RCC X=${localizeAhsRccTypeZh(rccX.tail)}`);
+    if (rccY?.tail) parts.push(`RCC Y=${localizeAhsRccTypeZh(rccY.tail)}`);
+    return `${name}：${parts.join("；")}。AHS必须先读取候选数组合及所属行、列或宫，再核对额外格事件、局部HLS格组和逐数字支撑位置。${conclusionTextZh(step)}`;
   }
 
   if (step?.kind === "AHSWWing") {
@@ -922,7 +951,7 @@ function formatAlsZh(step, name) {
       parts.push(`枢纽=${pivotDigits}@${pivotCells}（${splitA}|${splitB}）`);
     }
     if (b) parts.push(describeAhs(b, "AHS B"));
-    return `${name}：${parts.join("；")}。两端AHS均先按候选数组合与house阅读，再核对枢纽分组、Extra事件、HLS格组和支撑位置。${conclusionTextZh(step)}`;
+    return `${name}：${parts.join("；")}。两端AHS均先按候选数组合及所属行、列或宫阅读，再核对枢纽分组、额外格事件、HLS格组和支撑位置。${conclusionTextZh(step)}`;
   }
 
   if (step?.kind === "ALSXZ") {
@@ -954,9 +983,23 @@ function formatAlsZh(step, name) {
   if (step?.kind === "ALSWWing") {
     const a = findGroup(step, /^alsa$/i);
     const b = findGroup(step, /^alsb$/i);
-    const strong = findGroup(step, /^stronglink$/i);
+    const branch = findGroup(step, /^branch$/i)?.tail || "";
+    const rank0 = /rank-?0/i.test(branch);
+    const strongs = findGroups(step, /^stronglink$/i);
+    const residual = findGroup(step, /^residualdigits$/i);
     const z = slashDigits(eliminationDigits(step));
     const parts = [describeAls(a, "待定数组A"), describeAls(b, "待定数组B")].filter(Boolean);
+    if (rank0) {
+      const links = strongs.map((group) => {
+        const digits = slashDigits(group.digits);
+        const house = group.houses.join("/");
+        return `${digits || "?"}${house ? `@${house}` : ""}`;
+      }).filter(Boolean);
+      if (links.length) parts.push(`独立链接=${links.join("、")}`);
+      if (residual?.digits?.length) parts.push(`其余结构数字=${slashDigits(residual.digits)}`);
+      return `${name}（分组秩 0）：${parts.join("；")}。两条独立链接把两组待定数组闭合为秩 0，本分支不要求存在单一共同 Z。${conclusionTextZh(step)}`;
+    }
+    const strong = strongs[0] || null;
     if (strong?.digits?.length) parts.push(`外部强链数字为${slashDigits(strong.digits)}`);
     return `${name}：${parts.join("；")}。外部强链保证两个待定数组中至少有一侧承担连接数字${z ? `，因此共同候选${z}` : ""}可从同时看见两侧的位置删去。${conclusionTextZh(step)}`;
   }
@@ -1180,6 +1223,18 @@ function descriptionHasConclusion(step, text) {
 function preserveBackendProofZh(step) {
   const description = String(step?.description || "").trim();
   if (!description) return "";
+
+  // These families have a structured, backend-role-driven Chinese formatter
+  // below.  Do not let the canonical English producer description bypass it
+  // merely because the description contains an arrow or a variant title.
+  // Sudoku facts still come only from StepResult groups; this is display-only
+  // localization, not frontend reconstruction of technique semantics.
+  const structuredLocalizedKinds = new Set([
+    "ALSXZ", "ALSXYWing", "ALSWWing",
+    "AHSXZ", "AHSXYWing", "AHSWWing",
+    "MSLS",
+  ]);
+  if (structuredLocalizedKinds.has(String(step?.kind || ""))) return "";
   const title = effectiveTechniqueTitle(step);
   const variant = !titleIsGenericForKind(step, title);
   const alwaysPreserve = new Set([

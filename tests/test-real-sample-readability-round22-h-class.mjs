@@ -1,0 +1,26 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import { buildAuditedStepExplanationPayload, buildAuditedTechniqueGuide } from "../step-explanation.js";
+
+const fixture = new URL("../../tools/real_training_samples/ROUND22_H_WING_REAL_SAMPLE.jsonl", import.meta.url);
+const lines = fs.readFileSync(fixture, "utf8").trim().split(/\r?\n/).map(JSON.parse);
+const manifest = lines.shift();
+assert.equal(manifest.recordCount, 1);
+const r = lines[0];
+assert.equal(r.targetId, "AIC::H-Wing");
+assert.ok(r.trainingLibrary.startsWith(":"));
+const labels = (r.matchedStep.groups || []).map(g => g.label || "");
+assert.ok(labels.includes("Branch:H-Wing"));
+assert.ok(labels.includes("StrongPattern:VVL"));
+assert.ok(labels.includes("ThreeStrongClass:H"));
+assert.ok(labels.includes("DigitCount:3"));
+const p = buildAuditedStepExplanationPayload(r.matchedStep, "zh");
+const g = buildAuditedTechniqueGuide(r.matchedStep, "zh");
+assert.ok(p); assert.equal(g?.length, 6);
+assert.match(p.principle, /H型|开放链/);
+assert.doesNotMatch([p.structure,p.principle,p.deduction,...g.slice(0,3)].join("\n"), /[∨⇒¬⋃∈∧]/);
+const fake = structuredClone(r.matchedStep);
+fake.title = "H-Ring";
+fake.description = "fake H-Ring title";
+assert.match(buildAuditedStepExplanationPayload(fake,"zh").principle,/H型|开放链/);
+console.log("test-real-sample-readability-round22-h-class: ok (real H-Wing; H-Ring not required)");

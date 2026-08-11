@@ -1567,7 +1567,6 @@ button.primary:not(:disabled) {
 
 :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) :is(
   .mobile-solve-actions #btnMobileSolveHint,
-  .mobile-solve-actions #btnMobileSolveApply,
   .mobile-solve-actions #btnMobileSolveInputMode[aria-pressed="true"],
   .mobile-solve-actions button[data-mark-active="true"],
   .mobile-solve-drawer-grid button[aria-pressed="true"],

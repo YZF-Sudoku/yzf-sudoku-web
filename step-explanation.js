@@ -106,18 +106,32 @@ function localeKey(locale) {
 // into Chinese prose: doing so was the main source of half-translated dynamic
 // explanations (Standard / Branching / SourceState=ON, etc.).  Technical family
 // names such as ALS, AHS, RCC, AIC, MSLS and Rank-0 remain unchanged.
+function localizedSymmetryName(raw, locale = "zh") {
+  const zh = localeKey(locale) === "zh";
+  if (!zh) return String(raw || "");
+  const key = String(raw || "").trim().toLowerCase();
+  const map = new Map([
+    ["diagonal", "主对角线对称"], ["antidiagonal", "副对角线对称"], ["central", "中心对称"],
+    ["sticks symmetry type 1", "棒状对称 1 型"], ["sticks symmetry type 2", "棒状对称 2 型"],
+  ]);
+  return map.get(key) || String(raw || "");
+}
+
 function localizedProofMeta(value, locale = "zh") {
   const raw = String(value || "").trim();
   if (!raw || localeKey(locale) !== "zh") return raw;
   const exact = new Map([
     ["Standard", "标准型"],
     ["Grouped", "分组型"],
-    ["Exact Rank-0", "精确 Rank-0"],
-    ["Advanced Rank-0 with Attachment", "高级 Rank-0（含附加格）"],
-    ["Irregular Rank-0", "异型 Rank-0"],
+    ["Exact Rank-0", "精确秩 0"],
+    ["Advanced Rank-0 with Attachment", "高级秩 0（含附加格）"],
+    ["Irregular Rank-0", "异型秩 0"],
     ["Single-RCC XZ", "单 RCC XZ"],
-    ["Double-RCC Rank-0", "双 RCC Rank-0"],
-    ["Triple-Linked Rank-0", "三重链接 Rank-0"],
+    ["Locked-Set Position", "锁定数组位置型"],
+    ["Shared-Cell", "共享格型"],
+    ["shared-cell", "共享格型"],
+    ["Double-RCC Rank-0", "双 RCC 秩 0"],
+    ["Triple-Linked Rank-0", "三重链接秩 0"],
     ["Single-Intersection", "单交区"],
     ["Double-Intersection", "双交区"],
     ["Box-ALS / Line-AHS", "宫 ALS / 线 AHS"],
@@ -132,6 +146,20 @@ function localizedProofMeta(value, locale = "zh") {
     ["Complete", "完全型"],
     ["Half", "半型"],
     ["Restricted-Z", "受限 Z 型"],
+    ["Type 1", "1 型"], ["Unique Rectangle Type 1", "1 型"],
+    ["Type 2", "2 型"], ["Unique Rectangle Type 2", "2 型"],
+    ["Type 3", "3 型"], ["Unique Rectangle Type 3", "3 型"],
+    ["Type 4", "4 型"], ["Unique Rectangle Type 4", "4 型"],
+    ["Type 5", "5 型"], ["Unique Rectangle Type 5", "5 型"],
+    ["Type 6", "6 型"], ["Unique Rectangle Type 6", "6 型"],
+    ["Type 7", "7 型"], ["Unique Rectangle Type 7", "7 型"],
+    ["Hidden Rectangle", "隐性矩形"],
+    ["External Test 1", "外部测试 1"], ["External Test 2/4", "外部测试 2/4"],
+    ["External Test 3", "外部测试 3"], ["External Test 3H", "外部测试 3H"],
+    ["External Test + XY-Wing", "外部测试 + XY-Wing"],
+    ["AUR + XY-Wing", "AUR + XY-Wing"], ["AUR + XYZ-Wing", "AUR + XYZ-Wing"],
+    ["AUR + WXYZ-Wing", "AUR + WXYZ-Wing"], ["AUR + WXYZ-Ring", "AUR + WXYZ-Ring"],
+    ["Cross-Guardian", "交叉守护型"],
     ["Odd-Loop Guardians", "奇环守护型"],
     ["Verified-Solution Placement", "已验证终解落数"],
     ["Branching", "分叉型"],
@@ -179,7 +207,9 @@ function localizedProofMeta(value, locale = "zh") {
     .replace(/\bBranching\b/gi, "分叉型")
     .replace(/\bSingleSpine\b/gi, "单主干型")
     .replace(/\bRow-Based\b/gi, "行基型")
-    .replace(/\bColumn-Based\b/gi, "列基型");
+    .replace(/\bColumn-Based\b/gi, "列基型")
+    .replace(/\bRank-0\b/gi, "秩 0")
+    .replace(/\bRank0\b/gi, "秩 0");
 }
 
 function list(value) {
@@ -204,10 +234,14 @@ function cellName(cell) {
   return index >= 0 && index < 81 ? `r${Math.floor(index / 9) + 1}c${(index % 9) + 1}` : "";
 }
 
-function cellNames(cells, max = 14) {
+function cellNames(cells, max = 14, locale = "zh") {
   const names = unique(list(cells).map(cellName));
-  if (names.length <= max) return names.join("、");
-  return `${names.slice(0, max).join("、")}等${names.length}格`;
+  const zh = localeKey(locale) === "zh";
+  const separator = zh ? "、" : ", ";
+  if (names.length <= max) return names.join(separator);
+  return zh
+    ? `${names.slice(0, max).join(separator)}等${names.length}格`
+    : `${names.slice(0, max).join(separator)} … (${names.length} cells)`;
 }
 
 function candidateValues(item) {
@@ -296,11 +330,14 @@ function groupRecord(group) {
   const head = (colon >= 0 ? label.slice(0, colon) : label).trim();
   const tail = (colon >= 0 ? label.slice(colon + 1) : "").trim();
   const headKey = normalizeHead(head);
-  const digitBearing = /^(alsa|alsb|alsc|ahsa|ahsb|ahsb\(pivot\)|ahsc|rcc|rccx|rccy|x|z|stronglink|set|petal|fin|fins|regfin|regfins|edofin|edofins|eri|link|urbody|arbody|ulbody|xrbody|guardians?|guardiansa|guardiansb|winga|wingb|wxyzpivot|wxyzwings|bugplusonecell|forcedcandidate|exitcell|exitcells|conjugateexit|confineddeadly|hiddenlock|nakedsubset|hiddensubset|solvedcorners|roof|targetcorner|self|target|targets|cannibaltargets|lockedcandidates|fishdigit|sourcedigits|fishbody|brokenloop|roofs|linkedside|rowstrong|columnstrong|rowouter|columnouter|rowinner|columninner|outerendpoints|connector|endpoints|linktoa|linktob|deletedigit|pivot|pivota|pivotb|supporta|supportb|supportx\(a\)|supportx\(b\)|supporty\(c\)|supporty\(b\)|sharedz|connectorz|erbody|erintersection|outsideendpoint|pair|erisupport|activeeri|oppositeeri|remotewing|wxyzset|activesector|z|samehousercc|oddagonbody|oddagona|oddagonb|sharedexit|lockedsubset|tripletbody|fireworkarms|fireworkset|fireworka|fireworkb|sharedarms|erconnector|bivaluebridge|pit|alppivot|bivaluepair|basecells|stem|victim|petals|start|end)$/i.test(headKey);
+  const digitBearing = /^(alsa|alsb|alsc|ahsa|ahsb|ahsb\(pivot\)|ahsc|rcc|rccx|rccy|rccz|x|z|stronglink|set|petal|fin|fins|regfin|regfins|edofin|edofins|eri|link|urbody|arbody|ulbody|xrbody|guardians?|guardiansa|guardiansb|winga|wingb|wxyzpivot|wxyzwings|bugplusonecell|forcedcandidate|exitcell|exitcells|escapecell|rcc\d+supporta|rcc\d+supportb|candidatez\(aonly\)|candidatez\(bonly\)|candidatez\(common\)|conjugateexit|confineddeadly|hiddenlock|nakedsubset|hiddensubset|subsetcell|digitpositions|solvedcorners|roof|targetcorner|self|target|targets|cannibaltargets|lockedcandidates|fishdigit|sourcedigits|fishbody|brokenloop|roofs|linkedside|rowstrong|columnstrong|rowouter|columnouter|rowinner|columninner|outerendpoints|connector|endpoints|linktoa|linktob|deletedigit|pivot|pivota|pivotb|supporta|supportb|supportx\(a\)|supportx\(b\)|supporty\(c\)|supporty\(b\)|supportz\(a\)|supportz\(b\)|supportz\(c\)|sharedz|connectorz|erbody|erintersection|outsideendpoint|pair|erisupport|activeeri|oppositeeri|remotewing|wxyzset|activesector|z|samehousercc|oddagonbody|oddagona|oddagonb|sharedexit|lockedsubset|tripletbody|afwremotetripletpair|afwwitness|witnesstripletoddagon|tripletguardian|tripletguardians|tripletguardianbranch\d+|fireworkarms|fireworkset|fireworka|fireworkb|sharedarms|erconnector|bivaluebridge|pit|alppivot|bivaluepair|basecells|basecandidates|stem|victim|petals|start|end)$/i.test(headKey);
   // Structured AHS/ALS labels may use "digits@house" (for example
   // AhsA:25@r1).  House numbers are metadata, not candidates.
-  const digitTail = tail.split("@", 1)[0];
-  const digits = digitBearing ? unique((digitTail.match(/[1-9]/g) || []).map(Number)).sort((a, b) => a - b) : [];
+  const candidateRoleWithPositions = /^candidatez\((?:aonly|bonly|common)\)$/i.test(headKey) && tail.includes("@");
+  const digitTokens = candidateRoleWithPositions
+    ? Array.from(tail.matchAll(/([1-9])@/g), (match) => match[1])
+    : (tail.split("@", 1)[0].match(/[1-9]/g) || []);
+  const digits = digitBearing ? unique(digitTokens.map(Number)).sort((a, b) => a - b) : [];
   return {
     label,
     head,
@@ -333,12 +370,50 @@ function firstGroupTail(step, head) {
   return groupTails(step, head)[0] || "";
 }
 
+
+function subsetCellFacts(step, locale = "zh") {
+  const zh = localeKey(locale) === "zh";
+  return groupsMatching(step, /^subsetcell$/i).map((group) => {
+    const cell = cellNames(group.cells, 1, locale);
+    const digits = digitText(group.digits);
+    return cell && digits ? `${cell}={${digits}}` : "";
+  }).filter(Boolean);
+}
+
+function hiddenDigitPositionFacts(step, locale = "zh") {
+  const zh = localeKey(locale) === "zh";
+  return groupsMatching(step, /^digitpositions$/i).map((group) => {
+    const digit = digitText(group.digits);
+    const cells = cellNames(group.cells, 14, locale);
+    return digit && cells ? `${digit}${zh ? "→" : " -> "}${cells}` : "";
+  }).filter(Boolean);
+}
+
+function tripletGuardianFacts(step, locale = "zh") {
+  return groupsMatching(step, /^tripletguardian$/i).map((group) => {
+    const digit = digitText(group.digits);
+    const cells = cellNames(group.cells, 14, locale);
+    return digit && cells ? `${digit}@${cells}` : "";
+  }).filter(Boolean);
+}
+
+function tripletGuardianBranchFacts(step, locale = "zh") {
+  const zh = localeKey(locale) === "zh";
+  return groupsMatching(step, /^tripletguardianbranch\d+$/i).map((group) => {
+    const match = group.headKey.match(/tripletguardianbranch(\d+)/i);
+    const branch = match ? match[1] : "";
+    const digit = digitText(group.digits);
+    const cells = cellNames(group.cells, 14, locale);
+    return branch && digit && cells ? `${zh ? "分支" : "branch "}${branch}: ${digit}@${cells}` : "";
+  }).filter(Boolean);
+}
+
 function roleSummary(group, locale, fallback) {
   if (!group) return "";
   const lang = localeKey(locale);
-  const cells = cellNames(group.cells);
+  const cells = cellNames(group.cells, 14, locale);
   const digits = digitText(group.digits);
-  const houses = group.houses.join("、");
+  const houses = group.houses.join(lang === "zh" ? "、" : ", ");
   const details = [];
   if (cells) details.push(cells);
   if (digits) details.push(lang === "zh" ? `候选数${digits}` : `digits ${digits}`);
@@ -350,8 +425,8 @@ function ahsRoleSummary(group, locale, fallback) {
   if (!group) return "";
   const lang = localeKey(locale);
   const digits = list(group.digits).filter((digit) => Number(digit) >= 1 && Number(digit) <= 9).map(Number).sort((a, b) => a - b).join("") || (lang === "zh" ? "相关数字" : "digits");
-  const houses = group.houses.join("/") || (lang === "zh" ? "相关house" : "house");
-  const cells = cellNames(group.cells) || (lang === "zh" ? "相关格组" : "cells");
+  const houses = group.houses.join("/") || (lang === "zh" ? "元数据缺失" : "metadata missing");
+  const cells = cellNames(group.cells, 14, locale) || (lang === "zh" ? "相关格组" : "cells");
   return `${fallback}=${digits}@${houses}{${cells}}`;
 }
 
@@ -541,21 +616,27 @@ function lockedExplanation(step, locale) {
 function subsetExplanation(step, locale, hidden) {
   const zh = localeKey(locale) === "zh";
   const role = firstGroup(step, hidden ? /^hiddensubset$/i : /^nakedsubset$/i);
-  const cells = cellNames(role?.cells || structureCells(step)) || (zh ? "高亮单元格" : "the highlighted cells");
+  const cells = cellNames(role?.cells || structureCells(step), 14, locale) || (zh ? "高亮单元格" : "the highlighted cells");
   const digits = digitText(role?.digits) || primaryDigits(step) || (zh ? "相关数字" : "the relevant digits");
   const house = firstGroup(step, /^house$/i)?.houses?.[0] || houseLabel(step, locale);
   const count = role?.cells?.length || list(structureCells(step)).length || digitText(String(digits).match(/[1-9]/g) || []).length;
+  const cellFacts = subsetCellFacts(step, locale);
+  const positionFacts = hiddenDigitPositionFacts(step, locale);
   if (hidden) {
     return {
-      structure: zh ? `在${house}中，${count}个数字${digits}的全部候选位置合起来正好是${count}格：${cells}。` : `In ${house}, all positions for the ${count} digits ${digits} are confined to exactly ${count} cells: ${cells}.`,
-      basis: zh ? `这${count}个数字必须各出现一次，因此这${count}格全部被数字${digits}占用。` : `Those ${count} digits must each occur once, so they occupy all ${count} cells.`,
-      deduction: zh ? `这些格中的其他候选不属于隐性数组，均可删除。` : `All other candidates in those cells are outside the hidden subset and can be removed.`,
+      structure: zh
+        ? `隐性${count}数组：数字${digits}在${house}中只可能出现在${cells}这${count}格。${positionFacts.length ? ` 逐数字位置：${positionFacts.join("；")}。` : ""}${cellFacts.length ? ` 这些格中的数组成员：${cellFacts.join("，")}。` : ""}`
+        : `Hidden ${count}-subset: digits ${digits} can occur only in the ${count} cells ${cells} of ${house}.${positionFacts.length ? ` Positions by digit: ${positionFacts.join("; ")}.` : ""}${cellFacts.length ? ` Subset membership in those cells: ${cellFacts.join(", ")}.` : ""}`,
+      basis: zh ? `这${count}个数字在${house}都必须各出现一次，而可用位置总共只有这${count}格，所以这些格必须由${digits}填满。` : `All ${count} digits must appear once in ${house}, and only these ${count} cells are available, so the cells must be filled by ${digits}.`,
+      deduction: zh ? `因此这些格中不属于${digits}的其他候选都不可能成立，可以删除。` : `Therefore any other candidate in those cells, outside ${digits}, is impossible and can be removed.`,
     };
   }
   return {
-    structure: zh ? `在${house}中，${count}格${cells}的候选并集恰好只有${count}个数字${digits}。` : `In ${house}, the candidate union of the ${count} cells ${cells} contains exactly the ${count} digits ${digits}.`,
-    basis: zh ? `这${count}格必须由这${count}个数字一一填满，数字${digits}不会落到${house}的其他格。` : `These ${count} cells must be filled by those ${count} digits, leaving none of them for other cells in ${house}.`,
-    deduction: zh ? `${house}其他格中的数字${digits}可以删除。` : `Digits ${digits} can be eliminated from the other cells in ${house}.`,
+    structure: zh
+      ? `显性${count}数组：${house}中的${count}格${cells}合起来只有${digits}这${count}种候选。${cellFacts.length ? ` 逐格候选：${cellFacts.join("，")}。` : ""}`
+      : `Naked ${count}-subset: the ${count} cells ${cells} in ${house} collectively contain only the ${count} digits ${digits}.${cellFacts.length ? ` Candidates by cell: ${cellFacts.join(", ")}.` : ""}`,
+    basis: zh ? `这${count}格最终要填入${count}个数字，而它们合起来只有${count}种可能，所以${digits}必定全部落在这些格中；并不要求每一格都含全部数组数字。` : `These ${count} cells need ${count} values and collectively allow only ${count} digits, so ${digits} must occupy the cells; each cell need not contain every subset digit.`,
+    deduction: zh ? `因此${house}中这些格之外的${digits}都不可能再出现，可以删除。` : `Therefore ${digits} cannot occur elsewhere in ${house} and can be eliminated there.`,
   };
 }
 
@@ -567,20 +648,26 @@ function fishExplanation(step, locale, mode) {
   const finCells = groupCells(step, /^fin$/i);
   const bases = axes.bases.length ? axes.bases.join("、") : (zh ? "高亮基准区域" : "the highlighted base sets");
   const covers = axes.covers.length ? axes.covers.join("、") : (zh ? "高亮覆盖区域" : "the highlighted cover sets");
-  const title = String(step?.title || "");
-  const sashimi = /^sashimi\b/i.test(title);
+  const kind = String(step?.kind || "");
+  const branch = firstGroup(step, /^branch$/i)?.tail || (FINNED_FISH.has(kind) ? "Finned" : "Standard");
+  const sashimi = /sashimi/i.test(branch);
+  const finBox = firstGroup(step, /^finbox$/i)?.houses?.join(zh ? "、" : ", ") || "";
+  const size = FISH_SIZE[kind] || axes.bases.length || axes.covers.length || 0;
+  const baseName = size === 2 ? "X-Wing" : size === 3 ? "Swordfish" : size === 4 ? "Jellyfish" : "Fish";
   const structure = zh
     ? `数字${digit}以${bases}为基准区域、${covers}为覆盖区域${bodyCells.length ? `；鱼身候选为${bodyCells.join("、")}` : ""}${finCells.length ? `；鳍为${finCells.join("、")}` : ""}。`
     : `Digit ${digit} uses ${bases} as base sets and ${covers} as cover sets${bodyCells.length ? `; body candidates: ${bodyCells.join(", ")}` : ""}${finCells.length ? `; fins: ${finCells.join(", ")}` : ""}.`;
   if (mode === "finnedFish") {
     return {
-      structure: zh ? `${sashimi ? "Sashimi" : "有鳍"}鱼：${structure}` : `${sashimi ? "Sashimi" : "Finned"} fish: ${structure}`,
+      structure: zh
+        ? `${sashimi ? "Sashimi" : "有鳍"}${baseName}：${structure}${finBox ? ` 鳍宫为${finBox}。` : ""}`
+        : `${sashimi ? "Sashimi" : "Finned"} ${baseName}: ${structure}${finBox ? ` Fin box: ${finBox}.` : ""}`,
       basis: zh
-        ? `所有鳍位于同一宫。若鳍全假，剩余结构按普通${title.replace(/^Sashimi |^Finned /i, "")}覆盖删数；若任一鳍为真，同宫内的目标候选${digit}被该鳍直接排除。`
-        : `All fins lie in one box. If every fin is false, the remaining pattern acts as a normal ${title.replace(/^Sashimi |^Finned /i, "")}; if any fin is true, it directly excludes target ${digit} candidates in that box.`,
+        ? `分两案看：若所有鳍都为假，剩余鱼身按普通${baseName}成立；若至少一枚鳍为真，本步删数位于同一个鳍宫${finBox || ""}内，会与该真鳍直接冲突。`
+        : `Use two cases: if every fin is false, the remaining body is an ordinary ${baseName}; if at least one fin is true, every reported target lies in the same fin box${finBox ? ` ${finBox}` : ""} and directly conflicts with that true fin.`,
       deduction: zh
-        ? `${sashimi ? "去掉鳍后至少一个基准区域的鱼身不足两个候选，这正是Sashimi分支；但上述真假两案仍都删除目标。" : "普通鱼案和鳍为真案都排除同一目标，所以该目标可删。"}`
-        : `${sashimi ? "After removing the fins, at least one base has fewer than two body candidates, which is the Sashimi branch; both cases still eliminate the target." : "Both the normal-fish case and the true-fin case eliminate the same targets."}`,
+        ? `${sashimi ? "Sashimi只表示去掉鳍后至少一个基准区域只剩一个鱼身落点；它不改变上述二分证明。" : ""}两种情况都排除后端报告的同一批目标，所以这些目标可删。`
+        : `${sashimi ? "Sashimi only means that after removing the fins at least one base has a single body position; the two-case proof is unchanged. " : ""}Both cases eliminate the same backend-reported targets.`,
     };
   }
   if (mode === "complexFish") {
@@ -693,9 +780,9 @@ function uniquenessRole(step, pattern) {
   return firstGroup(step, pattern);
 }
 
-function roleCellText(step, pattern) {
+function roleCellText(step, pattern, locale = "zh") {
   const role = uniquenessRole(step, pattern);
-  return role ? cellNames(role.cells) : "";
+  return role ? cellNames(role.cells, 14, locale) : "";
 }
 
 function roleDigitText(step, pattern) {
@@ -708,16 +795,11 @@ function deadlyDigitsForStep(step) {
     const digits = roleDigitText(step, pattern);
     if (digits) return digits;
   }
-  const title = String(step?.title || "").toLowerCase();
-  if (/external test|aur \+/.test(title)) {
-    const pair = firstPairFromDescription(step?.description);
-    if (pair.length === 2) return digitText(pair);
-  }
   return digitText(list(step?.candidates));
 }
 
-function firstCellsText(step, count = 4) {
-  return cellNames(structureCells(step).slice(0, count));
+function firstCellsText(step, count = 4, locale = "zh") {
+  return cellNames(structureCells(step).slice(0, count), 14, locale);
 }
 
 function uniquenessExplanation(step, locale) {
@@ -726,7 +808,11 @@ function uniquenessExplanation(step, locale) {
   const title = String(step?.title || kind);
   const description = String(step?.description || "");
   const key = `${kind} ${title} ${description}`.toLowerCase();
-  const cells = cellNames(structureCells(step));
+  const branchValues = groupTails(step, "branch");
+  const branchKey = branchValues.join(" ").toLowerCase();
+  const mergedBranch = branchValues.length > 1;
+  const branchDisplay = branchValues.map((value) => localizedProofMeta(value, locale)).join(zh ? "、" : ", ");
+  const cells = cellNames(structureCells(step), 14, locale);
   const deadly = deadlyDigitsForStep(step);
   const conclusion = conclusionText(step, locale);
   const therefore = zh ? `因此：${conclusion}` : `Therefore: ${conclusion}`;
@@ -734,7 +820,7 @@ function uniquenessExplanation(step, locale) {
   if (kind === "GSP") {
     const symmetry = uniquenessRole(step, /^symmetry$/i)?.tail || "";
     const selfDigits = roleDigitText(step, /^self$/i);
-    const selfCells = roleCellText(step, /^self$/i);
+    const selfCells = roleCellText(step, /^self$/i, locale);
     return {
       structure: zh
         ? `${symmetry ? `采用${symmetry}对称映射` : "盘面满足一组全局数字与位置对称映射"}${selfDigits ? `；自映射数字为${selfDigits}` : ""}${selfCells ? `；对称不动位置为${selfCells}` : ""}。`
@@ -752,7 +838,7 @@ function uniquenessExplanation(step, locale) {
   }
 
   if (kind === "BUGOne") {
-    const extraCell = roleCellText(step, /^bugplusonecell$/i) || cells || (zh ? "唯一三值格" : "the only trivalue cell");
+    const extraCell = roleCellText(step, /^bugplusonecell$/i, locale) || cells || (zh ? "唯一三值格" : "the only trivalue cell");
     const extraDigits = roleDigitText(step, /^bugplusonecell$/i) || digitText(list(step?.candidates));
     const forced = roleDigitText(step, /^forcedcandidate$/i) || digitText(conclusionItems(step).placements.map((item) => Number(item.split("=")[1])));
     return {
@@ -776,18 +862,21 @@ function uniquenessExplanation(step, locale) {
     const guardianCells = unique(guardianGroups.flatMap((group) => group.cells).map(cellName));
     const guardianDigits = digitText(guardianGroups.flatMap((group) => group.digits)) || digitText(list(step?.candidates));
     let deduction;
-    if (/type 1/.test(key)) deduction = zh
+    if (/type 1/.test(branchKey)) deduction = zh
       ? `全部守护候选集中在同一格，因此该格必须取守护候选之一，伪双值对可以删除。${therefore}`
       : `All guardians lie in one cell, so that cell must take a guardian and its pseudo-bivalue pair can be removed. ${therefore}`;
-    else if (/type 2/.test(key)) deduction = zh
+    else if (/type 2/.test(branchKey)) deduction = zh
       ? `所有守护候选是同一数字且至少一真；同时看见全部守护位置的该数字可以删除。${therefore}`
       : `All guardians use one digit and at least one is true; the digit can be removed from any cell seeing every guardian. ${therefore}`;
-    else if (/type 3/.test(key)) deduction = zh
+    else if (/type 3/.test(branchKey)) deduction = zh
       ? `守护候选与同一区域的裸数组共同占满容量，数组外的相同候选会挤占必要名额。${therefore}`
       : `The guardians and a naked subset fill the house capacity; matching candidates outside the set consume a required slot. ${therefore}`;
-    else if (/type 4/.test(key)) deduction = zh
+    else if (/type 4/.test(branchKey)) deduction = zh
       ? `守护格中的一个伪双值数字形成共轭对；结合“至少一个守护为真”，可以排除另一伪双值数字。${therefore}`
       : `One pseudo-bivalue digit is conjugate across the guardian cells; combined with the guardian disjunction, the other pseudo-bivalue digit is eliminated. ${therefore}`;
+    else if (/cross-guardian/.test(branchKey)) deduction = zh
+      ? `两个守护格位于同一单位，并各自承担不同的单一守护数字。若其中一格取对方的守护数字，会在本格排除自己的守护，同时又在同一单位排除对方守护，于是全部守护同时消失并恢复完整BUG；因此这个交叉候选可删。${therefore}`
+      : `The two guardian cells share one house and carry different single guardian digits. If either cell took the other guardian's digit, it would remove its own guardian in the same cell and the other guardian in the shared house, eliminating every escape and restoring the complete BUG; that cross-candidate is therefore removed. ${therefore}`;
     else deduction = zh
       ? `目标若成立，会同时排除全部守护候选并恢复完整BUG，因此目标不能成立。${therefore}`
       : `If the target were true, every guardian would be false and the complete BUG would return, so the target is impossible. ${therefore}`;
@@ -805,13 +894,14 @@ function uniquenessExplanation(step, locale) {
   const isAR = kind === "AvoidableRectangle";
   const isUL = kind === "UniqueLoop";
   const isXR = kind === "ExtendedRectangle";
-  const body = roleCellText(step, /^(urbody|arbody|ulbody|xrbody)$/i)
-    || ((kind === "UniqueRectangle" || isAR) ? firstCellsText(step, 4) : cells);
+  const body = roleCellText(step, /^(urbody|arbody|ulbody|xrbody)$/i, locale)
+    || ((kind === "UniqueRectangle" || isAR) ? firstCellsText(step, 4, locale) : cells);
   const pattern = zh ? (isAR ? "可避免矩形" : isUL ? "唯一环" : isXR ? "扩展矩形" : "唯一矩形")
     : (isAR ? "Avoidable Rectangle" : isUL ? "Unique Loop" : isXR ? "Extended Rectangle" : "Unique Rectangle");
   let structure = zh
     ? `${pattern}主体位于${body || "高亮区域"}${deadly ? `，致命数字组为${deadly}` : ""}。`
     : `The ${pattern} body is in ${body || "the highlighted region"}${deadly ? `, with deadly digit set ${deadly}` : ""}.`;
+  if (branchDisplay && !mergedBranch) structure += zh ? ` 当前后端分支=${branchDisplay}。` : ` Backend branch=${branchDisplay}.`;
   const basis = isAR
     ? (zh
       ? "可避免矩形使用当前已经填入但并非原始提示的数字：若目标格按致命数字补全，已填数字可在四角互换，得到另一份满足同一原始题面的解。"
@@ -823,11 +913,11 @@ function uniquenessExplanation(step, locale) {
   let deduction;
   const extraChecks = [];
 
-  if (/external test \+ xy-wing/.test(key)) {
-    const ga = roleCellText(step, /^guardiansa$/i);
-    const gb = roleCellText(step, /^guardiansb$/i);
-    const wa = roleCellText(step, /^winga$/i) || structureCells(step).slice(-2, -1).map(cellName).join("、");
-    const wb = roleCellText(step, /^wingb$/i) || structureCells(step).slice(-1).map(cellName).join("、");
+  if (/external test \+ xy-wing/.test(branchKey)) {
+    const ga = roleCellText(step, /^guardiansa$/i, locale);
+    const gb = roleCellText(step, /^guardiansb$/i, locale);
+    const wa = roleCellText(step, /^winga$/i, locale) || cellNames(structureCells(step).slice(-2, -1), 14, locale);
+    const wb = roleCellText(step, /^wingb$/i, locale) || cellNames(structureCells(step).slice(-1), 14, locale);
     const da = roleDigitText(step, /^winga$/i);
     const db = roleDigitText(step, /^wingb$/i);
     structure += zh
@@ -842,62 +932,61 @@ function uniquenessExplanation(step, locale) {
     extraChecks.push(zh
       ? "核对每个翼格看见对应数字的全部守护候选，且每个删数目标同时看见两个翼格。"
       : "Verify each wing sees every guardian of its associated deadly digit and every target sees both wings.");
-  } else if (/external test 1/.test(key)) deduction = zh
+  } else if (/external test 1/.test(branchKey)) deduction = zh
     ? `${pattern}外只有一个守护格；若该格不取致命数字之一，全部外部破坏点消失，主体成为致命结构。因此该格必须保留致命数字，其他候选可删。${therefore}`
     : `There is only one external guardian cell. If it took no deadly digit, every external escape would disappear and the body would become deadly; therefore it must keep a deadly digit and its other candidates are removed. ${therefore}`;
-  else if (/external test 2\/4/.test(key)) deduction = zh
+  else if (/external test 2\/4/.test(branchKey)) deduction = zh
     ? `一个致命数字没有外部守护位置，所以另一数字的守护候选中至少一个必须为真；同时看见全部守护位置的该数字可以删除。${therefore}`
     : `One deadly digit has no external guardian, so at least one guardian of the other digit is true; that digit can be removed from any cell seeing all guardians. ${therefore}`;
-  else if (/external test 3h/.test(key)) deduction = zh
+  else if (/external test 3h/.test(branchKey)) deduction = zh
     ? `外部守护候选与同一区域内的隐性数组共同限定落点；数组格内的其他候选会挤占必须留给守护数字和隐性数组数字的容量。${therefore}`
     : `The external guardians and a hidden subset in one house jointly restrict positions; other candidates in those cells consume capacity required by the guardian and hidden-subset digits. ${therefore}`;
-  else if (/external test 3/.test(key)) deduction = zh
+  else if (/external test 3/.test(branchKey)) deduction = zh
     ? `外部守护候选与同一区域内的裸数组共同构成满容量集合；集合外的同数字候选会挤占必要名额。${therefore}`
     : `The external guardians and a naked subset in one house form a full-capacity set; matching digits outside it consume a required slot. ${therefore}`;
-  else if (/aur \+ (xy|xyz)-wing/.test(key)) {
+  else if (/aur \+ (xy|xyz)-wing/.test(branchKey)) {
     deduction = zh
-      ? `屋顶额外候选至少一真，否则四角退化为致命矩形。Wing节点把所有额外候选分支导向共同数字${targetDigit}，所以同时看见全部承接位置的${targetDigit}可删。${therefore}`
+      ? `屋顶额外候选至少一真，否则四角退化为致命矩形。翼节点把所有额外候选分支导向共同数字${targetDigit}，所以同时看见全部承接位置的${targetDigit}可删。${therefore}`
       : `At least one roof extra is true; otherwise the four corners collapse to the deadly rectangle. The Wing nodes route every extra-candidate branch to shared digit ${targetDigit}, so a target seeing every carrier can be removed. ${therefore}`;
-    extraChecks.push(zh ? "本分支step.candidates是Wing共同删数数字，不是致命数字组。" : "In this branch step.candidates is the Wing target digit, not the deadly pair.");
-  } else if (/aur \+ wxyz-(wing|ring)/.test(key)) {
+    extraChecks.push(zh ? "本分支候选字段表示翼结构的共同删数数字，不是致命数字组。" : "In this branch step.candidates is the Wing target digit, not the deadly pair.");
+  } else if (/aur \+ wxyz-(wing|ring)/.test(branchKey)) {
+    const isWxyzRing = /wxyz-ring/.test(branchKey);
     deduction = zh
-      ? `屋顶额外候选与三个外部节点组成WXYZ待定数组。若所有额外候选失效，UR主体致命；若任一额外候选成立，WXYZ结构仍把目标数字锁在结构内。Ring分支还对四个结构数字形成闭环删数。${therefore}`
-      : `The roof extras and three external nodes form a WXYZ almost-locked set. If every extra is false the UR body is deadly; if one is true the WXYZ structure still locks the target digit inside. The Ring branch also closes all four digits into a loop. ${therefore}`;
-    extraChecks.push(zh ? "本分支step.candidates是WXYZ结构数字并集，不能称为致命数字组。" : "Here step.candidates is the WXYZ digit union and must not be called the deadly set.");
-  } else if (isAR && /type 1/.test(key)) deduction = zh
+      ? `屋顶额外候选与三个外部节点组成WXYZ待定数组。若所有额外候选失效，UR主体致命；若任一额外候选成立，WXYZ结构仍把目标数字锁在结构内。${isWxyzRing ? "本分支还把四个结构数字闭合成环，因此可同时得到环上的附加删数。" : ""}${therefore}`
+      : `The roof extras and three external nodes form a WXYZ almost-locked set. If every extra is false the UR body is deadly; if one is true the WXYZ structure still locks the target digit inside.${isWxyzRing ? " This branch also closes the four structural digits into a ring, yielding the additional ring eliminations." : ""} ${therefore}`;
+    extraChecks.push(zh ? "本分支候选字段表示WXYZ结构数字并集，不能称为致命数字组。" : "Here step.candidates is the WXYZ digit union and must not be called the deadly set.");
+  } else if (mergedBranch) {
+    if (branchDisplay) structure += zh ? ` 已合并分支：${branchDisplay}。` : ` Merged branches: ${branchDisplay}.`;
+    deduction = zh
+      ? `同一主体同时满足多个唯一性分支；后端把各分支成立的删数合并到一步。每项结论都由至少一个明确分支阻止主体退化成可交换的第二解。${therefore}`
+      : `The same body satisfies multiple uniqueness branches, so the backend merged their valid eliminations into one step. Every action is supported by at least one explicit branch preventing the body from collapsing into a swappable second solution. ${therefore}`;
+  } else if (isAR && /type 1/.test(branchKey)) deduction = zh
     ? `三个已填非提示角已经确定致命数字对；第四角若取其中任一致命数字，就能交换四角得到另一解，因此这些候选可删。${therefore}`
     : `Three placed non-given corners fix the deadly pair. If the fourth took either deadly digit, the corners could swap into a second solution, so those candidates are removed. ${therefore}`;
-  else if (isAR && /type 2/.test(key)) deduction = zh
+  else if (isAR && /type 2/.test(branchKey)) deduction = zh
     ? `两个未解屋顶角共享同一额外数字。为避免两角都只剩致命数字，该额外数字至少一真；同时看见两角的同数字候选可删。${therefore}`
     : `The two unsolved roofs share one extra digit. To prevent both roofs containing only the deadly pair, that digit is true in at least one roof and can be removed from common peers. ${therefore}`;
-  else if (/type 1/.test(key)) deduction = zh
+  else if (/type 1/.test(branchKey)) deduction = zh
     ? `只有一个破坏格含额外候选；若它取致命数字，整个主体只剩致命数字组并产生第二完成方式，所以该格中的致命候选可删。${therefore}`
     : `Only one escape cell has extras. If it took a deadly digit, the body would contain only the deadly set and admit a second completion, so its deadly candidates are removed. ${therefore}`;
-  else if (/type (2|5)/.test(key)) deduction = zh
+  else if (/type (2|5)/.test(branchKey)) deduction = zh
     ? `两个破坏格共享同一额外数字；若该数字两处都为假，主体退化为致命结构，所以它至少一真，并可从共同可见格删除。${therefore}`
     : `Two escape cells share one extra digit. If it were false in both, the body would be deadly, so it is true in at least one and can be removed from common peers. ${therefore}`;
-  else if (/type 3/.test(key)) deduction = zh
+  else if (/type 3/.test(branchKey)) deduction = zh
     ? `破坏格的额外候选与同一区域内的裸数组共同占满候选容量；数组外的同数字候选会挤占必要名额。${therefore}`
     : `The escape-cell extras and a naked subset in one house fill the candidate capacity; matching candidates outside consume a required slot. ${therefore}`;
-  else if (/type 4/.test(key)) deduction = zh
+  else if (/type 4/.test(branchKey)) deduction = zh
     ? `破坏格中的一个致命数字形成共轭对并至少一真，因此另一致命数字不能在相关破坏格中形成致命分配。${therefore}`
     : `One deadly digit is conjugate across the escape cells and is true in at least one, so the other deadly digit cannot form the deadly assignment there. ${therefore}`;
-  else if (/type 6/.test(key)) deduction = zh
+  else if (/type 6/.test(branchKey)) deduction = zh
     ? `一个致命数字在相关两行、两列的矩形外没有候选，落点被限制在四角；为避免交替致命分配，该数字可从两个破坏角删除。${therefore}`
     : `One deadly digit has no candidate outside the rectangle in the relevant rows and columns, so its positions are confined to the corners; it is removed from the escape corners to avoid the deadly alternating assignment. ${therefore}`;
-  else if (/type 7/.test(key)) deduction = zh
+  else if (/type 7/.test(branchKey)) deduction = zh
     ? `四角及外部强链连接致命数字端点。目标若成立，会关闭所有破坏出口并完成致命环；删数按说明中的强链或S-Ring证明成立。${therefore}`
     : `The corners and external strong links connect the deadly endpoints. If the target were true every escape would close and complete the deadly loop; eliminations follow from the recorded strong-link or S-Ring proof. ${therefore}`;
-  else if (/hidden rectangle/.test(key)) deduction = zh
+  else if (/hidden rectangle/.test(branchKey)) deduction = zh
     ? `行、列共轭关系把一个致命数字隐藏锁定在对角端点；保留目标会让另一致命数字完成可交换矩形，因此可删。${therefore}`
     : `Row and column conjugacies hidden-lock one deadly digit at opposite endpoints; keeping the target lets the other complete the swappable rectangle, so it is removed. ${therefore}`;
-  else if (/uniqueness test/.test(key)) {
-    const branches = groupsMatching(step, /^branch$/i).map((group) => group.tail).filter(Boolean);
-    if (branches.length) structure += zh ? ` 已合并分支：${branches.join("、")}。` : ` Merged branches: ${branches.join(", ")}.`;
-    deduction = zh
-      ? `同一主体同时满足多个唯一性分支；后端合并了它们的不同删数，每项分别由对应Type阻止致命结构。${therefore}`
-      : `The same body satisfies multiple uniqueness branches and the backend merged their distinct eliminations; each action follows from its corresponding Type. ${therefore}`;
-  }
   else deduction = zh
     ? `被删候选若成立，会消除最后的破坏点，使主体只剩可交替互换的致命数字组。${therefore}`
     : `If an eliminated candidate were true, it would remove the last escape and leave only the alternatable deadly set. ${therefore}`;
@@ -942,7 +1031,7 @@ function alsExplanation(step, locale) {
     : (zh ? `高亮单元格${cellNames(structureCells(step)) ? `（${cellNames(structureCells(step))}）` : ""}构成待定数组结构。` : `The highlighted cells${cellNames(structureCells(step)) ? ` (${cellNames(structureCells(step))})` : ""} form an almost-locked-set structure.`);
   const ahsStructure = ahsRoles.length
     ? (zh ? `候选数组合优先：${sentenceParts(ahsRoles, locale)}。` : `Digit-set first: ${sentenceParts(ahsRoles, locale)}.`)
-    : (zh ? "AHS应先按候选数组合与house确认，再核对承载格组。" : "Read the AHS digit set and house first, then verify its carrier cells.");
+    : (zh ? "AHS应先按候选数组合与所属行、列或宫确认，再核对承载格组。" : "Read the AHS digit set and house first, then verify its carrier cells.");
 
   if (kind === "ALSXZ") {
     const x = digitText(rcc?.digits || []);
@@ -956,8 +1045,8 @@ function alsExplanation(step, locale) {
           ? "两个独立RCC把两组ALS闭合成Rank 0。这里不能套用普通ALS-XZ的“X不能两边同时为真，所以Z至少在一边为真”解释；删数来自Rank-0链接容量已被结构完全占用。"
           : "Two independent RCCs close the ALS pair to rank 0. Do not reuse the ordinary ALS-XZ statement that X cannot be true in both ALSs and therefore Z is true in one; eliminations come from fully occupied rank-0 link capacity.",
         deduction: zh
-          ? "被删候选若保留，会在已经闭合的Rank-0结构中额外占用链接容量或重复占用结构资源。具体扩展见后端原始证明。"
-          : "Keeping an eliminated candidate would consume additional link capacity or duplicate a proof resource in the closed rank-0 structure. See the backend proof for the exact extension.",
+          ? "三条已占用关系之外的目标候选若保留，会额外占用已满的链接；结构内部若同一资源被重复占用，则形成自噬冲突。因此只保留后端实际给出的外部删数与结构内自噬删数。"
+          : "A target outside the occupied relations would consume link capacity that is already full; inside the structure, consuming the same resource twice creates a cannibal conflict. Keep only the external and internal eliminations actually emitted by the backend.",
       };
     }
     return {
@@ -982,6 +1071,8 @@ function alsExplanation(step, locale) {
   if (kind === "AHSXYWing") {
     const rccX = firstGroup(step, /^rccx$/i);
     const rccY = firstGroup(step, /^rccy$/i);
+    const rccZ = firstGroup(step, /^rccz$/i);
+    const triple = branchKey.includes("triple-linked");
     const extraXA = firstGroup(step, /^extrax\(a\)$/i);
     const hlsXA = firstGroup(step, /^hlsx\(a\)$/i);
     const extraXB = firstGroup(step, /^extrax\(b\)$/i);
@@ -994,6 +1085,12 @@ function alsExplanation(step, locale) {
     const hlsYB = firstGroup(step, /^hlsy\(b\)$/i);
     const supportYC = firstGroup(step, /^supporty\(c\)$/i);
     const supportYB = firstGroup(step, /^supporty\(b\)$/i);
+    const extraZA = firstGroup(step, /^extraz\(a\)$/i);
+    const hlsZA = firstGroup(step, /^hlsz\(a\)$/i);
+    const supportZA = firstGroup(step, /^supportz\(a\)$/i);
+    const extraZC = firstGroup(step, /^extraz\(c\)$/i);
+    const hlsZC = firstGroup(step, /^hlsz\(c\)$/i);
+    const supportZC = firstGroup(step, /^supportz\(c\)$/i);
     const xText = [
       rccX?.tail,
       extraXA ? `${zh ? "A端Extra" : "A Extra"}=${cellNames(extraXA.cells)}` : "",
@@ -1012,22 +1109,62 @@ function alsExplanation(step, locale) {
       hlsYB ? `${zh ? "枢纽HLS/见证格组" : "pivot local HLS/witness"}=${cellNames(hlsYB.cells)}` : "",
       supportYB?.digits?.length ? `${zh ? "枢纽支撑" : "pivot support"}=${digitText(supportYB.digits)}@${cellNames(supportYB.cells)}` : "",
     ].filter(Boolean).join(zh ? "，" : ", ");
+    const zText = triple ? [
+      rccZ?.tail,
+      extraZA ? `${zh ? "A端Extra" : "A Extra"}=${cellNames(extraZA.cells)}` : "",
+      hlsZA ? `${zh ? "A端HLS/见证格组" : "A local HLS/witness"}=${cellNames(hlsZA.cells)}` : "",
+      supportZA?.digits?.length ? `${zh ? "A端支撑" : "A support"}=${digitText(supportZA.digits)}@${cellNames(supportZA.cells)}` : "",
+      extraZC ? `${zh ? "C端Extra" : "C Extra"}=${cellNames(extraZC.cells)}` : "",
+      hlsZC ? `${zh ? "C端HLS/见证格组" : "C local HLS/witness"}=${cellNames(hlsZC.cells)}` : "",
+      supportZC?.digits?.length ? `${zh ? "C端支撑" : "C support"}=${digitText(supportZC.digits)}@${cellNames(supportZC.cells)}` : "",
+    ].filter(Boolean).join(zh ? "，" : ", ") : "";
     return {
-      structure: `${ahsStructure}${xText ? (zh ? ` RCC X：${xText}。` : ` RCC X: ${xText}.`) : ""}${yText ? (zh ? ` RCC Y：${yText}。` : ` RCC Y: ${yText}.`) : ""}`,
-      basis: zh
-        ? "枢纽AHS只有一个Extra格。RCC X表示“A端Extra或枢纽X事件”，RCC Y表示“C端Extra或枢纽Y事件”；两个枢纽事件互斥且不能复用同一HLS证明资源，因此A端Extra与C端Extra至少一个成立。"
-        : "The pivot AHS has one Extra cell. RCC X states ‘A Extra or pivot-X event’, and RCC Y states ‘C Extra or pivot-Y event’. The pivot events are disjoint and cannot reuse the same local-HLS proof resource, so at least one outer Extra-event holds.",
-      deduction: zh
-        ? "分别在A端Extra、C端Extra条件下枚举全部合法AHS匹配；两分支共同排除的候选才是删数。整格底色标出参与RCC证明的局部HLS格组，候选色标出实际支撑位置。"
-        : "Enumerate every legal AHS matching under the A-Extra and C-Extra branches. Only candidates excluded in both are removed. Cell fills mark the local-HLS cells used by each RCC, while candidate colors mark the actual support positions.",
+      structure: `${ahsStructure}${triple ? (zh ? " 三重链接秩 0。" : " Triple-Linked Rank-0.") : ""}${xText ? (zh ? ` RCC X：${xText}。` : ` RCC X: ${xText}.`) : ""}${yText ? (zh ? ` RCC Y：${yText}。` : ` RCC Y: ${yText}.`) : ""}${zText ? (zh ? ` RCC Z：${zText}。` : ` RCC Z: ${zText}.`) : ""}`,
+      basis: triple
+        ? (zh
+          ? "每组AHS都恰有一个Extra格。三条RCC分别保证相连的两组AHS中至少一端必须贡献Extra；而同一AHS不能同时为相邻两条边贡献Extra。于是任意一条边选定哪一端后，另外两条边会被迫交替，最终只剩两个全局状态，三条链接恰好闭合成Rank 0。"
+          : "Each AHS has exactly one Extra cell. Each of the three RCCs says that at least one of its two endpoint AHSs must contribute the Extra event, while one AHS cannot serve both adjacent links at once. Choosing one endpoint on any link therefore forces the other two links to alternate, leaving exactly two global states and closing the three links to rank 0.")
+        : (zh
+          ? "枢纽AHS只有一个额外格。RCC X表示“A端Extra或枢纽X事件”，RCC Y表示“C端Extra或枢纽Y事件”；两个枢纽事件互斥且不能复用同一HLS证明资源，因此A端Extra与C端Extra至少一个成立。"
+          : "The pivot AHS has one Extra cell. RCC X states ‘A Extra or pivot-X event’, and RCC Y states ‘C Extra or pivot-Y event’. The pivot events are disjoint and cannot reuse the same local-HLS proof resource, so at least one outer Extra-event holds."),
+      deduction: triple
+        ? (zh
+          ? "程序分别枚举两个交替Rank-0状态下三个AHS的全部合法匹配；所有状态都不能容纳的结构内候选，以及每个状态都必被同数字看见的外部候选，才可删除。整格底色与候选色只显示后端实际RCC见证和支撑。"
+          : "The solver enumerates every legal matching of all three AHSs in both alternating rank-0 states. Only internal candidates absent from every state and external candidates seen by the digit in every state are removed. Cell fills and candidate colors show only backend-emitted RCC witnesses and supports.")
+        : (zh
+          ? "分别在A端Extra、C端Extra条件下枚举全部合法AHS匹配；两分支共同排除的候选才是删数。整格底色标出参与RCC证明的局部HLS格组，候选色标出实际支撑位置。"
+          : "Enumerate every legal AHS matching under the A-Extra and C-Extra branches. Only candidates excluded in both are removed. Cell fills mark the local-HLS cells used by each RCC, while candidate colors mark the actual support positions."),
     };
   }
 
   if (kind === "ALSXYWing") {
+    const rccX = firstGroup(step, /^rccx$/i);
+    const rccY = firstGroup(step, /^rccy$/i);
+    const rccZ = firstGroup(step, /^rccz$/i);
+    const zGroup = firstGroup(step, /^z$/i);
+    const triple = branchKey.includes("triple-linked");
+    const x = digitText(rccX?.digits || []);
+    const y = digitText(rccY?.digits || []);
+    const z = digitText((triple ? rccZ : zGroup)?.digits || []);
+    const linkFacts = zh
+      ? `RCC X(A-C)=${x || "?"}，RCC Y(B-C)=${y || "?"}${triple ? `，RCC Z(A-B)=${z || "?"}` : `，共同删数候选Z=${z || "?"}`}`
+      : `RCC X(A-C)=${x || "?"}, RCC Y(B-C)=${y || "?"}${triple ? `, RCC Z(A-B)=${z || "?"}` : `, common elimination Z=${z || "?"}`}`;
     return {
-      structure,
-      basis: zh ? "三个ALS按 A—B—C 相连，B分别通过两个严格共享候选数连接A和C。" : "Three ALSs form A—B—C, with B connected to A and C by two restricted common candidates.",
-      deduction: zh ? "无论中间ALS B怎样完成，A或C中至少一侧会承担共同删数候选，因此同时看见两端该候选的外部位置可以删除。" : "Whatever assignment completes ALS B, the common elimination digit is true in A or C, so an external candidate seeing both ends can be removed.",
+      structure: `${structure}${zh ? ` ${triple ? "三重链接秩 0：" : ""}${linkFacts}。` : ` ${triple ? "Triple-Linked Rank-0: " : ""}${linkFacts}.`}`,
+      basis: triple
+        ? (zh
+          ? "X把A-C受限连接，Y把B-C受限连接，而后端明确输出的RCC Z把A-B受限连接。三条独立RCC闭合三角形，Truth需求与Link容量相等，因此形成Rank 0。"
+          : "X restrictively links A-C, Y links B-C, and the backend-emitted RCC Z links A-B. The three independent RCCs close the triangle with truth demand equal to link capacity, so the structure is rank 0.")
+        : (zh
+          ? "三个ALS按两条RCC连接：C分别通过X、Y连接A、B。无论C怎样完成，A或B中的共同Z至少一真。"
+          : "The three ALSs are connected by two RCCs: C links to A through X and to B through Y. Whatever completes C, the common Z is true in A or B."),
+      deduction: triple
+        ? (zh
+          ? "三条RCC已占满Rank-0链接容量；结构外会额外占用这些链接的候选，以及结构内造成重复占用的自噬候选，都不能成立。删数只采用后端实际输出的Targets/CannibalTargets。"
+          : "The three RCCs occupy all rank-0 link capacity. External candidates that would consume an occupied link, and internal cannibal candidates that consume a resource twice, are false. Only backend-emitted Targets/CannibalTargets are used.")
+        : (zh
+          ? "同时看见A、B两端全部Z位置的外部Z若成立，会把两个可能承接Z的翼都排除，因此可删。"
+          : "An external Z seeing every Z carrier in both outer ALSs would eliminate both possible Z carriers and can therefore be removed."),
     };
   }
 
@@ -1045,12 +1182,12 @@ function alsExplanation(step, locale) {
     const aDigits = digitText(pivotA?.digits || []);
     const bDigits = digitText(pivotB?.digits || []);
     const endpointA = [
-      extraA ? `${zh ? "Extra格组" : "Extra cells"}=${cellNames(extraA.cells)}` : "",
+      extraA ? `${zh ? "额外格组" : "Extra cells"}=${cellNames(extraA.cells)}` : "",
       hlsA ? `${zh ? "局部HLS格组" : "local HLS"}=${cellNames(hlsA.cells)}` : "",
       supportA ? `${zh ? "支撑位置" : "support positions"}=${cellNames(supportA.cells)}` : "",
     ].filter(Boolean).join(zh ? "，" : ", ");
     const endpointB = [
-      extraB ? `${zh ? "Extra格组" : "Extra cells"}=${cellNames(extraB.cells)}` : "",
+      extraB ? `${zh ? "额外格组" : "Extra cells"}=${cellNames(extraB.cells)}` : "",
       hlsB ? `${zh ? "局部HLS格组" : "local HLS"}=${cellNames(hlsB.cells)}` : "",
       supportB ? `${zh ? "支撑位置" : "support positions"}=${cellNames(supportB.cells)}` : "",
     ].filter(Boolean).join(zh ? "，" : ", ");
@@ -1104,6 +1241,9 @@ function chainExplanation(step, locale, dynamic = false) {
   const conclusionKind = firstGroupTail(step, "Conclusion");
   const edgeReasons = groupTails(step, "EdgeReason");
   const grouped = firstGroupTail(step, "Grouped") === "true" || /grouped/i.test(title);
+  const groupedNodeMatch = String(nodeKinds || "").match(/Grouped\s*=\s*(\d+)/i);
+  const groupedNodeCount = groupedNodeMatch ? Number(groupedNodeMatch[1]) : nodes.filter((node) => /group/i.test(String(node?.kind || ""))).length;
+  const hasActualGroupedNode = groupedNodeCount > 0;
   const startGroup = firstGroup(step, /^start$/i);
   const endGroup = firstGroup(step, /^end$/i);
   const isWing = form === "Wing";
@@ -1180,7 +1320,12 @@ function chainExplanation(step, locale, dynamic = false) {
             ? (zh ? "三个位置强边共涉及三个数字，构成L3型" : "three location strong links use three digits, forming L3")
             : (zh ? "三个位置强边只能按实际数字数归入L1、L2或L3" : "three location strong links must classify as L1, L2 or L3 by actual digit count");
     }
-    basis = `${patternMeaning}${grouped ? (zh ? "；其中至少一个位置端为组节点，组内候选整体充当一个逻辑端点。" : "; at least one location endpoint is grouped and acts as one logical endpoint.") : "。"}${isRing ? (zh ? "链尾还能以弱关系接回链头，所以是Ring。" : " The tail also weakly reconnects to the head, making a Ring.") : (zh ? "开放链的两个外端形成至少一真的端点推论。" : " The open endpoints form an at-least-one-true inference.")}`;
+    const groupedMeaning = grouped
+      ? (hasActualGroupedNode
+        ? (zh ? "；最终回放中确有组节点，组内候选整体充当一个逻辑端点。" : "; the final replay contains an actual grouped node whose candidates act as one logical endpoint.")
+        : (zh ? "；该步骤来自Grouped AIC搜索分支，但最终最短回放已化简为单候选节点，因此本步不能再声称存在实际组节点。" : "; this step came from the Grouped AIC search branch, but the final shortest replay simplifies to single-candidate nodes, so no actual grouped node is claimed here."))
+      : "。";
+    basis = `${patternMeaning}${groupedMeaning}${isRing ? (zh ? "链尾还能以弱关系接回链头，所以是Ring。" : " The tail also weakly reconnects to the head, making a Ring.") : (zh ? "开放链的两个外端形成至少一真的端点推论。" : " The open endpoints form an at-least-one-true inference.")}`;
   } else if (kind === "XChain") {
     basis = zh ? "整条链只使用一个数字。行、列、宫（或组）中的共轭对提供强关系，同数字互相看见提供弱关系，二者严格交替。" : "The whole chain uses one digit. Conjugate pairs in rows, columns, boxes (or groups) provide strong links, while visible equal digits provide weak links, alternating strictly.";
   } else if (kind === "XYChain") {
@@ -1217,7 +1362,7 @@ function chainExplanation(step, locale, dynamic = false) {
   } else if (endpointRelation === "SameDigit") {
     deduction = zh ? "开放链两个端点是同一数字并形成至少一真的强端点推论；同时看见两个端点的该数字候选不能成立。" : "The two open endpoints carry the same digit and form an at-least-one-true inference; a candidate of that digit seeing both endpoints is false.";
   } else if (endpointRelation === "DifferentDigit") {
-    deduction = zh ? "开放链把一个端点为假的假设传递为另一端点为真。两个不同数字端点在同一格或同一区域竞争时，后端按端点交换关系删除会破坏该推论的候选。" : "The open chain propagates falsity at one endpoint to truth at the other. When different-digit endpoints compete in the same cell or region, the backend removes endpoint candidates that would break this swap inference.";
+    deduction = zh ? "开放链表示：如果起点为假，沿交替链传播后终点必为真。因此一个目标候选只有在它一旦为真，会同时把起点候选排除、又与终点候选冲突时才可删除；那会迫使终点既真又假。本步只输出满足这两个端点冲突条件的实际删数。" : "The open chain gives ‘start false implies end true’. A target is removable only when making it true would both eliminate the start candidate and conflict with the end candidate, forcing the end to be both true and false. This step emits only targets satisfying those two endpoint conflicts.";
   } else {
     deduction = zh ? "沿尤里卡顺序传播后，端点得到后端核验的强推论；只有满足该端点关系的实际出数或删数才会输出。" : "Propagation along the Eureka order yields a backend-validated strong endpoint inference; only actions supported by that endpoint relation are emitted.";
   }
@@ -1230,6 +1375,24 @@ function forcingExplanation(step, locale) {
   const forceKind = firstGroupTail(step, "ForceChainKind") || String(step?.title || "Force Chain");
   const branchCount = firstGroupTail(step, "BranchCount") || String(branches.length || "");
   const commonTargets = firstGroup(step, /^commontargets$/i);
+  const triplet = firstGroup(step, /^witnesstripletoddagon$/i);
+  const guardians = tripletGuardianFacts(step, locale);
+  const guardianBranches = tripletGuardianBranchFacts(step, locale);
+  if (/triplet oddagon/i.test(forceKind) && triplet && guardians.length) {
+    const tripletDigits = digitText(triplet.digits);
+    const tripletCells = cellNames(triplet.cells, 14, locale);
+    return {
+      structure: zh
+        ? `三值死环强制链：${tripletDigits}在${tripletCells}构成Triplet Oddagon主体；后端记录的组外守护候选为${guardians.join("、")}。`
+        : `Triplet Oddagon Force Chain: ${tripletDigits} forms the Triplet Oddagon body on ${tripletCells}; the backend records the off-body guardians ${guardians.join(", ")}.`,
+      basis: zh
+        ? "这些守护候选不能同时为假；否则Triplet Oddagon主体会失去全部guardian，形成后端已核验的无解坏结构。因此至少一个guardian必须成立。"
+        : "These guardians cannot all be false; otherwise the Triplet Oddagon body loses every guardian and becomes the backend-verified impossible pattern. Therefore at least one guardian must be true.",
+      deduction: zh
+        ? `${guardianBranches.length ? `后端把guardian与显示分支逐一对应（${guardianBranches.join("；")}）` : "后端分别从每个guardian成立的情况反向回放正常Forcing Chain"}，取得各分支端点可推出的删数集合，再取交集。因为至少一个guardian必真，所有分支共有的删数必然成立。`
+        : `${guardianBranches.length ? `The backend maps the guardians to the displayed branches (${guardianBranches.join("; ")})` : "The backend replays an ordinary Forcing Chain for each guardian-true case"}, derives each endpoint elimination set, and intersects them. Since at least one guardian is true, every deletion common to all branches is valid.`,
+    };
+  }
   return {
     structure: zh
       ? `${forceKind}：后端把${branchCount || "各"}条关键分支反向回放为正常Forcing Chain，并分别取得端点可推出的删数集合${commonTargets ? `；共同目标=${roleSummary(commonTargets, locale, "目标")}` : ""}。`
@@ -1256,7 +1419,7 @@ function rankExplanation(step, locale) {
     const links = groupsMatching(step, /^link:/i).map(g => String(g?.label || "").replace(/^Link:/i, ""));
     return {
       structure: zh
-        ? `Domino/SK Loop由${segmentCount}个分组链接段交替闭合${body ? `；主体=${roleSummary(body, locale, "主体")}` : ""}${cellCount ? `；${cellCount}个主体格Truth` : ""}${linkSlotCount ? `，${linkSlotCount}个数字-house链接名额` : ""}${links.length ? `；8段链接=${links.join("、")}` : ""}。`
+        ? `Domino/SK Loop由${segmentCount}个分组链接段交替闭合${body ? `；${roleSummary(body, locale, "主体")}` : ""}${cellCount ? `；${cellCount}个主体格Truth` : ""}${linkSlotCount ? `，${linkSlotCount}个数字-house链接名额` : ""}${links.length ? `；8段链接=${links.join("、")}` : ""}。`
         : `The Domino/SK Loop closes ${segmentCount} grouped link segments${body ? `; body=${roleSummary(body, locale, "body")}` : ""}${cellCount ? `; ${cellCount} cell truths` : ""}${linkSlotCount ? `, ${linkSlotCount} digit-house link slots` : ""}${links.length ? `; the eight segments=${links.join(", ")}` : ""}.`,
       basis: zh
         ? `固定只有${segmentCount}个几何链接段，但每段可含多个数字；每个“数字+house”组合各计一个Link名额。本步${segmentCount}段合计${linkSlotCount || "相同数量的"}个Link名额，与${cellCount || "主体"}个格Truth相等，因此是严格Rank 0。标题中的Link数不是几何段数。`
@@ -1288,14 +1451,14 @@ function rankExplanation(step, locale) {
           ? "异型MSLS把主体格中每个数字的候选位置作为待覆盖点，并允许行、列、宫的digit-house链接混合组成严格最小覆盖。每个数字的最小覆盖大小相加后必须恰好等于Cell Truth数，因此结构仍是Rank 0；存在多套等价最小覆盖时，结论必须对全部覆盖都安全。"
           : (advanced
             ? "高级MSLS为每个数字选择最低成本的行、列或宫覆盖；浮动数字枚举行侧/列侧分配，并可吸收被链接强制纳入的Attachment。最终格名额与链接名额相等。"
-            : "精确MSLS比较每个数字在结构中占用的行、列、宫数量，选取最小覆盖作为Link；最小Link总数恰好等于结构格数。"))
+            : "精确MSLS比较每个数字在结构中占用的行、列、宫数量，选取最小覆盖作为链接；最小链接总数恰好等于结构格数。"))
         : (irregular
           ? "Irregular MSLS treats each digit's truth-cell candidates as points to cover and allows a strict minimum cover to mix row, column, and box digit-house links. The summed minimum-cover size equals the cell truths, and conclusions must be safe across every equivalent minimum cover."
           : (advanced
             ? "Advanced MSLS selects the cheapest row, column, or box cover for each digit, enumerates row/column choices for floating digits, and may absorb forced attachment cells. Final cell and link counts are equal."
             : "Exact MSLS compares the occupied rows, columns, and boxes for each digit and uses a minimum cover; the total minimum link count equals the number of structure cells.")),
       deduction: zh
-        ? `${permutable ? `数字${permutable}可在等价最小覆盖之间置换，但容量不变。` : ""}${irregular && unionLinkCount ? `注意：LinkCount表示每一套最小覆盖真正占用的逻辑名额；UnionLinkCount=${unionLinkCount}只是所有等价覆盖中出现过的链接并集${coverFamilyCount ? `（共${coverFamilyCount}套）` : ""}，不能拿它计算Rank。` : ""}结构外候选会抢占选定Link容量；结构内被多个Link重复覆盖的候选形成自噬超额，均可删除。`
+        ? `${permutable ? `数字${permutable}可在等价最小覆盖之间置换，但容量不变。` : ""}${irregular && unionLinkCount ? `注意：LinkCount表示每一套最小覆盖真正占用的逻辑名额；UnionLinkCount=${unionLinkCount}只是所有等价覆盖中出现过的链接并集${coverFamilyCount ? `（共${coverFamilyCount}套）` : ""}，不能拿它计算Rank。` : ""}结构外候选会抢占选定链接容量；结构内被多个链接重复覆盖的候选形成自噬超额，均可删除。`
         : `${permutable ? `Digits ${permutable} may be permuted among equivalent minimum covers without changing capacity. ` : ""}Outside candidates steal selected-link capacity, while in-structure candidates covered by multiple links are cannibal overfills; both are eliminated.`,
     };
   }
@@ -1322,11 +1485,28 @@ function exocetCheckLabel(raw, locale) {
   const text = String(raw || "").trim();
   const key = text.toLowerCase();
   if (key === "target cells check") return zh ? "T格检查" : "T-cell check";
+  if (key === "check x-rule" || key === "x-rule") return "X-Rule";
   if (key === "z zone check") return zh ? "Z区检查" : "Z-zone check";
   if (key === "w zone check") return zh ? "W区检查" : "W-zone check";
   if (key === "mirror check") return zh ? "M格检查（Mirror Check）" : "M-cell check (Mirror Check)";
   if (key.includes("adjacent target")) return zh ? "T邻规则（Adjacent Target）" : "Adjacent-Target rule";
   return text;
+}
+
+function exocetCheckRule(raw, locale) {
+  const zh = localeKey(locale) === "zh";
+  const text = String(raw || "").trim();
+  const key = text.toLowerCase();
+  if (key === "target cells check") return zh ? "T格检查：删除Target中不能由当前Base候选承接的候选" : "T-cell check: remove target candidates that cannot be carried by the current base candidates";
+  if (key === "check x-rule" || key === "x-rule" || key.includes("x-rule")) return zh ? "X-Rule：排除无法同时满足两侧Target/Cross承接配额的Base候选" : "X-Rule: reject a base candidate that cannot satisfy the required target/cross support on both sides";
+  if (key === "target-house lock") return zh ? "Target-House Lock：已锁定在Target house中的基准数字固定相应承接位置" : "Target-House Lock: a base digit locked in a target house fixes the corresponding support";
+  if (key === "cross-line need") return zh ? "Cross-Line Need：逐个基准数字核对Cross/S-cell中必须保留的承接位置" : "Cross-Line Need: verify the required cross/S-cell supports for each base digit";
+  if (key === "true base constraint") return zh ? "True Base Constraint：由Target/Cross约束已经确定为真Base的数字会排除与该承接冲突的候选" : "True Base Constraint: a base digit forced true by the target/cross constraints removes candidates incompatible with that support";
+  if (key === "z zone check") return zh ? "Z区检查：删除Z格中的非基准候选" : "Z-zone check: remove non-base candidates from Z cells";
+  if (key === "w zone check") return zh ? "W区检查：删除满足W区容量条件位置中的基准候选" : "W-zone check: remove base candidates from cells satisfying the W-zone capacity condition";
+  if (key === "mirror check") return zh ? "Mirror Check：利用Target与镜面节点排除不兼容候选" : "Mirror Check: use targets and mirror nodes to remove incompatible candidates";
+  if (key.includes("adjacent target")) return zh ? "Adjacent Target：利用相邻Target关系限制承接" : "Adjacent Target: use neighbouring target relations to constrain support";
+  return `${exocetCheckLabel(text, locale)}${zh ? "：按该后端检查的实际约束产生本步删数" : ": apply only the constraint reported by this backend check"}`;
 }
 
 function exocetExplanation(step, locale) {
@@ -1337,8 +1517,8 @@ function exocetExplanation(step, locale) {
   const rawChecks = groupsMatching(step, /^check$/i).map(g => String(g?.tail || ""));
   const checks = rawChecks.map(check => exocetCheckLabel(check, locale));
   const base = firstGroup(step, /^base$/i);
-  const baseA = firstGroup(step, /^base a$/i);
-  const baseB = firstGroup(step, /^base b$/i);
+  const baseA = firstGroup(step, /^basea$/i);
+  const baseB = firstGroup(step, /^baseb$/i);
   const targetGroups = groupsMatching(step, /^target|^targets/i);
   const cross = firstGroup(step, /^cross$/i);
   const weakSeat = firstGroup(step, /^weakseat$/i);
@@ -1354,7 +1534,19 @@ function exocetExplanation(step, locale) {
   if (base) roles.push(roleSummary(base, locale, zh ? "Base" : "Base"));
   if (baseA) roles.push(roleSummary(baseA, locale, zh ? "Base A" : "Base A"));
   if (baseB) roles.push(roleSummary(baseB, locale, zh ? "Base B" : "Base B"));
-  targetGroups.forEach((g, i) => roles.push(roleSummary(g, locale, zh ? `目标组${targetGroups.length > 1 ? i + 1 : ""}` : `Target group${targetGroups.length > 1 ? ` ${i + 1}` : ""}`)));
+  targetGroups.forEach((g, i) => {
+    let label = zh ? `目标组${targetGroups.length > 1 ? i + 1 : ""}` : `Target group${targetGroups.length > 1 ? ` ${i + 1}` : ""}`;
+    if (/^targetsaq$/i.test(g.headKey)) label = zh ? "A组Q目标" : "A-side Q targets";
+    else if (/^targetsar$/i.test(g.headKey)) label = zh ? "A组R目标" : "A-side R targets";
+    else if (/^targetsbq$/i.test(g.headKey)) label = zh ? "B组Q目标" : "B-side Q targets";
+    else if (/^targetsbr$/i.test(g.headKey)) label = zh ? "B组R目标" : "B-side R targets";
+    else if (/^targetsq$/i.test(g.headKey)) label = zh ? "Q目标" : "Q targets";
+    else if (/^targetsr$/i.test(g.headKey)) label = zh ? "R目标" : "R targets";
+    else if (/^targetgroupa$/i.test(g.headKey)) label = zh ? "目标组A" : "Target group A";
+    else if (/^targetgroupb$/i.test(g.headKey)) label = zh ? "目标组B" : "Target group B";
+    else if (/^targets$/i.test(g.headKey)) label = zh ? "Targets" : "Targets";
+    roles.push(roleSummary(g, locale, label));
+  });
   if (cross) roles.push(roleSummary(cross, locale, zh ? "Cross/S-cells" : "Cross/S-cells"));
   const weak = String(step?.kind || "") === "WeakExocet" || /weak/i.test(branch);
   const senior = String(step?.kind || "") === "SeniorExocet" || /senior/i.test(branch);
@@ -1391,8 +1583,8 @@ function exocetExplanation(step, locale) {
         ? `Weak Exocet只保留当前弱结构能够证明的部分Base→Target同步。${weakRules.length ? `本步实际使用：${weakRules.join("；")}。` : "本步没有附加检查。"}`
         : `Weak Exocet preserves only the partial Base-to-Target synchronization proved by the current weak structure. ${weakRules.length ? `This step actually uses: ${weakRules.join("; ")}.` : "No additional check is present in this step."}`)
       : senior
-        ? (zh ? "Senior Exocet允许多格Target与调整后的Cross-Line/S-cell集合。Target-line AHS、Locked Non-base、X-Rule、Mirror、Incompatible Base和Potential Target Cover House是独立检查。" : "Senior Exocet permits multi-cell targets and an adjusted cross-line/S-cell set. Target-line AHS, locked non-base, X-Rule, Mirror, incompatible-base, and potential-target-cover-house tests are independent checks.")
-        : (zh ? "Junior Exocet要求两个Base真数字分别由两侧Target承接，Cross/S-cells提供固定配额。Target Check、X-Rule、Mirror、Locked Member、True Base和JEPOM只在实际触发时生效。" : "Junior Exocet requires the two true base digits to be carried by the two target sides, with fixed quota supplied by the cross/S-cells. Target Check, X-Rule, Mirror, Locked Member, True Base, and JEPOM apply only when actually triggered."),
+        ? (zh ? "Senior Exocet允许多格Target，并用调整后的Cross-Line/S-cell集合为每个Base数字提供规定承接。本步只使用实际列出的附加检查；没有列出的检查不参与本步证明。" : "Senior Exocet permits multi-cell targets and uses an adjusted cross-line/S-cell set to provide the required support for each base digit. This proof uses only the additional checks actually listed by the step; absent checks do not participate.")
+        : (zh ? "Junior Exocet的核心是：Base中的两个真数字必须分别由两侧Target承接，Cross/S-cells提供固定配额。本步只使用实际列出的附加检查；没有列出的子规则不参与本步证明。" : "Junior Exocet core relation is that the two true base digits must be carried by the two target sides, with a fixed quota supplied by the cross/S-cells. This proof uses only the additional checks actually listed by the step; absent sub-rules do not participate."),
     deduction: almost
       ? (zh ? `Almost JE4把两套JE通过S-cell配额联结；缺失数字${missingDigit || ""}若同时进入两套Base会触发记录的完整矛盾分支，因此得到本步结论。` : `Almost JE4 links two JE patterns through the S-cell quota. If the missing digit ${missingDigit || ""} enters both base pairs, the recorded complete contradiction branch is triggered, yielding the step conclusion.`)
       : doubleJe
@@ -1401,13 +1593,39 @@ function exocetExplanation(step, locale) {
         ? (zh
           ? `只合并本步实际触发的${[yLock ? "Y区锁定" : "", hasTargetCheck ? "T格检查" : "", hasZCheck ? "Z区检查" : "", hasWCheck ? "W区检查" : "", hasMCheck ? "M格检查" : "", hasAdjacentTarget ? "T邻规则" : ""].filter(Boolean).join("、") || "弱Exocet约束"}，得到本步删数。`
           : `Combine only the ${[yLock ? "Y-area lock" : "", hasTargetCheck ? "T-cell check" : "", hasZCheck ? "Z-zone check" : "", hasWCheck ? "W-zone check" : "", hasMCheck ? "M-cell check" : "", hasAdjacentTarget ? "Adjacent-Target rule" : ""].filter(Boolean).join(", ") || "Weak Exocet constraints actually emitted"} to obtain the eliminations.`)
-        : (zh ? "只逐项应用本步列出的检查：Target Check、X-Rule、Mirror、Locked Member、True Base或JEPOM等各自提供对应删数；没有列出的子规则不能补入证明。" : "Apply only the checks listed by this step. Target Check, X-Rule, Mirror, Locked Member, True Base, JEPOM, and other checks each justify their own eliminations; absent sub-rules must not be added."),
+        : (rawChecks.length
+          ? (zh
+            ? `只按后端本步实际列出的检查逐项推导：${rawChecks.map((check) => exocetCheckRule(check, locale)).join("；")}。没有列出的Exocet子规则不能补入证明。`
+            : `Apply only the checks actually listed by this backend step: ${rawChecks.map((check) => exocetCheckRule(check, locale)).join("; ")}. Exocet sub-rules that are absent must not be added.`)
+          : (zh ? "本步没有输出附加Check；只使用Base/Target/Cross主体约束，不补造子规则。" : "This step reports no additional Check; use only the Base/Target/Cross core relation and do not invent a sub-rule.")),
   };
 }
 
 function oddagonExplanation(step, locale) {
   const zh = localeKey(locale) === "zh";
   const title = String(step?.title || step?.kind || "Oddagon");
+  const branch = firstGroupTail(step, "Branch") || title;
+  if (String(step?.kind || "") === "BivalueOddagon" && /dual/i.test(branch)) {
+    const oddagonA = firstGroup(step, /^oddagona$/i);
+    const oddagonB = firstGroup(step, /^oddagonb$/i);
+    const sharedExit = firstGroup(step, /^sharedexit$/i);
+    if (oddagonA && oddagonB && sharedExit) {
+      const aDigits = digitText(oddagonA.digits) || primaryDigits(step);
+      const bDigits = digitText(oddagonB.digits) || primaryDigits(step);
+      const exitDigits = digitText(sharedExit.digits) || primaryDigits(step);
+      return {
+        structure: zh
+          ? `后端明确给出两个奇数双值环：Oddagon A=${cellNames(oddagonA.cells)}{${aDigits}}；Oddagon B=${cellNames(oddagonB.cells)}{${bDigits}}；公共出口(SharedExit)=${cellNames(sharedExit.cells)}{${exitDigits}}。`
+          : `The backend explicitly reports two odd bivalue cycles: Oddagon A=${cellNames(oddagonA.cells)}{${aDigits}}; Oddagon B=${cellNames(oddagonB.cells)}{${bDigits}}; SharedExit=${cellNames(sharedExit.cells)}{${exitDigits}}.`,
+        basis: zh
+          ? `任一奇数环若只保留致命数字对，真假沿环交替一周会回到相反状态，因而必须由出口破坏。这里两个Oddagon共享出口；SharedExit就是同时打破两环矛盾的结构事实。`
+          : `An odd cycle restricted to its deadly pair alternates back to the start with the opposite state and therefore needs an escape. These two independent oddagons share the same escape, explicitly reported as SharedExit.`,
+        deduction: zh
+          ? `SharedExit中后端标出的致命数字对不能成立；否则相应交替状态会把两个环重新封闭成无解结构。因此只删除本步实际输出的公共出口候选。`
+          : `The deadly pair reported on SharedExit cannot hold, or the corresponding alternating state would close both cycles into an unsatisfiable structure. Apply only the eliminations actually emitted for the shared exit.`,
+      };
+    }
+  }
   const cells = cellNames(structureCells(step));
   return {
     structure: zh ? `${title}${cells ? `的奇数交替主体位于${cells}` : "形成奇数交替结构"}，额外候选充当结构的出口。` : `${title}${cells ? ` has its odd alternating body in ${cells}` : " forms an odd alternating structure"}, with extra candidates acting as exits.`,
@@ -1525,7 +1743,7 @@ function validationChecks(step, locale, type) {
   const conclusions = conclusionItems(step);
   if (type === "uniqueness") checks.push(zh ? "该结论依赖题目具有唯一解；允许多解的题不能使用唯一性技巧。" : "This conclusion assumes a unique solution; do not use uniqueness techniques on a multi-solution puzzle.");
   if (type === "chain" || type === "dynamic" || type === "forcing") checks.push(zh ? "逐段核对尤里卡中的强关系与弱关系是否与盘面高亮一致。" : "Check each strong and weak inference in the Eureka expression against the highlights.");
-  if (type === "exocet") checks.push(zh ? "扩展飞鱼只使用原始证明明确给出的删数，不自动套用完整初级飞鱼规则。" : "For Exocet variants, use only deletions explicitly proved by the backend; do not apply the full Junior Exocet rule automatically.");
+  if (type === "exocet") checks.push(zh ? "Exocet各分支只使用后端本步明确证明的删数；不能因为属于Exocet家族就自动套用完整Junior Exocet规则。" : "Each Exocet branch uses only eliminations explicitly proved by this backend step; do not apply the full Junior Exocet rule merely because the step belongs to the Exocet family.");
   if (type === "generic") checks.push(zh ? "由于角色数据不足，本说明只保留可验证信息，不补造具体结构角色。" : "Because role data is incomplete, this explanation preserves only verifiable facts and does not invent roles.");
   checks.push(zh
     ? `核对本步实际结论：出数${conclusions.placements.length}项，删数${conclusions.eliminations.length}项。`
@@ -1536,8 +1754,35 @@ function validationChecks(step, locale, type) {
 function metaItems(step, locale, type) {
   const zh = localeKey(locale) === "zh";
   const items = [];
-  const digits = primaryDigits(step);
-  const cells = unique(structureCells(step).map(cellName)).length;
+  const subsetRole = type === "hiddenSubset"
+    ? firstGroup(step, /^hiddensubset$/i)
+    : (type === "nakedSubset" ? firstGroup(step, /^nakedsubset$/i) : null);
+  const tripletForceWitness = type === "forcing" ? firstGroup(step, /^witnesstripletoddagon$/i) : null;
+  const rankCore = String(step?.kind || "") === "MSLS"
+    ? firstGroup(step, /^core$/i)
+    : (String(step?.kind || "") === "SKLoop" ? firstGroup(step, /^loopbody$/i) : null);
+  const rankLinkDigits = (String(step?.kind || "") === "MSLS" || String(step?.kind || "") === "SKLoop")
+    ? unique(groupsMatching(step, /^link$/i).flatMap((group) => group.digits)).sort((a, b) => a - b)
+    : [];
+  const exocetBaseDigits = type === "exocet" ? firstGroup(step, /^basecandidates$/i) : null;
+  const exocetCoreCells = type === "exocet"
+    ? unique([
+        ...list(firstGroup(step, /^base$/i)?.cells),
+        ...groupsMatching(step, /^targets|^targetgroup/i).flatMap((group) => group.cells),
+      ].map(cellName).filter(Boolean))
+    : [];
+  const digits = subsetRole?.digits?.length
+    ? digitText(subsetRole.digits)
+    : (tripletForceWitness?.digits?.length
+      ? digitText(tripletForceWitness.digits)
+      : (rankLinkDigits.length
+        ? digitText(rankLinkDigits)
+        : (exocetBaseDigits?.digits?.length ? digitText(exocetBaseDigits.digits) : primaryDigits(step))));
+  const cells = tripletForceWitness?.cells?.length
+    ? unique(tripletForceWitness.cells.map(cellName)).length
+    : (rankCore?.cells?.length
+      ? unique(rankCore.cells.map(cellName)).length
+      : (exocetCoreCells.length ? exocetCoreCells.length : unique(structureCells(step).map(cellName)).length));
   const nodes = list(step?.nodes).length;
   const branches = list(step?.chainBranches).length;
   const rank = strictRankOf(step);
@@ -1582,7 +1827,7 @@ function buildAuditedFoundationGuide(step = {}, locale = "zh") {
   if (!AUDITED_FOUNDATIONS.has(kind)) return null;
   const zh = localeKey(locale) === "zh";
   const targetGroup = firstGroup(step, /^target$/i);
-  const targetCell = cellNames(targetGroup?.cells, 1) || cellNames(structureCells(step), 1) || (zh ? "目标格" : "the target cell");
+  const targetCell = cellNames(targetGroup?.cells, 1, locale) || cellNames(structureCells(step), 1, locale) || (zh ? "目标格" : "the target cell");
   const targetDigit = digitText(targetGroup?.digits) || primaryDigits(step) || (zh ? "目标数字" : "the target digit");
   const sourceHouse = firstGroup(step, /^sourcehouse$/i)?.houses?.[0] || firstGroup(step, /^house$/i)?.houses?.[0] || houseLabel(step, locale);
 
@@ -1593,7 +1838,7 @@ function buildAuditedFoundationGuide(step = {}, locale = "zh") {
       `设${sourceHouse}已出现数字集合为S，则${targetCell}的值属于{1,…,9}\\S。源码只在该差集恰好含一个数字${targetDigit}时返回。`,
       `① 找只剩一个空格的行、列或宫；② 列出已出现的八个数字；③ 找缺数${targetDigit}；④ 填入${targetCell}。`,
       `FB配色只把${targetCell}中的${targetDigit}标为cNormal(1)，并作为出数处理。`,
-      `必须是区域内恰好一个未解格，而不是仅仅某个数字只剩一个候选位置；后者属于Hidden Single。`,
+      `必须是区域内恰好一个未解格，而不是仅仅某个数字只剩一个候选位置；后者属于隐性单数。`,
     ] : [
       `${sourceHouse} has only one empty cell, ${targetCell}, and the missing digit is ${targetDigit}.`,
       `Every row, column and box contains digits 1–9 exactly once; after eight values are fixed, the last cell receives the missing digit.`,
@@ -1644,20 +1889,20 @@ function buildAuditedFoundationGuide(step = {}, locale = "zh") {
     const branch = firstGroup(step, /^branch$/i)?.tail || (/claiming/i.test(String(step?.description || "")) ? "Claiming" : "Pointing");
     const targetHouse = firstGroup(step, /^targethouse$/i)?.houses?.[0] || (zh ? "交叉区域" : "the crossing house");
     const locked = firstGroup(step, /^lockedcandidates$/i);
-    const cells = cellNames(locked?.cells || structureCells(step));
+    const cells = cellNames(locked?.cells || structureCells(step), 14, locale);
     const digit = digitText(locked?.digits) || primaryDigits(step);
     const pointing = /pointing/i.test(branch);
     return zh ? [
-      `${pointing ? "Pointing（宫指向行/列）" : "Claiming（行/列认领宫）"}：${sourceHouse}内数字${digit}的全部候选集中在${targetHouse}的交区${cells ? `（${cells}）` : ""}。`,
+      `${pointing ? "指向型（宫→行/列）" : "认领型（行/列→宫）"}：${sourceHouse}内数字${digit}的全部候选集中在${targetHouse}的交区${cells ? `（${cells}）` : ""}。`,
       `${sourceHouse}必须有一个${digit}为真，而它只能出现在交区；因此${targetHouse}交区外的${digit}不可能为真。`,
-      `设交区候选集合为L。规则给出∨L=true；任一${targetHouse}交区外候选t都与L中每个候选互斥，故t⇒¬∨L，与∨L矛盾，所以t=false。`,
+      `${sourceHouse}中的${digit}必须落在这些交区候选之一；所以${targetHouse}交区外若再保留${digit}，就会与源区域必需的${digit}冲突，直接删除即可。`,
       `① 确认分支是${pointing ? "宫→行/列" : "行/列→宫"}；② 找出${sourceHouse}中全部${digit}候选；③ 确认它们都在同一交区；④ 删除${targetHouse}交区外的${digit}。`,
       `交区候选用cNormal(1)，删除候选用cToDel(11)；不能把整个宫或整条线整格涂色代替候选高亮。`,
-      `${pointing ? "Pointing的源必须是宫，目标必须是行或列。" : "Claiming的源必须是行或列，目标必须是宫。"} 源区域内不能漏掉任何该数字候选。`,
+      `${pointing ? "指向型的源必须是宫，目标必须是行或列。" : "认领型的源必须是行或列，目标必须是宫。"} 源区域内不能漏掉任何该数字候选。`,
     ] : [
       `${pointing ? "Pointing (box to row/column)" : "Claiming (row/column to box)"}: every ${digit} candidate in ${sourceHouse} is confined to the intersection with ${targetHouse}${cells ? ` (${cells})` : ""}.`,
       `${sourceHouse} must contain one true ${digit}, and it can occur only in the intersection; therefore ${digit} candidates elsewhere in ${targetHouse} are false.`,
-      `Let L be the intersection candidates. We have ∨L=true. Any outside target t conflicts with every member of L, so t⇒¬∨L, contradicting ∨L; hence t=false.`,
+      `One of the intersection candidates must carry digit ${digit} for ${sourceHouse}. Any ${digit} outside the intersection in ${targetHouse} would conflict with that required placement, so it is false.`,
       `1. Confirm the ${pointing ? "box→line" : "line→box"} branch. 2. List every ${digit} in ${sourceHouse}. 3. Verify all lie in one intersection. 4. Remove ${digit} from the rest of ${targetHouse}.`,
       `Intersection candidates use cNormal(1); eliminations use cToDel(11). Do not replace candidate highlighting with whole-cell coloring.`,
       `${pointing ? "The source must be a box and the target a row or column." : "The source must be a row or column and the target a box."} No source candidate may be omitted.`,
@@ -1668,82 +1913,87 @@ function buildAuditedFoundationGuide(step = {}, locale = "zh") {
     const hidden = HIDDEN_SUBSETS.has(kind);
     const role = firstGroup(step, hidden ? /^hiddensubset$/i : /^nakedsubset$/i);
     const house = firstGroup(step, /^house$/i)?.houses?.[0] || houseLabel(step, locale);
-    const cells = cellNames(role?.cells || structureCells(step));
+    const cells = cellNames(role?.cells || structureCells(step), 14, locale);
     const digits = digitText(role?.digits) || primaryDigits(step);
     const n = role?.cells?.length || list(structureCells(step)).length;
+    const cellFacts = subsetCellFacts(step, locale);
+    const positionFacts = hiddenDigitPositionFacts(step, locale);
     if (hidden) {
       return zh ? [
-        `${house}中数字${digits}的所有候选位置合起来恰好是${n}格${cells}，构成Hidden ${n === 2 ? "Pair" : n === 3 ? "Triple" : "Quad"}。`,
-        `这${n}个数字必须各在${house}出现一次，而可用位置只有这${n}格，所以这些格全部保留给数字${digits}。`,
-        `令D为${n}个数字，P(D)为它们候选位置的并集。源码验证|D|=|P(D)|=${n}且每个d∈D至少出现一次；因此P(D)被D完全占用。`,
+        `${house}中数字${digits}的所有候选位置合起来恰好是${n}格${cells}，构成${n === 2 ? "隐性数对" : n === 3 ? "隐性三数组" : "隐性四数组"}。${positionFacts.length ? ` 后端逐数字支撑位置：${positionFacts.join("；")}。` : ""}${cellFacts.length ? ` 数组格内实际成员：${cellFacts.join("，")}。` : ""}`,
+        `这${n}个数字必须各在${house}出现一次；后端逐数字支撑位置全部落在这${n}格，因此这些格全部保留给数字${digits}。`,
+        `这${n}个数字一共需要${n}个落点，而后端确认它们在${house}里总共也只有这${n}个可用格；因此这${n}格不会再留给其他数字。`,
         `① 在${house}选${n}个数字；② 合并它们的候选位置；③ 确认并集恰为${n}格；④ 删除这些格中的其他候选。`,
         `数字${digits}在数组格内用cNormal(1)，被删的其他候选用cToDel(11)。`,
-        `不能只数格子：所选每个数字都必须至少在这些格中出现一次，而且位置并集必须恰好为${n}格。`,
+        `严格条件：|D|=|P(D)|=${n}；不能只数格子，所选每个数字都必须至少在这些格中出现一次，而且位置并集必须恰好为${n}格。`,
       ] : [
         `In ${house}, all positions of digits ${digits} are confined to exactly ${n} cells ${cells}, forming a Hidden ${n === 2 ? "Pair" : n === 3 ? "Triple" : "Quad"}.`,
         `The ${n} digits must each occur once in ${house}, and only these ${n} cells are available, so the cells are reserved for them.`,
-        `Let D be the selected digits and P(D) their union of positions. The detector verifies |D|=|P(D)|=${n} and every d∈D appears at least once; hence D occupies P(D).`,
+        `The ${n} digits need ${n} placements, and the backend confirms that these ${n} cells are their only available positions in ${house}; those cells therefore cannot hold other digits.`,
         `1. Select ${n} digits in ${house}. 2. Union their positions. 3. Confirm the union has ${n} cells. 4. Remove other candidates from those cells.`,
         `Subset digits use cNormal(1); removed extra candidates use cToDel(11).`,
-        `Every selected digit must appear at least once, and the position union must contain exactly ${n} cells.`,
+        `Strict condition: |D|=|P(D)|=${n}. Every selected digit must appear at least once, and the position union must contain exactly ${n} cells.`,
       ];
     }
     return zh ? [
-      `${house}中的${n}格${cells}，候选并集恰好是${n}个数字${digits}，构成Naked ${n === 2 ? "Pair" : n === 3 ? "Triple" : "Quad"}。`,
-      `这${n}格最终必须各填一个数字，而它们合计只有${n}种可能，因此数字${digits}全部被锁在这些格中。`,
-      `令C为所选${n}格，U=⋃₍c∈C₎Cand(c)。源码验证|C|=|U|=${n}；由容量关系，U不能再占用${house}的其他格。`,
+      `${house}中的${n}格${cells}，候选并集恰好是${n}个数字${digits}，构成${n === 2 ? "显性数对" : n === 3 ? "显性三数组" : "显性四数组"}。${cellFacts.length ? ` 后端逐格成员：${cellFacts.join("，")}。` : ""}`,
+      `这${n}格最终必须各填一个数字；后端逐格成员的并集只有${n}种可能${digits}，因此这些数字全部被锁在这${n}格中。`,
+      `这${n}格已经需要用完${digits}这${n}个数字，${house}里的其他格就不能再占用这些数字，因此把同数字候选从数组外删除。`,
       `① 在${house}选${n}个每格候选数不超过${n}的格；② 求候选并集；③ 确认并集大小为${n}；④ 从其他格删除${digits}。`,
       `数组格中实际存在的数字${digits}用cNormal(1)，区域其他格的删数用cToDel(11)。`,
-      `必须按候选并集判断；并非每个数组格都必须含全部${n}个数字。当前步骤只处理所报告的${house}，即使同一结构也锁在另一个区域。`,
+      `严格条件：|C|=|U|=${n}，其中U为所选格候选并集。必须按候选并集判断；并非每个数组格都必须含全部${n}个数字。当前步骤只处理所报告的${house}，即使同一结构也锁在另一个区域。`,
     ] : [
       `The ${n} cells ${cells} in ${house} have candidate union ${digits} of size ${n}, forming a Naked ${n === 2 ? "Pair" : n === 3 ? "Triple" : "Quad"}.`,
       `The ${n} cells need ${n} values and collectively allow only those ${n} digits, so the digits are locked into the cells.`,
-      `Let C be the selected cells and U=⋃₍c∈C₎Cand(c). The detector verifies |C|=|U|=${n}; by capacity, U cannot also occupy other cells of ${house}.`,
+      `These ${n} cells must use all ${n} digits ${digits}, so no other cell in ${house} can use any of those digits.`,
       `1. Select ${n} cells in ${house}, each with at most ${n} candidates. 2. Form their union. 3. Confirm its size is ${n}. 4. Remove ${digits} elsewhere in the house.`,
       `Actual subset candidates use cNormal(1); eliminations elsewhere use cToDel(11).`,
-      `Use the union, not an assumption that every cell contains every digit. The step applies to the reported house only, even when the cells share a second house.`,
+      `Strict condition: |C|=|U|=${n}, where U is the candidate union. Use the union, not an assumption that every cell contains every digit. The step applies to the reported house only, even when the cells share a second house.`,
     ];
   }
 
   if (NORMAL_FISH.has(kind) || FINNED_FISH.has(kind)) {
     const finned = FINNED_FISH.has(kind);
-    const sashimi = /^sashimi\b/i.test(String(step?.title || ""));
+    const branch = firstGroup(step, /^branch$/i)?.tail || (finned ? "Finned" : "Standard");
+    const sashimi = /sashimi/i.test(branch);
     const axes = fishAxes(step);
-    const bases = axes.bases.join("、") || (zh ? "基准区域" : "base sets");
-    const covers = axes.covers.join("、") || (zh ? "覆盖区域" : "cover sets");
+    const bases = axes.bases.join(zh ? "、" : ", ") || (zh ? "基准区域" : "base sets");
+    const covers = axes.covers.join(zh ? "、" : ", ") || (zh ? "覆盖区域" : "cover sets");
     const body = groupCells(step, /^fishbody$/i).join(zh ? "、" : ", ");
     const fins = groupCells(step, /^fin$/i).join(zh ? "、" : ", ");
+    const finBox = firstGroup(step, /^finbox$/i)?.houses?.join(zh ? "、" : ", ") || "";
     const digit = primaryDigits(step);
     const size = FISH_SIZE[kind] || axes.bases.length;
     const baseName = size === 2 ? "X-Wing" : size === 3 ? "Swordfish" : "Jellyfish";
+    const baseNameZh = size === 2 ? "X翼" : size === 3 ? "剑鱼" : "水母";
     if (finned) {
       return zh ? [
-        `${sashimi ? "Sashimi " : "Finned "}${baseName}：数字${digit}的基准区域为${bases}，覆盖区域为${covers}${body ? `，鱼身为${body}` : ""}${fins ? `，鳍为${fins}` : ""}。`,
-        `源码要求鱼身之外的全部鳍集中在同一宫，删数也位于该宫内的覆盖区域。鳍全假时按普通鱼删数；鳍任一为真时按宫约束删同一目标。`,
-        `令F为鳍集合、T为删数。对任意t∈T：¬∨F时普通鱼推出¬t；∨F时，成立的鳍与t同宫推出¬t。因此无论∨F真假，t均为假。`,
-        `① 选${size}个基准区域和${size}个覆盖区域；② 求Base\\Cover得到鳍；③ 确认所有鳍同宫；④ 只删除该宫中Cover\\Base的${digit}。`,
+        `${step?.title || (sashimi ? `Sashimi ${baseName}` : `Finned ${baseName}`)}（后端分支${branch}）：数字${digit}以${bases}为基准区域；这些基准区域中的${digit}全部落在${covers}中${body ? `，鱼身为${body}` : ""}${fins ? `。 鳍为${fins}` : ""}${finBox ? `，全部位于${finBox}` : ""}。`,
+        `分两案看：若所有鳍都为假，剩余鱼身就是同阶普通鱼，基准区域要求的${size}个真数会填满${size}个覆盖区域；若至少一枚鳍为真，本步删数位于同一个鳍宫${finBox || ""}内，会与该真鳍直接冲突。`,
+        `${sashimi ? "Sashimi只表示去掉鳍后至少一个基准区域只剩一个鱼身落点；它不改变上述二分证明。" : ""}${sashimi ? "两种情况" : "无论鳍全假还是至少一枚鳍为真"}都排除本步目标，所以后端报告的这些目标可删。`,
+        `① 选${size}个基准区域和${size}个覆盖区域；② 求“基准区域减覆盖区域”得到鳍；③ 核对后端给出的鳍所在宫${finBox ? ` ${finBox}` : ""}；④ 只删除该宫中“覆盖区域减基准区域”的${digit}。`,
         `鱼身候选用cNormal(1)，鳍用cFins(2)，删数用cToDel(11)。`,
-        `${sashimi ? "Sashimi还要求去掉鳍后至少一个基准区域的鱼身候选少于2个。" : "非Sashimi分支去掉鳍后各基准区域仍保留至少2个鱼身候选。"} 鳍跨宫时本实现不会成立。`,
+        `核对后端 Branch=${branch}；所有鳍必须在同一宫${finBox ? ` ${finBox}` : ""}，且删数必须位于该鳍宫内的 Cover\\Base。`,
       ] : [
-        `${sashimi ? "Sashimi " : "Finned "}${baseName}: digit ${digit} uses bases ${bases} and covers ${covers}${body ? `; body ${body}` : ""}${fins ? `; fins ${fins}` : ""}.`,
-        `The detector requires every fin outside the covers to lie in one box, with eliminations in that same box on Cover\\Base. If all fins are false, a normal fish eliminates the targets; if a fin is true, the box constraint eliminates them.`,
-        `Let F be the fins and T the targets. For t∈T: when ¬∨F, the normal fish gives ¬t; when ∨F, a true fin shares the box with t and gives ¬t. Thus t is false in both cases.`,
-        `1. Choose ${size} base and ${size} cover sets. 2. Compute fins as Base\\Cover. 3. Confirm all fins share one box. 4. Eliminate digit ${digit} only from Cover\\Base in that box.`,
+        `${step?.title || `${sashimi ? "Sashimi" : "Finned"} ${baseName}`} (backend branch ${branch}): digit ${digit} uses ${bases} as bases; all base candidates lie in ${covers}${body ? `; body candidates: ${body}` : ""}${fins ? `; fins: ${fins}` : ""}${finBox ? `, all in ${finBox}` : ""}.`,
+        `Use two cases: if every fin is false, the remaining body is an ordinary fish and the ${size} base truths fill the ${size} covers; if at least one fin is true, every reported target lies in the same fin box${finBox ? ` ${finBox}` : ""} and directly conflicts with that true fin.`,
+        `${sashimi ? "Sashimi only means that after removing the fins at least one base has a single body position; the two-case proof is unchanged. " : ""}Both cases eliminate the backend-reported targets.`,
+        `1. Choose ${size} base and ${size} cover sets. 2. Compute fins as Base\\Cover. 3. Confirm the reported fin box${finBox ? ` ${finBox}` : ""}. 4. Eliminate digit ${digit} only from Cover\\Base in that box.`,
         `Body candidates use cNormal(1), fins cFins(2), and eliminations cToDel(11).`,
-        `${sashimi ? "For Sashimi, after removing fins at least one base has fewer than two body candidates." : "For the non-Sashimi branch, every base retains at least two body candidates after fins are removed."} Fins spanning multiple boxes are rejected.`,
+        `Verify backend Branch=${branch}; all fins must lie in one box${finBox ? ` ${finBox}` : ""}, and eliminations must be in Cover\\Base inside that fin box.`,
       ];
     }
     return zh ? [
-      `${baseName}：数字${digit}在${size}个基准区域${bases}中的所有候选都落入${size}个覆盖区域${covers}${body ? `，鱼身为${body}` : ""}。`,
-      `每个基准区域都必须放置一个${digit}；同行或同列不能重复，所以这${size}个真数必须一一占用${size}个覆盖区域。`,
-      `令Bᵢ为基准区域内的${digit}候选，且Bᵢ⊆C₁∪…∪Cₙ。每个Bᵢ至少一真、每个覆盖区域至多一真，n个真数正好填满n个覆盖容量；Cover\\Base中的${digit}为假。`,
+      `${step?.title || baseName}：数字${digit}以${bases}为基准区域；这些基准区域中的${digit}全部落在${covers}中${body ? `，鱼身为${body}` : ""}。`,
+      `每个基准区域最终都必须放一个${digit}。因为这些可能位置只分布在同样数量的覆盖区域中，而同一覆盖区域不能同时放两个${digit}，所以这些真数必须一一占满全部覆盖区域。`,
+      `因此覆盖区域中鱼身之外的${digit}若为真，就会抢掉一个已经必须留给基准真数的位置，使基准区域无法全部安置，所以后端报告的这些目标可删。`,
       `① 选${size}个基准行或列；② 确认其${digit}候选只占${size}个垂直覆盖区域；③ 检查每个基准区域鱼身候选数在2到${size}之间；④ 删除覆盖区域中鱼身外的${digit}。`,
       `鱼身候选用cNormal(1)，删数用cToDel(11)。`,
-      `普通鱼不允许Base\\Cover存在候选；每个基准区域必须至少有2个、至多${size}个鱼身候选。本项目行鱼和列鱼都使用同一逻辑。`,
+      `核对后端 Branch=Standard，基准区域数与覆盖区域数相同，且 Base\\Cover 为空；删数只来自 Cover\\Base。`,
     ] : [
-      `${baseName}: every candidate for digit ${digit} in the ${size} base sets ${bases} lies in the ${size} cover sets ${covers}${body ? `; body ${body}` : ""}.`,
-      `Each base set must place one ${digit}; row/column uniqueness forces the ${size} truths to occupy the ${size} covers one-for-one.`,
-      `Let Bᵢ be the ${digit} candidates in each base, with Bᵢ⊆C₁∪…∪Cₙ. Every Bᵢ supplies a truth and every cover holds at most one, so n truths fill n cover capacities; ${digit} in Cover\\Base is false.`,
+      `${step?.title || baseName}: digit ${digit} uses ${bases} as bases; all base candidates lie in ${covers}${body ? `; body candidates: ${body}` : ""}.`,
+      `Each base must eventually place one ${digit}. Those possibilities are confined to the same number of covers, and one cover cannot contain two copies of ${digit}, so the base truths must occupy all covers one-for-one.`,
+      `Therefore a ${digit} in a cover but outside the fish body would steal capacity required by the base truths, leaving no way to place them all; the backend-reported targets are false.`,
       `1. Choose ${size} base rows or columns. 2. Confirm their ${digit} candidates occupy only ${size} perpendicular covers. 3. Check each base has 2 through ${size} body candidates. 4. Remove ${digit} from the covers outside the body.`,
       `Body candidates use cNormal(1); eliminations use cToDel(11).`,
       `A normal fish permits no Base\\Cover candidates. Every base must have at least 2 and at most ${size} body candidates. Row- and column-oriented fish use the same proof.`,
@@ -1752,30 +2002,33 @@ function buildAuditedFoundationGuide(step = {}, locale = "zh") {
 
   if (kind === "Skyscraper") {
     const branch = firstGroup(step, /^branch$/i)?.tail || "";
-    const bases = [firstGroup(step, /^basea$/i)?.houses?.[0], firstGroup(step, /^baseb$/i)?.houses?.[0]].filter(Boolean).join("、");
+    const branchDisplay = localizedProofMeta(branch, locale);
+    const columnBased = /^column-based$/i.test(branch);
+    const bases = [firstGroup(step, /^basea$/i)?.houses?.[0], firstGroup(step, /^baseb$/i)?.houses?.[0]].filter(Boolean).join(zh ? "、" : ", ");
     const roofs = groupCells(step, /^roofs$/i).join(zh ? "、" : ", ");
     const linked = groupCells(step, /^linkedside$/i).join(zh ? "、" : ", ");
     const digit = digitText(firstGroup(step, /^roofs$/i)?.digits) || primaryDigits(step);
     return zh ? [
-      `Skyscraper（${branch === "Column-Based" ? "列型" : "行型"}）：数字${digit}在两条平行基准区域${bases || ""}中各恰有两个候选；相连侧为${linked || "高亮连接端"}，两个楼顶为${roofs || "高亮楼顶"}。`,
+      `摩天楼（${columnBased ? "列型" : "行型"}）：数字${digit}在两条平行基准区域${bases || ""}中各恰有两个候选；相连侧为${linked || "高亮连接端"}，两个楼顶为${roofs || "高亮楼顶"}。`,
       `每条基准区域中的两个${digit}构成强关系。相连侧的两个候选互相看见，不能同时为真，因此两个楼顶至少一个为真。`,
-      `设两条强关系为(L₁∨R₁)与(L₂∨R₂)，其中L₁、L₂是相连侧。因L₁与L₂互斥，得到R₁∨R₂；任何同时看见R₁、R₂的${digit}均为假。`,
+      `目标若取${digit}，会同时排除两个楼顶；但两个楼顶至少一个必须为真，所以目标不能保留。`,
       `① 找两条同方向区域且每条只有两个${digit}；② 找能在垂直方向互相看见的一侧端点；③ 确认另侧两个楼顶不在同一垂直区域；④ 删除同时看见两楼顶的${digit}。`,
       `FB配色：楼顶用cNormal(1)，相连侧用cFins(2)，删数用cToDel(11)。`,
-      `源码还排除“两个楼顶分别与连接端落在同一宫带/宫栈”的退化构型；两条基准区域必须各自恰好两个候选。`,
+      `以后端分支=${branchDisplay}为准。严格核对两条基准强关系、相连侧互斥和楼顶位置；源码还排除两个楼顶与连接端构成同一宫带/宫栈的退化形。`,
     ] : [
-      `Skyscraper (${branch === "Column-Based" ? "column-based" : "row-based"}): digit ${digit} occurs exactly twice in each parallel base ${bases || ""}; ${linked || "the highlighted linked side"} is the aligned side and ${roofs || "the highlighted cells"} are the roofs.`,
+      `Skyscraper (${columnBased ? "column-based" : "row-based"}): digit ${digit} occurs exactly twice in each parallel base ${bases || ""}; ${linked || "the highlighted linked side"} is the aligned side and ${roofs || "the highlighted cells"} are the roofs.`,
       `Each base contains a strong link. The two linked-side candidates see each other and cannot both be true, so at least one roof is true.`,
-      `Write the strong links as (L₁∨R₁) and (L₂∨R₂). Since L₁ and L₂ are mutually exclusive, R₁∨R₂ follows; any ${digit} seeing both roofs is false.`,
+      `If the target took ${digit}, it would eliminate both roofs; at least one roof must be true, so the target cannot remain.`,
       `1. Find two parallel houses with exactly two ${digit}s each. 2. Align one endpoint from each in a perpendicular house. 3. Confirm the roofs are not aligned. 4. Remove ${digit} from common peers of the roofs.`,
       `FB colours: roofs cNormal(1), linked side cFins(2), eliminations cToDel(11).`,
-      `The detector also rejects the degenerate same-chute arrangement; each base must contain exactly two candidates.`,
+      `Use backend Branch=${branch}. Strictly verify the two base strong links, mutual exclusion of the linked side, and roof placement; the detector also rejects its same-chute degeneracy.`,
     ];
   }
 
   if (kind === "TwoStringKite") {
     const branch = firstGroup(step, /^branch$/i)?.tail || "Standard";
-    const grouped = /grouped/i.test(branch) || /^grouped\b/i.test(String(step?.title || ""));
+    const branchDisplay = localizedProofMeta(branch, locale);
+    const grouped = /^grouped$/i.test(branch);
     const row = firstGroup(step, /^rowhouse$/i)?.houses?.[0] || "";
     const col = firstGroup(step, /^columnhouse$/i)?.houses?.[0] || "";
     const box = firstGroup(step, /^connectorhouse$/i)?.houses?.[0] || "";
@@ -1785,35 +2038,23 @@ function buildAuditedFoundationGuide(step = {}, locale = "zh") {
     const connector = groupCells(step, /^connector$/i).join(zh ? "、" : ", ");
     const digit = digitText(firstGroup(step, /^outerendpoints$/i)?.digits) || primaryDigits(step);
     return zh ? [
-      `${grouped ? "Grouped " : ""}2-String Kite：数字${digit}在${row || "一行"}与${col || "一列"}中都只跨两个宫；离开连接宫${box || ""}后，行端与列端各只剩一个外端${outer ? `（${outer}）` : ""}。连接宫内的行组为${rowInner || "高亮行组"}，列组为${colInner || "高亮列组"}${connector ? `，合并连接组为${connector}` : ""}。`,
+      `${grouped ? "分组型 " : ""}2-String Kite：数字${digit}在${row || "一行"}与${col || "一列"}中都只跨两个宫；离开连接宫${box || ""}后，行端与列端各只剩一个外端${outer ? `（${outer}）` : ""}。连接宫内的行组为${rowInner || "高亮行组"}，列组为${colInner || "高亮列组"}${connector ? `，合并连接组为${connector}` : ""}。`,
+      `相关行中的${digit}必须由行外端或连接宫内行组承担，相关列同理。连接宫内的行组和列组互不重叠，而同一宫里${digit}只能出现一次，所以两组不能同时承担${digit}；两个外端因此至少一个为真。`,
+      `目标同时看见两个外端。若目标取${digit}，两个外端都会被排除，连接宫内的行组和列组就会同时被迫承担${digit}，违反同宫唯一性。因此目标不能保留。`,
       grouped
-        ? `行内候选可写成“行外端Oᵣ或连接宫行组Iᵣ至少一真”，列内同理为“O𝚌或连接宫列组I𝚌至少一真”。Iᵣ与I𝚌位于同一宫且两组互不重叠，宫内至多一个${digit}为真，因此两个外端至少一个为真。`
-        : `行强关系和列强关系各至少一真；宫内两个连接端互相看见，不能同时为真，所以两个外端至少一个为真。`,
-      grouped
-        ? `设Iᵣ=∨(连接宫内行组)，I𝚌=∨(连接宫内列组)。有(Iᵣ∨Oᵣ)∧(I𝚌∨O𝚌)且¬(Iᵣ∧I𝚌)，故Oᵣ∨O𝚌。任何同时看见两个外端的${digit}都为假。`
-        : `设行关系为Iᵣ∨Oᵣ，列关系为I𝚌∨O𝚌，且Iᵣ与I𝚌同宫互斥。于是Oᵣ∨O𝚌；任何同时看见两个外端的${digit}为假。`,
-      grouped
-        ? `① 选一行和一列，使该数字在各自区域都恰好跨两个宫；② 行、列候选集合不能相交；③ 在行列交点所属宫之外，各自必须恰好一个外端；④ 连接宫内允许每侧有一个或多个候选；⑤ 删除同时看见两个外端的${digit}。`
-        : `① 选一行和一列，使该数字在各自区域都恰好跨两个宫；② 行、列候选集合不能相交；③ 在连接宫之外各自恰好一个外端；④ 连接宫内每侧各一个候选；⑤ 删除同时看见两个外端的${digit}。`,
+        ? `① 选一行和一列，使${digit}在各自区域都恰好跨两个宫；② 行列候选集合不相交；③ 连接宫外各恰好一个外端；④ 连接宫内每侧可有一个或多个候选；⑤ 删除同时看见两个外端的${digit}。`
+        : `① 选一行和一列，使${digit}在各自区域都恰好跨两个宫；② 行列候选集合不相交；③ 连接宫外各恰好一个外端；④ 连接宫内每侧各一个候选；⑤ 删除同时看见两个外端的${digit}。`,
       `FB配色：两个外端用cNormal(1)，连接宫内整个连接组用cFins(2)，删数用cToDel(11)。`,
-      grouped
-        ? `Grouped的判据是连接组总数大于2，不是行或列“恰好两个候选”。原始FB函数检查的是每条线的候选跨恰好两个宫，并要求连接宫外各恰好一个候选。`
-        : `Standard分支的连接组总数恰好为2；搜索条件仍是每条线跨恰好两个宫，并非简单要求整行/整列只有两个候选。`,
+      `以后端分支=${branchDisplay}为准。严格核对每条线只跨两个宫、连接宫外各只有一个外端且两个内组互不重叠；${grouped ? "分组型连接候选并集多于2，组端不能误读成单一共轭候选。" : "标准型连接候选并集恰好为2。"}`,
     ] : [
-      `${grouped ? "Grouped " : ""}2-String Kite: digit ${digit} occupies exactly two boxes in ${row || "one row"} and in ${col || "one column"}. Outside connector box ${box || ""}, each line has exactly one outer endpoint${outer ? ` (${outer})` : ""}. The in-box row group is ${rowInner || "highlighted"}, the column group is ${colInner || "highlighted"}${connector ? `, giving connector group ${connector}` : ""}.`,
+      `${grouped ? "Grouped " : ""}2-String Kite: digit ${digit} occupies exactly two boxes in ${row || "one row"} and ${col || "one column"}. Outside connector box ${box || ""}, each line has exactly one outer endpoint${outer ? ` (${outer})` : ""}. The in-box row group is ${rowInner || "highlighted"}, the column group is ${colInner || "highlighted"}${connector ? `, giving connector group ${connector}` : ""}.`,
+      `The selected row must place ${digit} at its outer endpoint or in its in-box row group, and the selected column has the analogous choice. The two in-box groups are disjoint but share one box, so they cannot both carry ${digit}; at least one outer endpoint is true.`,
+      `The target sees both outer endpoints. If it took ${digit}, both outers would be removed and both in-box groups would be forced to carry ${digit}, violating box uniqueness. Therefore the target cannot remain.`,
       grouped
-        ? `The row gives Iᵣ∨Oᵣ and the column gives I𝚌∨O𝚌, where Iᵣ and I𝚌 are grouped disjunctions inside one box. The two disjoint in-box groups cannot both contain the box's digit, so at least one outer endpoint is true.`
-        : `Each line supplies a strong link. The two inner endpoints share a box and cannot both be true, so at least one outer endpoint is true.`,
-      grouped
-        ? `Let Iᵣ be the OR of the in-box row group and I𝚌 the OR of the in-box column group. From (Iᵣ∨Oᵣ)∧(I𝚌∨O𝚌) and ¬(Iᵣ∧I𝚌), Oᵣ∨O𝚌 follows. Any ${digit} seeing both outers is false.`
-        : `Let the links be Iᵣ∨Oᵣ and I𝚌∨O𝚌, with Iᵣ and I𝚌 mutually exclusive in the box. Hence Oᵣ∨O𝚌, and any ${digit} seeing both outers is false.`,
-      grouped
-        ? `1. Choose a row and column whose ${digit} candidates each occupy exactly two boxes. 2. Their candidate sets must be disjoint. 3. Each has exactly one candidate outside the intersection box. 4. Either in-box side may contain multiple candidates. 5. Remove ${digit} from common peers of the outers.`
-        : `1. Choose a row and column whose ${digit} candidates each occupy exactly two boxes. 2. Their candidate sets must be disjoint. 3. Each has one candidate outside the connector box. 4. Each in-box side has one candidate. 5. Remove ${digit} from common peers of the outers.`,
+        ? `1. Choose a row and column whose ${digit} candidates each occupy exactly two boxes. 2. Their candidate sets are disjoint. 3. Each has exactly one outer candidate outside the connector box. 4. Either in-box side may contain multiple candidates. 5. Remove ${digit} from common peers of the outers.`
+        : `1. Choose a row and column whose ${digit} candidates each occupy exactly two boxes. 2. Their candidate sets are disjoint. 3. Each has one outer candidate outside the connector box. 4. Each in-box side has one candidate. 5. Remove ${digit} from common peers of the outers.`,
       `FB colours: outer endpoints cNormal(1), every in-box connector candidate cFins(2), eliminations cToDel(11).`,
-      grouped
-        ? `Grouped means the connector union contains more than two candidates. The FB detector counts boxes, not an exact total of two candidates per line, and requires exactly one candidate outside the connector box on each line.`
-        : `Standard means the connector union contains exactly two candidates. The detector still counts boxes rather than requiring exactly two candidates across the entire row or column.`,
+      `Use backend Branch=${branch}. Strictly verify two-box occupancy on each line, exactly one outer candidate per line, and disjoint inner groups; ${grouped ? "the grouped connector union has more than two candidates and is not one conjugate pair." : "the standard connector union has exactly two candidates."}`,
     ];
   }
 
@@ -1826,19 +2067,19 @@ function buildAuditedFoundationGuide(step = {}, locale = "zh") {
     const linkHouse = firstGroup(step, /^linkhouse$/i)?.houses?.[0] || "";
     const digit = digitText(firstGroup(step, /^erbody$/i)?.digits) || primaryDigits(step);
     return zh ? [
-      `Empty Rectangle：${box}内数字${digit}的候选${body || "高亮宫内候选"}可由一条宫内行和一条宫内列覆盖，它们的空交点为${eri || "ERI交点"}；外部${linkHouse || "区域"}强关系为${link || "高亮强链"}。`,
-      `宫内${digit}若不落在行臂，就必须落在列臂，反之亦然；外部共轭对把这两个分支连接到${outside || "外端"}，使目标在两种分支下都被排除。`,
-      `令R、C为宫内两臂，E为交点，外部强关系为A∨B。宫约束给出“R臂有真数”∨“C臂有真数”；结合A∨B及可见关系，目标t在每一分支都满足¬t。`,
-      `① 在一个宫中找同数字候选可被一行加一列覆盖；② 标出行列交点；③ 找跨宫的同数字二候选强关系，其中一端看见交点；④ 删除与交点同区域且看见外端的目标。`,
+      `Empty Rectangle：${box}内数字${digit}的候选${body || "高亮宫内候选"}可由一条宫内行和一条宫内列覆盖，它们的空交点为${eri || "ERI交点"}；外部${linkHouse || "区域"}强关系为${link || "高亮强链"}，远端为${outside || "高亮外端"}。`,
+      `宫内${digit}必须落在行臂或列臂。若落在直接看见目标的那一臂，目标立即被排除；若落在另一臂，就会排掉外部强关系靠近空矩形的一端，迫使远端为真，而远端同样看见目标。`,
+      `两种宫内落点都会击中同一个目标，所以目标不能取${digit}。`,
+      `① 在一个宫中找${digit}候选可被一行加一列覆盖；② 标出行列交点；③ 找跨宫的同数字共轭对，使靠近端与一条ER臂相连；④ 删除在另一分支和远端分支中都会被看见的目标。`,
       `FB配色：外部强链用cNormal(1)，宫内ER候选用cFins(2)，普通删数用cToDel(11)，若删数落在强链本体则用Cannibalism(12)。`,
-      `宫内候选至少两个；外部强关系必须恰好两个候选且分属不同宫。交点本身不要求含该候选，这正是“Empty”所在。`,
+      `严格核对宫内候选确实由一行加一列覆盖，交点本身不要求含${digit}；外部强关系必须是真正共轭对，并且两种后端可见分支都指向同一目标。`,
     ] : [
-      `Empty Rectangle: the ${digit} candidates ${body || "highlighted in-box candidates"} in ${box} are covered by one local row and one local column, whose empty intersection is ${eri || "the ERI"}; ${link || "the highlighted conjugate pair"} is the external strong link in ${linkHouse || "a house"}.`,
-      `If the box digit is not on the row arm it must be on the column arm, and vice versa. The external conjugate pair carries both cases to ${outside || "the far endpoint"}, eliminating the target in either case.`,
-      `Let R and C be the two box arms and A∨B the external link. The box gives “a truth on R”∨“a truth on C”; together with A∨B and the visibility relations, every branch implies ¬t for the target.`,
-      `1. Find a box whose digit candidates are coverable by one row plus one column. 2. Mark their intersection. 3. Find a cross-box conjugate pair with one endpoint seeing the intersection. 4. Remove the target sharing a house with the intersection and seeing the far endpoint.`,
+      `Empty Rectangle: the ${digit} candidates ${body || "highlighted in-box candidates"} in ${box} are covered by one local row and one local column, whose empty intersection is ${eri || "the ERI"}; ${link || "the highlighted conjugate pair"} is the external strong link in ${linkHouse || "a house"}, with far endpoint ${outside || "highlighted"}.`,
+      `The box digit must lie on the row arm or the column arm. On the arm that sees the target, the target is removed directly; on the other arm, the near endpoint of the external conjugate pair is removed, forcing the far endpoint, which also sees the target.`,
+      `Both possible in-box placements eliminate the same target, so the target cannot take ${digit}.`,
+      `1. Find a box whose ${digit} candidates are coverable by one row plus one column. 2. Mark their intersection. 3. Find a cross-box conjugate pair linked to one ER arm. 4. Remove the target hit in both the direct-arm and far-endpoint cases.`,
       `FB colours: external link cNormal(1), in-box ER candidates cFins(2), normal eliminations cToDel(11), and a deletion on the link itself Cannibalism(12).`,
-      `The box needs at least two candidates; the external link must contain exactly two candidates in different boxes. The intersection need not itself contain the digit.`,
+      `Strictly verify the row-plus-column cover, note that the intersection need not contain ${digit}, and require a genuine external conjugate pair whose two backend visibility cases hit the same target.`,
     ];
   }
 
@@ -1849,24 +2090,26 @@ function buildAuditedFoundationGuide(step = {}, locale = "zh") {
     const opposite = groupCells(step, /^oppositeeri$/i).join(zh ? "、" : ", ");
     const digits = digitText(firstGroup(step, /^pair$/i)?.digits) || primaryDigits(step);
     return zh ? [
-      `ERI Pair：两个不互见的同候选双值格${pair || "高亮Pair"}含数字${digits}，位于不同宫带且不同宫栈；其两个共同可见矩形顶点中，当前活动ERI为${active || "高亮活动顶点"}，对顶点为${opposite || "高亮对顶点"}。`,
-      `活动ERI所在宫中，数字${digits}的所有候选${support || "高亮支持格"}都被两个双值格覆盖。若该宫内某一数字不由支持格承担，就会迫使对应双值端点，并沿矩形顶点产生同样的排除。`,
-      `对每个d∈${digits}，活动宫内d至少一真且每个支持位置都看见Pair A或Pair B。结合两双值格的互补取值，活动ERI、对顶点及与Pair-ERI共同可见的d候选不能保留。`,
-      `① 找两个候选完全相同的双值格；② 它们所在宫既不在同一宫带也不在同一宫栈；③ 取两个共同可见顶点之一为活动ERI；④ 核对活动宫内两数字的全部候选都被Pair覆盖；⑤ 应用源码给出的删数集合。`,
+      `ERI Pair：两个不互见的同候选双值格${pair || "高亮Pair"}含数字${digits}，位于不同宫带且不同宫栈；当前活动ERI为${active || "高亮活动顶点"}，对顶ERI为${opposite || "高亮对顶点"}，活动宫支持格为${support || "高亮支持格"}。`,
+      `两个Pair端点不能取同一个数字。若它们都取${digits}中的某一个数字，活动ERI所在宫里这个数字的所有支持位置都会被Pair端点看见并排除，导致该宫无处放这个数字；另一个数字同理。因此两个端点必须互补地分别取这两个数字。`,
+      `后端列出的目标位于这组互补取值与活动ERI共同形成的删除域中。目标若为真，会在其中一种互补取值下封死活动宫必须留下的同数字落点，所以不能保留。`,
+      `① 找两个候选完全相同且互不相见的双值格；② 它们位于不同宫带和宫栈；③ 选择共同矩形顶点之一为活动ERI；④ 核对活动宫内这两个数字的全部候选都被Pair端点覆盖；⑤ 只应用后端报告的删除域。`,
       `FB配色：Pair双值格用cNormal(1)，ERI支持候选用cFins(2)，普通删数用cToDel(11)，活动ERI上的自噬删数用Cannibalism(12)。`,
-      `两数字在活动宫中都必须至少存在一个候选；活动宫内不得有任何不看见两个Pair端点之一的相关候选。`,
+      `严格核对活动宫中两个数字都至少有一个候选，且没有任何相关候选漏出两个Pair端点的可见范围；活动/对顶ERI上的结构内删数同样以后端删除域为准，不能仅凭矩形外形外推。`,
     ] : [
-      `ERI Pair: two non-seeing bivalue cells ${pair || "highlighted"} have the same pair ${digits} and occupy boxes in different bands and stacks. Of their two common-peer rectangle vertices, ${active || "the highlighted vertex"} is active and ${opposite || "the opposite vertex"} is opposite.`,
-      `In the active vertex's box, every ${digits} candidate ${support || "highlighted"} is covered by one of the two pair cells. If a digit is not supplied by the support, the corresponding bivalue endpoint is forced and propagates the same exclusion through the rectangle vertices.`,
-      `For each d∈${digits}, the active box contains a true d and every support position sees Pair A or Pair B. Combined with the complementary bivalue assignments, d cannot remain at the active/opposite vertices or at cells seeing a Pair endpoint and the active ERI.`,
-      `1. Find two identical bivalue cells. 2. Their boxes must be in different bands and stacks. 3. Choose one of their two common-peer vertices as active. 4. Verify every occurrence of both digits in the active box is covered by the pair. 5. Apply the reported eliminations.`,
+      `ERI Pair: two non-seeing identical bivalue cells ${pair || "highlighted"} contain ${digits} in different bands and stacks; active ERI=${active || "highlighted"}, opposite ERI=${opposite || "highlighted"}, active-box support=${support || "highlighted"}.`,
+      `The two pair endpoints cannot take the same digit. If both took either member of ${digits}, every support for that digit in the active ERI box would be seen and removed by the endpoints, leaving the box nowhere to place it. The same holds for the other digit, so the endpoints must take complementary values.`,
+      `Each backend-reported target lies in the deletion domain jointly enforced by that complementary assignment and the active ERI. If it were true, it would block the same-digit position the active box must retain in one complementary case, so it is false.`,
+      `1. Find two identical non-seeing bivalue cells. 2. Put them in different bands and stacks. 3. Choose one common rectangle vertex as the active ERI. 4. Verify every relevant candidate in the active box is covered by a pair endpoint. 5. Apply only the backend-reported deletion domain.`,
       `FB colours: pair cells cNormal(1), ERI support cFins(2), normal eliminations cToDel(11), and an elimination at the active ERI Cannibalism(12).`,
-      `Both digits must have at least one candidate in the active box, with no uncovered relevant candidate there.`,
+      `Strictly verify that both digits occur in the active box and no relevant candidate escapes pair visibility; internal active/opposite-ERI deletions also come from the backend deletion domain and must not be inferred from rectangle shape alone.`,
     ];
   }
 
   if (kind === "WWing") {
-    const grouped = /grouped/i.test(firstGroup(step, /^branch$/i)?.tail || step?.title || "");
+    const branch = firstGroup(step, /^branch$/i)?.tail || "Standard";
+    const branchDisplay = localizedProofMeta(branch, locale);
+    const grouped = /^grouped$/i.test(branch);
     const endpoints = groupCells(step, /^endpoints$/i).join(zh ? "、" : ", ");
     const pair = digitText(firstGroup(step, /^endpoints$/i)?.digits);
     const strong = groupCells(step, /^stronglink$/i).join(zh ? "、" : ", ");
@@ -1874,19 +2117,19 @@ function buildAuditedFoundationGuide(step = {}, locale = "zh") {
     const deleteDigit = digitText(firstGroup(step, /^deletedigit$/i)?.digits) || primaryDigits(step);
     const house = firstGroup(step, /^linkhouse$/i)?.houses?.[0] || houseLabel(step, locale);
     return zh ? [
-      `${grouped ? "Grouped " : ""}W-Wing：两个互不相见的同候选双值格${endpoints || "高亮端点"}为{${pair}}；其中${linkDigit}通过${house}内${strong || "高亮连接候选"}形成${grouped ? "分组强关系" : "共轭强关系"}。`,
-      `连接区域中的每个${linkDigit}候选都被至少一个双值端点看见。若两个端点都不取${deleteDigit}，它们都会取${linkDigit}，从而排除连接区域内全部${linkDigit}，与该区域必须有一个${linkDigit}矛盾。`,
-      `设端点为A={${pair}}、B={${pair}}，连接候选析取为∨L=true，且L⊆Peers(A)∪Peers(B)。假设¬A(${deleteDigit})∧¬B(${deleteDigit})，则A(${linkDigit})∧B(${linkDigit})，推出¬∨L，矛盾；故A(${deleteDigit})∨B(${deleteDigit})。`,
-      `① 找两个候选对相同且互不相见的双值格；② 任选其中一个数字作连接数字；③ 找一个区域，其全部连接数字候选都分别被两个端点覆盖；④ 删除同时看见两端点的另一个数字。`,
-      `FB配色：连接数字在强链和端点中用cFins(2)，端点的删数数字用cNormal(1)，目标用cToDel(11)。`,
-      `${grouped ? "Grouped分支允许连接区域多于两个候选，但必须无一漏出两个端点的可见范围。" : "普通分支的连接区域恰好是两个候选。"} 两端点本身不能共享行、列或宫。`,
+      `${grouped ? "分组型 " : ""}W-Wing：两个互不相见的同候选双值格${endpoints || "高亮端点"}为{${pair}}；连接数字${linkDigit}通过${house}内${strong || "高亮连接候选"}形成${grouped ? "分组强关系" : "共轭强关系"}。`,
+      `连接区域中的每个${linkDigit}都被至少一个端点看见。若两个端点都不取删数数字${deleteDigit}，它们就都会取${linkDigit}，把连接区域里的${linkDigit}全部排空；但该区域必须有一个${linkDigit}，所以两个端点至少有一个取${deleteDigit}。`,
+      `目标若取${deleteDigit}并同时看见两个端点，就会让两个端点都不能取${deleteDigit}，与“至少一端取${deleteDigit}”矛盾，因此目标不能保留。`,
+      `① 找两个候选对相同且互不相见的双值格；② 选一个数字作连接数字；③ 找一个区域，使其中全部连接数字候选都被两个端点的可见范围覆盖；④ 删除同时看见两个端点的另一个数字。`,
+      `FB配色：连接数字在强关系和端点中用cFins(2)，端点的删数数字用cNormal(1)，目标用cToDel(11)。`,
+      `以后端分支=${branchDisplay}为准。${grouped ? "分组型允许连接区域多于两个候选，但不能有候选漏出两个端点的可见范围。" : "标准型连接区域恰好有两个候选，形成普通共轭对。"} 两端点本身不能共享行、列或宫。`,
     ] : [
-      `${grouped ? "Grouped " : ""}W-Wing: two non-seeing bivalue endpoints ${endpoints || "highlighted"} share pair {${pair}}; digit ${linkDigit} is connected through ${strong || "the highlighted candidates"} in ${house} as a ${grouped ? "grouped strong relation" : "conjugate link"}.`,
-      `Every ${linkDigit} in the connector house is seen by at least one endpoint. If neither endpoint took ${deleteDigit}, both would take ${linkDigit}, eliminating every ${linkDigit} in the connector house, a contradiction.`,
-      `Let A=B={${pair}}, with connector disjunction ∨L=true and L⊆Peers(A)∪Peers(B). Assuming ¬A(${deleteDigit})∧¬B(${deleteDigit}) forces A(${linkDigit})∧B(${linkDigit}), hence ¬∨L, contradiction; therefore A(${deleteDigit})∨B(${deleteDigit}).`,
-      `1. Find two identical non-seeing bivalue cells. 2. Choose one digit as the link digit. 3. Find a house where every link candidate is covered by the endpoints. 4. Remove the other digit from common peers of the endpoints.`,
-      `FB colours: link digit in connector and endpoints cFins(2), the other endpoint digit cNormal(1), targets cToDel(11).`,
-      `${grouped ? "The grouped branch permits more than two connector candidates, but none may escape both endpoints' visibility." : "The standard connector contains exactly two candidates."} The endpoints must share no house.`,
+      `${grouped ? "Grouped " : ""}W-Wing: two non-seeing bivalue endpoints ${endpoints || "highlighted"} share {${pair}}; link digit ${linkDigit} is carried by ${strong || "the highlighted candidates"} in ${house} as a ${grouped ? "grouped strong relation" : "conjugate relation"}.`,
+      `Every ${linkDigit} in the connector house is seen by at least one endpoint. If neither endpoint took deletion digit ${deleteDigit}, both would take ${linkDigit} and remove every ${linkDigit} from the connector house; since the house must contain the digit, at least one endpoint takes ${deleteDigit}.`,
+      `If a target ${deleteDigit} sees both endpoints and were true, neither endpoint could take ${deleteDigit}, contradicting the required endpoint alternative. Therefore the target is false.`,
+      `1. Find two identical non-seeing bivalue cells. 2. Choose one digit as the link digit. 3. Find a house where every link candidate is covered by endpoint visibility. 4. Remove the other digit from common peers of the endpoints.`,
+      `FB colours: link digit in connector/endpoints cFins(2), other endpoint digit cNormal(1), targets cToDel(11).`,
+      `Use backend Branch=${branch}. ${grouped ? "The grouped branch may contain more than two connector candidates, but none may escape both endpoint views." : "The standard branch contains exactly two connector candidates, forming an ordinary conjugate pair."} The endpoints share no house.`,
     ];
   }
 
@@ -1902,55 +2145,64 @@ function buildAuditedFoundationGuide(step = {}, locale = "zh") {
     return zh ? [
       `${xyz ? "XYZ" : "XY"}-Wing：枢轴${pText}分别看见翼格${aText}与${bText}；两个翼格互不相见，共同候选为Z=${z}。`,
       xyz
-        ? `枢轴含Z。若枢轴取Z则Z已在枢轴为真；若枢轴取另外两个数字之一，相应翼格被迫取Z。因此枢轴或两翼中的Z至少一个为真。`
-        : `枢轴只有X/Y。枢轴取X会迫使Y/Z翼取Z，取Y会迫使X/Z翼取Z，因此两个翼格中的Z至少一个为真。`,
+        ? `枢轴本身也含Z。若枢轴取Z，Z已经在结构内为真；若枢轴取另外两个数字之一，相应分支会迫使某一翼取Z。因此枢轴或两翼中的Z至少一个为真。`
+        : `枢轴只有两个非Z数字。它取其中任意一个，都会迫使对应的另一翼取Z，所以两个翼格中的Z至少一个为真。`,
       xyz
-        ? `P∈{X,Y,Z}，A={X,Z}，B={Y,Z}。P=Z∨(P=X⇒B=Z)∨(P=Y⇒A=Z)，故P(Z)∨A(Z)∨B(Z)。`
-        : `P={X,Y}，A={X,Z}，B={Y,Z}。P=X⇒B=Z，P=Y⇒A=Z，故A(Z)∨B(Z)。`,
-      `① 找${xyz ? "三值" : "双值"}枢轴；② 找两个双值翼，各与枢轴共享不同数字；③ 两翼共同只含一个Z且彼此不共享区域；④ 删除${xyz ? "同时看见枢轴和两翼" : "同时看见两翼"}的Z。`,
+        ? `目标若取Z并同时看见枢轴和两翼中的全部Z位置，就会把结构内所有可能的Z都排除，与“至少一个结构Z为真”矛盾，因此可删。`
+        : `目标若取Z并同时看见两个翼上的Z，就会把两个翼的Z都排除，与“至少一个翼Z为真”矛盾，因此可删。`,
+      `① 找${xyz ? "三值" : "双值"}枢轴；② 找两个双值翼，各与枢轴共享不同数字；③ 两翼共同只含一个Z且彼此不共享区域；④ 删除${xyz ? "同时看见枢轴和两翼全部Z位置" : "同时看见两翼Z"}的目标。`,
       `FB配色：非Z结构候选用cNormal(1)，Z用cFins(2)，删数用cToDel(11)。`,
-      `${xyz ? "XYZ-Wing目标必须同时看见枢轴和两个翼格中的Z。" : "XY-Wing枢轴不能含Z，目标只需同时看见两个翼格。"} 两翼不能共享行、列或宫。`,
+      `${xyz ? "严格核对枢轴为三值、两翼为双值，目标必须看见枢轴与两翼中的全部Z。" : "严格核对枢轴与两翼均为双值，枢轴不能含Z之外的第三数，目标只需看见两个翼Z。"} 两翼不能共享行、列或宫。`,
     ] : [
       `${xyz ? "XYZ" : "XY"}-Wing: pivot ${pText} sees wings ${aText} and ${bText}; the wings do not see each other and share Z=${z}.`,
       xyz
-        ? `The pivot contains Z. If it takes Z, Z is true there; if it takes either other digit, the corresponding opposite wing is forced to Z. Thus Z is true in the pivot or a wing.`
-        : `The pivot is {X,Y}. X forces the Y/Z wing to Z, while Y forces the X/Z wing to Z, so Z is true in at least one wing.`,
+        ? `The pivot also contains Z. If it takes Z, Z is already true in the structure; if it takes either other digit, the corresponding case forces one wing to Z. Thus Z is true in the pivot or a wing.`
+        : `The pivot contains the two non-Z digits. Whichever one it takes forces the corresponding opposite wing to Z, so at least one wing contains Z.`,
       xyz
-        ? `P∈{X,Y,Z}, A={X,Z}, B={Y,Z}. P=Z∨(P=X⇒B=Z)∨(P=Y⇒A=Z), hence P(Z)∨A(Z)∨B(Z).`
-        : `P={X,Y}, A={X,Z}, B={Y,Z}. P=X⇒B=Z and P=Y⇒A=Z, hence A(Z)∨B(Z).`,
-      `1. Find a ${xyz ? "trivalue" : "bivalue"} pivot. 2. Find two bivalue wings sharing different pivot digits. 3. Their sole common digit is Z and the wings share no house. 4. Remove Z from cells seeing ${xyz ? "pivot and both wings" : "both wings"}.`,
+        ? `A target Z seeing every Z in the pivot and both wings would eliminate every structural Z if true, contradicting the required structural Z, so it is false.`
+        : `A target Z seeing both wing Zs would eliminate both if true, contradicting the required wing Z, so it is false.`,
+      `1. Find a ${xyz ? "trivalue" : "bivalue"} pivot. 2. Find two bivalue wings sharing different pivot digits. 3. Their sole common digit is Z and the wings share no house. 4. Remove Z from cells seeing ${xyz ? "every pivot/wing Z" : "both wing Zs"}.`,
       `FB colours: non-Z structure candidates cNormal(1), Z cFins(2), eliminations cToDel(11).`,
-      `${xyz ? "An XYZ target must see Z in the pivot and both wings." : "The XY pivot must not contain Z; a target need only see both wings."} The wings may not share a row, column or box.`,
+      `${xyz ? "Strictly verify a trivalue pivot, bivalue wings, and full target visibility to every pivot/wing Z." : "Strictly verify a bivalue pivot and wings; a target need only see both wing Zs."} The wings share no row, column, or box.`,
     ];
   }
 
   if (kind === "XYZRing") {
-    const complete = /complete/i.test(firstGroup(step, /^branch$/i)?.tail || step?.title || "") && !/half/i.test(step?.title || "");
+    const branch = firstGroup(step, /^branch$/i)?.tail || "";
+    const branchDisplay = localizedProofMeta(branch, locale);
+    const complete = /^complete$/i.test(branch);
+    const half = /^half$/i.test(branch);
     const pivot = groupCells(step, /^pivot$/i).join(zh ? "、" : ", ");
     const wings = [...groupCells(step, /^winga$/i), ...groupCells(step, /^wingb$/i)].join(zh ? "、" : ", ");
     const connector = groupCells(step, /^connectorz$/i).join(zh ? "、" : ", ");
     const z = digitText(firstGroup(step, /^connectorz$/i)?.digits) || primaryDigits(step);
     const connectorHouse = firstGroup(step, /^connectorhouse$/i)?.houses?.[0] || houseLabel(step, locale);
-    const covers = [firstGroup(step, /^ringcovera$/i)?.houses?.[0], firstGroup(step, /^ringcoverb$/i)?.houses?.[0]].filter(Boolean).join("、");
+    const covers = [firstGroup(step, /^ringcovera$/i)?.houses?.[0], firstGroup(step, /^ringcoverb$/i)?.houses?.[0]].filter(Boolean).join(zh ? "、" : ", ");
     return zh ? [
-      `${complete ? "Complete" : "Half"} XYZ-Ring：枢轴${pivot || "高亮枢轴"}与两翼${wings || "高亮翼格"}形成XYZ核心；${connectorHouse}中的全部Z=${z}候选${connector || "高亮连接组"}都看见至少一个Z翼端，构成分组闭环。`,
-      `XYZ核心保证分支在X、Y、Z之间传递；连接区域的Z候选又把两个翼端闭合。由此枢轴—翼格的X/Y公共可见位置可删；${complete ? `结构还能被两个覆盖区域${covers || "源码找到的两区域"}完整覆盖，因此这些覆盖区域中的结构外Z可删。` : `两侧只分别形成桥接区域，因此Z删数还必须同时满足看见枢轴的限制。`}`,
-      `${complete ? "Complete分支：存在两个非连接区域H₁、H₂覆盖全部环节点，Z在H₁∪H₂中的额外位置会破坏闭环容量。" : "Half分支：分别存在覆盖“翼A+其可见连接Z”和“翼B+其可见连接Z”的桥接区域；只有位于两桥区域并看见枢轴的Z与两案均矛盾。"}`,
-      `① 建立XYZ枢轴和两个互不相见翼格；② 找一个区域，其全部Z候选都被两个翼端的可见范围覆盖；③ 判断是否有两个额外区域完整覆盖全部结构，以区分Complete/Half；④ 按分支删除X/Y及Z。`,
+      `${complete ? "完全型" : half ? "半环型" : "XYZ"} XYZ-Ring：枢轴${pivot || "高亮枢轴"}与两翼${wings || "高亮翼格"}形成XYZ核心；${connectorHouse}中的全部Z=${z}候选${connector || "高亮连接组"}都被两个翼端的可见范围覆盖，闭合成环。`,
+      `XYZ核心把X、Y、Z三种取值分支传到两个翼端，连接区域里的Z又把两端闭合。${complete ? `完全型还有两个覆盖区域${covers || "后端RingCover"}完整覆盖整个环。` : `半环型只有两侧桥接覆盖，并没有完整覆盖整个环。`}`,
+      complete
+        ? `闭环先排除枢轴与对应翼共同可见的X/Y；两个覆盖区域又完整承接环上的Z，所以覆盖区域中结构外的Z若为真，就会抢掉环必须使用的位置，因此也可删。`
+        : `闭环同样排除枢轴与对应翼共同可见的X/Y；Z只由两侧桥接约束，所以只有同时落入后端两侧桥接范围并看见枢轴的Z，才会与所有分支冲突。`,
+      `① 建立XYZ枢轴和两个互不相见翼格；② 找一个区域，使其中全部Z都被两个翼端的可见范围覆盖；③ 以后端Branch判断完全型/半环型；④ 按对应覆盖关系应用X/Y及Z删数。`,
       `现有FB语义：核心非Z候选用cFins(2)，核心Z用cEdoFins(3)，额外连接Z用cNormal(1)，删数用cToDel(11)。`,
-      `不能把它简化成普通XYZ-Wing：必须完整核对连接区域内没有漏出的Z候选。Complete与Half的Z删数范围不同。`,
+      `以后端分支=${branchDisplay}为准，不能从标题猜分支。连接区域内不能有Z漏出两个翼端的可见范围；${complete ? "完全型必须有两个额外RingCover完整覆盖全部环节点。" : "半环型只要求两侧桥接，Z目标还必须看见枢轴，不能套用完全型范围。"}`,
     ] : [
-      `${complete ? "Complete" : "Half"} XYZ-Ring: pivot ${pivot || "highlighted"} and wings ${wings || "highlighted"} form an XYZ core; every Z=${z} in ${connectorHouse}, ${connector || "the highlighted connector group"}, sees at least one Z wing endpoint and closes a grouped ring.`,
-      `The XYZ core propagates the X/Y/Z alternatives, while the connector Z group closes the two wing endpoints. This removes X/Y from common peers of pivot and the matching wing. ${complete ? `Two cover houses ${covers || "found by the detector"} cover the whole ring, so extra Z in those covers is false.` : `Only side-specific bridge houses exist, so a Z target must additionally see the pivot.`}`, 
-      `${complete ? "Complete branch: two non-connector houses H₁,H₂ cover every ring node; extra Z in H₁∪H₂ violates the closed capacity." : "Half branch: one house covers wing A plus its visible connector-Z group and another covers wing B's side; only Z in those bridges that also sees the pivot is false."}`,
-      `1. Build an XYZ pivot with two non-seeing wings. 2. Find a house whose every Z is covered by wing visibility. 3. Test whether two further houses cover the complete structure, distinguishing Complete from Half. 4. Apply the branch-specific X/Y and Z eliminations.`,
+      `${complete ? "Complete" : half ? "Half" : "XYZ"} XYZ-Ring: pivot ${pivot || "highlighted"} and wings ${wings || "highlighted"} form an XYZ core; every Z=${z} in ${connectorHouse}, ${connector || "the highlighted connector group"}, is covered by wing visibility and closes the ring.`,
+      `The XYZ core propagates the X/Y/Z alternatives to the wings, while connector Z candidates close the two sides. ${complete ? `Two cover houses ${covers || "the backend RingCovers"} cover the whole ring.` : `Only side-specific bridge covers exist; they do not cover the whole ring.`}`,
+      complete
+        ? `The ring removes X/Y from common peers of pivot and the matching wing; because the two covers completely carry the ring Zs, an extra Z in those covers would steal required ring capacity and is false.`
+        : `The ring likewise removes X/Y from common peers of pivot and matching wing; a Z is false only when it lies in both backend bridge ranges and also sees the pivot, so it conflicts with every case.`,
+      `1. Build an XYZ pivot with two non-seeing wings. 2. Find a house whose every Z is covered by wing visibility. 3. Use backend Branch to distinguish Complete/Half. 4. Apply branch-specific X/Y and Z eliminations.`,
       `Current FB semantics: core non-Z cFins(2), core Z cEdoFins(3), extra connector Z cNormal(1), eliminations cToDel(11).`,
-      `This is not a plain XYZ-Wing: no connector-house Z may escape both wings. Complete and Half have different Z target ranges.`,
+      `Use backend Branch=${branch}; never infer the branch from the title. No connector-house Z may escape both wings. ${complete ? "Complete requires two additional RingCovers that cover every ring node." : "Half uses side bridges only, and a Z target must also see the pivot."}`,
     ];
   }
 
   if (kind === "WXYZWing") {
-    const restricted = /restricted/i.test(firstGroup(step, /^branch$/i)?.tail || "");
+    const branch = firstGroup(step, /^branch$/i)?.tail || "Standard";
+    const branchDisplay = localizedProofMeta(branch, locale);
+    const restricted = /^restricted-z$/i.test(branch);
     const pivot = firstGroup(step, /^pivot$/i);
     const wa = firstGroup(step, /^winga$/i);
     const wb = firstGroup(step, /^wingb$/i);
@@ -1959,19 +2211,19 @@ function buildAuditedFoundationGuide(step = {}, locale = "zh") {
     const z = digitText(firstGroup(step, /^sharedz$/i)?.digits) || primaryDigits(step);
     const zCells = groupCells(step, /^sharedz$/i).join(zh ? "、" : ", ");
     return zh ? [
-      `WXYZ-Wing：枢轴${cellNames(pivot?.cells, 1)}{${digitText(pivot?.digits)}}与同区域两翼${cellNames(wa?.cells, 1)}{${digitText(wa?.digits)}}、${cellNames(wb?.cells, 1)}{${digitText(wb?.digits)}}，再加远端双值翼${cellNames(wc?.cells, 1)}{${digitText(wc?.digits)}}，四格候选并集为{${allDigits}}，受限公共数字Z=${z}位于${zCells}。`,
-      `远端翼的非Z数字W不在同区域两翼中，只能同时出现在枢轴；远端翼又看见枢轴。因此若结构内所有Z都为假，枢轴与远端翼都会被迫取W而冲突，所以结构内至少一个Z为真。`,
-      `设远端翼={W,Z}，W∉Cand(同区域两翼)，且W∈Cand(枢轴)，远端翼∼枢轴。假设¬∨Z，则远端翼=W且枢轴=W，违反同区域唯一性，故∨Z=true。任何看见全部Z位置的外部Z为假。`,
-      `① 选枢轴及与它同一行/列/宫的两个翼；② 三者并集不超过三数字；③ 找枢轴可见的远端双值翼，使总并集恰好四数字且只以一个Z与前两翼并集相交；④ 删除看见所有Z位置的Z。${restricted ? " Z位置全在一个区域时，源码还按闭合四数字分配删除其他数字的公共可见候选。" : ""}`,
+      `WXYZ-Wing（${restricted ? "受限Z型" : "标准型"}）：枢轴${cellNames(pivot?.cells, 1)}{${digitText(pivot?.digits)}}与同区域两翼${cellNames(wa?.cells, 1)}{${digitText(wa?.digits)}}、${cellNames(wb?.cells, 1)}{${digitText(wb?.digits)}}，再加远端双值翼${cellNames(wc?.cells, 1)}{${digitText(wc?.digits)}}；四格候选并集为{${allDigits}}，公共受限数字Z=${z}位于${zCells}。`,
+      `远端翼的非Z数字不在两个同区域翼中，却与枢轴共享；远端翼又看见枢轴。若结构内所有Z都为假，远端翼和枢轴会被迫取同一个非Z数字并冲突，所以结构内至少一个Z必须为真。`,
+      `任何同时看见结构内全部Z位置的外部Z若为真，都会把这些Z全部排除，与“至少一个结构Z为真”矛盾。${restricted ? ` 受限Z型中全部Z位置还落在同一行、列或宫，使四格四数分配进一步闭合；后端报告的共同可见非Z目标也不能保留。` : ""}`,
+      `① 选枢轴及与它同区域的两个翼；② 三格候选并集不超过三个数字；③ 加入一个看见枢轴的远端双值翼，使四格并集恰好四数字且只以Z与前两翼集合相交；④ 删除看见全部Z位置的Z。${restricted ? " 受限Z型再按后端闭合分配应用非Z删数。" : ""}`,
       `FB配色：结构中的Z用cFins(2)，其余W/X/Y用cNormal(1)，删数用cToDel(11)。`,
-      `四格并集必须恰好四数字；远端翼必须是双值且不在前三格共同区域内，但必须看见枢轴。${restricted ? "Restricted-Z附加删数只在全部Z位置同一行、列或宫时成立。" : ""}`,
+      `以后端分支=${branchDisplay}为准。四格并集必须恰好四数字；远端翼必须双值、在前三格共同区域之外但看见枢轴。${restricted ? "受限Z附加删数只在全部Z位置同属一个行、列或宫时成立。" : ""}`,
     ] : [
-      `WXYZ-Wing: pivot ${cellNames(pivot?.cells, 1)}{${digitText(pivot?.digits)}} and two co-house wings ${cellNames(wa?.cells, 1)}{${digitText(wa?.digits)}}, ${cellNames(wb?.cells, 1)}{${digitText(wb?.digits)}}, plus remote bivalue wing ${cellNames(wc?.cells, 1)}{${digitText(wc?.digits)}}, have union {${allDigits}}. Restricted common digit Z=${z} occurs at ${zCells}.`,
-      `The remote wing's non-Z digit W is absent from the two co-house wings and therefore also occurs in the pivot; the remote wing sees the pivot. If every structural Z were false, both pivot and remote wing would be forced to W, a contradiction. Hence some structural Z is true.`,
-      `Let the remote wing be {W,Z}, with W absent from the two co-house wings, W present in the pivot, and remote wing seeing pivot. Assuming ¬∨Z forces remote=W and pivot=W, impossible; therefore ∨Z=true. Any external Z seeing all Z positions is false.`,
-      `1. Choose a pivot and two wings sharing one row/column/box. 2. Their union uses at most three digits. 3. Add a pivot-seeing remote bivalue wing so the total union is exactly four and its sole intersection with the first-wing union is Z. 4. Remove Z from cells seeing every Z position.${restricted ? " If all Z positions share one house, the detector also removes common-peer occurrences of the other digits from the closed four-value allocation." : ""}`,
+      `WXYZ-Wing (${restricted ? "Restricted-Z" : "Standard"}): pivot ${cellNames(pivot?.cells, 1)}{${digitText(pivot?.digits)}} and co-house wings ${cellNames(wa?.cells, 1)}{${digitText(wa?.digits)}}, ${cellNames(wb?.cells, 1)}{${digitText(wb?.digits)}}, plus remote bivalue wing ${cellNames(wc?.cells, 1)}{${digitText(wc?.digits)}} have union {${allDigits}}; restricted common digit Z=${z} occurs at ${zCells}.`,
+      `The remote wing's non-Z digit is absent from the two co-house wings but shared with the pivot, and the remote wing sees the pivot. If every structural Z were false, the remote wing and pivot would be forced to the same non-Z digit and conflict, so at least one structural Z is true.`,
+      `Any external Z seeing every structural Z position would eliminate them all if true, contradicting the required structural Z.${restricted ? ` In Restricted-Z, all Z positions also share one house, further closing the four-cell/four-digit allocation; backend-reported common-peer non-Z targets are false too.` : ""}`,
+      `1. Choose a pivot and two co-house wings. 2. Their union uses at most three digits. 3. Add a pivot-seeing remote bivalue wing so the four-cell union is exactly four digits and its sole intersection with the first-wing union is Z. 4. Remove Z from cells seeing every Z position.${restricted ? " Apply backend closed-allocation non-Z eliminations as well." : ""}`,
       `FB colours: structural Z cFins(2), W/X/Y cNormal(1), eliminations cToDel(11).`,
-      `The four-cell union must contain exactly four digits. The remote wing is bivalue, outside the first three cells' common house, but must see the pivot.${restricted ? " Restricted-Z extra eliminations require all Z positions in one row, column or box." : ""}`,
+      `Use backend Branch=${branch}. The four-cell union must contain exactly four digits; the remote wing is bivalue, outside the first three cells' common house, but sees the pivot.${restricted ? " Restricted-Z extras require all Z positions in one row, column, or box." : ""}`,
     ];
   }
 
@@ -1989,22 +2241,22 @@ function buildAuditedPhase3Guide(step = {}, locale = "zh") {
     const guardianRole = firstGroup(step, /^guardians$/i);
     const targetRole = firstGroup(step, /^targets$/i);
     const cannibalRole = firstGroup(step, /^cannibaltargets$/i);
-    const loop = cellNames(loopRole?.cells || []);
-    const guardians = cellNames(guardianRole?.cells || []);
-    const targets = cellNames(targetRole?.cells || step?.eliminations || []);
-    const cannibals = cellNames(cannibalRole?.cells || []);
+    const loop = cellNames(loopRole?.cells || [], 14, locale);
+    const guardians = cellNames(guardianRole?.cells || [], 14, locale);
+    const targets = cellNames(targetRole?.cells || step?.eliminations || [], 14, locale);
+    const cannibals = cellNames(cannibalRole?.cells || [], 14, locale);
     const length = list(loopRole?.cells).length;
     return zh ? [
-      `Broken Wing：数字${digit}在${loop || "高亮格"}形成长度${length || "为奇数"}的单数字奇环；每条本来不是共轭对的环边，由守护候选${guardians || "高亮Guardians"}补足。`,
+      `Broken Wing：数字${digit}在${loop || "高亮格"}形成长度${length || "为奇数"}的单数字奇环；每条本来不是共轭对的环边，由守护候选${guardians || "高亮守护候选"}补足。`,
       `若所有守护候选都为假，环上每一对相邻节点都会变成强关系。沿奇数条强弱交替关系绕行一周，会把起点同时推出真与假，因而“所有守护全假”不可能；守护集合至少一真。`,
-      `设守护析取为G₁∨…∨Gₙ。假设目标t成立；因为t看见每个Gᵢ，得到¬G₁∧…∧¬Gₙ，奇环闭合后矛盾。因此t=false。${cannibals ? ` 本步还有环内自噬删数${cannibals}。` : ""}`,
-      `① 固定数字${digit}；② 沿共享行、列、宫的候选建立奇数环；③ 对每条非共轭边收集该区域中其余${digit}作为Guardians；④ 确认Guardians全假会令整环全部变成共轭边；⑤ 删除同时看见全部Guardians的${digit}${targets ? `（${targets}）` : ""}。`,
-      `FB配色：奇环本体cNormal(1)，Guardians cFins(2)，普通删数cToDel(11)，落在环本体内的自噬删数Cannibalism(12)。`,
-      `环长度必须大于4且为奇数；相邻环节点必须共享有效区域；Guardian集合必须包含每条环边所在区域中除两端外的全部${digit}。POM/模板只用于筛选可能删数目标，不是本步逻辑证明。`,
+      `反过来假设目标成立：因为目标同时看见所有守护候选，它会把这些守护全部排除，于是剩下的奇环被迫全部变成强关系并产生矛盾。因此目标不能成立。${cannibals ? ` 本步还有环内自噬删数${cannibals}。` : ""}`,
+      `① 固定数字${digit}；② 沿共享行、列、宫的候选建立奇数环；③ 对每条非共轭边收集该区域中其余${digit}作为守护候选；④ 确认守护候选全假会令整环全部变成共轭边；⑤ 删除同时看见全部守护候选的${digit}${targets ? `（${targets}）` : ""}。`,
+      `FB配色：奇环本体用cNormal(1)，守护候选用cFins(2)，普通删数用cToDel(11)，环内自噬删数使用颜色编号12。`,
+      `环长度必须大于4且为奇数；相邻环节点必须共享有效区域；守护集合必须包含每条环边所在区域中除两端外的全部${digit}。POM/模板只用于筛选可能删数目标，不是本步逻辑证明。`,
     ] : [
       `Broken Wing: digit ${digit} forms a single-digit odd loop of length ${length || "odd"} on ${loop || "the highlighted cells"}. Every loop edge that is not already conjugate is completed by guardian candidates ${guardians || "highlighted"}.`,
       `If every guardian were false, every adjacent pair on the loop would become a strong link. Propagating alternating truth around an odd cycle returns to the start with the opposite value, so the all-guardians-false case is impossible; at least one guardian is true.`,
-      `Let the guardian disjunction be G₁∨…∨Gₙ. If target t were true, it would see and falsify every Gᵢ, closing the contradictory odd loop. Hence t=false.${cannibals ? ` The step also has cannibal eliminations at ${cannibals}.` : ""}`,
+      `Assume the target is true. Because it sees every guardian, it would remove them all; the remaining odd loop would then be forced entirely into strong links and become contradictory. Therefore the target cannot be true.${cannibals ? ` The step also has cannibal eliminations at ${cannibals}.` : ""}`,
       `1. Fix digit ${digit}. 2. Build an odd loop through shared rows, columns and boxes. 3. For every non-conjugate edge, collect all other ${digit}s in that house as guardians. 4. Verify all guardians false makes every edge conjugate. 5. Remove ${digit} from cells seeing all guardians${targets ? ` (${targets})` : ""}.`,
       `FB colours: loop body cNormal(1), guardians cFins(2), ordinary eliminations cToDel(11), eliminations inside the loop Cannibalism(12).`,
       `The loop length must be odd and greater than four. Adjacent nodes must share a valid house, and the guardian set must include every other ${digit} on each loop edge's house. POM/template search is only a target filter, not the proof.`,
@@ -2012,9 +2264,9 @@ function buildAuditedPhase3Guide(step = {}, locale = "zh") {
   }
 
   if (kind === "ComplexSwordfish" || kind === "ComplexJellyfish" || kind === "ComplexSquirmbagFish") {
-    const branch = firstGroup(step, /^branch$/i)?.tail || String(step?.description || "").split(":", 1)[0];
-    const bases = firstGroup(step, /^base$/i)?.houses?.join(zh ? "、" : ", ") || (zh ? "高亮Base" : "the highlighted bases");
-    const covers = firstGroup(step, /^cover$/i)?.houses?.join(zh ? "、" : ", ") || (zh ? "高亮Cover" : "the highlighted covers");
+    const branch = firstGroup(step, /^branch$/i)?.tail || "";
+    const bases = firstGroup(step, /^base$/i)?.houses?.join(zh ? "、" : ", ") || (zh ? "高亮基准区域" : "the highlighted bases");
+    const covers = firstGroup(step, /^cover$/i)?.houses?.join(zh ? "、" : ", ") || (zh ? "高亮覆盖区域" : "the highlighted covers");
     const body = groupCells(step, /^fishbody$/i).join(zh ? "、" : ", ");
     const regularFins = groupCells(step, /^regfins$/i).join(zh ? "、" : ", ");
     const endoFins = groupCells(step, /^edofins$/i).join(zh ? "、" : ", ");
@@ -2025,22 +2277,23 @@ function buildAuditedPhase3Guide(step = {}, locale = "zh") {
     const isSashimi = /sashimi/i.test(branch);
     const isFinned = /finned|sashimi/i.test(branch);
     const geometry = zh
-      ? (isMutant ? "Base或Cover内部允许同时混用行、列、宫" : "至少使用宫，但Base与Cover各自不混用行、列两类线")
-      : (isMutant ? "rows, columns and boxes may be mixed on one side" : "boxes are used, while each side does not mix row and column lines");
+      ? (isMutant ? "Mutant允许同一侧同时混用行、列、宫" : "Franken只在单一方向的线中混入宫")
+      : (isMutant ? "Mutant may mix rows, columns and boxes on the same side" : "Franken mixes boxes with only one line direction");
+    const branchZh = branch || "复杂鱼";
     return zh ? [
-      `${branch || "Complex Fish"}：数字${digit}使用${size}个Base（${bases}）与${size}个Cover（${covers}）；${geometry}${body ? `。鱼身为${body}` : ""}${regularFins ? `，普通鳍为${regularFins}` : ""}${endoFins ? `，内生鳍为${endoFins}` : ""}。`,
-      `每个Base必须提供一个${digit}真数，${size}个Cover提供同样数量的容量。${isFinned ? "若所有鳍为假，结构退化为Rank 0复杂鱼；若任一鳍为真，只能删除同时看见全部鳍的目标。" : "Base真数正好填满Cover容量。"}`,
-      `令B为Base真数需求、C为Cover容量。无鳍时|B|=|C|=${size}且Base候选被Cover覆盖，所以Cover\\Base中的${digit}为假。普通鳍是Base\\Cover候选；内生鳍是同时属于多个Base、会被重复计数的候选，二者都进入鳍析取。${isSashimi ? "去掉鳍后至少一个Base只剩一个鱼身候选，这是Sashimi分支。" : ""}${cannibals ? ` Cover重叠造成的结构内删数为${cannibals}。` : ""}`,
-      `① 按${size}阶选择Base；② 选择同数目的Cover并判断Franken/Mutant几何；③ 区分鱼身、普通鳍与内生鳍；④ ${isFinned ? "只保留同时受全部鳍影响的删数" : "删除Cover中Base之外的候选"}${targets ? `（${targets}）` : ""}；⑤ 单独核对Cannibalism。`,
-      `FB配色：鱼身cNormal(1)，普通鳍cFins(2)，内生鳍cEdoFins(3)，普通删数cToDel(11)，结构内删数Cannibalism(12)。`,
-      `Complex Fish由POM给出的“不可能候选”驱动搜索，但最终证明必须由当前Base/Cover/鳍结构独立成立。Franken与Mutant、Finned与Sashimi都必须按实际分支输出区分，不能统称“复杂鱼”。`,
+      `${branchZh}：数字${digit}使用${size}个Base（${bases}）与${size}个Cover（${covers}）；${geometry}${body ? `。鱼身为${body}` : ""}${regularFins ? `，普通鳍为${regularFins}` : ""}${endoFins ? `，内生鳍为${endoFins}` : ""}${cannibals ? `，自噬目标为${cannibals}` : ""}。`,
+      `把每个Base看成“必须交出一个${digit}”的区域，把每个Cover看成“最多接收一个${digit}”的区域。Base与Cover数量相同，所以没有鳍时，Base必须交出的真数会一一占满全部Cover。`,
+      `${isFinned ? `分两案看：若普通鳍和内生鳍全部为假，剩余鱼身回到等量Base/Cover的满容量状态，外部目标会抢占Cover名额${cannibals ? "，自噬目标同时落在多个Cover中，会一次占掉多个名额" : ""}；若至少一个鳍为真，本步保留的目标都同时看见全部鳍，会与那个真鳍直接冲突。${isSashimi ? "Sashimi只表示去掉鳍后至少一个Base只剩一个鱼身落点，不改变这两案证明。" : ""}` : `Base真数已经一一占满Cover。Cover中但Base外的${digit}若为真，会抢掉一个必需名额${cannibals ? `；${cannibals}同时落在多个Cover中，一旦为真会一次占掉多个Cover名额，使剩余Base无处安置` : ""}。`}`,
+      `① 按${size}阶选择Base；② 选择同数目的Cover并按后端Branch核对Franken/Mutant几何；③ 区分鱼身、普通鳍与内生鳍；④ ${isFinned ? "核对每个目标同时看见全部鳍" : "删除Cover中Base外的候选"}${targets ? `（${targets}）` : ""}；⑤ ${cannibals ? `单独核对自噬删数${cannibals}` : "若无自噬目标则跳过"}。`,
+      `FB配色：鱼身cNormal(1)，普通鳍cFins(2)，内生鳍cEdoFins(3)，普通删数cToDel(11)，结构内自噬删数(12)。`,
+      `核对后端 Branch=${branch || "(missing)"}：Franken同一侧不能同时混用行、列，Mutant按实际行/列/宫组合核对；普通鳍来自Base\\Cover，内生鳍来自多个Base的重叠。若有鳍，所有外部与自噬目标必须同时看见全部鳍。POM只负责筛目标，不是证明。`,
     ] : [
-      `${branch || "Complex Fish"}: digit ${digit} uses ${size} bases (${bases}) and ${size} covers (${covers}); ${geometry}${body ? `. Body: ${body}` : ""}${regularFins ? `; regular fins: ${regularFins}` : ""}${endoFins ? `; endo fins: ${endoFins}` : ""}.`,
-      `Each base supplies one true ${digit}, while the ${size} covers provide equal capacity. ${isFinned ? "If every fin is false the pattern is a rank-0 complex fish; if a fin is true, only targets seeing every fin remain eliminable." : "The base truths exactly fill the cover capacity."}`,
-      `Let B be the base truth demand and C the cover capacity. Without fins, |B|=|C|=${size} and the covers contain all base candidates, so ${digit} in Cover\\Base is false. Regular fins lie in Base\\Cover; endo fins belong to multiple bases and would be double-counted, so both enter the fin disjunction.${isSashimi ? " After removing fins, at least one base has a single body candidate, defining the Sashimi branch." : ""}${cannibals ? ` Structural overlap gives cannibal eliminations at ${cannibals}.` : ""}`,
-      `1. Choose ${size} bases. 2. Choose ${size} covers and classify Franken/Mutant geometry. 3. Separate body, regular fins and endo fins. 4. ${isFinned ? "Keep only eliminations affected by every fin" : "remove cover candidates outside the bases"}${targets ? ` (${targets})` : ""}. 5. Check cannibal eliminations separately.`,
+      `${branch || "Complex Fish"}: digit ${digit} uses ${size} bases (${bases}) and ${size} covers (${covers}); ${geometry}${body ? `. Body: ${body}` : ""}${regularFins ? `; regular fins: ${regularFins}` : ""}${endoFins ? `; endo fins: ${endoFins}` : ""}${cannibals ? `; cannibal targets: ${cannibals}` : ""}.`,
+      `Treat each base as a region that must supply one ${digit}, and each cover as a region that can receive at most one ${digit}. With equal counts, the base truths fill all covers one-for-one when there are no fins.`,
+      `${isFinned ? `Use two cases: if every regular and endo fin is false, the remaining body returns to equal base/cover capacity, so an external target steals a cover slot${cannibals ? " and a cannibal target in multiple covers consumes multiple slots at once" : ""}; if at least one fin is true, every retained target sees all fins and conflicts with that true fin.${isSashimi ? " Sashimi only means that after removing the fins at least one base has one body position; it does not change the two-case proof." : ""}` : `The base truths already fill the covers one-for-one. A ${digit} in Cover\\Base steals a required slot${cannibals ? `; ${cannibals} lies in multiple covers and would consume several cover slots at once, leaving too few for the remaining bases` : ""}.`}`,
+      `1. Choose ${size} bases. 2. Choose the same number of covers and verify Franken/Mutant geometry from the backend Branch. 3. Separate body, regular fins and endo fins. 4. ${isFinned ? "Verify every target sees every fin" : "remove candidates in Cover outside Base"}${targets ? ` (${targets})` : ""}. 5. ${cannibals ? `Check cannibal targets separately (${cannibals})` : "Skip if there are no cannibal targets"}.`,
       `FB colours: body cNormal(1), regular fins cFins(2), endo fins cEdoFins(3), ordinary eliminations cToDel(11), internal eliminations Cannibalism(12).`,
-      `POM supplies impossible-candidate search targets, but the reported Base/Cover/Fin structure must prove the step by itself. Distinguish Franken from Mutant and Finned from Sashimi using the actual Branch output.`,
+      `Verify backend Branch=${branch || "(missing)"}: Franken must not mix row and column lines on the same side; Mutant follows the reported row/column/box mix. Regular fins come from Base\\Cover and endo fins from base overlaps. With fins present, every external and cannibal target must see every fin. POM filters targets but is not the proof.`,
     ];
   }
 
@@ -2059,19 +2312,19 @@ function buildAuditedPhase3Guide(step = {}, locale = "zh") {
     const targets = groupCells(step, /^targets$/i).join(zh ? "、" : ", ");
     const cannibals = groupCells(step, /^cannibaltargets$/i).join(zh ? "、" : ", ");
     return zh ? [
-      `复数鱼（${branchLabel || "混合覆盖"}）：候选数字组为${sourceDigits}；Truth共${truthCount}个${truthLabels ? `（${truthLabels}）` : ""}，Link共${linkCount}个${linkLabels ? `（${linkLabels}）` : ""}${truthCells ? `，附加格Truth为${truthCells}` : ""}${cellLinks ? `，格Link为${cellLinks}` : ""}。`,
-      `每个Truth至少要命中一个候选，每个Link至多容纳一个真候选。源码只在Truth数与Link数相等时输出，即严格Rank 0；因此所有Link容量都被Truth需求占满。`,
-      `设Truth集合为T₁…Tₙ，Link集合为L₁…Lₙ。每个Tᵢ至少一真且每个Lⱼ至多一真，又有全部Truth候选被Links覆盖，所以n个真数必须一一占满n个Links。Link中的结构外候选为假；同时落在多个Link或结构内部的冲突候选形成Cannibalism${cannibals ? `（${cannibals}）` : ""}。`,
-      `① 确认源数字组${sourceDigits}和${branchLabel || "基准方向"}；② 逐项读取Truth与Link，而不是把它当成单数字普通鱼；③ 核对Truth数=${truthCount}、Link数=${linkCount}；④ 确认每个Truth的全部候选均被Link体系覆盖；⑤ 应用普通删数${targets ? `（${targets}）` : ""}与自噬删数。`,
+      `复数鱼（${branchLabel || "混合覆盖"}）：这不是单数字鱼。搜索从源数字${sourceDigits}出发，但最终证明以后端实际Truth/Link分组为准；平衡结构时还可能补入额外宫Truth或整格Truth。当前共有${truthCount}个“必须兑现的数字×区域任务”（Truth）和${linkCount}个“至多接收一个真候选的容量约束”（Link）。Truth为${truthLabels}${truthCells ? `，另有整格Truth=${truthCells}` : ""}；Link为${linkLabels}${cellLinks ? `，另有单格Link=${cellLinks}` : ""}${targets ? `；外部目标=${targets}` : ""}${cannibals ? `；结构内自噬目标=${cannibals}` : ""}。`,
+      `把Truth想成必须完成的任务，把Link想成只有一个座位的限制。后端已经验证每个Truth的可选落点都被这些Link覆盖；任务数和座位数又正好相同，所以全部座位都必须留给这些任务，一一占满，不能再让别的候选插进来。`,
+      `${targets ? "外部目标若为真，会先占掉一个已经必须留给Truth的Link座位，却没有增加新的必做任务，于是至少一个Truth无处安置。" : ""}${cannibals ? "结构内自噬目标已经属于这套结构；它若保留，会在已经排满的容量关系中造成重复占位或额外冲突，同样无法成立。" : ""}`,
+      `① 把源数字${sourceDigits}只当作搜索起点，并读取后端${branchLabel || "基准方向"}；② 以实际Truth列表为准（它可能含额外宫Truth/整格Truth），逐项展开成必须完成的任务；③ 把每个Link逐项展开成一个容量座位${cellLinks ? "，其中单格Link同样只能容纳一个真候选" : ""}；④ 核对任务数与座位数相等且所有Truth候选都被Links覆盖；⑤ ${targets ? `删除抢座位的外部目标（${targets}）` : "没有外部目标需要处理"}${cannibals ? `，并单独核对结构内自噬${cannibals}` : ""}。`,
       `FB配色按区域类型区分Truth/Link：行用cFins(2)，列用cNormal(1)，宫用cAls1；附加格Truth用cEdoFins，格Link用cDouble(10)，普通删数cToDel(11)，自噬Cannibalism(12)。`,
-      `复数鱼是多数字、混合区域和格约束组成的Rank 0覆盖，不等同于普通单数字鱼。必须使用实际Truth/Link列表核对，不能仅凭“数量相等”猜测覆盖成立。`,
+      `严格核对：TruthCount=${truthCount}、LinkCount=${linkCount}、Rank=0，并确认每个Truth的全部候选都被Link体系覆盖；行基型/列基型方向以及TruthCells、CellLinks都只采用本步后端分组，不从标题猜测。满足这些条件后才可称为严格Rank 0。`,
     ] : [
-      `Multi-Fish (${branch || "mixed cover"}): source digits ${sourceDigits}; ${truthCount} truths${truthLabels ? ` (${truthLabels})` : ""} and ${linkCount} links${linkLabels ? ` (${linkLabels})` : ""}${truthCells ? `, extra cell truths ${truthCells}` : ""}${cellLinks ? `, cell links ${cellLinks}` : ""}.`,
-      `Every truth needs at least one true candidate and every link holds at most one. The detector emits only when the truth and link counts are equal, i.e. strict rank 0, so the truth demand fills all link capacity.`,
-      `Let the truths be T₁…Tₙ and links L₁…Lₙ. Each Tᵢ supplies a truth, each Lⱼ accepts at most one, and all truth candidates are covered by the links. Thus n truths occupy n links one-for-one. Candidates in links but outside the structure are false; internal or multi-link conflicts are cannibal eliminations${cannibals ? ` at ${cannibals}` : ""}.`,
-      `1. Confirm source digits ${sourceDigits} and ${branch || "base orientation"}. 2. Read every Truth and Link rather than treating this as a one-digit fish. 3. Verify truth count ${truthCount} equals link count ${linkCount}. 4. Confirm the links cover every truth candidate. 5. Apply ordinary targets${targets ? ` (${targets})` : ""} and cannibal targets.`,
+      `Multi-Fish (${branch || "mixed cover"}): this is not a one-digit fish. The search starts from source digits ${sourceDigits}, but the proof follows the actual backend Truth/Link groups; balancing may add extra box truths or whole-cell truths. This step has ${truthCount} required digit-by-house tasks (Truths) and ${linkCount} capacity constraints that can accept at most one true candidate (Links). Truths: ${truthLabels}${truthCells ? `; extra cell truths=${truthCells}` : ""}; links: ${linkLabels}${cellLinks ? `; extra cell links=${cellLinks}` : ""}${targets ? `; external targets=${targets}` : ""}${cannibals ? `; internal cannibal targets=${cannibals}` : ""}.`,
+      `Think of each Truth as a task that must be completed and each Link as a one-seat capacity constraint. The backend has verified that every possible placement for the Truths is covered by these Links. Because the number of required tasks equals the number of seats, all seats must be occupied by those tasks one-for-one; no extra candidate can take one.`,
+      `${targets ? "If an external target were true, it would take a Link seat already needed by the Truths without adding a required task, leaving at least one Truth with nowhere to go." : ""}${cannibals ? " An internal cannibal target already belongs to the structure; keeping it would create duplicate occupancy or an extra conflict inside this already-full assignment." : ""}`,
+      `1. Treat source digits ${sourceDigits} only as the search starting point and read the backend ${branch || "base orientation"}. 2. Follow the actual Truth list (which may add box/cell truths) and expand each required task. 3. Expand every Link into one capacity seat${cellLinks ? ", including cell links that can hold only one true candidate" : ""}. 4. Verify equal task/seat counts and full Truth coverage. 5. ${targets ? `Remove external targets that steal seats (${targets})` : "There are no external targets in this step"}${cannibals ? ` and check internal cannibals separately (${cannibals})` : ""}.`,
       `FB colours depend on house type: row Truth/Link cFins(2), column cNormal(1), box cAls1; extra cell truths cEdoFins, cell links cDouble(10), ordinary eliminations cToDel(11), cannibals Cannibalism(12).`,
-      `Multi-Fish is a rank-0 cover over multiple digits, mixed houses and cell constraints, not an ordinary single-digit fish. Use the explicit Truth/Link list; equal counts alone do not prove coverage.`,
+      `Strict check: TruthCount=${truthCount}, LinkCount=${linkCount}, rank=0, and every candidate of every Truth is covered by the Link system. Row-Based/Column-Based, TruthCells, and CellLinks must come from this step's backend groups. Only then is this strict rank 0.`,
     ];
   }
 
@@ -2081,10 +2334,11 @@ function buildAuditedPhase3Guide(step = {}, locale = "zh") {
 
 function buildAuditedPhase4Guide(step = {}, locale = "zh") {
   const zh = localeKey(locale) === "zh";
+  const cn = (cells, max = 14) => cellNames(cells, max, locale);
   const kind = String(step?.kind || "");
   const branch = firstGroup(step, /^branch$/i)?.tail || String(step?.title || "");
   const branchLabel = localizedProofMeta(branch, locale);
-  const targets = groupCells(step, /^targets$/i).join(zh ? "、" : ", ") || cellNames(step?.eliminations || []);
+  const targets = groupCells(step, /^targets$/i).join(zh ? "、" : ", ") || cn(step?.eliminations || []);
   const cannibals = groupCells(step, /^cannibaltargets$/i).join(zh ? "、" : ", ");
 
   if (kind === "AlmostPair" || kind === "AlmostTriple") {
@@ -2099,16 +2353,16 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
     const intersectionOccupancy = doubleIntersection ? 2 : 1;
     const outerCells = n - intersectionOccupancy;
     return zh ? [
-      `${kind === "AlmostPair" ? "Almost Pair" : "Almost Triple"}（${branchLabel}${subtype ? ` / ${subtypeLabel}` : ""}）：宫线交区${cellNames(sector?.cells)}承载数字组{${digits}}；交区一侧是ALS ${cellNames(als?.cells)}，另一侧是AHS ${cellNames(ahs?.cells)}。`,
+      `${kind === "AlmostPair" ? "近似数对" : "近似三数组"}（${branchLabel}${subtype ? ` / ${subtypeLabel}` : ""}）：宫线交区${cn(sector?.cells)}承载数字组{${digits}}；交区一侧是ALS ${cn(als?.cells)}，另一侧是AHS ${cn(ahs?.cells)}。`,
       doubleIntersection
         ? `双交区子类要求1格/${n}数ALS、三格交区全部含{${digits}}，以及另一侧唯一1格AHS承载同一组数字。ALS外格先占1个活动数字，因而交区恰占2个，AHS格必须承接剩余1个。`
         : `源码要求ALS由${outerCells}格容纳${n}个数字，AHS由${outerCells}格锁住同一组${n}个数字。两侧共同迫使宫线交区中的这组数字恰占${intersectionOccupancy}个位置，因此ALS同侧的其余{${digits}}和AHS格中的额外候选可删。`,
       `设D为${n}个活动数字，A为${outerCells}格ALS，H为${outerCells}格AHS。A中的格都只能取D，所以A占用${outerCells}个D，交区必须占用${intersectionOccupancy}个D；H是另一house域外全部D的唯一${outerCells}个承载格，因此H中的额外候选可删。`,
       `① 选宫与相交行/列；② 在非交区一侧找${outerCells}格/${n}数ALS；③ 在另一侧确认恰有${outerCells}格包含全部活动数字；④ ${doubleIntersection ? "核对三格交区全部含活动数字" : "核对交区至少有两个活动格"}；⑤ 删除ALS同侧其余活动数字及AHS格中的额外数字${targets ? `（${targets}）` : ""}。`,
       `FB配色：活动交区候选cNormal(1)，AHS全部候选cFins(2)，ALS全部候选cEdoFins(3)，普通删数cToDel(11)。`,
-      `必须按实际分支区分“宫 ALS / 线 AHS”与“线 ALS / 宫 AHS”，并按子类型区分单交区与双交区；Almost Pair/Triple不是朋友项目的通用ALC。`,
+      `必须按实际分支区分“宫 ALS / 线 AHS”与“线 ALS / 宫 AHS”，并按子类型区分单交区与双交区；近似数对/近似三数组不是朋友项目的通用ALC。`,
     ] : [
-      `${kind === "AlmostPair" ? "Almost Pair" : "Almost Triple"} (${branchLabel}${subtype ? ` / ${subtypeLabel}` : ""}): the box-line intersection ${cellNames(sector?.cells)} carries digit set {${digits}}; one side contains ALS ${cellNames(als?.cells)}, the other AHS ${cellNames(ahs?.cells)}.`,
+      `${kind === "AlmostPair" ? "Almost Pair" : "Almost Triple"} (${branchLabel}${subtype ? ` / ${subtypeLabel}` : ""}): the box-line intersection ${cn(sector?.cells)} carries digit set {${digits}}; one side contains ALS ${cn(als?.cells)}, the other AHS ${cn(ahs?.cells)}.`,
       doubleIntersection
         ? `The Double-Intersection subtype requires a one-cell/${n}-digit ALS, all three intersection cells carrying {${digits}}, and exactly one AHS carrier on the other side. The ALS consumes one active digit, forcing two into the intersection and the last into the AHS carrier.`
         : `The detector requires an ${outerCells}-cell/${n}-digit ALS and an ${outerCells}-cell AHS locking the same ${n} digits. Together they force exactly ${intersectionOccupancy} active digit into the intersection, eliminating those digits on the ALS side and extra candidates inside the AHS.`,
@@ -2125,16 +2379,16 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
     const z = digitText(firstGroup(step, /^z$/i)?.digits);
     const rank0 = /double-rcc/i.test(branch);
     return zh ? [
-      `ALS-XZ（${branchLabel}）：ALS A=${cellNames(a?.cells)}{${digitText(a?.digits)}}，ALS B=${cellNames(b?.cells)}{${digitText(b?.digits)}}，受限公共数字X=${x}${z ? `，共同目标Z=${z}` : ""}。`,
-      `${rank0 ? "两个RCC把两组ALS组成双链接Rank 0结构；所有链接容量被占满，结构外和结构内的超额候选都可删。" : "X在A、B之间是受限公共候选：X不可能同时在两组ALS中成立，因此若X落在一侧，另一侧必须用非X候选；两组共同含有的Z至少在一侧成立。"}`,
-      `${rank0 ? "双RCC意味着A与B之间有两个相互独立的受限公共数字，Truth与Link数量相等。" : `假设一个同时看见A中所有Z与B中所有Z的外部Z成立，则两组ALS中的Z都为假；A、B被迫分别使用X，违反X的受限公共关系。故目标Z为假。`}${cannibals ? ` 结构内自噬删数：${cannibals}。` : ""}`,
+      `ALS-XZ（${branchLabel}）：ALS A=${cn(a?.cells)}{${digitText(a?.digits)}}，ALS B=${cn(b?.cells)}{${digitText(b?.digits)}}，受限公共数字X=${x}${z ? `，共同目标Z=${z}` : ""}。`,
+      `${rank0 ? "每个ALS本来各有1个自由度；两组ALS合起来有2个自由度。两个彼此独立的RCC正好把这两个自由度全部锁住，因此结构成为Rank 0。" : "X在A、B之间是受限公共候选：X不可能同时在两组ALS中成立，因此若X落在一侧，另一侧必须用非X候选；两组共同含有的Z至少在一侧成立。"}`,
+      `${rank0 ? "两个RCC已经用完两组ALS的全部链接自由度；任何结构外候选若再占用其中一条RCC，或结构内候选造成同一链接重复占用，都会超出可用容量，因此按后端实际Targets/CannibalTargets删除。" : `假设一个同时看见A中所有Z与B中所有Z的外部Z成立，则两组ALS中的Z都为假；A、B被迫分别使用X，违反X的受限公共关系。故目标Z为假。`}${cannibals ? ` 结构内自噬删数：${cannibals}。` : ""}`,
       `① 验证每组都是n格/n+1数ALS；② 找RCC X=${x}，确认A中所有X与B中所有X互相可见；③ ${rank0 ? "核对第二个RCC并按Rank 0处理" : `找共同Z=${z}及其共同可见目标`}；④ 应用删数${targets ? `（${targets}）` : ""}。`,
-      `FB配色：A内部cAls1(4)，B内部cAls2(5)，RCC X用cEdoFins(3)，Z用cFins(2)，普通删数cToDel(11)，结构内删数Cannibalism(12)。`,
-      `RCC要求A中的全部X与B中的全部X两两互见；同一格重叠或仅部分互见不能当作RCC。Double-RCC分支不能再套单Z删数解释。`,
+      `FB配色：A内部cAls1(4)，B内部cAls2(5)，RCC X用cEdoFins(3)，Z用cFins(2)，普通删数cToDel(11)，结构内自噬删数(12)。`,
+      `RCC要求A中的全部X与B中的全部X两两互见；同一格重叠或仅部分互见不能当作RCC。双 RCC 分支不能再套单Z删数解释。`,
     ] : [
-      `ALS-XZ (${branchLabel}): ALS A=${cellNames(a?.cells)}{${digitText(a?.digits)}}, ALS B=${cellNames(b?.cells)}{${digitText(b?.digits)}}, RCC X=${x}${z ? `, target Z=${z}` : ""}.`,
-      `${rank0 ? "Two RCCs make a doubly linked rank-0 structure; all link capacity is occupied." : "X is restricted common: it cannot be true in both ALSs, so the shared Z must survive in at least one side."}`,
-      `${rank0 ? "Two independent RCCs equalize truth and link counts." : `If an external Z seeing every Z in A and B were true, both ALS Z sets would be false and each ALS would be forced to X, violating the RCC.`}${cannibals ? ` Cannibal targets: ${cannibals}.` : ""}`,
+      `ALS-XZ (${branchLabel}): ALS A=${cn(a?.cells)}{${digitText(a?.digits)}}, ALS B=${cn(b?.cells)}{${digitText(b?.digits)}}, RCC X=${x}${z ? `, target Z=${z}` : ""}.`,
+      `${rank0 ? "Each ALS contributes one degree of freedom, so the two ALSs have two in total. Two independent RCCs lock both degrees of freedom, making the structure rank 0." : "X is restricted common: it cannot be true in both ALSs, so the shared Z must survive in at least one side."}`,
+      `${rank0 ? "The two RCCs consume all link freedom of the two ALSs. Any outside candidate that consumes one of those links again, or an internal candidate that double-consumes a link, exceeds the available capacity and is removed according to backend Targets/CannibalTargets." : `If an external Z seeing every Z in A and B were true, both ALS Z sets would be false and each ALS would be forced to X, violating the RCC.`}${cannibals ? ` Cannibal targets: ${cannibals}.` : ""}`,
       `1. Verify both n-cell/n+1-digit ALSs. 2. Verify RCC X=${x}. 3. ${rank0 ? "Verify the second RCC and use rank-0 capacity" : `identify common Z=${z} and common-peer targets`}. 4. Apply eliminations${targets ? ` (${targets})` : ""}.`,
       `FB colours: A cAls1(4), B cAls2(5), RCC cEdoFins(3), Z cFins(2), ordinary deletions cToDel(11), internal deletions Cannibalism(12).`,
       `Every X in A must see every X in B. Partial visibility is not an RCC, and the double-RCC branch must not be explained as ordinary single-Z XZ.`,
@@ -2143,42 +2397,83 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
 
   if (kind === "ALSXYWing") {
     const a = firstGroup(step, /^alsa$/i), b = firstGroup(step, /^alsb$/i), c = firstGroup(step, /^alsc$/i);
-    const x = digitText(firstGroup(step, /^rccx$/i)?.digits), y = digitText(firstGroup(step, /^rccy$/i)?.digits), z = digitText(firstGroup(step, /^z$/i)?.digits);
+    const rccX = firstGroup(step, /^rccx$/i), rccY = firstGroup(step, /^rccy$/i), rccZ = firstGroup(step, /^rccz$/i);
+    const x = digitText(rccX?.digits), y = digitText(rccY?.digits);
+    const triple = /triple-linked/i.test(branch);
+    const z = digitText((triple ? rccZ : firstGroup(step, /^z$/i))?.digits);
+    if (triple) {
+      return zh ? [
+        `ALS-XY-Wing（三重链接秩 0）：A=${cn(a?.cells)}，B=${cn(b?.cells)}，C=${cn(c?.cells)}；A-C以RCC X=${x}连接，B-C以RCC Y=${y}连接，A-B再以第三条RCC Z=${z}连接。`,
+        `这一步不是“普通ALS-XY-Wing再多送一些删数”。三条RCC把三组ALS两两闭合；每条RCC都是独立的受限公共数字关系，三组ALS已经没有多余链接容量，因此整个结构直接成为Rank 0。`,
+        `Rank 0下，任何结构外候选若再占用已经满载的链接，或结构内候选造成同一链接重复占用，都会让链接需求超过可用容量，所以后端输出相应外部删数与自噬删数。`,
+        `① 核对三组ALS；② 验证A-C的RCC X=${x}；③ 验证B-C的RCC Y=${y}；④ 验证A-B的第三条RCC Z=${z}；⑤ 确认三条RCC彼此独立后按Rank-0容量核对本步Targets/CannibalTargets${targets ? `（${targets}）` : ""}。`,
+        `FB配色应把A/B/C与三条RCC分别显示；第三条RCC不能继续当成普通Wing的“共同删数Z”着色。删数仍区分外部删数与自噬删数。`,
+        `三重链接必须有后端真实RccX/RccY/RccZ三条RCC。三组ALS仅仅两两共享数字并不足以证明Rank 0。`,
+      ] : [
+        `ALS-XY-Wing (Triple-Linked Rank-0): A=${cn(a?.cells)}, B=${cn(b?.cells)}, C=${cn(c?.cells)}; A-C use RCC X=${x}, B-C RCC Y=${y}, and A-B a third RCC Z=${z}.`,
+        `This is not an ordinary ALS-XY-Wing with bonus eliminations. Three independent RCCs close the three ALSs pairwise, leaving no spare link capacity and making the whole structure rank 0.`,
+        `At rank 0, an outside candidate that consumes an already saturated link, or an internal candidate that double-consumes a link, exceeds the available capacity; the backend therefore emits the corresponding external and cannibal eliminations.`,
+        `1. Verify all three ALSs. 2. Verify A-C RCC X=${x}. 3. Verify B-C RCC Y=${y}. 4. Verify A-B RCC Z=${z}. 5. After confirming independence, check the rank-0 Targets/CannibalTargets${targets ? ` (${targets})` : ""}.`,
+        `Display A/B/C and all three RCCs separately. Do not colour the third RCC as the ordinary Wing's common elimination Z; keep external and cannibal eliminations distinct.`,
+        `Triple-Linked requires real backend RccX/RccY/RccZ facts. Pairwise shared digits alone do not prove rank 0.`,
+      ];
+    }
     return zh ? [
-      `ALS-XY-Wing（${branchLabel}）：A=${cellNames(a?.cells)}，B=${cellNames(b?.cells)}，枢纽ALS C=${cellNames(c?.cells)}；A-C以RCC X=${x}连接，B-C以RCC Y=${y}连接，共同删数数字为Z=${z}。`,
-      `C必须用X、Y或其他内部数字。若C不用X，则A中的X不能被C排除，A被迫转向含Z的状态；同理C不用Y会迫使B侧含Z。无论C的分配如何，A或B中的Z至少一真。`,
-      `假设目标Z成立并同时看见A、B中的全部Z，则A、B的Z都假。A只能通过X满足，B只能通过Y满足，C中的X和Y同时被排除；这与C仍需满足ALS容量矛盾。${/triple-linked/i.test(branch) ? " Triple-Linked分支还有第三链接，形成Rank 0并产生额外/自噬删数。" : ""}`,
+      `ALS-XY-Wing（${branchLabel}）：A=${cn(a?.cells)}，B=${cn(b?.cells)}，枢纽ALS C=${cn(c?.cells)}；A-C以RCC X=${x}连接，B-C以RCC Y=${y}连接，共同删数数字为Z=${z}。`,
+      `C分别通过X、Y与两个外翼相连。C无论怎样完成，都会迫使A或B至少一侧保留Z，因此两个外翼中的Z至少一个为真。`,
+      `同时看见A、B两端全部Z位置的目标若成立，就会把两个可能承接Z的外翼一起排除，所以该目标Z不能成立。`,
       `① 核对三组ALS；② 验证A-C的RCC X与B-C的RCC Y；③ 找A、B共同候选Z；④ 删除同时看见A、B全部Z的候选${targets ? `（${targets}）` : ""}。`,
-      `FB配色：A/B/C内部依次cAls1/2/3，RCC X/Y用cEdoFins(3)，Z用cFins(2)；Triple-Linked的Rank 0 Z用cDouble(10)，删数cToDel(11)/Cannibalism(12)。`,
-      `A与B不需要直接连接；两个RCC必须分别连接到同一枢纽C。Triple-Linked分支必须按实际第三链接说明。`,
+      `FB配色：A/B/C内部依次cAls1/2/3，RCC X/Y用cEdoFins(3)，Z用cFins(2)，删数cToDel(11)。`,
+      `A与B不需要直接连接；两个RCC必须分别连接到同一枢纽C。`,
     ] : [
-      `ALS-XY-Wing (${branchLabel}): A=${cellNames(a?.cells)}, B=${cellNames(b?.cells)}, hub ALS C=${cellNames(c?.cells)}; A-C use RCC X=${x}, B-C RCC Y=${y}, with target Z=${z}.`,
-      `Whatever C does, the RCCs force Z to survive in A or B.`,
-      `If a target Z seeing every Z in A and B were true, both outer Z sets would be false. A would require X and B require Y, excluding both X and Y from C and violating C's ALS capacity.${/triple-linked/i.test(branch) ? " The triple-linked branch adds a third link and becomes rank 0." : ""}`,
-      `1. Verify three ALSs. 2. Verify A-C RCC X and B-C RCC Y. 3. Find common Z in A and B. 4. Remove Z from common peers${targets ? ` (${targets})` : ""}.`,
-      `FB colours: ALS A/B/C cAls1/2/3, RCCs cEdoFins(3), Z cFins(2), rank-0 Z cDouble(10), deletions cToDel(11)/Cannibalism(12).`,
-      `A and B need not connect directly; both RCCs must meet the same hub C. Explain the triple-linked branch separately when present.`,
+      `ALS-XY-Wing (${branchLabel}): A=${cn(a?.cells)}, B=${cn(b?.cells)}, hub ALS C=${cn(c?.cells)}; A-C use RCC X=${x}, B-C RCC Y=${y}, with target Z=${z}.`,
+      `C connects to the two outer ALSs through X and Y. Whatever completes C forces Z to remain in A or B, so at least one outer Z is true.`,
+      `A target Z seeing every Z carrier in both A and B would eliminate both possible Z carriers, so that target is false.`,
+      `1. Verify all three ALSs. 2. Verify A-C RCC X and B-C RCC Y. 3. Find common Z in A and B. 4. Remove Z from common peers${targets ? ` (${targets})` : ""}.`,
+      `FB colours: ALS A/B/C cAls1/2/3, RCCs cEdoFins(3), Z cFins(2), eliminations cToDel(11).`,
+      `A and B need not connect directly; both RCCs must meet the same hub C.`,
     ];
   }
 
   if (kind === "ALSWWing") {
     const a = firstGroup(step, /^alsa$/i), b = firstGroup(step, /^alsb$/i);
-    const strong = groupsMatching(step, /^stronglink$/i).map((g) => `${digitText(g.digits)}@${g.houses.join("/") || cellNames(g.cells)}`).join(zh ? "、" : ", ");
-    const z = digitText(firstGroup(step, /^z$/i)?.digits) || primaryDigits(step);
+    const strongGroups = groupsMatching(step, /^stronglink$/i);
+    const strong = strongGroups.map((g) => `${digitText(g.digits)}@${g.houses.join("/") || cn(g.cells)}`).join(zh ? "、" : ", ");
+    const residual = firstGroup(step, /^residualdigits$/i);
+    const residualDigits = digitText(residual?.digits);
+    const z = digitText(firstGroup(step, /^z$/i)?.digits) || digitText(step?.eliminations?.flatMap?.((x) => x?.candidates || []) || []);
+    const rank0 = /rank-?0/i.test(branch);
+    if (rank0) {
+      return zh ? [
+        `ALS-W-Wing（${branchLabel}）：两组ALS A=${cn(a?.cells)}、B=${cn(b?.cells)}由两条独立链接${strong || "后端高亮链接"}闭合${residualDigits ? `；其余结构数字为${residualDigits}` : ""}。`,
+        "双链接分支不是普通W-Wing的共同Z证明。两条独立链接把两组ALS的自由度完全闭合，使结构成为秩 0；因此不要求存在单一共同Z。",
+        "把两组ALS视为Truth需求，把两条实际强链接/同区域RCC视为独立Link容量。链接名额与结构自由度相等后，任何外部候选或结构内重复占用若再消耗链接容量都会造成超额，因此可删除。",
+        `① 验证两组ALS；② 逐条核对后端给出的两个独立链接${strong ? `（${strong}）` : ""}；③ 核对其余结构数字${residualDigits || "（见后端角色）"}；④ 按秩 0 容量应用本步删数${targets ? `（${targets}）` : ""}。`,
+        "FB配色应分别显示两组ALS、两条真实链接、其余结构数字和删数；不能继续使用普通W-Wing的单一Z着色模板。",
+        "秩 0分支必须以实际第二链接或同区域RCC为证明依据；若只有一条链接，就不能套用本分支。",
+      ] : [
+        `ALS-W-Wing (${branch}): ALS A=${cn(a?.cells)} and B=${cn(b?.cells)} close through two independent links ${strong || "shown by the backend"}${residualDigits ? `; residual structure digits ${residualDigits}` : ""}.`,
+        "This double-linked branch is not the ordinary common-Z W-Wing proof. Two independent links close the ALS freedoms to rank 0, so no single common Z is required.",
+        "Treat the two ALSs as truth demand and the two actual strong links/same-house RCCs as independent link capacity. Once capacity equals the structure freedom, any outside or duplicate internal candidate that consumes more capacity is false.",
+        `1. Verify both ALSs. 2. Verify both backend links${strong ? ` (${strong})` : ""}. 3. Check residual structure digits${residualDigits ? ` ${residualDigits}` : ""}. 4. Apply the rank-0 capacity eliminations${targets ? ` (${targets})` : ""}.`,
+        "Display the two ALSs, both real links, residual structure digits and eliminations as separate roles; do not reuse the ordinary W-Wing single-Z colour template.",
+        "A rank-0 branch requires the actual second link or same-house RCC. With only one link, this branch is not proved.",
+      ];
+    }
     return zh ? [
-      `ALS-W-Wing（${branchLabel}）：两组ALS A=${cellNames(a?.cells)}、B=${cellNames(b?.cells)}由外部强链${strong || "高亮StrongLink"}连接，共同目标数字为${z}。`,
-      `强链数字在连接区域中恰有一个成立。若它在A侧为假，则A必须用共同目标数字；若在B侧为假，则B必须用共同目标数字。因此A、B中的目标数字至少一真。`,
-      `设连接数字为X、目标为Z。强链给出X_A∨X_B且¬(X_A∧X_B)。ALS容量给出¬X_A⇒Z_A、¬X_B⇒Z_B，所以Z_A∨Z_B。共同可见的外部Z可删。${/rank-0/i.test(branch) ? " 本分支含双强链或同屋RCC，链接数与自由度相等，按Rank 0产生额外删数。" : ""}`,
-      `① 验证两组ALS；② 找连接它们的普通或Grouped强链；③ 确认强链端分别看见两组ALS内全部连接数字；④ 找共同Z并删除共同可见目标${targets ? `（${targets}）` : ""}。`,
-      `FB配色：ALS内部cAls1/2，同屋RCC cEdoFins(3)，外部强链cDouble(10)，目标Z cFins(2)，删数cToDel(11)/Cannibalism(12)。`,
-      `Grouped分支的强链端可以是组节点，不能降格成单候选强链；Rank-0分支还要核对第二链接或同屋RCC。`,
+      `ALS-W-Wing（${branchLabel}）：两组ALS A=${cn(a?.cells)}、B=${cn(b?.cells)}由外部强链${strong || "高亮强链"}连接，共同目标数字为${z}。`,
+      "强链数字在连接区域中恰有一个成立。若它在A侧为假，则A必须用共同目标数字；若在B侧为假，则B必须用共同目标数字。因此A、B中的目标数字至少一真。",
+      "把连接数字看成二选一：强链至少会让一侧承接连接数字。没有承接连接数字的那一侧ALS就必须保留目标Z，因此两组ALS中的Z至少一侧成立；同时看见两侧全部Z位置的外部Z便不能成立。",
+      `① 验证两组ALS；② 找连接它们的普通或分组强链；③ 确认强链端分别看见两组ALS内全部连接数字；④ 找共同Z并删除共同可见目标${targets ? `（${targets}）` : ""}。`,
+      "FB配色：ALS内部cAls1/2，同屋RCC cEdoFins(3)，外部强链cDouble(10)，目标Z cFins(2)，删数cToDel(11)/自噬删数(12)。",
+      "分组分支的强链端可以是组节点，不能降格成单候选强链。",
     ] : [
-      `ALS-W-Wing (${branchLabel}): ALS A=${cellNames(a?.cells)} and B=${cellNames(b?.cells)} are connected by ${strong || "the highlighted strong link"}; target digit ${z}.`,
-      `Exactly one side of the connector is true. Whichever side is false forces the corresponding ALS to use target Z, so Z survives in A or B.`,
-      `For connector X and target Z: X_A∨X_B with not both; ALS capacity gives ¬X_A⇒Z_A and ¬X_B⇒Z_B, hence Z_A∨Z_B. Common-peer Z is false.${/rank-0/i.test(branch) ? " A second link or same-house RCC makes this branch rank 0." : ""}`,
+      `ALS-W-Wing (${branch}): ALS A=${cn(a?.cells)} and B=${cn(b?.cells)} are connected by ${strong || "the highlighted strong link"}; target digit ${z}.`,
+      "Exactly one side of the connector is true. Whichever side is false forces the corresponding ALS to use target Z, so Z survives in A or B.",
+      "Treat connector X as a two-way choice: at least one side carries X. The ALS on the side that does not carry X must retain target Z, so Z survives in at least one ALS; an outside Z seeing every Z position on both sides is therefore false.",
       `1. Verify both ALSs. 2. Find the ordinary/grouped strong connector. 3. Confirm each end sees all connector candidates in its ALS. 4. Remove common-peer Z${targets ? ` (${targets})` : ""}.`,
-      `FB colours: ALS cAls1/2, same-house RCC cEdoFins(3), external strong link cDouble(10), Z cFins(2), deletions cToDel(11)/Cannibalism(12).`,
-      `Grouped endpoints are group nodes, not single-candidate links. Rank-0 output requires the additional link to be verified.`,
+      "FB colours: ALS cAls1/2, same-house RCC cEdoFins(3), external strong link cDouble(10), Z cFins(2), deletions cToDel(11)/cannibal eliminations.",
+      "Grouped endpoints are group nodes, not single-candidate links.",
     ];
   }
 
@@ -2186,17 +2481,20 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
     const triple = /triple-linked/i.test(branch);
     const a = firstGroup(step, /^ahsa$/i), b = firstGroup(step, /^ahsb(?:\(pivot\))?$/i), c = firstGroup(step, /^ahsc$/i);
     const rccX = firstGroup(step, /^rccx$/i), rccY = firstGroup(step, /^rccy$/i), rccZ = firstGroup(step, /^rccz$/i);
+    const rccXLabel = localizedProofMeta(rccX?.tail || "高亮事件", locale);
+    const rccYLabel = localizedProofMeta(rccY?.tail || "高亮事件", locale);
+    const rccZLabel = localizedProofMeta(rccZ?.tail || "高亮事件", locale);
     const extraXA = firstGroup(step, /^extrax\(a\)$/i), hlsXA = firstGroup(step, /^hlsx\(a\)$/i), supportXA = firstGroup(step, /^supportx\(a\)$/i);
     const extraXB = firstGroup(step, /^extrax\(b\)$/i), hlsXB = firstGroup(step, /^hlsx\(b\)$/i), supportXB = firstGroup(step, /^supportx\(b\)$/i);
     const extraYC = firstGroup(step, /^extray\(c\)$/i), hlsYC = firstGroup(step, /^hlsy\(c\)$/i), supportYC = firstGroup(step, /^supporty\(c\)$/i);
     const extraYB = firstGroup(step, /^extray\(b\)$/i), hlsYB = firstGroup(step, /^hlsy\(b\)$/i), supportYB = firstGroup(step, /^supporty\(b\)$/i);
     const extraZA = firstGroup(step, /^extraz\(a\)$/i), hlsZA = firstGroup(step, /^hlsz\(a\)$/i), supportZA = firstGroup(step, /^supportz\(a\)$/i);
     const extraZC = firstGroup(step, /^extraz\(c\)$/i), hlsZC = firstGroup(step, /^hlsz\(c\)$/i), supportZC = firstGroup(step, /^supportz\(c\)$/i);
-    const ahsLabel = (group) => `${digitText(group?.digits, "") || "?"}@${group?.houses?.join("/") || "house"}{${cellNames(group?.cells)}}`;
+    const ahsLabel = (group) => `${digitText(group?.digits, "") || "?"}@${group?.houses?.join("/") || "house"}{${cn(group?.cells)}}`;
     const endpoint = (extra, hls, support, label) => [
-      extra ? `${label}${zh ? "Extra格" : " Extra"}=${cellNames(extra.cells)}` : "",
-      hls ? `${zh ? "局部HLS/见证格组" : "local HLS/witness"}=${cellNames(hls.cells)}` : "",
-      support ? `${zh ? "支撑" : "support"}=${digitText(support.digits)}@${cellNames(support.cells)}` : "",
+      extra ? `${label}${zh ? "额外格" : " Extra"}=${cn(extra.cells)}` : "",
+      hls ? `${zh ? "局部HLS/见证格组" : "local HLS/witness"}=${cn(hls.cells)}` : "",
+      support ? `${zh ? "支撑" : "support"}=${digitText(support.digits)}@${cn(support.cells)}` : "",
     ].filter(Boolean).join(zh ? "，" : ", ");
     const xA = endpoint(extraXA, hlsXA, supportXA, zh ? "A端" : "A-side");
     const xB = endpoint(extraXB, hlsXB, supportXB, zh ? "枢纽X端" : "pivot-X");
@@ -2205,26 +2503,26 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
     const zA = endpoint(extraZA, hlsZA, supportZA, zh ? "A端" : "A-side");
     const zC = endpoint(extraZC, hlsZC, supportZC, zh ? "C端" : "C-side");
     return zh ? [
-      `AHS-XY-Wing${triple ? " Triple-Linked Rank-0" : ""}：AHS A=${ahsLabel(a)}、枢纽AHS B=${ahsLabel(b)}、AHS C=${ahsLabel(c)}；RCC X=${rccX?.tail || "高亮事件"}，RCC Y=${rccY?.tail || "高亮事件"}${triple ? `，RCC Z=${rccZ?.tail || "高亮事件"}` : ""}。`,
+      `AHS-XY-Wing${triple ? " 三重链接秩 0" : ""}：AHS A=${ahsLabel(a)}、枢纽AHS B=${ahsLabel(b)}、AHS C=${ahsLabel(c)}；RCC X=${rccXLabel}，RCC Y=${rccYLabel}${triple ? `，RCC Z=${rccZLabel}` : ""}。`,
       triple
-        ? "X、Y、Z都是AHS Extra事件的独立rank-1析取。每组AHS恰有一个Extra格，同一AHS上属于两条边的事件互斥且不复用Hall/HLS证明资源，因此三角形只能落入两个交替全局状态，全部链接容量闭合为Rank 0。"
-        : "两条RCC都是AHS的Extra事件析取，不是普通候选强链。RCC X保证A端Extra或枢纽X事件成立，RCC Y保证C端Extra或枢纽Y事件成立；枢纽的X、Y事件互斥，因此A端Extra与C端Extra至少一个成立。",
+        ? "每组AHS都恰有一个Extra格。三条RCC分别保证相连的两组AHS中至少一端必须贡献Extra；同一AHS又不能同时为相邻两条边贡献Extra。于是任意一条边选定哪一端后，其余两条边被迫交替，最终只剩两个全局状态，全部链接容量恰好闭合为Rank 0。"
+        : "两条RCC都是AHS的额外格事件析取，不是普通候选强链。RCC X保证A端额外格事件或枢纽X事件成立，RCC Y保证C端额外格事件或枢纽Y事件成立；枢纽的X、Y事件互斥，因此A端额外格事件与C端额外格事件至少一个成立。",
       triple
-        ? "三条边可写成(E_AX∨E_BX)、(E_CY∨E_BY)、(E_AZ∨E_CZ)。端点互斥后只剩E_AX/E_BY/E_CZ与E_AZ/E_BX/E_CY两个状态。程序对两个状态中的全部合法AHS匹配求共同结论；所有状态都不能容纳的结构内候选，以及所有状态都必被同数字看见的外部候选，均可删除。"
-        : "记两条边为 (E_A ∨ E_BX) 与 (E_C ∨ E_BY)。若 E_BX ∧ E_BY 不可能，且两条边没有复用同一Hall/HLS证明资源，则推出 E_A ∨ E_C。分别枚举满足E_A与满足E_C的全部合法AHS匹配；两个分支都排除的候选才可删除。",
+        ? "三条RCC在三个AHS之间首尾闭合。每个AHS只能贡献一个Extra事件，所以一条边选定端点后，另外两条边的端点随之被迫交替，最终只剩两个互补的全局状态。程序枚举这两个状态的全部合法AHS匹配；两个状态都无法容纳的结构内候选，以及两个状态都会排除的外部候选，均可删除。"
+        : "RCC X要求A端或枢纽X端至少一侧贡献Extra事件，RCC Y也要求C端或枢纽Y端至少一侧贡献Extra事件。枢纽的两个事件不能同时发生，而且两条RCC不能复用同一Hall/HLS证明资源，因此至少一个外翼Extra事件成立。分别枚举A端与C端成立时的合法AHS匹配；两个分支都排除的候选才可删除。",
       triple
-        ? `① 按候选数组合与house确认A、B、C；② 核对RCC X：${xA || "A端见证"}${xB ? `；${xB}` : ""}；③ 核对RCC Y：${yC || "C端见证"}${yB ? `；${yB}` : ""}；④ 核对RCC Z：${zA || "A端见证"}${zC ? `；${zC}` : ""}；⑤ 确认各端点事件互斥、证明资源独立及两个全局状态可行；⑥ 应用Rank-0删数${targets ? `（${targets}）` : ""}。`
-        : `① 按候选数组合与house确认A、B、C三组AHS；② 核对RCC X两端：${xA || "A端见证"}${xB ? `；${xB}` : ""}；③ 核对RCC Y两端：${yC || "C端见证"}${yB ? `；${yB}` : ""}；④ 确认枢纽事件互斥且证明资源不复用；⑤ 取两个外翼Extra分支的共同删数${targets ? `（${targets}）` : ""}。`,
+        ? `① 按候选数组合及所属行、列或宫确认A、B、C；② 核对RCC X：${xA || "A端见证"}${xB ? `；${xB}` : ""}；③ 核对RCC Y：${yC || "C端见证"}${yB ? `；${yB}` : ""}；④ 核对RCC Z：${zA || "A端见证"}${zC ? `；${zC}` : ""}；⑤ 确认各端点事件互斥、证明资源独立及两个全局状态可行；⑥ 应用Rank-0删数${targets ? `（${targets}）` : ""}。`
+        : `① 按候选数组合及所属行、列或宫确认A、B、C三组AHS；② 核对RCC X两端：${xA || "A端见证"}${xB ? `；${xB}` : ""}；③ 核对RCC Y两端：${yC || "C端见证"}${yB ? `；${yB}` : ""}；④ 确认枢纽事件互斥且证明资源不复用；⑤ 取两个外翼额外格事件分支的共同删数${targets ? `（${targets}）` : ""}。`,
       triple
         ? "整格底色分别标出RCC X、Y、Z的Hall/HLS证明格；第三条RCC使用独立的后端颜色。候选色仍只标真实支撑位置、端点独有/共有候选以及删数。"
-        : "整格底色按RCC配对：RCC X两端的局部HLS/Hall见证格使用同一种底色，RCC Y两端使用另一种底色；同一格同时属于两条RCC时，只显示后端明确输出的双色条带。候选数颜色区分端点独有、共有及逐数字真实支撑位置。AHS本体应按“候选数组合@house”阅读，不能按格子候选并集阅读。",
+        : "整格底色按RCC配对：RCC X两端的局部HLS/Hall见证格使用同一种底色，RCC Y两端使用另一种底色；同一格同时属于两条RCC时，只显示后端明确输出的双色条带。候选数颜色区分端点独有、共有及逐数字真实支撑位置。AHS本体应按“候选数组合+所属行/列/宫”阅读，不能按格子候选并集阅读。",
       triple
-        ? "不能因外翼有一个重叠格就直接标Triple-Linked。X/Y/Z必须分别是严格rank-1 RCC；若共享格仍能取两组AHS共有数字，它就不是Shared-Cell RCC。还必须验证同端事件与证明资源独立，并确认至少一个交替状态存在。"
-        : "不能只因三组AHS之间存在两条边就判定成立。两条RCC必须各自是严格rank-1事件，枢纽事件必须互斥，且不能复用同一HLS/Hall证明资源；任何合法匹配中的支撑位置都不能漏标。",
+        ? "不能因外翼有一个重叠格就直接标三重链接。X/Y/Z必须分别是严格秩 1 RCC；若共享格仍能取两组AHS共有数字，它就不是共享格型 RCC。还必须验证同端事件与证明资源独立，并确认至少一个交替状态存在。"
+        : "不能只因三组AHS之间存在两条边就判定成立。两条RCC必须各自是严格秩 1 事件，枢纽事件必须互斥，且不能复用同一HLS/Hall证明资源；任何合法匹配中的支撑位置都不能漏标。",
     ] : [
-      `AHS-XY-Wing${triple ? " Triple-Linked Rank-0" : ""}: AHS A=${ahsLabel(a)}, pivot AHS B=${ahsLabel(b)}, and AHS C=${ahsLabel(c)}; RCC X=${rccX?.tail || "highlighted event"}, RCC Y=${rccY?.tail || "highlighted event"}${triple ? `, RCC Z=${rccZ?.tail || "highlighted event"}` : ""}.`,
+      `AHS-XY-Wing${triple ? " Triple-Linked Rank-0" : ""}: AHS A=${ahsLabel(a)}, pivot AHS B=${ahsLabel(b)}, and AHS C=${ahsLabel(c)}; RCC X=${rccXLabel}, RCC Y=${rccYLabel}${triple ? `, RCC Z=${rccZLabel}` : ""}.`,
       triple
-        ? "X, Y, and Z are independent rank-1 AHS Extra-event disjunctions. Each AHS has exactly one Extra cell; incident events and Hall/HLS proof resources are disjoint, so the triangle has only two alternating global states and closes to rank 0."
+        ? "Each AHS has exactly one Extra cell. Each RCC says that at least one of its two endpoint AHSs must contribute the Extra event, while one AHS cannot serve both adjacent links at once. Choosing one endpoint on any link forces the remaining two links to alternate, leaving exactly two global states and closing all link capacity to rank 0."
         : "The two RCCs are AHS Extra-event disjunctions, not ordinary candidate strong links. RCC X gives A-Extra or pivot-X; RCC Y gives C-Extra or pivot-Y. The two pivot events are mutually exclusive, so A-Extra or C-Extra must hold.",
       triple
         ? "Write the edges as (E_AX or E_BX), (E_CY or E_BY), and (E_AZ or E_CZ). Endpoint exclusivity leaves only the two alternating states E_AX/E_BY/E_CZ and E_AZ/E_BX/E_CY. Enumerate every legal AHS matching in both states; remove internal candidates absent from all states and external candidates seen by the digit in every state."
@@ -2250,52 +2548,66 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
     const rccZ = firstGroup(step, /^rccz$/i);
     const extraZA = firstGroup(step, /^extraz\(a\)$/i), hlsZA = firstGroup(step, /^hlsz\(a\)$/i), supportZA = firstGroup(step, /^supportz\(a\)$/i);
     const extraZB = firstGroup(step, /^extraz\(b\)$/i), hlsZB = firstGroup(step, /^hlsz\(b\)$/i), supportZB = firstGroup(step, /^supportz\(b\)$/i);
-    const ahsLabel = (group) => `${digitText(group?.digits, "") || "?"}@${group?.houses?.join("/") || "house"}{${cellNames(group?.cells)}}`;
+    const witnessZ = firstGroup(step, /^witnessz$/i);
+    const candidateZAOnly = firstGroup(step, /^candidatez\(aonly\)$/i);
+    const candidateZBOnly = firstGroup(step, /^candidatez\(bonly\)$/i);
+    const candidateZCommon = firstGroup(step, /^candidatez\(common\)$/i);
+    const sharedCellZ = triple && /shared-cell/i.test(String(rccZ?.tail || "")) && witnessZ;
+    const zAOnly = digitText(candidateZAOnly?.digits) || "";
+    const zBOnly = digitText(candidateZBOnly?.digits) || "";
+    const zCommon = digitText(candidateZCommon?.digits) || "";
+    const sharedZFactZh = sharedCellZ ? `；共享格见证${cn(witnessZ.cells)}中，A端独有候选={${zAOnly || "无"}}，B端独有候选={${zBOnly || "无"}}，两组AHS公共候选={${zCommon || "无"}}` : "";
+    const sharedZFactEn = sharedCellZ ? `; shared-cell witness ${cn(witnessZ.cells)} has A-only={${zAOnly || "none"}}, B-only={${zBOnly || "none"}}, common-to-both-AHS={${zCommon || "none"}}` : "";
+    const ahsLabel = (group) => `${digitText(group?.digits, "") || "?"}@${group?.houses?.join("/") || "house"}{${cn(group?.cells)}}`;
     const aGroup = digitText(pivotA?.digits) || "?";
     const bGroup = digitText(pivotB?.digits) || "?";
     const pivotDigits = digitText(pivot?.digits) || `${aGroup}/${bGroup}`;
     const endpointWitness = (extra, hls, support) => [
-      extra ? `${zh ? "Extra格" : "Extra cells"}=${cellNames(extra.cells)}` : "",
-      hls ? `${zh ? "局部HLS格组" : "local HLS"}=${cellNames(hls.cells)}` : "",
-      support ? `${zh ? "支撑位置" : "support positions"}=${digitText(support.digits)}@${cellNames(support.cells)}` : "",
+      extra ? `${zh ? "额外格" : "Extra cells"}=${cn(extra.cells)}` : "",
+      hls ? `${zh ? "局部HLS格组" : "local HLS"}=${cn(hls.cells)}` : "",
+      support ? `${zh ? "支撑位置" : "support positions"}=${digitText(support.digits)}@${cn(support.cells)}` : "",
     ].filter(Boolean).join(zh ? "，" : ", ");
     const aWitness = endpointWitness(extraA, hlsA, supportA);
     const bWitness = endpointWitness(extraB, hlsB, supportB);
     const zAWitness = endpointWitness(extraZA, hlsZA, supportZA);
     const zBWitness = endpointWitness(extraZB, hlsZB, supportZB);
     return zh ? [
-      `AHS-W-Wing${triple ? " Triple-Linked Rank-0" : ""}：AHS A=${ahsLabel(a)}，单格枢纽${cellNames(pivot?.cells)}{${pivotDigits}}的全部候选完整分为A端组${aGroup}与B端组${bGroup}，AHS B=${ahsLabel(b)}${triple ? `；端点RCC Z=${rccZ?.tail || "高亮事件"}` : ""}。`,
+      `AHS-W-Wing${triple ? " 三重链接秩 0" : ""}：AHS A=${ahsLabel(a)}，单格枢纽${cn(pivot?.cells)}{${pivotDigits}}的全部候选完整分为A端组${aGroup}与B端组${bGroup}，AHS B=${ahsLabel(b)}${triple ? `；端点RCC Z=${rccZ?.tail || "高亮事件"}${sharedZFactZh}` : ""}。`,
       triple
-        ? "枢纽候选分组给出A、B两条条件Extra链接，端点RCC Z再给出第三条独立rank-1析取。同一端点的枢纽事件与Z事件互斥，因此只剩“枢纽取A组、B走Z”和“枢纽取B组、A走Z”两个交替状态，结构闭合为Rank 0。"
-        : "这不是两个集合由外部强链直接连接。枢纽中每个候选都被指派到一侧AHS端点，并且必须看见该侧支撑数字在全部合法匹配中的所有位置；枢纽取该候选时，会排除这些支撑位置并强制相应AHS的Extra事件。",
+        ? (sharedCellZ
+          ? `枢纽只有两组候选：取A侧时会触发A端Extra，取B侧时会触发B端Extra。第三条RCC Z来自共享格${cn(witnessZ.cells)}：它只能取A端独有候选{${zAOnly || "?"}}或B端独有候选{${zBOnly || "?"}}，两组AHS在该格没有公共候选${zCommon ? `（当前却出现{${zCommon}}，应视为验收失败）` : ""}。因此共享格无论取什么都至少让A/B一端成为Extra，补上第三条独立链接；两种枢纽取值分别锁定一个互补状态，三条链接闭合为Rank 0。`
+          : "枢纽候选分组给出A、B两条条件额外格链接，端点RCC Z再给出第三条独立秩 1 析取。同一端点的枢纽事件与Z事件互斥，因此只剩“枢纽取A组、B走Z”和“枢纽取B组、A走Z”两个交替状态，结构闭合为Rank 0。")
+        : "这不是两个集合由外部强链直接连接。枢纽中每个候选都被指派到一侧AHS端点，并且必须看见该侧支撑数字在全部合法匹配中的所有位置；枢纽取该候选时，会排除这些支撑位置并强制相应AHS的额外格事件。",
       triple
-        ? "令枢纽分组为P_A、P_B，端点RCC为E_AZ∨E_BZ。P_A分支强制E_A并排除E_AZ，所以必须E_BZ；P_B分支同理必须E_AZ。程序枚举两个状态下的枢纽取值与AHS匹配，所有状态共同排除的候选为假。"
-        : "令枢纽候选集P=P_A∪P_B且无遗漏。对任意p∈P_A有p⇒E_A，对任意p∈P_B有p⇒E_B；枢纽必取P中的一个候选，所以E_A∨E_B。分别枚举E_A与E_B条件下的全部合法AHS匹配，两个分支共同排除的目标为假。双值枢纽只是|P_A|=|P_B|=1的最小特例。",
+        ? "枢纽取A端组时会触发A端Extra，同时第三条RCC只能由B端承接；枢纽取B端组时情况相反。于是只剩两个互补的Rank-0状态。程序枚举两个状态下的枢纽取值与AHS匹配，所有状态共同排除的候选都可删除。"
+        : "枢纽的全部候选被完整分到A端组和B端组：取A端组中的任一候选都会触发A端Extra，取B端组中的任一候选都会触发B端Extra。枢纽必定取其中一个候选，所以至少一端Extra事件成立。分别枚举两端成立时的全部合法AHS匹配，两个分支共同排除的目标可删；双值枢纽只是每组各一个候选的最小特例。",
       triple
-        ? `① 按候选数组合与house确认两端AHS；② 确认枢纽${cellNames(pivot?.cells)}候选${pivotDigits}完整分成${aGroup}|${bGroup}；③ 核对A端${aWitness || "HLS与支撑"}；④ 核对B端${bWitness || "HLS与支撑"}；⑤ 核对RCC Z的A端${zAWitness || "见证"}与B端${zBWitness || "见证"}；⑥ 验证端点事件独立与两个全局状态后应用删数${targets ? `（${targets}）` : ""}。`
-        : `① 按候选数组合与house确认两端AHS；② 确认枢纽${cellNames(pivot?.cells)}的候选${pivotDigits}被完整分成${aGroup}|${bGroup}；③ 核对A端${aWitness || "HLS与支撑"}；④ 核对B端${bWitness || "HLS与支撑"}；⑤ 比较两个Extra事件分支并保留共同删数${targets ? `（${targets}）` : ""}。`,
+        ? `① 按候选数组合及所属行、列或宫确认两端AHS；② 确认枢纽${cn(pivot?.cells)}候选${pivotDigits}完整分成${aGroup}|${bGroup}；③ 核对A端${aWitness || "HLS与支撑"}；④ 核对B端${bWitness || "HLS与支撑"}；⑤ 核对RCC Z的A端${zAWitness || "见证"}与B端${zBWitness || "见证"}；⑥ 验证端点事件独立与两个全局状态后应用删数${targets ? `（${targets}）` : ""}。`
+        : `① 按候选数组合及所属行、列或宫确认两端AHS；② 确认枢纽${cn(pivot?.cells)}的候选${pivotDigits}被完整分成${aGroup}|${bGroup}；③ 核对A端${aWitness || "HLS与支撑"}；④ 核对B端${bWitness || "HLS与支撑"}；⑤ 比较两个额外格事件分支并保留共同删数${targets ? `（${targets}）` : ""}。`,
       triple
         ? "A、B端局部HLS与枢纽继续使用两种配对底色；第三条端点RCC Z使用独立底色标出Hall/HLS见证。候选色只标真实逐数字支撑、枢纽分组与删数。"
         : "整格底色按枢纽配对：A端局部HLS与枢纽同用第一种底色，B端局部HLS与枢纽同用第二种底色，枢纽因同时连接两端而显示后端明确输出的双色条带。候选数颜色只标逐数字真实支撑位置，枢纽候选按A/B分组单独着色。不要把HLS格组、支撑候选和AHS本体混成一个普通集合节点。",
       triple
-        ? "除完整覆盖枢纽候选外，RCC Z必须是真实rank-1关系；同端枢纽事件与Z事件及其证明资源必须互斥、独立，两个全局状态至少一个可行。端点重叠本身不能证明Rank 0。"
+        ? (sharedCellZ ? `Shared-Cell RCC必须逐候选核对：WitnessZ=${cn(witnessZ.cells)}，AOnly={${zAOnly || "?"}}，BOnly={${zBOnly || "?"}}，Common={${zCommon || "无"}}；只有Common为空时，“共享格必为至少一端Extra”才成立。再核对枢纽覆盖、事件独立与全局状态可行。` : "除完整覆盖枢纽候选外，RCC Z必须是真实秩 1 关系；同端枢纽事件与Z事件及其证明资源必须互斥、独立，两个全局状态至少一个可行。端点重叠本身不能证明Rank 0。")
         : "枢纽不要求恰好双值，但其每个候选必须归入至少一侧且最终分组完整。每个枢纽候选都必须看见所属端支撑数字的全部有效位置；漏掉合法匹配位置、只存在普通弱可见关系或直接套普通W-Wing强链模板，结构都不成立。",
     ] : [
-      `AHS-W-Wing${triple ? " Triple-Linked Rank-0" : ""}: AHS A=${ahsLabel(a)}; every candidate of single-cell pivot ${cellNames(pivot?.cells)}{${pivotDigits}} is partitioned into A-side ${aGroup} and B-side ${bGroup}; AHS B=${ahsLabel(b)}${triple ? `; endpoint RCC Z=${rccZ?.tail || "highlighted event"}` : ""}.`,
+      `AHS-W-Wing${triple ? " Triple-Linked Rank-0" : ""}: AHS A=${ahsLabel(a)}; every candidate of single-cell pivot ${cn(pivot?.cells)}{${pivotDigits}} is partitioned into A-side ${aGroup} and B-side ${bGroup}; AHS B=${ahsLabel(b)}${triple ? `; endpoint RCC Z=${rccZ?.tail || "highlighted event"}${sharedZFactEn}` : ""}.`,
       triple
-        ? "The pivot partition supplies two conditional Extra links and endpoint RCC Z supplies the third independent rank-1 disjunction. At each endpoint the pivot event and Z event are mutually exclusive, leaving only pivot-A with B-Z or pivot-B with A-Z; the structure closes to rank 0."
+        ? (sharedCellZ
+          ? `The pivot partition supplies two conditional Extra links. The third RCC Z is a backend-verified Shared-Cell event: witness ${cn(witnessZ.cells)} can take only A-only candidate(s) {${zAOnly || "?"}} or B-only candidate(s) {${zBOnly || "?"}}, with no candidate common to both AHS digit sets${zCommon ? ` (but {${zCommon}} is present, which should fail validation)` : ""}. Whatever value the shared cell takes, it is Extra for at least one endpoint, giving the independent rank-1 clause E_AZ or E_BZ. The three links close to rank 0.`
+          : "The pivot partition supplies two conditional Extra links and endpoint RCC Z supplies the third independent rank-1 disjunction. At each endpoint the pivot event and Z event are mutually exclusive, leaving only pivot-A with B-Z or pivot-B with A-Z; the structure closes to rank 0.")
         : "This is not two set nodes joined directly by an external strong link. Every pivot value is assigned to an AHS endpoint and must see every valid support position for that endpoint; taking the value removes those supports and forces the endpoint Extra-event.",
       triple
         ? "Let the pivot groups be P_A and P_B and the endpoint RCC be E_AZ or E_BZ. A P_A value forces E_A and excludes E_AZ, hence E_BZ; the P_B branch symmetrically forces E_AZ. Enumerate pivot values and AHS matchings in both states; candidates excluded by every state are false."
         : "Let P=P_A union P_B with no uncovered pivot value. For p in P_A, p implies E_A; for p in P_B, p implies E_B. The pivot takes one value, hence E_A or E_B. Enumerate every legal AHS matching under each event; only eliminations common to both branches are valid. A bivalue pivot is only the smallest |P_A|=|P_B|=1 case.",
       triple
-        ? `1. Verify both AHSs by digit set and house. 2. Confirm pivot ${cellNames(pivot?.cells)} candidates ${pivotDigits} are fully partitioned as ${aGroup}|${bGroup}. 3. Verify A-side ${aWitness || "HLS and supports"}. 4. Verify B-side ${bWitness || "HLS and supports"}. 5. Verify RCC Z at A (${zAWitness || "witness"}) and B (${zBWitness || "witness"}). 6. Check event/resource independence and global-state feasibility, then apply eliminations${targets ? ` (${targets})` : ""}.`
-        : `1. Verify both AHS endpoints by digit set and house. 2. Confirm pivot ${cellNames(pivot?.cells)} candidates ${pivotDigits} are completely partitioned as ${aGroup}|${bGroup}. 3. Verify A-side ${aWitness || "HLS and supports"}. 4. Verify B-side ${bWitness || "HLS and supports"}. 5. Keep only common Extra-branch eliminations${targets ? ` (${targets})` : ""}.`,
+        ? `1. Verify both AHSs by digit set and house. 2. Confirm pivot ${cn(pivot?.cells)} candidates ${pivotDigits} are fully partitioned as ${aGroup}|${bGroup}. 3. Verify A-side ${aWitness || "HLS and supports"}. 4. Verify B-side ${bWitness || "HLS and supports"}. 5. Verify RCC Z at A (${zAWitness || "witness"}) and B (${zBWitness || "witness"}). 6. Check event/resource independence and global-state feasibility, then apply eliminations${targets ? ` (${targets})` : ""}.`
+        : `1. Verify both AHS endpoints by digit set and house. 2. Confirm pivot ${cn(pivot?.cells)} candidates ${pivotDigits} are completely partitioned as ${aGroup}|${bGroup}. 3. Verify A-side ${aWitness || "HLS and supports"}. 4. Verify B-side ${bWitness || "HLS and supports"}. 5. Keep only common Extra-branch eliminations${targets ? ` (${targets})` : ""}.`,
       triple
         ? "The A/B local HLS groups and pivot retain their two pair fills; endpoint RCC Z uses an independent fill for its Hall/HLS witness. Candidate colours mark only exact supports, pivot groups, and eliminations."
         : "Cell fills encode pivot pairing: the A-side local HLS and pivot share one backend fill, and the B-side local HLS and pivot share another; the pivot therefore shows both explicit backend bands. Candidate colours mark exact per-digit supports and pivot candidates by side. Do not merge HLS cells, supports, and the AHS body into one ordinary set node.",
       triple
-        ? "Besides complete pivot coverage, RCC Z must be a genuine rank-1 relation. The pivot and Z events/resources at each endpoint must be disjoint and independent, and at least one global state must be feasible. Endpoint overlap alone does not prove rank 0."
+        ? (sharedCellZ ? `For a Shared-Cell RCC verify every candidate explicitly: WitnessZ=${cn(witnessZ.cells)}, AOnly={${zAOnly || "?"}}, BOnly={${zBOnly || "?"}}, Common={${zCommon || "none"}}. Only an empty Common set proves that the shared cell is Extra for at least one endpoint. Then verify pivot coverage, event independence, and global-state feasibility.` : "Besides complete pivot coverage, RCC Z must be a genuine rank-1 relation. The pivot and Z events/resources at each endpoint must be disjoint and independent, and at least one global state must be feasible. Endpoint overlap alone does not prove rank 0.")
         : "The pivot need not be bivalue, but every value must be covered by the complete partition. Each value must see every valid support position of its assigned endpoint. Missing a legal support, having only an ordinary weak visibility relation, or reusing an ordinary W-Wing strong-link template invalidates the structure.",
     ];
   }
@@ -2303,40 +2615,78 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
 
   if (kind === "AHSXZ") {
     const a = firstGroup(step, /^ahsa$/i), b = firstGroup(step, /^ahsb$/i), rcc = firstGroup(step, /^rcc$/i);
-    const x = digitText(rcc?.digits) || rcc?.tail || "cell";
+    const rccClass = firstGroup(step, /^rccclass$/i);
+    const extended = /extended-rcc/i.test(String(branch || "")) || /extended-rcc/i.test(String(rccClass?.tail || ""));
+    const x = digitText(rcc?.digits) || localizedProofMeta(rcc?.tail || (zh ? "共享格" : "cell"), locale);
     const ahsLabel = (group) => {
       const digits = digitText(group?.digits, "") || "?";
       const house = group?.houses?.join("/") || "house";
-      return `${digits}@${house}{${cellNames(group?.cells)}}`;
+      return `${digits}@${house}{${cn(group?.cells)}}`;
     };
+    const rccEvidence = [];
+    for (let i = 1; i <= 2; i += 1) {
+      const rel = firstGroup(step, new RegExp(`^rcc${i}$`, "i"));
+      if (!rel) continue;
+      const extraA = firstGroup(step, new RegExp(`^rcc${i}extraa$`, "i"));
+      const hlsA = firstGroup(step, new RegExp(`^rcc${i}hlsa$`, "i"));
+      const supportA = firstGroup(step, new RegExp(`^rcc${i}supporta$`, "i"));
+      const extraB = firstGroup(step, new RegExp(`^rcc${i}extrab$`, "i"));
+      const hlsB = firstGroup(step, new RegExp(`^rcc${i}hlsb$`, "i"));
+      const supportB = firstGroup(step, new RegExp(`^rcc${i}supportb$`, "i"));
+      const witness = firstGroup(step, new RegExp(`^rcc${i}witness$`, "i"));
+      rccEvidence.push({i, rel, extraA, hlsA, supportA, extraB, hlsB, supportB, witness});
+    }
+    const evidenceText = (ev) => {
+      const kindLabel = localizedProofMeta(ev.rel?.tail || "RCC", locale);
+      const aParts = [
+        ev.extraA ? `${zh ? "A端Extra" : "A-Extra"}=${cn(ev.extraA.cells)}` : "",
+        ev.hlsA ? `${zh ? "A端HLS/Hall" : "A HLS/Hall"}=${cn(ev.hlsA.cells)}` : "",
+        ev.supportA?.cells?.length ? `${zh ? "A端支撑" : "A support"}=${digitText(ev.supportA.digits)}@${cn(ev.supportA.cells)}` : "",
+      ].filter(Boolean).join(zh ? "，" : ", ");
+      const bParts = [
+        ev.extraB ? `${zh ? "B端Extra" : "B-Extra"}=${cn(ev.extraB.cells)}` : "",
+        ev.hlsB ? `${zh ? "B端HLS/Hall" : "B HLS/Hall"}=${cn(ev.hlsB.cells)}` : "",
+        ev.supportB?.cells?.length ? `${zh ? "B端支撑" : "B support"}=${digitText(ev.supportB.digits)}@${cn(ev.supportB.cells)}` : "",
+      ].filter(Boolean).join(zh ? "，" : ", ");
+      const w = ev.witness ? `${zh ? "，共享Hall见证" : ", shared Hall witness"}=${cn(ev.witness.cells)}` : "";
+      return `${zh ? `RCC${ev.i}` : `RCC ${ev.i}`}=${kindLabel}${aParts ? `［${aParts}` : ""}${bParts ? `${aParts ? "；" : "［"}${bParts}` : ""}${aParts || bParts ? "］" : ""}${w}`;
+    };
+    const evidence = rccEvidence.map(evidenceText).join(zh ? "；" : "; ");
+    const positional = rccEvidence.find((ev) => /locked-set position|same-digit position/i.test(String(ev.rel?.tail || "")) && ev.supportA?.cells?.length && ev.supportB?.cells?.length);
+    const positionalProofZh = positional
+      ? `以RCC${positional.i}为例：若A端Extra事件不发生于${cn(positional.extraA?.cells)}、B端Extra事件也不发生于${cn(positional.extraB?.cells)}，则两边局部HLS同时被激活，公共支撑数字${digitText(positional.supportA?.digits) || digitText(positional.supportB?.digits)}必须分别落在A端${cn(positional.supportA?.cells)}与B端${cn(positional.supportB?.cells)}。后端已验证这两组位置完全交叉互见，同一数字不可能同时在两边落子，因此两端Extra事件至少有一个必须成立。`
+      : "Extended-RCC的成立必须由后端给出的Extra事件、Hall/HLS见证与精确支撑位置证明，不能从AHS重叠外观推断。";
+    const positionalProofEn = positional
+      ? `For RCC ${positional.i}, if the A-Extra event does not occur in ${cn(positional.extraA?.cells)} and the B-Extra event does not occur in ${cn(positional.extraB?.cells)}, both local HLS constraints activate. Common support digit ${digitText(positional.supportA?.digits) || digitText(positional.supportB?.digits)} must then occur in A positions ${cn(positional.supportA?.cells)} and B positions ${cn(positional.supportB?.cells)}. The backend has verified complete cross-visibility between those position sets, so the same digit cannot be placed on both sides; hence ExtraA or ExtraB.`
+      : "An Extended-RCC must be proved by the backend Extra-events, Hall/HLS witnesses, and exact support positions, not inferred from visible AHS overlap.";
     return zh ? [
-      `AHS-XZ（${branchLabel}）：AHS A=${ahsLabel(a)}与AHS B=${ahsLabel(b)}通过受限公共位置/数字X=${x || "cell"}连接。`,
-      `AHS描述的是“少数数字只能落在少数格”的位置容量。RCC使两个AHS不能同时占用同一连接资源；若目标候选保留，会使两组AHS所需位置超过可用格或令连接资源被重复占用。`,
-      `${/double-rcc/i.test(branch) ? "两个RCC把AHS位置需求与链接容量锁成Rank 0，因此结构外与结构内的超额候选都可删。" : "单RCC分支中，A、B共同的Z位置至少一侧必须保留；同时看见所有Z位置的目标为假。"}${cannibals ? ` 自噬删数：${cannibals}。` : ""}`,
-      `① 先按候选数组合@house读取两组AHS，再查看全部承载格；② 确认X由具体格对或同格候选构成受限公共关系；③ 区分Single-RCC与Double-RCC；④ 应用目标删数${targets ? `（${targets}）` : ""}。`,
-      `FB配色：AHS A/B分别cAls1(4)/cAls2(5)，RCC端点cEdoFins(3)，普通删数cToDel(11)，结构内删数Cannibalism(12)。`,
-      `AHS的数字数与位置数关系和ALS相反；不能把AHS-XZ照抄成ALS-XZ文字。RCC可以由不同格或同一交格形成，必须按实际输出核对。`,
+      `AHS-XZ（${branchLabel}）：AHS A=${ahsLabel(a)}，AHS B=${ahsLabel(b)}${evidence ? `；${evidence}` : `；受限公共资源X=${x || "cell"}`}。`,
+      extended ? positionalProofZh : `AHS描述的是“少数数字只能落在少数格”的位置容量。RCC约束两端Extra事件，使两个AHS不能同时选择会破坏该受限资源的状态。`,
+      `${/double-rcc|rank-2 rcc/i.test(branch) ? "两个RCC把AHS位置需求与Extra事件容量闭合为Rank 0；所有合法匹配都排除的结构外或自噬候选可删。" : "单RCC保证两端Extra事件至少有一个成立。程序分别在A端成立和B端成立时枚举完整AHS匹配，只有两个分支都排除的候选才是结论。"}${cannibals ? ` 自噬删数：${cannibals}。` : ""}`,
+      `① 按数字集@house确认两组AHS；② 逐条读取后端RccN类型；③ 对Extended-RCC核对Extra、HLS/Hall和Support位置，不解析description猜关系；④ 核对支撑位置的完整互见/重叠Hall亏缺；⑤ 应用共同删数${targets ? `（${targets}）` : ""}。`,
+      `FB配色：AHS A/B分别cAls1(4)/cAls2(5)，RCC端点cEdoFins(3)，普通删数cToDel(11)，结构内自噬删数(12)。`,
+      `AHS-XZ约束的是数字—格位容量，不能照抄ALS-XZ。尤其Extended-RCC可能由1↔2、1↔3、2↔3局部HLS位置组或多格Hall见证形成，必须以本步结构化RCC事实为准。`,
     ] : [
-      `AHS-XZ (${branchLabel}): AHS A=${ahsLabel(a)} and B=${ahsLabel(b)} share restricted resource X=${x || "cell"}.`,
-      `AHS logic is positional capacity: a small digit set is confined to a small cell set. The RCC prevents both AHSs from consuming the connector simultaneously.`,
-      `${/double-rcc/i.test(branch) ? "Two RCCs form a rank-0 positional cover." : "With one RCC, the shared Z position must survive on one side; a target seeing all Z positions is false."}${cannibals ? ` Cannibal targets: ${cannibals}.` : ""}`,
-      `1. Identify both AHSs in their houses. 2. Verify the cell/digit RCC. 3. Distinguish single from double RCC. 4. Apply targets${targets ? ` (${targets})` : ""}.`,
+      `AHS-XZ (${branchLabel}): AHS A=${ahsLabel(a)}, AHS B=${ahsLabel(b)}${evidence ? `; ${evidence}` : `; restricted resource X=${x || "cell"}`}.`,
+      extended ? positionalProofEn : `AHS is positional capacity: a small digit set is confined to a small cell set. The RCC constrains the endpoint Extra-events so both AHSs cannot choose states that consume the restricted resource incompatibly.`,
+      `${/double-rcc|rank-2 rcc/i.test(branch) ? "Independent RCCs close the endpoint Extra-event capacity to rank 0; remove candidates excluded by every legal matching." : "A single RCC gives ExtraA or ExtraB. Enumerate complete AHS matchings under each event; only eliminations common to both branches are valid."}${cannibals ? ` Cannibal targets: ${cannibals}.` : ""}`,
+      `1. Verify both digits@house AHSs. 2. Read each backend RccN type. 3. For Extended-RCC, verify Extra, HLS/Hall, and Support roles rather than parsing the description. 4. Verify complete support cross-visibility or Hall deficiency. 5. Apply common eliminations${targets ? ` (${targets})` : ""}.`,
       `FB colours: AHS A/B cAls1(4)/cAls2(5), RCC endpoints cEdoFins(3), ordinary eliminations cToDel(11), internal eliminations Cannibalism(12).`,
-      `AHS reverses the ALS digit/cell capacity relation; do not reuse ALS-XZ wording. Verify the actual RCC geometry.`,
+      `AHS-XZ is digit-to-position capacity, not ALS-XZ with renamed nouns. Extended-RCC may use generalized local-HLS position groups or multi-cell Hall witnesses; trust only structured backend RCC facts.`,
     ];
   }
 
   if (kind === "SueDeCoq") {
     const sector = firstGroup(step, /^activesector$/i), box = firstGroup(step, /^sueb$/i), line = firstGroup(step, /^suel$/i), insular = firstGroup(step, /^sueinsular$/i);
     return zh ? [
-      `Sue de Coq（${branchLabel}）：活动宫线交区${cellNames(sector?.cells)}含{${digitText(sector?.digits)}}；宫侧集合${cellNames(box?.cells)}使用{${digitText(box?.digits)}}，线侧集合${cellNames(line?.cells)}使用{${digitText(line?.digits)}}${insular ? `，交区独占数字为{${digitText(insular.digits)}}` : ""}。`,
+      `Sue de Coq（${branchLabel}）：活动宫线交区${cn(sector?.cells)}含{${digitText(sector?.digits)}}；宫侧集合${cn(box?.cells)}使用{${digitText(box?.digits)}}，线侧集合${cn(line?.cells)}使用{${digitText(line?.digits)}}${insular ? `，交区独占数字为{${digitText(insular.digits)}}` : ""}。`,
       `交区、宫侧与线侧的格数自由度，恰好等于两侧链接数字及独占数字的总容量。因此这些数字被结构完全占用，宫/线其余位置不能再使用对应数字。`,
-      `源码验证 |交区格|+|宫侧格|+|线侧格| = |宫链接数字|+|线链接数字|+|独占数字|。${/cannibalized/i.test(branch) ? "宫侧与线侧共享数字造成结构内部重复覆盖，产生Cannibalism。" : "两侧链接数字不产生内部重复覆盖。"}`,
+      `源码验证 |交区格|+|宫侧格|+|线侧格| = |宫链接数字|+|线链接数字|+|独占数字|。${/cannibalized/i.test(branch) ? "宫侧与线侧共享数字造成结构内部重复覆盖，产生结构内自噬删数。" : "两侧链接数字不产生内部重复覆盖。"}`,
       `① 选宫线交区的2或3格；② 选宫外集合与线外集合；③ 合并候选并核对容量等式；④ 分离宫链接、线链接、独占与共享数字；⑤ 应用删数${targets ? `（${targets}）` : ""}。`,
-      `FB配色：独占交区数字cAls1(4)，线链接cFins(2)，宫链接cEdoFins(3)，普通删数cToDel(11)，结构内删数Cannibalism(12)。`,
-      `必须使用实际候选容量等式；“交区看起来像两个ALS”并不足够。Cannibalized分支要单独显示共享数字和结构内删数。`,
+      `FB配色：独占交区数字cAls1(4)，线链接cFins(2)，宫链接cEdoFins(3)，普通删数cToDel(11)，结构内自噬删数(12)。`,
+      `必须使用实际候选容量等式；“交区看起来像两个ALS”并不足够。自噬型分支要单独显示共享数字和结构内删数。`,
     ] : [
-      `Sue de Coq (${branchLabel}): active box-line intersection ${cellNames(sector?.cells)} has {${digitText(sector?.digits)}}; box side ${cellNames(box?.cells)} uses {${digitText(box?.digits)}}, line side ${cellNames(line?.cells)} uses {${digitText(line?.digits)}}${insular ? `, with insular digits {${digitText(insular.digits)}}` : ""}.`,
+      `Sue de Coq (${branchLabel}): active box-line intersection ${cn(sector?.cells)} has {${digitText(sector?.digits)}}; box side ${cn(box?.cells)} uses {${digitText(box?.digits)}}, line side ${cn(line?.cells)} uses {${digitText(line?.digits)}}${insular ? `, with insular digits {${digitText(insular.digits)}}` : ""}.`,
       `The cell freedom of intersection, box side and line side exactly equals the capacity of the two link sets plus insular digits, fully occupying those digits.`,
       `The detector verifies |intersection|+|box side|+|line side| = |box links|+|line links|+|insular|.${/cannibalized/i.test(branch) ? " Shared box/line digits create internal overlap and cannibal eliminations." : " There is no internal shared-link overlap."}`,
       `1. Choose 2 or 3 intersection cells. 2. Choose box-side and line-side sets. 3. Verify the capacity equality. 4. Separate box, line, insular and common digits. 5. Apply eliminations${targets ? ` (${targets})` : ""}.`,
@@ -2346,73 +2696,134 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
   }
 
   if (kind === "Fireworks") {
-    const arms = groupsMatching(step, /^(fireworkarms|fireworkset|fireworka|fireworkb)$/i).map((g) => cellNames(g.cells)).filter(Boolean).join(zh ? "；" : "; ");
-    const aux = groupsMatching(step, /^(erconnector|bivaluebridge|sharedarms|alppivot|bivaluepair|basecells|pit)$/i).map((g) => `${g.head}:${cellNames(g.cells)}`).join(zh ? "；" : "; ");
+    const arms = groupsMatching(step, /^(fireworkarms|fireworkset|fireworka|fireworkb)$/i).map((g) => cn(g.cells)).filter(Boolean).join(zh ? "；" : "; ");
+    const roleNamesZh = new Map([
+      ["ERConnector", "空矩形连接"], ["BivalueBridge", "双值桥"], ["SharedArms", "共享臂"],
+      ["ALPPivot", "近锁定数对枢轴"], ["BivaluePair", "双值对"], ["BaseCells", "基准格"], ["Pit", "核心交点"],
+    ]);
+    const aux = groupsMatching(step, /^(erconnector|bivaluebridge|sharedarms|alppivot|bivaluepair|basecells|pit)$/i)
+      .map((g) => `${zh ? (roleNamesZh.get(g.head) || "辅助角色") : g.head}:${cn(g.cells)}`).join(zh ? "；" : "; ");
+    const fwBranch = zh ? ({
+      "Dual ER": "双烟花空矩形", "Dual S-Wing": "双烟花S翼", "Triple": "三烟花", "Quadruple": "四重烟花",
+      "Dual ALP": "双烟花近锁定数对", "Dual W-Wing": "双烟花W翼", "Exocet": "烟花Exocet",
+    }[branch] || branchLabel) : branchLabel;
     const explanations = {
-      "Dual ER": zh ? "双数字Fireworks通过同一pit的行臂、列臂和宫臂成立；空矩形连接把两个数字的落点传递到目标宫。" : "A two-digit Fireworks shares a pit and uses an Empty Rectangle connector to transfer both digits.",
-      "Dual S-Wing": zh ? "双数字Fireworks与对角双值桥组成S-Wing；桥取任一数字都会排除pit中的额外候选。" : "A two-digit Fireworks plus a diagonal bivalue bridge forms an S-Wing and removes extra pit candidates.",
-      "Triple": zh ? "三个Fireworks数字占满三臂/三格容量，结构格额外候选和宫内其余三数字可删。" : "Three Fireworks digits fill the three-arm capacity, removing extras from the body and the remaining box sector.",
-      "Quadruple": zh ? "两组双Fireworks交叠成四数字闭合容量；公共臂与两个pit只能容纳各自数字组。" : "Two dual Fireworks overlap into a closed four-digit allocation.",
-      "Dual ALP": zh ? "两组相同双数字Fireworks由中心双值ALP枢轴联结，枢轴与两组pit共同固定数字分配。" : "Two equal dual Fireworks are tied by a central bivalue ALP pivot.",
-      "Dual W-Wing": zh ? "双数字Fireworks与两个同候选双值格构成W-Wing，交叉目标同时看见两种可能。" : "A dual Fireworks and two matching bivalue cells form a W-Wing.",
-      "Exocet": zh ? "四个单数字Fireworks围绕同一pit组合成四数字结构，两格双值Base把Fireworks候选投射到共同可见目标。" : "Four single-digit Fireworks around one pit combine with two bivalue bases into an Exocet-like projection.",
+      "Dual ER": zh ? "双数字烟花通过同一核心交点的行臂、列臂和宫臂成立；空矩形连接把两个数字的落点传递到目标宫。" : "A two-digit Fireworks shares a pit and uses an Empty Rectangle connector to transfer both digits.",
+      "Dual S-Wing": zh ? "双数字烟花与对角双值桥组成S翼；桥取任一数字都会排除核心交点中的额外候选。" : "A two-digit Fireworks plus a diagonal bivalue bridge forms an S-Wing and removes extra pit candidates.",
+      "Triple": zh ? "三个烟花数字占满三臂/三格容量，结构格额外候选和宫内其余三数字可删。" : "Three Fireworks digits fill the three-arm capacity, removing extras from the body and the remaining box sector.",
+      "Quadruple": zh ? "两组双烟花交叠成四数字闭合容量；公共臂与两个核心交点只能容纳各自数字组。" : "Two dual Fireworks overlap into a closed four-digit allocation.",
+      "Dual ALP": zh ? "两组相同双数字烟花由中心双值近锁定数对枢轴联结，枢轴与两组核心交点共同固定数字分配。" : "Two equal dual Fireworks are tied by a central bivalue ALP pivot.",
+      "Dual W-Wing": zh ? "双数字烟花与两个同候选双值格构成W翼，交叉目标同时看见两种可能。" : "A dual Fireworks and two matching bivalue cells form a W-Wing.",
+      "Exocet": zh ? "四个单数字烟花围绕同一核心交点组合成四数字结构，两格双值基准格把烟花候选投射到共同可见目标。" : "Four single-digit Fireworks around one pit combine with two bivalue bases into an Exocet-like projection.",
     };
-    const core = explanations[branch] || (zh ? "本分支按源码的Fireworks组合结构证明。" : "This branch follows the reported Fireworks composition.");
+    const core = explanations[branch] || (zh ? "本分支按后端给出的烟花组合结构证明。" : "This branch follows the reported Fireworks composition.");
     return zh ? [
-      `Fireworks分支：${branchLabel}。主臂${arms || "见高亮结构"}${aux ? `；辅助角色${aux}` : ""}。`,
+      `烟花分支：${fwBranch}。主臂${arms || "见高亮结构"}${aux ? `；辅助角色${aux}` : ""}。`,
       core,
-      `单个Fireworks要求某数字在一条行与一条列中，除pit所在宫外各至多一个外端；因此该数字若不在pit，就被迫落在相应外端。当前分支把两个到四个这样的析取关系与${branchLabel}辅助结构合并，得到目标不可能。`,
-      `① 先核对每个单Fireworks的pit、行外端、列外端和宫；② 再按${branchLabel}核对ER/双值桥/共享臂/ALP/W-Wing/Base；③ 应用删数${targets ? `（${targets}）` : ""}。`,
-      `FB配色随分支使用cAls1/cAls2区分Fireworks组，cFins标连接，cSTP(10)标双值桥或Base，删数cToDel(11)。`,
-      `不能只看到三格“烟花形状”就成立：行列候选必须满足源码的跨宫计数，且所有辅助格候选必须与Branch完全一致。`,
+      `单个烟花要求某数字在一条行与一条列中，除核心交点所在宫外各至多一个外端；因此该数字若不在核心交点，就被迫落在相应外端。当前分支把两个到四个这样的析取关系与${fwBranch}辅助结构合并，得到目标不可能。`,
+      `① 先核对每个单烟花的核心交点、行外端、列外端和宫；② 再按${fwBranch}核对空矩形、双值桥、共享臂、近锁定数对、W翼或基准格；③ 应用删数${targets ? `（${targets}）` : ""}。`,
+      `配色随分支使用cAls1/cAls2区分烟花组，cFins标连接，cSTP(10)标双值桥或基准格，删数cToDel(11)。`,
+      `不能只看到三格“烟花形状”就成立：行列候选必须满足源码的跨宫计数，且所有辅助格候选必须与实际分支完全一致。`,
     ] : [
-      `Fireworks branch: ${branchLabel}. Main arms ${arms || "shown by highlights"}${aux ? `; auxiliary roles ${aux}` : ""}.`,
+      `Fireworks branch: ${fwBranch}. Main arms ${arms || "shown by highlights"}${aux ? `; auxiliary roles ${aux}` : ""}.`,
       core,
-      `A single Fireworks confines a digit on a row and column so that outside the pit box each arm has at most one endpoint. The current branch combines two to four such disjunctions with its ${branchLabel} auxiliary structure to exclude the target.`,
+      `A single Fireworks confines a digit on a row and column so that outside the pit box each arm has at most one endpoint. The current branch combines two to four such disjunctions with its ${fwBranch} auxiliary structure to exclude the target.`,
       `1. Verify pit, row endpoint, column endpoint and box for every single Fireworks. 2. Verify the branch-specific ER/bridge/shared arms/ALP/W-Wing/bases. 3. Apply eliminations${targets ? ` (${targets})` : ""}.`,
       `FB colours use cAls1/cAls2 for Fireworks groups, cFins for connectors, cSTP(10) for bivalue bridges/bases, and cToDel(11) for eliminations.`,
-      `A visual three-cell firework is not enough: row/column candidate counts and every auxiliary candidate must match the reported Branch.`,
+      `A visual three-cell firework is not enough: row/column candidate counts and every auxiliary candidate must match the reported branch.`,
     ];
   }
 
   if (kind === "BivalueOddagon") {
     const body = firstGroup(step, /^oddagonbody$/i) || firstGroup(step, /^oddagona$/i);
+    const oddagonA = firstGroup(step, /^oddagona$/i);
+    const oddagonB = firstGroup(step, /^oddagonb$/i);
+    const sharedExit = firstGroup(step, /^sharedexit$/i);
     const digits = digitText(body?.digits) || primaryDigits(step);
     const locked = firstGroup(step, /^lockedsubset$/i);
+    const exit = firstGroup(step, /^exitcell$/i);
+    const guardians = firstGroup(step, /^guardians$/i);
+    const dual = /dual/i.test(branch) && oddagonA && oddagonB && sharedExit;
+    if (dual) {
+      const aDigits = digitText(oddagonA.digits) || digits;
+      const bDigits = digitText(oddagonB.digits) || digits;
+      const exitDigits = digitText(sharedExit.digits) || digits;
+      return zh ? [
+        `Dual Bivalue Oddagon：后端给出两个奇数环。Oddagon A=${cn(oddagonA.cells)}，致命数字对{${aDigits}}；Oddagon B=${cn(oddagonB.cells)}，致命数字对{${bDigits}}；两环公共出口=${cn(sharedExit.cells)}{${exitDigits}}。`,
+        `单个奇数双值环若全程只允许同一数字对，真假沿环交替一周后会回到相反状态，所以必须有出口破坏矛盾。这里两个Oddagon共享出口，而两个环各自其余分支都已由真实结构封闭。`,
+        `因此公共出口不能再取致命数字对{${exitDigits}}：若其中任一候选保留为真，相应交替状态会同时把两个环推回无解闭环。只应用后端实际输出的公共出口删数${targets ? `（${targets}）` : ""}。`,
+        `① 分别沿Oddagon A、B核对奇数环和相邻格共享house；② 核对两环使用同一致命数字对；③ 确认SharedExit确实是两环共同出口；④ 删除SharedExit中后端给出的致命候选。`,
+        `FB配色：两环分别cAls1/cAls2，共享部分cAls3，连接三值格cDouble(10)，公共出口删数cToDel(11)。`,
+        `Dual不是“看见两个相似Oddagon”就成立；必须有后端明确的OddagonA、OddagonB与SharedExit事实。Oddagon编号按本项目/FB实际出口结构定义，不与其他软件Type编号硬对齐。`,
+      ] : [
+        `Dual Bivalue Oddagon: the backend reports two odd cycles. Oddagon A=${cn(oddagonA.cells)} with deadly pair {${aDigits}}; Oddagon B=${cn(oddagonB.cells)} with deadly pair {${bDigits}}; shared exit=${cn(sharedExit.cells)}{${exitDigits}}.`,
+        `A single odd bivalue cycle restricted to the same pair alternates back to the starting cell with the opposite state, so an escape must break the contradiction. Here both cycles use the same escape while their remaining branches are closed by the reported structure.`,
+        `Therefore the shared exit cannot retain deadly pair {${exitDigits}}. Keep only the eliminations emitted by the backend${targets ? ` (${targets})` : ""}.`,
+        `1. Verify Oddagon A and B separately as odd cycles with peer-adjacent cells. 2. Verify the same deadly pair. 3. Verify SharedExit is common to both cycles. 4. Remove the backend-reported deadly candidates from the shared exit.`,
+        `FB colours: the two cycles use cAls1/cAls2, their overlap cAls3, trivalue connectors cDouble(10), and the shared-exit deletion cToDel(11).`,
+        `Dual is not established merely by seeing two similar oddagons; OddagonA, OddagonB and SharedExit must be explicit backend facts. Type numbering follows the project's actual escape structure.`,
+      ];
+    }
+    const type1 = /type 1/i.test(branch);
+    const type2 = /type 2/i.test(branch);
+    const exitDigits = digitText(exit?.digits) || "";
+    const guardianDigits = digitText(guardians?.digits) || "";
+    const branchFactsZh = type1 && exit ? `；唯一出口=${cn(exit.cells)}，组外候选={${exitDigits || "?"}}` : type2 && guardians ? `；守护数字={${guardianDigits || "?"}}，Guardians=${cn(guardians.cells)}` : "";
+    const branchFactsEn = type1 && exit ? `; sole exit=${cn(exit.cells)}, outside candidate(s)={${exitDigits || "?"}}` : type2 && guardians ? `; guardian digit={${guardianDigits || "?"}}, Guardians=${cn(guardians.cells)}` : "";
     return zh ? [
-      `Bivalue Oddagon（${branchLabel}）：奇数长度闭环主体${cellNames(body?.cells || structureCells(step))}只使用数字对{${digits}}${locked ? `，附加锁定数组${cellNames(locked.cells)}{${digitText(locked.digits)}}` : ""}。`,
-      `若每个环格都只在{${digits}}中取值，沿环交替放置会在奇数步后要求起点同时取两个相反状态，无法完成。因此至少一个额外候选/出口条件必须成立。`,
-      `${/type 1/i.test(branch) ? "唯一出口格不能保留致命数字对，否则奇环无破坏点。" : /type 2/i.test(branch) ? "所有出口共享同一个额外数字；该数字至少一真，所以共同可见目标可删。" : /type 3/i.test(branch) ? "多个出口额外数字与同屋数组组成容量锁定，数组外对应候选可删。" : "两个Oddagon共享出口并由相同三值格连接；共享出口的致命数字对可删。"}`,
-      `① 确认环长为奇数且相邻格共享house；② 每个主体格含致命数字对；③ 按${branchLabel}核对唯一出口、共享guardian、锁定数组或双环共享出口；④ 应用删数${targets ? `（${targets}）` : ""}。`,
-      `FB配色：主体cNormal(1)；Type 2 guardian/Type 3锁定数组cFins(2)；Dual两环分别cAls1/cAls2、共享部分cAls3，连接三值格cDouble(10)，删数cToDel(11)。`,
-      `Oddagon编号是本项目/FB体系，不能直接与其他软件的Type编号硬对齐；必须按实际出口结构判断。`,
+      `Bivalue Oddagon（${branchLabel}）：奇数长度闭环主体${cn(body?.cells || structureCells(step))}围绕数字对{${digits}}${branchFactsZh}${locked ? `，附加锁定数组${cn(locked.cells)}{${digitText(locked.digits)}}` : ""}。`,
+      `这是Negative Rank/奇偶矛盾结构，不是“会出现第二解”的唯一性技巧。若环上每格都只在{${digits}}中取值，真假沿奇数环交替一周会回到与起点相反的状态，纯Oddagon因此无解，必须至少有一个真实出口/Guardian打破它。`,
+      `${type1 ? `唯一出口格不能保留致命数字对。后端确认${cn(exit?.cells)}是唯一出口，并明确给出组外候选{${exitDigits || "?"}}。该格若取致命数字{${digits}}中的任一值，纯Oddagon重新闭合而无解，所以它必须取组外候选，删除该格的致命数字。` : type2 ? `所有出口共享同一个额外数字。后端确认共享守护数字{${guardianDigits || "?"}}，Guardians=${cn(guardians?.cells)}。若这些Guardian全假，纯Oddagon重新闭合而无解；故至少一个Guardian为真，同时看见全部Guardians的同数字目标可删。` : /type 3/i.test(branch) ? "多个出口额外数字与同屋数组组成容量锁定，数组外对应候选可删。" : "按后端给出的Oddagon出口/守护关系应用结论。"}`,
+      `① 确认环长为奇数且相邻格共享house；② 每个主体格含致命数字对；③ 直接读取后端ExitCell/Guardians/LockedSubset，不从几何猜Type；④ 应用删数${targets ? `（${targets}）` : ""}。`,
+      `FB配色：主体cNormal(1)；出口/Guardian/Type 3锁定数组使用后端角色色；删数cToDel(11)。`,
+      `Oddagon是Negative Rank坏结构，不要写成唯一性反证；Type编号按本项目/FB实际出口结构定义，不能与其他软件硬对齐。`,
     ] : [
-      `Bivalue Oddagon (${branchLabel}): an odd-length loop ${cellNames(body?.cells || structureCells(step))} uses deadly pair {${digits}}${locked ? ` with locked set ${cellNames(locked.cells)}{${digitText(locked.digits)}}` : ""}.`,
-      `If every loop cell used only {${digits}}, alternating values around an odd cycle would return to the start with the opposite requirement. Some escape must exist.`,
-      `${/type 1/i.test(branch) ? "The sole exit cannot retain the deadly pair." : /type 2/i.test(branch) ? "All exits share one extra digit, so one guardian is true and common-peer targets are false." : /type 3/i.test(branch) ? "Exit extras plus a same-house locked set saturate capacity." : "Two oddagons share an exit and matching trivalue connectors, allowing the deadly pair to be removed from the shared exit."}`,
-      `1. Verify an odd loop and shared houses. 2. Verify the deadly pair in every body cell. 3. Check the branch-specific exit/guardian/locked-set/dual-loop condition. 4. Apply eliminations${targets ? ` (${targets})` : ""}.`,
-      `FB colours: body cNormal(1); guardians/locked set cFins(2); Dual loops cAls1/cAls2 with shared cAls3, connectors cDouble(10), deletions cToDel(11).`,
-      `Type numbering follows the FB/project implementation and may not match another solver; classify by the actual exit structure.`,
+      `Bivalue Oddagon (${branchLabel}): odd cycle ${cn(body?.cells || structureCells(step))} uses pair {${digits}}${branchFactsEn}${locked ? ` with locked set ${cn(locked.cells)}{${digitText(locked.digits)}}` : ""}.`,
+      `This is a Negative-Rank/parity contradiction, not a uniqueness technique. If every loop cell were restricted to {${digits}}, truth would alternate around an odd cycle and return to the start in the opposite state. The pure Oddagon is unsatisfiable, so a real exit/guardian must break it.`,
+      `${type1 ? `The backend identifies ${cn(exit?.cells)} as the sole exit and reports outside candidate(s) {${exitDigits || "?"}}. If that cell took either deadly digit {${digits}}, the pure Oddagon would close and become impossible, so it must take an outside candidate and its deadly digits are removed.` : type2 ? `The backend reports common guardian digit {${guardianDigits || "?"}} at ${cn(guardians?.cells)}. If every guardian were false, the pure Oddagon would close and be impossible; hence at least one guardian is true and common-peer targets on that digit are false.` : /type 3/i.test(branch) ? "Exit extras plus a same-house locked set saturate capacity." : "Apply the backend-reported Oddagon exit/guardian relation."}`,
+      `1. Verify an odd loop and peer-adjacent cells. 2. Verify the deadly pair in every body cell. 3. Read backend ExitCell/Guardians/LockedSubset directly rather than inferring the Type from geometry. 4. Apply eliminations${targets ? ` (${targets})` : ""}.`,
+      `FB colours: body cNormal(1); exit/guardian/locked-set roles use backend role colours; deletions cToDel(11).`,
+      `Oddagon is a Negative-Rank invalid structure, not a uniqueness argument. Type numbering follows the project's actual exit structure.`,
     ];
   }
 
   if (kind === "TripletOddagon") {
     const body = firstGroup(step, /^tripletbody$/i);
     const digits = digitText(body?.digits) || primaryDigits(step);
+    const escape = firstGroup(step, /^escapecell$/i);
+    const guardians = firstGroup(step, /^guardians$/i);
+    const preAfwEscapes = firstGroup(step, /^preafwescapes$/i);
+    const afwSlots = firstGroup(step, /^afwtripletslots$/i);
+    const afwRemotePair = firstGroup(step, /^afwremotetripletpair$/i);
+    const afwWitness = firstGroup(step, /^afwwitness$/i);
+    const afwBaseHouse = firstGroupTail(step, "AFWBaseHouse");
+    const afwCrossHouse = firstGroupTail(step, "AFWCrossHouse");
+    const afwCrossBox = firstGroupTail(step, "AFWCrossBox");
+    const type1 = /type 1(?: rt)?$/i.test(branch);
+    const type2 = /type 2$/i.test(branch);
+    const escapeDigits = digitText(escape?.digits) || "";
+    const guardianDigits = digitText(guardians?.digits) || "";
+    const witnessDigits = digitText(afwWitness?.digits) || "";
+    const witnessExample = afwWitness?.digits?.[0] || null;
+    const witnessRemainder = witnessExample && body?.digits?.length
+      ? body.digits.filter((digit) => digit !== witnessExample)
+      : [];
+    const branchStructureZh = type1 && escape ? `；唯一Escape=${cn(escape.cells)}，三值组外候选={${escapeDigits || "?"}}` : type2 && guardians ? `；Guardians=${cn(guardians.cells)}{${guardianDigits || "?"}}` : "";
+    const branchStructureEn = type1 && escape ? `; sole Escape=${cn(escape.cells)}, outside-triplet candidate(s)={${escapeDigits || "?"}}` : type2 && guardians ? `; Guardians=${cn(guardians.cells)}{${guardianDigits || "?"}}` : "";
     return zh ? [
-      `Triplet Oddagon（${branchLabel}）：12格主体${cellNames(body?.cells || structureCells(step))}围绕三个数字{${digits}}形成三值Oddagon；当前分支再叠加RT、Triplet Lock Set、Triplet ERI或Almost Fireworks。`,
-      `主体若完全只由三个数字按三条带/栈交替排列，会形成不可唯一的三数字置换。额外候选是破坏点；各分支用强关系、锁定集合、ERI或Fireworks把破坏点约束为至少一真/至少一假。`,
-      `${/almost fireworks/i.test(branch) ? "Almost Fireworks与Triplet Oddagon共同约束额外候选。" : /type 1$/i.test(branch) ? "单个额外候选是唯一破坏点，因此主体外对应结论成立。" : /type 2$/i.test(branch) ? "两个单额外候选构成强关系，公共可见目标可删。" : /lock set/i.test(branch) ? "RT与三数组容量合并。" : /eri/i.test(branch) ? "RT通过ERI传递。" : "按当前Branch约束额外候选。"}`,
-      `① 核对12个主体格及三数字；② 找每格超出三数字的extra；③ 按Branch核对RT/Lock Set/ERI/AFW附加结构；④ 应用删数${targets ? `（${targets}）` : ""}。`,
-      `FB配色：Triplet主体cNormal(1)，附加RT/AFW结构按cAls1/cFins/cDouble区分，删数cToDel(11)或Cannibalism(12)。`,
-      `不能把任意12格三候选图形称为Triplet Oddagon；行列宫排列、extra数量与Branch附加关系必须全部满足源码枚举。`,
+      `Triplet Oddagon（${branchLabel}）：12格主体${cn(body?.cells || structureCells(step))}围绕三个数字{${digits}}形成三值Oddagon${branchStructureZh}。`,
+      `这是Oddagon的三值Negative Rank推广。若12格主体全部被迫只使用{${digits}}，源码规定的带/栈交错结构会让三数字局部容量与奇交替约束无法同时满足，形成无解状态；真实extra/guardian必须破坏这个坏结构。`,
+      `${/almost fireworks/i.test(branch) && type2 && guardians ? `只要${cn(guardians.cells)}中的任一守护候选{${guardianDigits || "?"}}为真，同时看见全部Guardians的同数字目标${targets ? `（${targets}）` : ""}就立即可删；真正需要证明的只是这些Guardians不可能全假。\n反设${cn(guardians.cells)}上的{${guardianDigits || "?"}}全部为假，它们便只能回到Triplet {${digits}}。若${afwSlots ? cn(afwSlots.cells) : "两个AFW占位格"}也都取Triplet数字，则12格直接闭合成纯Triplet Oddagon而矛盾；因此AFW占位格至少有一格必须以组外候选逃逸，剩下只有两种方式。\n① 两格都逃逸：${afwBaseHouse && afwCrossHouse ? `AFW基线${afwBaseHouse}与交叉线${afwCrossHouse}` : "AFW的基线与交叉线"}失去两个关键Triplet占位，${afwCrossBox ? `交叉宫${afwCrossBox}` : "交叉宫"}没有足够位置同时满足{${digits}}的Fireworks分布，矛盾。\n② 恰一格逃逸：另一格与${afwRemotePair ? `远程三数组对${cn(afwRemotePair.cells)}` : "对应的远程三数组对"}组成RT；${afwWitness ? `交叉见证格${cn(afwWitness.cells)}{${witnessDigits || "?"}}` : "交叉见证格"}若取某个Triplet数字x，RT会迫使剩余AFW占位格同取x，于是${afwCrossBox ? `${afwCrossBox}的宫约束` : "交叉宫约束"}使${afwCrossHouse || "交叉线"}无法再容纳其余两个Triplet数字${witnessExample && witnessRemainder.length === 2 ? `；本题例如令${cn(afwWitness.cells)}=${witnessExample}，剩余占位格也被迫为${witnessExample}，${afwCrossHouse || "交叉线"}会缺少{${witnessRemainder.join("/")}}中的至少一个` : ""}，仍矛盾。\n两种逃逸方式都不成立，所以反设错误：至少一个Guardian为真，删数成立。` : /almost fireworks/i.test(branch) && type1 && escape ? `${preAfwEscapes ? `纯Triplet视角原本有${preAfwEscapes.cells.length}个潜在escape/guardian：${cn(preAfwEscapes.cells)}。` : ""}${afwSlots ? `Almost Fireworks先占住Triplet的两个位置${cn(afwSlots.cells)}，迫使它们从{${digits}}中取值；这两处潜在Guardian因此由AFW结构消化。` : "Almost Fireworks先消化两个潜在Guardian。"}这样只剩${cn(escape.cells)}一个真实Escape，组外候选={${escapeDigits || "?"}}。若该格仍取Triplet数字，主体会退回无解结构；所以它必须取组外候选。` : /almost fireworks/i.test(branch) ? "Almost Fireworks先替Triplet Oddagon占用部分三数字位置，再只对剩余真实escape/guardian应用Oddagon约束。" : type1 ? (escape ? `单个额外候选是唯一破坏点。后端确认${cn(escape.cells)}是唯一含三值组外候选的逃逸格。若它取{${digits}}中的任一数字，12格全部落回纯Triplet Oddagon而无解；所以该格必须取组外候选{${escapeDigits || "?"}}，并删除{${digits}}。` : "单个额外候选是唯一破坏点；必须由后端EscapeCell事实确认后才能给出具体候选级解释。") : type2 ? (guardians ? `后端确认同一个守护数字{${guardianDigits || "?"}}分布在${cn(guardians.cells)}。若这些Guardians全部为假，12格主体会退回无解的纯Triplet Oddagon；因此至少一个Guardian必须为真，同时看见全部Guardians的同数字目标可删。` : "所有逃逸候选共享同一个守护数字；必须由后端Guardians事实确认具体数字与位置。") : /lock set/i.test(branch) ? "RT与三数组容量合并；Triplet Lock Set共同封闭局部容量。" : /eri/i.test(branch) ? "RT通过ERI传递；Triplet ERI把逃逸约束传递到目标。" : "按当前Branch约束实际escape事件。"}`,
+      `① 核对12个主体格及三数字；② 直接读取后端EscapeCell/Guardians等真实extra角色；③ 按Branch核对RT/Lock Set/ERI/AFW附加结构；④ 应用删数${targets ? `（${targets}）` : ""}。`,
+      `FB配色：Triplet主体cNormal(1)，Escape/Guardian及附加RT/AFW结构按实际后端角色区分，删数cToDel(11)或Cannibalism(12)。`,
+      `不能把任意12格三候选图形称为Triplet Oddagon；必须满足源码枚举的行列宫排列、extra数量及分支附加关系。尤其不要再把它解释成“不可唯一的三数字置换”。`,
     ] : [
-      `Triplet Oddagon (${branchLabel}): a 12-cell body ${cellNames(body?.cells || structureCells(step))} uses triplet {${digits}}, with RT, Triplet Lock Set, Triplet ERI or Almost Fireworks depending on the branch.`,
-      `If the body used only the three digits in the required band/stack arrangement, a three-digit permutation would destroy uniqueness. Extra candidates are escapes constrained by the branch-specific strong relation.`,
-      `${/almost fireworks/i.test(branch) ? "Almost Fireworks constrains the extra candidates together with the oddagon." : /type 1$/i.test(branch) ? "A single extra is the sole escape." : /type 2$/i.test(branch) ? "Two single extras form a strong relation." : /lock set/i.test(branch) ? "RT combines with a locked triple capacity." : /eri/i.test(branch) ? "RT is transferred through ERI." : "The current Branch constrains the extra candidates."}`,
-      `1. Verify the 12-cell triplet body. 2. Identify candidates outside the triplet. 3. Verify the RT/Lock Set/ERI/AFW branch. 4. Apply eliminations${targets ? ` (${targets})` : ""}.`,
-      `FB colours: triplet body cNormal(1), auxiliary RT/AFW roles cAls1/cFins/cDouble, deletions cToDel(11) or Cannibalism(12).`,
-      `Not every 12-cell three-candidate shape qualifies; the exact row/column/box arrangement, extra count and branch relation must match the enumerator.`,
+      `Triplet Oddagon (${branchLabel}): the 12-cell body ${cn(body?.cells || structureCells(step))} uses triplet {${digits}}${branchStructureEn}.`,
+      `This is the three-value Negative-Rank extension of Oddagon. If all 12 body cells are restricted to {${digits}}, the source-defined band/stack arrangement makes local three-digit capacity incompatible with the odd alternating constraints, producing an unsatisfiable state; a real extra/guardian must break it.`,
+      `${/almost fireworks/i.test(branch) && type2 && guardians ? `If any guardian {${guardianDigits || "?"}} at ${cn(guardians.cells)} is true, every same-digit target seeing all guardians${targets ? ` (${targets})` : ""} is immediately false. It remains only to prove that the guardians cannot all be false. Assume they are all false, forcing those body cells back into triplet {${digits}}. If ${afwSlots ? cn(afwSlots.cells) : "both AFW slots"} also take triplet digits, the 12 cells close into the impossible pure Triplet Oddagon; hence at least one AFW slot must escape via an outside candidate. Only two escape patterns remain.\n(1) Both AFW slots escape: ${afwBaseHouse && afwCrossHouse ? `the AFW base ${afwBaseHouse} and cross line ${afwCrossHouse}` : "the AFW base and cross line"} lose two required triplet positions, leaving insufficient capacity in ${afwCrossBox || "the crossing box"} for the Fireworks distribution of {${digits}}. Contradiction.\n(2) Exactly one slot escapes: the surviving slot and ${afwRemotePair ? `remote triplet pair ${cn(afwRemotePair.cells)}` : "the remote triplet pair"} form an RT. If ${afwWitness ? `cross witness ${cn(afwWitness.cells)}{${witnessDigits || "?"}}` : "the cross witness"} takes a triplet digit x, the RT forces the surviving AFW slot to the same x; the crossing-box constraint then leaves ${afwCrossHouse || "the cross line"} unable to place the other two triplet digits${witnessExample && witnessRemainder.length === 2 ? `. In this sample, taking ${cn(afwWitness.cells)}=${witnessExample} forces the surviving slot to ${witnessExample}, so ${afwCrossHouse || "the cross line"} loses at least one of {${witnessRemainder.join("/")}}` : ""}. Contradiction again.\nBoth escape patterns fail, so the assumption is false: at least one guardian is true and the elimination follows.` : /almost fireworks/i.test(branch) && type1 && escape ? `${preAfwEscapes ? `Viewed as a pure Triplet Oddagon there are ${preAfwEscapes.cells.length} potential escape/guardian cells: ${cn(preAfwEscapes.cells)}. ` : ""}${afwSlots ? `Almost Fireworks first reserves the two Triplet slots ${cn(afwSlots.cells)}, forcing them to take one of {${digits}}; those two potential guardians are consumed by the AFW structure. ` : "Almost Fireworks first consumes two potential guardian slots. "}This leaves ${cn(escape.cells)} as the sole real escape with outside-triplet candidate(s) {${escapeDigits || "?"}}. If it still took a Triplet digit, the body would fall back into the impossible structure, so it must take an outside candidate.` : /almost fireworks/i.test(branch) ? "Almost Fireworks first occupies part of the Triplet-digit capacity, then the Oddagon logic applies only to the remaining real escapes/guardians." : type1 ? (escape ? `A single extra is the sole escape. The backend identifies ${cn(escape.cells)} as the sole cell with a candidate outside the triplet. If it took any of {${digits}}, all 12 cells would fall back into the impossible pure Triplet Oddagon, so it must take outside candidate(s) {${escapeDigits || "?"}} and the triplet digits are removed.` : "A single extra is the sole escape; a concrete candidate-level explanation requires the backend EscapeCell fact.") : type2 ? (guardians ? `The backend reports the same guardian digit {${guardianDigits || "?"}} across ${cn(guardians.cells)}. If all guardians were false, the 12-cell body would fall back into the impossible pure Triplet Oddagon; therefore at least one guardian is true, and a same-digit target seeing every guardian is false.` : "All escapes share one guardian digit; concrete digits and positions require backend Guardians facts.") : /lock set/i.test(branch) ? "RT combines with a locked triple capacity; the Triplet Locked Set closes local capacity." : /eri/i.test(branch) ? "RT is transferred through ERI to the target." : "The current Branch constrains the actual escape events."}`,
+      `1. Verify the 12-cell triplet body. 2. Read backend EscapeCell/Guardians and other real extra roles directly. 3. Verify the RT/Lock Set/ERI/AFW branch. 4. Apply eliminations${targets ? ` (${targets})` : ""}.`,
+      `FB colours: triplet body cNormal(1); Escape/Guardian and auxiliary RT/AFW roles follow backend roles; deletions cToDel(11) or Cannibalism(12).`,
+      `Not every 12-cell three-candidate shape qualifies; the exact row/column/box arrangement, extra count and branch relation must match the enumerator. Do not describe this as a uniqueness-destroying three-digit permutation.`,
     ];
   }
 
@@ -2427,20 +2838,20 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
     const type1 = /complex type 1/i.test(branch);
     const type2 = /complex type 2/i.test(branch);
     const type3 = /complex type 3/i.test(branch);
-    const setCells = cellNames(set?.cells);
+    const setCells = cn(set?.cells);
     const setDigits = digitText(set?.digits) || set?.tail || "";
-    const petalCells = cellNames(petals.flatMap((g) => g.cells));
-    const petalDetailZh = petals.map((g, i) => `花瓣${i + 1}=${cellNames(g.cells)}{${digitText(g.digits) || g.tail || "?"}}${petalRccs[i] ? `，RCC={${petalRccs[i]}}` : ""}`).join("；");
-    const petalDetailEn = petals.map((g, i) => `petal ${i + 1}=${cellNames(g.cells)}{${digitText(g.digits) || g.tail || "?"}}${petalRccs[i] ? `, RCC={${petalRccs[i]}}` : ""}`).join("; ");
+    const petalCells = cn(petals.flatMap((g) => g.cells));
+    const petalDetailZh = petals.map((g, i) => `花瓣${i + 1}=${cn(g.cells)}{${digitText(g.digits) || g.tail || "?"}}${petalRccs[i] ? `，RCC={${petalRccs[i]}}` : ""}`).join("；");
+    const petalDetailEn = petals.map((g, i) => `petal ${i + 1}=${cn(g.cells)}{${digitText(g.digits) || g.tail || "?"}}${petalRccs[i] ? `, RCC={${petalRccs[i]}}` : ""}`).join("; ");
     return zh ? [
-      `Death Blossom（${branchLabel}）：${classic ? `Stem ${cellNames(stem?.cells)}，Victim ${cellNames(victim?.cells)}，ALS花瓣覆盖${petalCells}` : `核心Set=${setCells}{${setDigits || "?"}}${freedom ? `，自由度=${freedom}` : ""}${stemDigit ? `，Stem数字=${stemDigit}` : ""}${workDigits ? `，工作数字={${workDigits}}` : ""}${zDigits ? `，Z={${zDigits}}` : ""}；${petalDetailZh || `${petals.length}个ALS花瓣`}`}。`,
+      `Death Blossom（${branchLabel}）：${classic ? `Stem ${cn(stem?.cells)}，Victim ${cn(victim?.cells)}，ALS花瓣覆盖${petalCells}` : `核心Set=${setCells}{${setDigits || "?"}}${freedom ? `，自由度=${freedom}` : ""}${stemDigit ? `，Stem数字=${stemDigit}` : ""}${workDigits ? `，工作数字={${workDigits}}` : ""}${zDigits ? `，Z={${zDigits}}` : ""}；${petalDetailZh || `${petals.length}个ALS花瓣`}`}。`,
       `${classic ? "Stem的每个候选分支都会激活一个对应ALS花瓣；所有分支都删除Victim中的同一候选，所以该候选无条件可删。" : type1 ? "1型要求Stem数字仍属于原始Set候选、但已不在临时工作数字中；因此Z关系把核心Set本身也纳入可见基底，删数必须同时由Set与花瓣共同支撑。" : type2 ? "2型不采用1型的Set+Stem特殊基底；Z删数由ALS花瓣承接，随后还会检查花瓣联合结构是否已形成更强的Rank-0覆盖。" : type3 ? "3型是在复杂结构基础上进一步通过完整MSLS Rank-0校验得到；最终删数来自实际核心集合+ALS结构的Rank-0覆盖，而不是只套用普通花瓣模板。" : "核心Set的自由分支由实际ALS花瓣及其RCC吸收；只使用本步导出的结构角色。"}`,
       `${classic ? "若Victim目标成立，则对Stem任一可能值，相应花瓣的RCC/共同可见关系都会矛盾；Stem必须取某值，故目标不可能。" : `当前Set自由度${freedom ? `=${freedom}` : "按后端输出"}；${petalRccs.length ? `花瓣RCC依次为${petalRccs.map((x) => `{${x}}`).join("、")}` : "RCC按本步结构读取"}。${type3 ? "只有在完整结构重新核验Truth/Link Rank 0后，才采用MSLS删数。" : "每个删数必须由当前类型对应的Z/RCC可见关系实际推出。"}`}${cannibals ? ` 自噬删数：${cannibals}。` : ""}`,
       `① 读取${branchLabel}；② ${classic ? "逐一核对Stem每个候选是否有对应ALS花瓣并都指向同一Victim目标" : `核对Set=${setCells || "高亮核心"}${freedom ? `的自由度${freedom}` : "自由度"}、每个花瓣及RCC${zDigits ? `、Z={${zDigits}}` : ""}`}${type3 ? "；③ 再独立核对MSLS Rank-0" : ""}；④ 应用删数${targets ? `（${targets}）` : ""}。`,
       `FB配色：茎/Victim与Z用cFins(2)，RCC用cEdoFins(3)，ALS内部cAls2，核心集合用cAls1，普通删数cToDel(11)，自噬用Cannibalism(12)。`,
       `经典死亡绽放与复杂1/2/3型不是同一说明；复杂3型（MSLS）必须按Rank-0核心集合/链接结构解释。`,
     ] : [
-      `Death Blossom (${branchLabel}): ${classic ? `stem ${cellNames(stem?.cells)}, victim ${cellNames(victim?.cells)}, ALS petals ${petalCells}` : `core set=${setCells}{${setDigits || "?"}}${freedom ? `, freedom=${freedom}` : ""}${stemDigit ? `, stem digit=${stemDigit}` : ""}${workDigits ? `, work digits={${workDigits}}` : ""}${zDigits ? `, Z={${zDigits}}` : ""}; ${petalDetailEn || `${petals.length} ALS petals`}`}.`,
+      `Death Blossom (${branchLabel}): ${classic ? `stem ${cn(stem?.cells)}, victim ${cn(victim?.cells)}, ALS petals ${petalCells}` : `core set=${setCells}{${setDigits || "?"}}${freedom ? `, freedom=${freedom}` : ""}${stemDigit ? `, stem digit=${stemDigit}` : ""}${workDigits ? `, work digits={${workDigits}}` : ""}${zDigits ? `, Z={${zDigits}}` : ""}; ${petalDetailEn || `${petals.length} ALS petals`}`}.`,
       `${classic ? "Every stem candidate activates a corresponding ALS petal, and every branch removes the same victim candidate." : type1 ? "Type 1 keeps the stem digit in the original Set while it is absent from the temporary work-digit union, so the Set itself participates in the Z visibility base." : type2 ? "Type 2 does not use the Type-1 Set+stem special base; Z eliminations are carried by the ALS petals, followed by an optional rank-0 test of their union." : type3 ? "Type 3 is a Complex structure that also passes a complete MSLS rank-0 validation; its eliminations come from that actual Set+ALS cover." : "Use only the core Set, petals and RCC roles emitted by this step."}`,
       `${classic ? "If the victim target were true, each possible stem value would contradict its petal; the stem must take one value, so the target is impossible." : `Set freedom is ${freedom || "backend-reported"}; ${petalRccs.length ? `petal RCCs are ${petalRccs.map((x) => `{${x}}`).join(", ")}` : "read RCCs from the emitted structure"}. ${type3 ? "Apply the MSLS eliminations only after the full structure is revalidated as rank 0." : "Every elimination must follow the current type's actual Z/RCC visibility relation."}`}${cannibals ? ` Cannibal targets: ${cannibals}.` : ""}`,
       `1. Read ${branchLabel}. 2. ${classic ? "Verify one ALS petal for every stem candidate and a common victim" : "verify the actual Set freedom, every petal/RCC, and Z roles"}.${type3 ? " 3. Independently verify the MSLS rank-0 cover." : ""} Apply eliminations${targets ? ` (${targets})` : ""}.`,
@@ -2451,22 +2862,25 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
 
   if (kind === "BlossomLoop") {
     const focus = firstGroup(step, /^focus$/i);
-    const main = firstGroup(step, /^burringloop$/i);
-    const burrs = groupsMatching(step, /^burrbranch/i);
+    const chainBranches = list(step?.chainBranches);
+    const main = chainBranches.find((b) => /burring loop/i.test(String(b?.label || "")));
+    const burrs = chainBranches.filter((b) => /^burr branch/i.test(String(b?.label || "")));
+    const focusText = String(focus?.tail || "").trim() || cn(focus?.cells) || (zh ? "后端Focus" : "backend Focus");
+    const mainNodes = list(main?.nodes).length;
     return zh ? [
-      `Blossom Loop（${String(step?.title || branch)}）：Focus=${cellNames(focus?.cells)}{${digitText(focus?.digits)}}；Burring Loop覆盖${cellNames(main?.cells)}，另有${burrs.length}条Burr Branch。`,
+      `Blossom Loop（${branchLabel}）：Focus=${focusText}；主Burring Loop含${mainNodes || "后端记录的"}个链节点，另有${burrs.length}条Burr Branch。`,
       `Focus中的候选/位置/AALS唯一分支必须有一个成立。主Burring Loop连接两条活动分支，其余Focus分支分别沿Burr Branch导向同一反相结论；所有分支闭合后形成全局Rank-0式循环。`,
-      `对Focus的每个可能分支fᵢ，都存在路径推出相同目标¬t；而∨fᵢ=true，所以¬t。反相AIC删数来自主环两端相位关系；Burr分支修补主环中未覆盖的Focus分支。`,
-      `① 按标题区分Cell Type、Region Type、AALS Type；② 确认Focus分别是单格候选、house中同数字位置或AALS唯一候选；③ 核对Burring Loop；④ 对每个剩余Focus分支核对Burr Branch；⑤ 应用删数。`,
+      `逐一检查Focus的每种合法选择：无论哪一种成立，主Burring Loop或对应Burr Branch都会把同一个目标推到相反状态。Focus至少要选中一种，因此该目标在所有合法情况中都不能成立；反相AIC删数来自主环两端的相位关系，Burr Branch负责补齐主环没有直接覆盖的Focus选择。`,
+      `① 按后端Branch区分Cell Type、Region Type、AALS Type；② 确认Focus分别是单格候选、house中同数字位置或AALS唯一候选；③ 核对Burring Loop；④ 对每个剩余Focus分支核对Burr Branch；⑤ 应用删数。`,
       `FB配色按链节点成立/不成立、ALS区域和Focus角色输出；不能只把整个链统一一种颜色。动态教程应保留毛刺主环与每条毛刺分支原始尤里卡。`,
-      `Cell/Region Type在已知终解辅助搜索时只检查包含真分支的端点对；AALS Type检查三个OnlyCand分支。教程必须按实际Title和Focus角色区分。`,
+      `Cell/Region Type在已知终解辅助搜索时只检查包含真分支的端点对；AALS Type检查三个OnlyCand分支。教程必须按后端Branch和Focus角色区分，标题只用于显示。`,
     ] : [
-      `Blossom Loop (${String(step?.title || branch)}): Focus=${cellNames(focus?.cells)}{${digitText(focus?.digits)}}; Burring Loop spans ${cellNames(main?.cells)}, with ${burrs.length} Burr Branches.`,
+      `Blossom Loop (${branchLabel}): Focus=${focusText}; the main Burring Loop has ${mainNodes || "backend-recorded"} chain nodes, with ${burrs.length} Burr Branches.`,
       `One Focus candidate/position/AALS branch must be true. The main loop connects two active branches, while every remaining Focus branch follows a Burr Branch to the same opposite conclusion; together they close a global rank-0-like loop.`,
-      `For every Focus case fᵢ there is a path to the same ¬t, and ∨fᵢ=true, so ¬t. Anti-phase AIC eliminations come from the phase relation of main-loop endpoints; Burr Branches repair uncovered Focus cases.`,
-      `1. Distinguish Cell, Region and AALS Type. 2. Verify the Focus role. 3. Verify the Burring Loop. 4. Verify one Burr Branch for every other Focus case. 5. Apply eliminations.`,
+      `Check every legal Focus choice. Whichever one is true, the main Burring Loop or its Burr Branch drives the same target to the opposite state. Since one Focus choice must occur, that target is impossible in every legal case. Anti-phase AIC eliminations come from the phase relation of the main-loop endpoints, while Burr Branches cover Focus choices not handled directly by the main loop.`,
+      `1. Read backend Branch to distinguish Cell, Region and AALS Type. 2. Verify the Focus role. 3. Verify the Burring Loop. 4. Verify one Burr Branch for every other Focus case. 5. Apply eliminations.`,
       `FB colours preserve ON/OFF chain nodes, ALS areas and Focus roles; do not flatten the whole chain to one colour. Keep the raw Burring Loop and each Burr Branch eureka.`,
-      `Cell/Region Type may use the known solution only to select endpoint pairs containing the true branch; AALS Type checks all three OnlyCand branches. Explain the actual Title and Focus role.`,
+      `Cell/Region Type may use the known solution only to select endpoint pairs containing the true branch; AALS Type checks all three OnlyCand branches. Explain from backend Branch and Focus roles; Title is display text only.`,
     ];
   }
 
@@ -2486,18 +2900,23 @@ export function buildAuditedTechniqueGuide(step = {}, locale = "zh") {
   const title = String(step?.title || kind);
   const description = String(step?.description || "");
   const key = `${kind} ${title} ${description}`.toLowerCase();
+  const branchValues = groupTails(step, "branch");
+  const branchKey = branchValues.join(" ").toLowerCase();
+  const mergedBranch = branchValues.length > 1;
+  const branchDisplay = branchValues.map((value) => localizedProofMeta(value, locale)).join(zh ? "、" : ", ");
   const deadly = deadlyDigitsForStep(step) || (zh ? "相应致命数字组" : "the deadly digit set");
-  const body = roleCellText(step, /^(urbody|arbody|ulbody|xrbody)$/i)
-    || ((kind === "UniqueRectangle" || kind === "AvoidableRectangle") ? firstCellsText(step, 4) : cellNames(structureCells(step)));
+  const body = roleCellText(step, /^(urbody|arbody|ulbody|xrbody)$/i, locale)
+    || ((kind === "UniqueRectangle" || kind === "AvoidableRectangle") ? firstCellsText(step, 4, locale) : cellNames(structureCells(step), 14, locale));
   const target = digitText(list(step?.candidates)) || (zh ? "目标数字" : "the target digit");
   const uniquenessCheck = zh
     ? "只适用于确认具有唯一解的标准数独；结构、角色或候选状态少一项都不能套用。"
     : "Use only on a standard Sudoku confirmed to have one solution; do not apply the rule if any structural role or candidate condition is missing.";
 
   if (kind === "GSP") {
-    const symmetry = uniquenessRole(step, /^symmetry$/i)?.tail || (zh ? "给定" : "reported");
+    const symmetryRaw = uniquenessRole(step, /^symmetry$/i)?.tail || (zh ? "给定" : "reported");
+    const symmetry = localizedSymmetryName(symmetryRaw, locale);
     const selfDigits = roleDigitText(step, /^self$/i);
-    const selfCells = roleCellText(step, /^self$/i);
+    const selfCells = roleCellText(step, /^self$/i, locale);
     return zh ? [
       `本步使用${symmetry}全局对称映射；它不是局部四格唯一矩形。`,
       "把完成盘按同一位置变换和数字置换映射后，仍必须符合原题给定。与映射不相容的候选若保留，会生成另一完成盘。",
@@ -2516,7 +2935,7 @@ export function buildAuditedTechniqueGuide(step = {}, locale = "zh") {
   }
 
   if (kind === "BUGOne") {
-    const cell = roleCellText(step, /^bugplusonecell$/i) || cellNames(structureCells(step));
+    const cell = roleCellText(step, /^bugplusonecell$/i, locale) || cellNames(structureCells(step), 14, locale);
     const forced = roleDigitText(step, /^forcedcandidate$/i) || target;
     return zh ? [
       `全盘除${cell || "一个异常格"}外均为双值；异常格多出的候选${forced}是打破BUG双解的唯一出口。`,
@@ -2540,16 +2959,16 @@ export function buildAuditedTechniqueGuide(step = {}, locale = "zh") {
     const gd = digitText(gs.flatMap((group) => group.digits)) || target;
     const gc = unique(gs.flatMap((group) => group.cells).map(cellName)).join(zh ? "、" : ", ");
     let variant = zh ? "守护集合至少一真" : "at least one guardian is true";
-    let math = zh ? `令守护析取为 G₁∨…∨Gₙ。若全部Gᵢ为假，盘面退化为完整BUG，因此该析取必真。` : `Let the guardian disjunction be G₁∨…∨Gₙ. If every Gᵢ were false, the grid would be a complete BUG, so the disjunction is true.`;
-    if (/type 1/.test(key)) variant = zh ? "守护候选全在同一格，该格必须取守护之一" : "all guardians occupy one cell, which must take one of them";
-    else if (/type 2/.test(key)) variant = zh ? "守护候选同数字，公共可见位置可删该数字" : "all guardians use one digit, removable from common peers";
-    else if (/type 3/.test(key)) variant = zh ? "守护候选与裸数组共同锁满容量" : "guardians combine with a naked subset to fill capacity";
-    else if (/type 4/.test(key)) variant = zh ? "守护格中的共轭对与守护析取共同删数" : "a conjugate pair in guardian cells combines with the guardian disjunction";
+    let math = zh ? `把所有守护候选看成一组选择：它们不能同时为假，否则盘面会退化为完整BUG；因此这组守护中至少有一个必须为真。` : `Treat all guardians as one set of alternatives: they cannot all be false, because that would collapse the grid to a complete BUG. Therefore at least one guardian is true.`;
+    if (/type 1/.test(branchKey)) variant = zh ? "守护候选全在同一格，该格必须取守护之一" : "all guardians occupy one cell, which must take one of them";
+    else if (/type 2/.test(branchKey)) variant = zh ? "守护候选同数字，公共可见位置可删该数字" : "all guardians use one digit, removable from common peers";
+    else if (/type 3/.test(branchKey)) variant = zh ? "守护候选与裸数组共同锁满容量" : "guardians combine with a naked subset to fill capacity";
+    else if (/type 4/.test(branchKey)) variant = zh ? "守护格中的共轭对与守护析取共同删数" : "a conjugate pair in guardian cells combines with the guardian disjunction";
     return zh ? [
       `去掉${gc || "高亮位置"}中的守护候选${gd}后，盘面会形成完整BUG；本分支为：${variant}。`,
-      "完整BUG存在成对互换的第二解，因此守护候选不可能全部为假；Type 1–4 再利用同格、同数字、数组或共轭关系推出具体结论。",
+      "完整BUG存在成对互换的第二解，因此守护候选不可能全部为假；类型1–4再利用同格、同数字、数组或共轭关系推出具体结论。",
       math,
-      "① 找出所有异常格及其伪双值对；② 计算每格守护候选；③ 确认守护全假会闭合BUG；④ 按步骤说明识别Type并应用结论。",
+      "① 找出所有异常格及其伪双值对；② 计算每格守护候选；③ 确认守护全假会闭合BUG；④ 按步骤说明识别类型并应用结论。",
       "每个Guardian分组只高亮该格真正多出的候选；StrongLink、Subset等辅助角色必须与Guardian分开显示。",
       `${uniquenessCheck} 不能漏掉任何异常候选，否则“守护至少一真”的析取不完整。`,
     ] : [
@@ -2562,22 +2981,22 @@ export function buildAuditedTechniqueGuide(step = {}, locale = "zh") {
     ];
   }
 
-  if (/external test \+ xy-wing/.test(key)) {
-    const ga = roleCellText(step, /^guardiansa$/i) || (zh ? "第一组守护候选" : "guardian group A");
-    const gb = roleCellText(step, /^guardiansb$/i) || (zh ? "第二组守护候选" : "guardian group B");
-    const wa = roleCellText(step, /^winga$/i) || cellNames(structureCells(step).slice(-2, -1));
-    const wb = roleCellText(step, /^wingb$/i) || cellNames(structureCells(step).slice(-1));
+  if (/external test \+ xy-wing/.test(branchKey)) {
+    const ga = roleCellText(step, /^guardiansa$/i, locale) || (zh ? "第一组守护候选" : "guardian group A");
+    const gb = roleCellText(step, /^guardiansb$/i, locale) || (zh ? "第二组守护候选" : "guardian group B");
+    const wa = roleCellText(step, /^winga$/i, locale) || cellNames(structureCells(step).slice(-2, -1), 14, locale);
+    const wb = roleCellText(step, /^wingb$/i, locale) || cellNames(structureCells(step).slice(-1), 14, locale);
     return zh ? [
       `以${deadly}为致命数字的唯一矩形，外部守护候选通过两个双值翼格转化为共同数字${target}的XY-Wing删数。`,
       `若所有${deadly}守护候选都为假，${body || "四角"}退化为致命矩形，所以守护集合至少一真。${ga}成立会迫使${wa || "第一翼"}取${target}；${gb}成立会迫使${wb || "第二翼"}取${target}。`,
-      `设两类守护析取为 Gₐ∨Gᵦ。双值翼给出 Gₐ⇒Wₐ(${target})、Gᵦ⇒Wᵦ(${target})，故 Wₐ(${target})∨Wᵦ(${target})。任何同时看见两翼的${target}均为假。`,
+      `两组守护候选至少有一组会提供一个真候选；对应的双值翼随之被迫取${target}。因此两个翼格中的${target}至少有一个为真，任何同时看见两翼的${target}都可删。`,
       `① 找${deadly}唯一矩形四角；② 分组找两类外部守护候选；③ 找分别看见对应全部守护候选的双值翼格；④ 删除同时看见两翼的${target}。`,
-      `四角UR主体、两组Guardians、Wing A、Wing B和删数目标必须使用不同角色显示；${target}是共同删数数字，不是致命数字。`,
+      `四角UR主体、两组守护候选、翼A、翼B和删数目标必须使用不同角色显示；${target}是共同删数数字，不是致命数字。`,
       `${uniquenessCheck} 还要确认每个翼格看见对应数字的全部守护候选，目标同时看见两个翼格。`,
     ] : [
       `A Unique Rectangle with deadly digits ${deadly} converts its external guardians through two bivalue wings into an XY-Wing elimination on shared digit ${target}.`,
       `If every ${deadly} guardian were false, ${body || "the four corners"} would become a deadly rectangle, so at least one guardian is true. ${ga} forces ${wa || "wing A"} to ${target}; ${gb} forces ${wb || "wing B"} to ${target}.`,
-      `Let the guardian disjunction be Gₐ∨Gᵦ. The bivalue wings give Gₐ⇒Wₐ(${target}) and Gᵦ⇒Wᵦ(${target}), hence Wₐ(${target})∨Wᵦ(${target}). Any ${target} seeing both wings is false.`,
+      `At least one guardian group supplies a true guardian, and its bivalue wing is then forced to ${target}. Thus ${target} is true in at least one wing, so any ${target} seeing both wings can be removed.`,
       `1. Find the ${deadly} UR body. 2. Split the external guardians by deadly digit. 3. Find a bivalue wing seeing every guardian in each group. 4. Remove ${target} from cells seeing both wings.`,
       `Show the UR body, two guardian groups, Wing A, Wing B and targets as separate roles. ${target} is the shared elimination digit, not a deadly digit.`,
       `${uniquenessCheck} Each wing must see every guardian of its associated deadly digit, and every target must see both wings.`,
@@ -2589,31 +3008,30 @@ export function buildAuditedTechniqueGuide(step = {}, locale = "zh") {
   const isXR = kind === "ExtendedRectangle";
   const family = zh ? (isAR ? "可避免矩形" : isUL ? "唯一环" : isXR ? "扩展矩形" : "唯一矩形") : (isAR ? "Avoidable Rectangle" : isUL ? "Unique Loop" : isXR ? "Extended Rectangle" : "Unique Rectangle");
   let variantIdea = zh ? "保留至少一个破坏致命结构的出口" : "retain at least one escape from the deadly structure";
-  let math = zh ? `令D表示只含致命数字组${deadly}的主体。D有两个交替完成方式，所以唯一解盘面必须满足“至少一个破坏条件Eᵢ为真”。删数来自该析取与当前Type附加约束。` : `Let D be the body restricted to deadly set ${deadly}. D has two alternating completions, so a unique puzzle requires at least one escape Eᵢ. The elimination follows from that disjunction plus the Type-specific constraint.`;
-  let steps = zh ? "① 找致命主体；② 确认致命数字组；③ 找破坏格或外部角色；④ 按实际Type核对容量/共轭/Wing关系；⑤ 应用结论。" : "1. Find the deadly body. 2. Confirm the deadly digit set. 3. Identify escape or external roles. 4. Check the actual Type's capacity/conjugacy/Wing relation. 5. Apply the conclusion.";
+  let math = zh ? `令D表示只含致命数字组${deadly}的主体。D有两个交替完成方式，所以唯一解盘面必须满足“至少一个破坏条件Eᵢ为真”。删数来自该析取与当前类型的附加约束。` : `Let D be the body restricted to deadly set ${deadly}. D has two alternating completions, so a unique puzzle requires at least one escape Eᵢ. The elimination follows from that disjunction plus the Type-specific constraint.`;
+  let steps = zh ? "① 找致命主体；② 确认致命数字组；③ 找破坏格或外部角色；④ 按实际类型核对容量、共轭或翼关系；⑤ 应用结论。" : "1. Find the deadly body. 2. Confirm the deadly digit set. 3. Identify escape or external roles. 4. Check the actual Type's capacity/conjugacy/Wing relation. 5. Apply the conclusion.";
   let highlight = zh ? "致命主体、破坏格、辅助数组/强链和删数目标应分角色显示，不能把全部高亮格统称为矩形或环。" : "Display the deadly body, escape cells, auxiliary subset/strong link and targets as separate roles; do not call every highlighted cell the rectangle or loop.";
-  if (/external test 1/.test(key)) variantIdea = zh ? "唯一外部守护格必须保留致命数字之一" : "the sole external guardian cell must keep one deadly digit";
-  else if (/external test 2\/4/.test(key)) variantIdea = zh ? "一种致命数字没有外部守护，另一数字的守护集合至少一真" : "one deadly digit has no external guardian, so a guardian of the other digit is true";
-  else if (/external test 3h/.test(key)) variantIdea = zh ? "外部守护与隐性数组共同锁定区域容量" : "external guardians and a hidden subset lock house capacity";
-  else if (/external test 3/.test(key)) variantIdea = zh ? "外部守护与裸数组共同锁定区域容量" : "external guardians and a naked subset lock house capacity";
-  else if (/aur \+ (xy|xyz)-wing/.test(key)) variantIdea = zh ? `屋顶额外候选的至少一真条件经Wing传到共同数字${target}` : `the roof-extra disjunction is carried through a Wing to shared digit ${target}`;
-  else if (/aur \+ wxyz-(wing|ring)/.test(key)) variantIdea = zh ? "屋顶额外候选与三个外部节点形成WXYZ待定数组/闭环" : "roof extras and three external nodes form a WXYZ almost-locked set/ring";
-  else if (/hidden rectangle/.test(key)) variantIdea = zh ? "行列共轭关系隐藏锁定一个致命数字" : "row and column conjugacies hidden-lock one deadly digit";
-  else if (/type 1/.test(key)) variantIdea = zh ? "只有一个破坏格，不能让它退化为致命数字组" : "there is one escape cell, which must not collapse to the deadly set";
-  else if (/type (2|5)/.test(key)) variantIdea = zh ? "两个破坏格共享一个至少一真的额外数字" : "two escape cells share one extra digit that is true in at least one";
-  else if (/type 3/.test(key)) variantIdea = zh ? "破坏候选与裸数组共同占满容量" : "escape candidates and a naked subset fill capacity";
-  else if (/type 4/.test(key)) variantIdea = zh ? "一个致命数字在破坏格中形成共轭对" : "one deadly digit is conjugate across the escape cells";
-  else if (/type 6/.test(key)) variantIdea = zh ? "一个致命数字的外部落点被清空，落点限制在主体角点" : "one deadly digit has no outside positions and is confined to the body corners";
-  else if (/type 7/.test(key)) variantIdea = zh ? "外部强链/S-Ring把致命端点连接成闭合约束" : "external strong links/S-Ring close the deadly endpoints";
-  else if (/uniqueness test/.test(key)) {
-    const branches = groupsMatching(step, /^branch$/i).map((group) => group.tail).filter(Boolean);
-    variantIdea = branches.length
-      ? (zh ? `多个唯一性分支合并：${branches.join("、")}` : `multiple uniqueness branches are merged: ${branches.join(", ")}`)
+  if (/external test 1/.test(branchKey)) variantIdea = zh ? "唯一外部守护格必须保留致命数字之一" : "the sole external guardian cell must keep one deadly digit";
+  else if (/external test 2\/4/.test(branchKey)) variantIdea = zh ? "一种致命数字没有外部守护，另一数字的守护集合至少一真" : "one deadly digit has no external guardian, so a guardian of the other digit is true";
+  else if (/external test 3h/.test(branchKey)) variantIdea = zh ? "外部守护与隐性数组共同锁定区域容量" : "external guardians and a hidden subset lock house capacity";
+  else if (/external test 3/.test(branchKey)) variantIdea = zh ? "外部守护与裸数组共同锁定区域容量" : "external guardians and a naked subset lock house capacity";
+  else if (/aur \+ (xy|xyz)-wing/.test(branchKey)) variantIdea = zh ? `屋顶额外候选的至少一真条件经Wing传到共同数字${target}` : `the roof-extra disjunction is carried through a Wing to shared digit ${target}`;
+  else if (/aur \+ wxyz-(wing|ring)/.test(branchKey)) variantIdea = zh ? "屋顶额外候选与三个外部节点形成WXYZ待定数组/闭环" : "roof extras and three external nodes form a WXYZ almost-locked set/ring";
+  else if (mergedBranch) {
+    variantIdea = branchDisplay
+      ? (zh ? `多个唯一性分支合并：${branchDisplay}` : `multiple uniqueness branches are merged: ${branchDisplay}`)
       : (zh ? "多个唯一性分支产生不同删数并被合并" : "multiple uniqueness branches produce distinct merged eliminations");
   }
+  else if (/hidden rectangle/.test(branchKey)) variantIdea = zh ? "行列共轭关系隐藏锁定一个致命数字" : "row and column conjugacies hidden-lock one deadly digit";
+  else if (/type 1/.test(branchKey)) variantIdea = zh ? "只有一个破坏格，不能让它退化为致命数字组" : "there is one escape cell, which must not collapse to the deadly set";
+  else if (/type (2|5)/.test(branchKey)) variantIdea = zh ? "两个破坏格共享一个至少一真的额外数字" : "two escape cells share one extra digit that is true in at least one";
+  else if (/type 3/.test(branchKey)) variantIdea = zh ? "破坏候选与裸数组共同占满容量" : "escape candidates and a naked subset fill capacity";
+  else if (/type 4/.test(branchKey)) variantIdea = zh ? "一个致命数字在破坏格中形成共轭对" : "one deadly digit is conjugate across the escape cells";
+  else if (/type 6/.test(branchKey)) variantIdea = zh ? "一个致命数字的外部落点被清空，落点限制在主体角点" : "one deadly digit has no outside positions and is confined to the body corners";
+  else if (/type 7/.test(branchKey)) variantIdea = zh ? "外部强链/S-Ring把致命端点连接成闭合约束" : "external strong links/S-Ring close the deadly endpoints";
   return zh ? [
     `${family}以${deadly}为致命数字组；当前分支的关键是：${variantIdea}。`,
-    `若所有破坏条件都失效，${body || "高亮主体"}只剩${deadly}并出现两种交替完成方式；当前Type的额外关系把“至少一个破坏条件成立”转化为本步结论。`,
+    `若所有破坏条件都失效，${body || "高亮主体"}只剩${deadly}并出现两种交替完成方式；当前类型的额外关系把“至少一个破坏条件成立”转化为本步结论。`,
     math,
     steps,
     highlight,
@@ -2665,6 +3083,26 @@ function buildAuditedPhase6Guide(step = {}, locale = "zh") {
     const forceKind = localizedProofMeta(forceKindRaw, locale);
     const branches = firstGroupTail(step, "BranchCount") || String(list(step?.chainBranches).length || "");
     const targets = firstGroup(step, /^commontargets$/i);
+    const triplet = firstGroup(step, /^witnesstripletoddagon$/i);
+    const guardians = tripletGuardianFacts(step, locale);
+    const guardianBranches = tripletGuardianBranchFacts(step, locale);
+    if (/triplet oddagon/i.test(forceKindRaw) && triplet && guardians.length) {
+      return zh ? [
+        model.structure,
+        model.basis,
+        model.deduction,
+        `① 核对12格Triplet Oddagon主体及三值组；② 找出主体格中的全部组外guardian（${guardians.join("、")}）；③ 核对这些guardian不能同时为假；④ ${guardianBranches.length ? `逐条核对guardian与分支对应：${guardianBranches.join("；")}` : "逐条核对每个guardian成立时的显示分支"}；⑤ 对各分支端点删数集合求交集并应用共同删数。`,
+        "高亮应把Triplet Oddagon主体三值候选、组外guardian、各条反向回放Force Chain以及最终共同删数分层显示；guardian是坏结构的真实逃逸条件，不应被隐藏成泛化的搜索实体标签。",
+        "核对重点不是“看起来有三条链”，而是：12格主体确为后端Triplet Oddagon见证、全部guardian已列全、至少一个guardian必真，并且最终每个删数都属于所有guardian分支端点删数集合的交集。",
+      ] : [
+        model.structure,
+        model.basis,
+        model.deduction,
+        `1. Verify the 12-cell Triplet Oddagon body and its three digits. 2. List every off-body guardian (${guardians.join(", ")}). 3. Verify that they cannot all be false. 4. ${guardianBranches.length ? `Verify the guardian-to-branch mapping: ${guardianBranches.join("; ")}` : "Verify the displayed branch for each guardian-true case"}. 5. Intersect the endpoint-elimination sets and apply the common deletions.`,
+        "Highlight the Triplet Oddagon body digits, off-body guardians, each reversed Force Chain branch and the final common eliminations as separate roles. Guardians are the real escape conditions of the impossible pattern, not merely a search label.",
+        "The audit target is not just the presence of three chains: verify the backend 12-cell Triplet Oddagon witness, complete guardian set, the at-least-one-guardian-true condition, and that every final deletion lies in the intersection of all guardian-branch endpoint deletion sets.",
+      ];
+    }
     return zh ? [
       `${forceKind}：${branches || "各"}条关键分支均已反向回放成正常Forcing Chain；每条分支都有自己的端点删数集合${targets ? `，${roleSummary(targets, locale, "共同目标")}` : ""}。`,
       "各分支代表完备的强制可能。无论实际落入哪一分支，若某候选都被该分支端点排除，则它属于共同结论；最终输出是所有分支端点删数集合的交集。",
@@ -2779,10 +3217,10 @@ function buildAuditedPhase7Guide(step = {}, locale = "zh") {
         ? "① 确认最终Truth格集合；② 对每个数字单独求可混合行/列/宫的严格最小cover；③ 将各数字最小cover大小相加，核对Logical LinkCount=CellCount；④ 若存在多套等价cover，区分每套实际逻辑链接数与UnionLinkCount链接并集；⑤ 只保留对全部等价cover都成立的外部/自噬删数。"
         : (advanced
           ? "① 确认核心格；② 为每个数字比较行/列/宫覆盖成本；③ 枚举浮动数字的行侧/列侧分配；④ 纳入被链接强制加入的Attachment；⑤ 核对CellCount=LinkCount并应用外部/自噬删数。"
-          : "① 确认核心格；② 逐数字计算占用的行、列、宫；③ 选取最低成本覆盖；④ 核对最小Link总数等于核心格数；⑤ 应用外部与重复覆盖删数。"),
+          : "① 确认核心格；② 逐数字计算占用的行、列、宫；③ 选取最低成本覆盖；④ 核对最小链接总数等于核心格数；⑤ 应用外部与重复覆盖删数。"),
       irregular
         ? "异型分支必须分别显示Truth格、每个数字的实际最小cover、Logical LinkCount、UnionLinkCount/覆盖族以及删数；不能把链接并集数量误当Rank。"
-        : "Core、Attachment、实际Link、PermutableDigits和删数必须分层显示；不能只写一个笼统的Rank 0。",
+        : "核心、附加格、实际链接、可置换数字和删数必须分层显示；不能只写一个笼统的秩 0。",
       `${branchLabel}。精确、高级/附加格、异型是不同搜索路径；只有实际输出的分支与角色可写入教程。`,
     ] : [
       model.structure, model.basis, model.deduction,

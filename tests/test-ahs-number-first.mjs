@@ -86,7 +86,60 @@ for (const [step, expected] of [
 
   const guide = buildAuditedTechniqueGuide(step, "zh");
   const guideText = Array.isArray(guide) ? guide.join("\n") : JSON.stringify(guide);
-  assert.ok(/候选数组合|数字集合/.test(guideText), `${step.kind} audited guide must instruct digit-first reading`);
+  assert.ok(/数字集@house|候选数组合|数字集合/.test(guideText), `${step.kind} audited guide must instruct digit-first reading`);
 }
 
 console.log("AHS candidate-first localization and dynamic explanation tests passed.");
+
+// Regression for generalized AHS-XZ protocol ownership.
+// Semantic facts such as the AHS house are backend-owned. The frontend may
+// localize/render them, but must never infer them from carrier cells.
+const generalizedAhsXzWithHouse = base("AHSXZ", "AHS-XZ", [1, 2, 3, 6, 7, 8],
+  [0, 3, 4, 6, 7, 8, 60, 61, 69, 79, 80], [
+    { label: "Branch:Single-RCC XZ", cells: [] },
+    { label: "AhsA:12367@r1", cells: [c(0), c(3), c(4), c(6), c(7), c(8)] },
+    { label: "AhsB:1278@b9", cells: [c(60), c(61), c(69), c(79), c(80)] },
+    { label: "Rcc:1", cells: [] },
+  ], { index: 60, candidates: [2] });
+
+{
+  const localized = localizedStepDescription(generalizedAhsXzWithHouse, "zh");
+  assert.ok(localized.includes("AHS A=12367@r1{"), `backend AHS-XZ house r1 must be rendered verbatim\n${localized}`);
+  assert.ok(localized.includes("AHS B=1278@b9{"), `backend AHS-XZ house b9 must be rendered verbatim\n${localized}`);
+  assert.ok(localized.includes("单 RCC XZ"), `Chinese AHS-XZ branch must be localized\n${localized}`);
+  assert.ok(!localized.includes("Single-RCC XZ"), `Chinese output must not leak English branch enum\n${localized}`);
+  assert.ok(!localized.includes("与house"), `Chinese output must not mix English house into prose\n${localized}`);
+
+  const model = buildStepExplanationModel(generalizedAhsXzWithHouse, "zh");
+  const text = model.sections.map((section) => section.text).join("\n");
+  assert.ok(text.includes("AHS A=12367@r1{"), `dynamic explanation must consume backend r1 metadata\n${text}`);
+  assert.ok(text.includes("AHS B=1278@b9{"), `dynamic explanation must consume backend b9 metadata\n${text}`);
+}
+
+const malformedAhsXzWithoutHouse = base("AHSXZ", "AHS-XZ", [1, 2, 3, 6, 7, 8],
+  [0, 3, 4, 6, 7, 8, 60, 61, 69, 79, 80], [
+    { label: "Branch:Single-RCC XZ", cells: [] },
+    { label: "AhsA:12367", cells: [c(0), c(3), c(4), c(6), c(7), c(8)] },
+    { label: "AhsB:1278", cells: [c(60), c(61), c(69), c(79), c(80)] },
+    { label: "Rcc:1", cells: [] },
+  ], { index: 60, candidates: [2] });
+
+{
+  const localized = localizedStepDescription(malformedAhsXzWithoutHouse, "zh");
+  assert.ok(localized.includes("@元数据缺失{"), `missing backend house metadata must be exposed, not guessed\n${localized}`);
+  assert.ok(!localized.includes("@r1{"), `frontend must not infer r1 from cells\n${localized}`);
+  assert.ok(!localized.includes("@b9{"), `frontend must not infer b9 from cells\n${localized}`);
+
+  const modelZh = buildStepExplanationModel(malformedAhsXzWithoutHouse, "zh");
+  const textZh = modelZh.sections.map((section) => section.text).join("\n");
+  assert.ok(textZh.includes("@元数据缺失{"), `dynamic explanation must expose missing backend metadata\n${textZh}`);
+  assert.ok(!textZh.includes("@r1{"), `dynamic explanation must not infer r1\n${textZh}`);
+  assert.ok(!textZh.includes("@b9{"), `dynamic explanation must not infer b9\n${textZh}`);
+
+  const modelEn = buildStepExplanationModel(malformedAhsXzWithoutHouse, "en");
+  const textEn = modelEn.sections.map((section) => section.text).join("\n");
+  assert.ok(textEn.includes("@metadata missing{"), `English explanation must expose missing backend metadata\n${textEn}`);
+  assert.ok(!/[\u3400-\u9fff]/u.test(textEn), `English explanation must not leak Chinese\n${textEn}`);
+}
+
+console.log("AHS backend-authoritative metadata tests passed.");
