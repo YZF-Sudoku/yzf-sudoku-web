@@ -54,12 +54,17 @@ assert.doesNotMatch(manual, /先选数字与“出数\/候选”，再轻触格�
 assert.doesNotMatch(manual, /普通做题优先使用“先选数字，再点格”/);
 assert.match(readme, /Mobile solving is \*\*cell-first\*\*/);
 assert.match(readme, /Focus-follow keypad \/ 焦点跟随操作盘/);
+assert.match(readme, /fixed givens are read-only lookup targets/);
+assert.match(manual, /固定提示数格是只读查看入口/);
 assert.match(readme, /Clear \/ 清除 \| Hint→Apply \/ 提示→应用/);
 assert.doesNotMatch(readme, /keeps the existing number-first workflow/);
 
 const tap = extractFunction(app, "handleCellTap");
-assert.match(tap, /if \(mobileSolveActive\) \{[\s\S]*?selectedIndex = index;[\s\S]*?openMobileSolveFocusPad\(index\);[\s\S]*?return;/,
-  "mobile board tap must only select/reposition focus before returning");
+assert.match(tap, /if \(mobileSolveActive\) \{[\s\S]*?selectedIndex = index;[\s\S]*?if \(isFixedCell\(index\)\) \{[\s\S]*?mobileSolveLastDigit = selectedValue[\s\S]*?closeMobileSolveFocusPad\(\);[\s\S]*?return;[\s\S]*?mobileSolveLastDigit = selectedValue[\s\S]*?openMobileSolveFocusPad\(index\);[\s\S]*?return;/,
+  "mobile givens must become read-only same-digit lookup targets while editable cells still open focus controls");
+const fixedBranch = tap.slice(tap.indexOf("if (isFixedCell(index))"), tap.indexOf("// In cell-first mode the highlight follows"));
+assert.doesNotMatch(fixedBranch, /openMobileSolveFocusPad\(/,
+  "fixed givens must never open the disabled focus-follow keypad");
 const mobileBranch = tap.slice(tap.indexOf("if (mobileSolveActive)"), tap.lastIndexOf("if (inputMode"));
 assert.doesNotMatch(mobileBranch, /handleValueTap\(|handleCandidateTap\(|executeValueEdit\(|toggle_candidate_json/,
   "cell-first mobile tap must not edit the board");
@@ -68,6 +73,8 @@ const applyDigit = extractFunction(app, "applyMobileSolveDigit");
 assert.match(applyDigit, /ensureMobileSolveSelection\(\)/);
 assert.match(applyDigit, /engine\.toggle_candidate_json\(selectedIndex, value\)/);
 assert.match(applyDigit, /executeValueEdit\(selectedIndex, nextValue\)/);
+assert.match(applyDigit, /mobileSolveLastDigit = nextValue > 0 \? value : 0/,
+  "clearing a user value by pressing the same digit must clear stale same-digit highlighting");
 assert.match(applyDigit, /finishMobileSolveDigitInteraction\(\)/);
 
 const numpad = extractFunction(app, "buildNumpad");
@@ -91,6 +98,12 @@ assert.match(manual, /清除｜提示\/应用｜标记｜更多/);
 const clear = extractFunction(app, "clearMobileSolveSelection");
 assert.doesNotMatch(clear, /toggle_candidate_json|handleCandidateTap|executeSimpleEngineEdit/,
   "Clear must not use the previous digit as an armed candidate in cell-first mode");
+assert.match(clear, /mobileSolveLastDigit = 0;[\s\S]*?executeValueEdit\(selectedIndex, 0\)/,
+  "clearing a placed value must also clear same-digit highlight state before render");
+
+const openPad = extractFunction(app, "openMobileSolveFocusPad");
+assert.match(openPad, /!manualMarksActive\(\) && isFixedCell\(index\)[\s\S]*?closeMobileSolveFocusPad\(\);[\s\S]*?return false;/,
+  "focus-follow lifecycle must never reopen an editing pad on a fixed given outside mark mode");
 
 const mount = extractFunction(app, "mountMobileSolveFocusControls");
 assert.match(mount, /mobileSolveFocusPad\.appendChild\(numpad\)/);

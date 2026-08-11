@@ -56,7 +56,7 @@ const TRAINING_OTP_STORAGE_KEY = "yzf-training-otp-v1";
 const OCR_ASSET_VERSION = "20260630-role-glyph-core-v8";
 const OCR_CORRECTION_UI_VERSION = "20260801-ocr-correction-v8.1-manual-hybrid-input";
 const APP_OVERVIEW_GUIDE_STEPS = [
-  { target: "#boardStage", titleZh: "盘面始终是操作中心", bodyZh: "加载、生成或恢复题目后，出数、候选和技巧高亮都会在这里呈现。手机做题统一采用格优先：先点目标格，再点数字；“更多”可开启焦点跟随，4×4 操作盘第四行是“清除｜提示/应用｜标记｜更多”，提示取得有效步骤后会原地切换成应用。", titleEn: "The board is the center of every workflow", bodyEn: "After loading, generating, or restoring a puzzle, values, candidates, and technique highlights all appear here. Mobile solving is cell-first: tap the target cell, then a digit. Enable Focus-follow keypad under More for a 4×4 pad whose last row is Clear | Hint/Apply | Marks | More; Hint changes in place to Apply only while a valid preview is pending." },
+  { target: "#boardStage", titleZh: "盘面始终是操作中心", bodyZh: "加载、生成或恢复题目后，出数、候选和技巧高亮都会在这里呈现。手机做题统一采用格优先：先点目标格，再点数字；固定提示数格只作为查看入口，点击会直接跟随该数字做同数高亮，不弹编辑浮窗。可在“更多”开启焦点跟随，4×4 操作盘第四行是“清除｜提示/应用｜标记｜更多”，提示取得有效步骤后会原地切换成应用。", titleEn: "The board is the center of every workflow", bodyEn: "After loading, generating, or restoring a puzzle, values, candidates, and technique highlights all appear here. Mobile solving is cell-first: tap the target cell, then a digit. Fixed givens are read-only lookup targets: tapping one follows its digit for same-digit highlighting and does not open an editing pad. Enable Focus-follow keypad under More for a 4×4 pad whose last row is Clear | Hint/Apply | Marks | More; Hint changes in place to Apply only while a valid preview is pending." },
   { target: ".global-actions", titleZh: "高频操作集中在盘面下方", bodyZh: "生成、加载、撤销、自动解题、提示一步和应用提示都在同一行；耗时任务可在任务状态中持续查看。", titleEn: "Frequent actions stay below the board", bodyEn: "Generate, load, undo, solve, hint, and apply share one row; long-running work remains visible in Task Status." },
   { target: "#hintPanel", titleZh: "提示区解释当前状态", bodyZh: "这里显示加载结果、技巧结论、错误和下一步建议；可解释步骤还能使用顶部的“解释”。", titleEn: "The hint panel explains the current state", bodyEn: "It shows load results, technique conclusions, errors, and next actions; explainable steps can also use Explain in the top bar." },
   { target: "#btnAppHub", titleZh: "低频功能统一放在帮助与现场", bodyZh: "手册、技巧说明、自动保存、OCR 草稿、近期题目、引导重播、语言和诊断都从这里进入。", titleEn: "Less-frequent tools live in Help & workspaces", bodyEn: "Manuals, technique notes, autosave, OCR drafts, recent puzzles, guide replay, language, and diagnostics are all available here." },
@@ -1422,7 +1422,7 @@ for (const [key, zh, en] of [
   ["keyboardCandidateShortcutHint", "Ctrl/Cmd+数字切换当前格候选；若浏览器占用该快捷键，可使用数字小键盘或安装后的 PWA/Standalone。", "Ctrl/Cmd+digit toggles a candidate in the selected cell. If the browser reserves that shortcut, use the numeric keypad or the installed PWA/Standalone."],
   ["candidateMode", "候选", "Candidates"],
   ["valueMode", "出数", "Values"],
-  ["inputModeTitle", "触摸/触控笔：先点目标格，再用数字键按当前出数/候选模式输入；手机“更多”可开启焦点跟随操作盘。鼠标直接在盘面使用左/右键。", "Touch/pen: tap the target cell first, then use a digit in the current Value/Candidate mode; mobile More can enable the focus-follow keypad. Mouse input uses direct left/right clicks on the board."],
+  ["inputModeTitle", "触摸/触控笔：先点目标格，再用数字键按当前出数/候选模式输入；固定提示数格点击后只做同数查看，不弹编辑浮窗。手机“更多”可开启焦点跟随操作盘。鼠标直接在盘面使用左/右键。", "Touch/pen: tap the target cell first, then use a digit in the current Value/Candidate mode. Fixed givens are lookup-only: tapping one follows its digit for same-digit highlighting without opening an editing pad. Mobile More can enable the focus-follow keypad. Mouse input uses direct left/right clicks on the board."],
   ["currentInput", "当前", "Current"],
   ["techPresetAll", "全选", "All In"],
   ["techPresetHighSpeed", "高速", "High Speed"],
@@ -10695,19 +10695,30 @@ function handleCellTap(index) {
     return;
   }
   if (mobileSolveActive) {
-    // Mobile solve is deliberately cell-first: tapping the board only moves
-    // focus. A digit button performs the edit against this selected cell.
-    // This keeps the fixed keypad and the optional focus-follow keypad on the
-    // same input state machine and prevents a stale digit from editing a newly
-    // tapped cell.
+    // Mobile solve is deliberately cell-first. Editable cells open the fixed
+    // or focus-follow keypad, while immutable givens act as read-only lookup
+    // targets: selecting a given drives same-digit highlighting but never
+    // opens a disabled floating keypad over the board.
     selectedIndex = index;
-    renderBoardSnapshot(currentSnapshot, currentHint);
+    const selectedCell = currentSnapshot?.cells?.[index];
+    const selectedValue = Number(selectedCell?.value || 0);
     if (isFixedCell(index)) {
+      mobileSolveLastDigit = selectedValue >= 1 && selectedValue <= 9 ? selectedValue : 0;
+      closeMobileSolveFocusPad();
+      renderBoardSnapshot(currentSnapshot, currentHint);
       setStatus(ui("fixedCell"));
-    } else {
-      setStatus(uif("mobileCellSelected", { cell: manualMarkCellText(index) }));
+      updateInputControls();
+      return;
     }
-    updateMobileSolveInputState();
+
+    // In cell-first mode the highlight follows the focused cell. A filled
+    // user value exposes its digit; an empty cell clears stale digit history.
+    // Candidate-digit taps can still temporarily set mobileSolveLastDigit
+    // until focus moves to another cell.
+    mobileSolveLastDigit = selectedValue >= 1 && selectedValue <= 9 ? selectedValue : 0;
+    renderBoardSnapshot(currentSnapshot, currentHint);
+    setStatus(uif("mobileCellSelected", { cell: manualMarkCellText(index) }));
+    updateInputControls();
     openMobileSolveFocusPad(index);
     return;
   }
@@ -10916,6 +10927,7 @@ function applyMobileSolveDigit(digit) {
     }
   } else {
     const nextValue = Number(cell?.value || 0) === value ? 0 : value;
+    mobileSolveLastDigit = nextValue > 0 ? value : 0;
     changed = executeValueEdit(selectedIndex, nextValue);
   }
   updateInputControls();
@@ -19336,6 +19348,13 @@ function openMobileSolveFocusPad(index = selectedIndex) {
     return false;
   }
   if (!Number.isInteger(index) || index < 0 || index >= 81) return false;
+  // Ordinary solve controls are meaningless on immutable givens. Keep fixed
+  // cells available to manual-mark modes, but never reopen an editing pad for
+  // a read-only clue through resize/toggle/layout lifecycle paths.
+  if (!manualMarksActive() && isFixedCell(index)) {
+    closeMobileSolveFocusPad();
+    return false;
+  }
   mountMobileSolveFocusControls();
   mobileSolveFocusPadAnchorIndex = index;
   mobileSolveFocusPadOpen = true;
@@ -20199,7 +20218,14 @@ function clearMobileSolveSelection() {
   }
   const cell = currentSnapshot.cells?.[selectedIndex];
   if (cell?.value > 0) {
-    return executeValueEdit(selectedIndex, 0);
+    const previousHighlightDigit = mobileSolveLastDigit;
+    mobileSolveLastDigit = 0;
+    const changed = executeValueEdit(selectedIndex, 0);
+    if (!changed) {
+      mobileSolveLastDigit = previousHighlightDigit;
+      updateInputControls();
+    }
+    return changed;
   }
   // In cell-first mode the last-used digit is highlight history, not an armed
   // candidate. Candidate removal is therefore performed by pressing that

@@ -810,7 +810,7 @@
 <thead><tr><th>功能</th><th>电脑</th><th>手机/触屏</th></tr></thead>
 <tbody>
 <tr><td>图片输入</td><td>文件、剪贴板按钮、<span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>选择图片或拍照识别</td></tr>
-<tr><td>普通出数/候选</td><td>鼠标左键候选出数、左键用户大数清除、右键切候选；键盘方向键选格，1–9 出数，0/Delete/Backspace 清除，Ctrl/Cmd+数字切候选</td><td>统一使用格优先：先轻触目标格，再按当前“出数/候选”模式点 1–9；“更多”可开启焦点跟随操作盘</td></tr>
+<tr><td>普通出数/候选</td><td>鼠标左键候选出数、左键用户大数清除、右键切候选；键盘方向键选格，1–9 出数，0/Delete/Backspace 清除，Ctrl/Cmd+数字切候选</td><td>统一使用格优先：先轻触目标格，再按当前“出数/候选”模式点 1–9；固定提示数格只用于查看，点击后直接按该数字做同数高亮且不弹编辑浮窗；“更多”可开启焦点跟随操作盘</td></tr>
 <tr><td>手工候选标记</td><td>按当前模式使用左/右键；链、构造链和微型区域由第二次点击的左右键决定类型</td><td>先点格子，再使用大数字键和面板按钮；长按可删除常规视觉标记</td></tr>
 <tr><td>替换解题路径</td><td>右键可替换步骤</td><td>长按约 0.65 秒</td></tr>
 <tr><td>标记截图</td><td>优先复制 PNG 到剪贴板，失败时下载</td><td>优先打开系统分享，失败时下载</td></tr>
@@ -1040,7 +1040,7 @@
 <ul>
 <li><strong>鼠标：</strong>使用 FB 风格直接操作，数字盘自动隐藏。左键候选出数，左键用户大数清除，右键候选删除/恢复。</li>
 <li><strong>键盘：</strong>使用选格优先操作；方向键、数字键和删除键只在普通盘面生效。焦点位于输入框、OCR、TLG、手工标记、步骤预览或任意弹窗时，快捷键不会穿透修改主盘。</li>
-<li><strong>手机：</strong>普通做题与精细候选标记统一使用<strong>格优先</strong>：先选格子，再点大数字键。可在“更多”开启“焦点跟随操作盘”，点格后 4×4 操作盘会按当前布局的 81 格位置表稳定跟随焦点（只有横竖屏、全屏或盘面尺寸变化时才重算）；第四行固定为“清除｜提示/应用｜标记｜更多”，其中同一按钮平时显示“提示”，取得有效提示后原地切换为“应用”，应用后恢复“提示”。关闭焦点跟随时继续使用固定操作区。</li>
+<li><strong>手机：</strong>普通做题与精细候选标记统一使用<strong>格优先</strong>：先选格子，再点大数字键。普通出数/候选模式下，固定提示数格是只读查看入口：点击会选中该格并按它的数字进行同数高亮，不弹 4×4 编辑浮窗；用户自己填入的数字仍可编辑，点击后照常弹出操作盘；点空格会清除上一数字遗留的同数高亮。可在“更多”开启“焦点跟随操作盘”，点可编辑格后 4×4 操作盘会按当前布局的 81 格位置表稳定跟随焦点（只有横竖屏、全屏或盘面尺寸变化时才重算）；第四行固定为“清除｜提示/应用｜标记｜更多”，其中同一按钮平时显示“提示”，取得有效提示后原地切换为“应用”，应用后恢复“提示”。关闭焦点跟随时继续使用固定操作区。</li>
 <li>开启 TLG 编辑后，盘面点击由 TLG 接管；要恢复普通出数/候选编辑，先关闭“启用 TLG 编辑”。</li>
 </ul>
 <div class="warn">不要把“画了一个删数标记”误认为候选已经删除。真正改变盘面的入口只有候选模式、应用提示、应用全部删数，以及其它明确写入盘面的操作。</div>
@@ -1051,7 +1051,7 @@
 <li><strong>Load a puzzle:</strong> paste a string, use OCR, restore a session, or generate one. Verify all black givens first; OCR puzzles may need given/user-digit role correction.</li>
 <li><strong>Mouse input:</strong> work directly on the board. Left-click an active candidate to set it; left-click a user value to clear it; right-click a candidate slot to remove or restore it.</li>
 <li><strong>Keyboard input:</strong> use an arrow key to establish and move the selected cell. Press 1–9 to set a value, 0/Delete/Backspace to clear a user value, Ctrl/Cmd+1–9 to toggle candidates, Ctrl/Cmd+Z to undo, and Ctrl+Y or Cmd+Shift+Z to redo. Mouse input remains direct and depends on the clicked candidate position plus the left/right button; neither mouse nor keyboard reads the persistent on-screen digit selection.</li>
-<li><strong>Touch/pen input:</strong> mobile solving is cell-first: tap the target cell, choose Value/Candidate as needed, then press 1–9. With <strong>More → Focus-follow keypad</strong> enabled, a 4×4 control pad appears near the selected cell; with it disabled, the fixed control area remains in use.</li>
+<li><strong>Touch/pen input:</strong> mobile solving is cell-first: tap the target cell, choose Value/Candidate as needed, then press 1–9. In ordinary solving, fixed givens are read-only lookup targets: tapping one selects it and follows its digit for same-digit highlighting without opening the editing pad. User-entered values remain editable; tapping an empty cell clears stale digit highlighting. With <strong>More → Focus-follow keypad</strong> enabled, a 4×4 control pad appears near editable selected cells; with it disabled, the fixed control area remains in use.</li>
 <li><strong>Analyze manually:</strong> open Manual Marks for circles, colors, chains, blocks, or staged eliminations. Visual marks are separate from the real candidate grid.</li>
 <li><strong>Check logic:</strong> Hint only previews the next program step. Press Apply Hint to commit it. Available Steps can compare multiple legal options.</li>
 <li><strong>Continue or recover:</strong> formal values, candidate edits, and applied hints enter Undo history. Undo mistakes before continuing.</li>
@@ -2208,7 +2208,7 @@ GUR enumeration constraints = 1
 <ol>
 <li>Load or generate a puzzle and verify the givens.</li>
 <li>Tap the target cell first; choose Value or Candidate as needed, then press 1–9 on the large pad.</li>
-<li>Ordinary values, candidates, and candidate-style manual marks all use the same cell-first model. With <strong>More → Focus-follow keypad</strong> enabled, tapping a cell opens the 4×4 controls near that focus. Its last row is <strong>Clear | Hint/Apply | Marks | More</strong>; the shared Hint/Apply button changes from Hint to Apply only while a valid preview is pending, then returns to Hint after applying or invalidation. Disable focus-follow to keep the fixed controls.</li>
+<li>Ordinary values, candidates, and candidate-style manual marks all use the same cell-first model. In ordinary Value/Candidate solving, fixed givens are lookup-only: tapping one follows its digit for same-digit highlighting and does not open the focus-follow keypad. User-entered values remain editable, and tapping an empty cell clears stale digit highlighting. With <strong>More → Focus-follow keypad</strong> enabled, tapping an editable cell opens the 4×4 controls near that focus. Its last row is <strong>Clear | Hint/Apply | Marks | More</strong>; the shared Hint/Apply button changes from Hint to Apply only while a valid preview is pending, then returns to Hint after applying or invalidation. Disable focus-follow to keep the fixed controls.</li>
 <li>For human analysis, open Marks and use “select cell, then large digit” for circles, colors, or staged eliminations.</li>
 <li>Use the shared Hint/Apply button: the first tap previews; while that preview is valid the same button becomes Apply, and the second tap commits it.</li>
 <li>Undo mistakes immediately; export candidate state or capture the diagram at useful milestones.</li>
