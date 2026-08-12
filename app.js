@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-a6080a3d4de0bdcc";
+import createModule from "./sudoku_wasm.js?v=wasm-483f7f2d9304e5a5";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -44,7 +44,7 @@ import {
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
 
-const APP_VERSION = "wasm-a6080a3d4de0bdcc";
+const APP_VERSION = "wasm-483f7f2d9304e5a5";
 const UI_RELEASE_VERSION = "ui-20260811-mobile-clear-hint-apply-toggle";
 const MANUAL_VERSION = "manual-20260811-mobile-clear-hint-apply-toggle";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
@@ -17780,7 +17780,21 @@ function createWasmModuleOptions() {
     locateFile: (path) => path.endsWith(".wasm") ? `./${path}?v=${APP_VERSION}` : path,
   };
   if (window.YZF_EMBEDDED_WASM_BINARY instanceof Uint8Array) {
-    options.wasmBinary = window.YZF_EMBEDDED_WASM_BINARY;
+    const embeddedWasm = window.YZF_EMBEDDED_WASM_BINARY;
+    // Older Emscripten glue consumes Module.wasmBinary directly.  Emscripten
+    // 6.0.5 no longer reads that option in this generated module shape, but it
+    // still supports instantiateWasm.  Supply both so Standalone remains
+    // compatible with historical and newly rebuilt WASM glue.
+    options.wasmBinary = embeddedWasm;
+    options.instantiateWasm = (imports, receiveInstance) => {
+      WebAssembly.instantiate(embeddedWasm, imports)
+        .then((result) => receiveInstance(result.instance))
+        .catch((error) => {
+          console.error("embedded WASM instantiation failed", error);
+          throw error;
+        });
+      return {};
+    };
   }
   return options;
 }
@@ -19593,11 +19607,14 @@ btnRate.addEventListener("click", async () => {
     return;
   }
 
-  // Both branches rate this exact visible candidate state through the same
-  // rate_import_text_json interface.  The initial puzzle type only chooses the
-  // execution thread: standard Sudoku stays on the main thread for fast startup,
-  // while an originally imported Sukaku uses a Worker to avoid blocking the UI.
-  const useWorker = Boolean(initialCandidateSukaku);
+  // Both branches rate this exact visible snapshot through rate_import_text_json().
+  // The backend decides whether its candidates add a real constraint.  Threading
+  // mirrors that decision cheaply from the serialized snapshot: plain/current
+  // Sudoku grids stay on the main thread, while any true candidate-state rating
+  // (native Sukaku or an x-Library snapshot with eliminations) uses the Worker.
+  const inputParts = input.split(":");
+  const snapshotHasCandidateEliminations = inputParts[2] === "x" && String(inputParts[4] || "").trim().length > 0;
+  const useWorker = Boolean(initialCandidateSukaku || inputParts[2] === "s" || snapshotHasCandidateEliminations);
 
   try {
     const message = await runRatingTask(input, fallbackPuzzle, { useWorker });

@@ -125,6 +125,12 @@ The shared Batch Tasks panel provides four modes without expanding the main UI: 
 
 批量出图/打印不会复用当前盘面的 DOM 截图：题图固定白底，不受深色主题、选中态、焦点跟随或手工标记影响。候选图的 Easy 集合也独立于用户当前技巧配置。
 
+## Current-state Rating / 当前盘面评分
+
+**Rate Current Puzzle / 评分当前题目** always rates the exact snapshot currently displayed on the board. The Library wrapper is only a transport format and does not automatically imply Sukaku rating. If the snapshot candidates are exactly the natural candidates of its current fixed values, SKFR uses `ratePuzzle`; only effective candidate deletions or an original Sukaku/candidate-grid baseline use `rateSukaku`. Candidate-state ratings run in the rating Worker.
+
+“评分当前题目”始终以当前可见盘面快照为评分对象。Library 只是快照传输格式，不代表一定使用 Sukaku 评分；只有当前候选相对已填数字的自然候选确实存在额外删减，或原始输入本身就是 Sukaku/候选盘约束时，才调用 `rateSukaku`。
+
 ## WebAssembly Solver
 
 The Sudoku solving engine runs in the browser through WebAssembly.
