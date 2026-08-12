@@ -1504,8 +1504,24 @@
 <li>点击“开始”，输出每题的状态、步数、YZF 评分、最难技巧和错误信息。</li>
 <li><strong>最难技巧判定：</strong>先比较 YZF 分数；同分时按 FB 原版 <code>SolutionType</code> 的固定技巧顺序裁决；只有同一种技巧内部才继续比较 rank/长度。因此同为 400 分时，Cell/Region Forcing Chain 会覆盖先出现的 Complex AIC，不再受解题路径先后顺序影响。</li>
 </ol>
+<h3>批量出图</h3>
+<ol>
+<li>选择“批量出图”，再选择一个 TXT 文本文件。输入格式沿用 FB：<strong>一行一题</strong>，每行前 81 个字符是标准数独题面；第 82 字符以后若有内容，仅作为图片右下角附注，不参与解题。</li>
+<li>点击“开始”后，在原生弹窗中选择两种 FB 出图模式之一：<strong>清 Easy step + 提供候选数</strong>，或<strong>不清 Easy step + 不提供候选数</strong>；同时可设置起始编号，默认从 <code>001</code> 开始。</li>
+<li>候选图模式使用固定 Easy 集合清到停滞：Full House、Hidden/Naked Single、Locked Candidates、Naked/Hidden Pair、Triple、Quad。它不读取当前技巧配置。提示数为黑色，Easy 出数为蓝色，剩余候选为灰色。</li>
+<li>题面图模式完全不执行 Easy，也不显示候选，只画输入题面。两种模式都输出固定白底 <code>1030×1030</code> PNG，左下角始终显示 <code>#编号</code>，右下角可显示行尾附注；底部编号与附注采用便于缩放分享阅读的较大字号。</li>
+<li>无解或非法题跳过；多解题沿用 FB 行为，候选图模式自动降级为纯题面图。图片编号只对实际输出的文件递增，因此不会因为跳题留下断号。</li>
+</ol>
+<p>支持 File System Access API 的桌面 Chromium 浏览器会让你选择一次输出文件夹，然后直接写入 <code>001.png</code>、<code>002.png</code>……；不支持目录写入时会下载一个 ZIP，解压后仍是独立 PNG 文件，便于在 QQ 等社交软件中批量分享。</p>
+<h3>批量打印</h3>
+<ol>
+<li>选择“批量打印”并点击“开始”。打印沿用主界面当前难度，参数都在弹窗中设置，不占用主面板空间。</li>
+<li>可选每页 2 题或 4 题、页数以及纵向/横向。4 题固定为 2×2；2 题纵向为 1×2，横向为 2×1。</li>
+<li>程序只生成本次打印需要的题数，例如 4 题/页 × 5 页只生成 20 题；每题只打印原始题面，并标出 ER 评分。</li>
+<li>生成完成后先进入 YZF 自己的分页打印预览。预览确认后点击“打印”，再调用浏览器打印预览，可继续选择实体打印机或保存 PDF；浏览器打印流程结束或取消后，YZF 的打印预览弹窗会自动关闭。</li>
+</ol>
 <h3>文件与平台差异</h3>
-<p>支持 File System Access API 的桌面浏览器会先让你选择保存位置，并在运行中持续追加；其它浏览器（常见于手机和部分 Firefox/Safari）会在任务结束或停止时生成下载文件。</p>
+<p>批量出题/解题支持 File System Access API 时会直接写文本文件，否则在任务结束或停止时生成下载；批量出图优先直接写图片文件夹，不支持时回退为 ZIP 下载。批量打印不写文件，最终交给浏览器打印系统。</p>
 <div class="warn">批量出题默认持续运行，必须点击“停止”。关闭页面前先停止，否则尚未下载的内存结果可能丢失。</div>
 </div>
 <div class="en">
@@ -1525,8 +1541,24 @@
 <li>Press Start. Output includes status, steps, YZF rating, hardest technique, and errors.</li>
 <li><strong>Hardest-technique tie-break:</strong> compare the YZF score first, then the fixed FB <code>SolutionType</code> order for equal scores; rank/length is compared only within the same technique. Thus, at score 400, Cell/Region Forcing Chain supersedes an earlier Complex AIC instead of depending on path order.</li>
 </ol>
+<h3>Batch Pictures</h3>
+<ol>
+<li>Select Batch Pictures and choose a TXT file. The input follows FB: <strong>one puzzle per line</strong>. The first 81 characters are the standard Sudoku puzzle; any text after character 81 is an optional bottom-right caption and is not part of puzzle parsing.</li>
+<li>Press Start and choose one of the two original FB picture modes in the native dialog: <strong>Clear Easy steps + show candidates</strong>, or <strong>Keep original puzzle + hide candidates</strong>. The starting image number defaults to <code>001</code>.</li>
+<li>Candidate mode clears a fixed Easy set to a stall: Full House, Hidden/Naked Single, Locked Candidates, and Naked/Hidden Pair, Triple, and Quad. It is independent of the current technique configuration. Givens are black, Easy placements are blue, and remaining candidates are gray.</li>
+<li>Plain mode runs no Easy logic and shows no candidates. Both modes produce fixed white-background <code>1030×1030</code> PNGs, always print <code>#number</code> at bottom left, and may show the line suffix at bottom right; the footer text uses a larger size for readability after social-app scaling.</li>
+<li>Invalid/no-solution puzzles are skipped. Multiple-solution puzzles keep the FB behavior: candidate mode falls back to a plain puzzle image. Numbering advances only for images actually written, so skipped rows do not create gaps.</li>
+</ol>
+<p>Desktop Chromium browsers with File System Access can write <code>001.png</code>, <code>002.png</code>, … directly into one selected folder. When directory writing is unavailable, YZF downloads one ZIP whose contents are still independent PNG files, suitable for bulk sharing in chat/social apps.</p>
+<h3>Batch Printing</h3>
+<ol>
+<li>Select Batch Printing and press Start. Printing uses the current main difficulty; its settings live in a dialog so the shared batch panel stays compact.</li>
+<li>Choose 2 or 4 puzzles per page, page count, and portrait/landscape. Four puzzles use a 2×2 grid; two puzzles use 1×2 in portrait and 2×1 in landscape.</li>
+<li>Only the exact number required for this print job is generated. For example, 4 puzzles/page × 5 pages generates 20 puzzles. Printing uses the original puzzle only and shows the ER rating for each puzzle.</li>
+<li>YZF first opens its own paged print preview. Press Print there to invoke the browser print preview, where a physical printer or Save as PDF can be chosen.</li>
+</ol>
 <h3>Files and Platform Differences</h3>
-<p>Desktop browsers with the File System Access API ask for a destination and append while running. Other browsers, commonly mobile and some Firefox/Safari versions, create a download when the task finishes or is stopped.</p>
+<p>Batch generation/solving write text files directly when File System Access is available and otherwise download at completion/stop. Batch Pictures prefer a writable image folder and fall back to ZIP. Batch Printing writes no application file and hands the final document to the browser print system.</p>
 <div class="warn">Batch generation runs continuously by default and must be stopped. Stop before closing the page or in-memory output that has not yet downloaded may be lost.</div>
 </div>
 </div>

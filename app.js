@@ -441,6 +441,23 @@ const batchFilename = document.getElementById("batchFilename");
 const batchPanel = batchFilename?.closest("details") || null;
 const batchSolveFile = document.getElementById("batchSolveFile");
 const batchStatus = document.getElementById("batchStatus");
+const batchImageOptionsDialog = document.getElementById("batchImageOptionsDialog");
+const batchImageInputSummary = document.getElementById("batchImageInputSummary");
+const batchImageModeCandidates = document.getElementById("batchImageModeCandidates");
+const batchImageModePlain = document.getElementById("batchImageModePlain");
+const batchImageStartNumber = document.getElementById("batchImageStartNumber");
+const btnBatchImageStart = document.getElementById("btnBatchImageStart");
+const batchPrintOptionsDialog = document.getElementById("batchPrintOptionsDialog");
+const batchPrintDifficultySummary = document.getElementById("batchPrintDifficultySummary");
+const batchPrintPerPage = document.getElementById("batchPrintPerPage");
+const batchPrintPages = document.getElementById("batchPrintPages");
+const batchPrintOrientation = document.getElementById("batchPrintOrientation");
+const btnBatchPrintPreview = document.getElementById("btnBatchPrintPreview");
+const batchPrintPreviewDialog = document.getElementById("batchPrintPreviewDialog");
+const batchPrintPreviewFrame = document.getElementById("batchPrintPreviewFrame");
+const btnBatchPrintPreviewClose = document.getElementById("btnBatchPrintPreviewClose");
+const btnBatchPrintPreviewBack = document.getElementById("btnBatchPrintPreviewBack");
+const btnBatchPrintNow = document.getElementById("btnBatchPrintNow");
 const trainingTechniqueSelect = document.getElementById("trainingTechniqueSelect");
 const trainingOtp = document.getElementById("trainingOtp");
 const trainingOtpOption = document.getElementById("trainingOtpOption");
@@ -586,6 +603,10 @@ let techniqueState = [];
 let whipMemoryMode = "auto";
 let whipCompareGWhip = false;
 let batchAbortRequested = false;
+let pendingBatchImageRecords = [];
+let pendingBatchImageSourceFile = null;
+let lastBatchPrintResults = [];
+let lastBatchPrintOptions = null;
 let yzfDebugSampleData = null;
 let yzfDebugControlsInitialized = false;
 let yzfSelectedBranchMode = "all";
@@ -1356,12 +1377,50 @@ for (const [key, zh, en] of [
   ["batchMode", "模式", "Mode"],
   ["batchModeGenerate", "批量出题", "Batch generation"],
   ["batchModeSolve", "批量解题", "Batch solving"],
+  ["batchModeImage", "批量出图", "Batch pictures"],
+  ["batchModePrint", "批量打印", "Batch printing"],
   ["batchSolveFile", "解题输入文件", "Solve input file"],
+  ["batchImageFile", "出图输入文件", "Picture input file"],
   ["batchSolveFileHint", "从文本文件载入，一行一题。", "Load a text file; one puzzle per line."],
   ["filename", "输出文件名", "Output filename"],
   ["startBatch", "开始", "Start"],
   ["stop", "停止", "Stop"],
-  ["batchStatusIdle", "批量出题/批量解题共用面板。批量出题持续写入输出文件，批量解题从文本文件读取，一行一题。", "Shared panel for batch generation and solving. Generation writes continuously; solving reads a text file, one puzzle per line."],
+  ["batchStatusIdle", "批量任务共用面板：出题、解题、出图、打印。出图/解题从文本文件读取，一行一题；出图和打印的选项在开始后弹窗设置。", "Shared batch panel for generation, solving, pictures, and printing. Solving/pictures read a text file with one puzzle per line; picture/print options open after Start."],
+  ["batchImageOptionsTitle", "批量出图", "Batch pictures"],
+  ["batchImageModeLabel", "出图模式", "Picture mode"],
+  ["batchImageModeCandidates", "清 Easy step + 提供候选数", "Clear Easy steps + show candidates"],
+  ["batchImageModePlain", "不清 Easy step + 不提供候选数", "Keep original puzzle + hide candidates"],
+  ["batchImageStartNumber", "起始编号", "Starting number"],
+  ["batchImageOutputHint", "输入 TXT 一行一题。优先写入所选文件夹；浏览器不支持目录写入时下载 ZIP。", "TXT input uses one puzzle per line. Pictures are written to a selected folder when supported; otherwise a ZIP is downloaded."],
+  ["batchImageStart", "开始出图", "Create pictures"],
+  ["batchImageInputSummary", "输入文件：{filename}；非空行 {count}。", "Input: {filename}; {count} non-empty lines."],
+  ["batchImageNoInput", "请先选择批量出图 TXT 文件。", "Select a TXT file for batch pictures first."],
+  ["batchImageNoPuzzle", "输入文件没有可处理的谜题。", "The input file contains no puzzles to process."],
+  ["batchImageInvalidNumber", "起始编号必须是 0 到 999999 之间的整数。", "Starting number must be an integer from 0 to 999999."],
+  ["batchImageStartStatus", "批量出图开始：{target} 行，模式={mode}，输出={output}。", "Batch pictures started: {target} lines, mode={mode}, output={output}."],
+  ["batchImageProgress", "批量出图 {done}/{target}：已输出 {written}，无解/非法跳过 {skipped}，多解降级 {multiple}，已用时 {elapsed}。", "Batch pictures {done}/{target}: {written} written, {skipped} unsolved/invalid skipped, {multiple} multiple-solution downgraded, elapsed {elapsed}."],
+  ["batchImageDone", "批量出图完成：{written} 张；无解/非法跳过 {skipped}；多解降级 {multiple}；输出={output}；已用时 {elapsed}。", "Batch pictures complete: {written} images; {skipped} unsolved/invalid skipped; {multiple} multiple-solution downgraded; output={output}; elapsed {elapsed}."],
+  ["batchImageCancelled", "批量出图已停止：已输出 {written} 张。", "Batch pictures stopped: {written} images written."],
+  ["batchImageOutputFolder", "文件夹", "folder"],
+  ["batchImageOutputZip", "ZIP 下载", "ZIP download"],
+  ["batchPrintOptionsTitle", "批量打印", "Batch printing"],
+  ["batchPrintDifficulty", "当前难度：{difficulty}", "Current difficulty: {difficulty}"],
+  ["batchPrintPerPage", "每页题数", "Puzzles per page"],
+  ["batchPrintPages", "页数", "Pages"],
+  ["batchPrintOrientation", "方向", "Orientation"],
+  ["batchPrintPortrait", "纵向", "Portrait"],
+  ["batchPrintLandscape", "横向", "Landscape"],
+  ["batchPrintHint", "先生成 YZF 打印预览，确认后再进入浏览器打印预览。", "Generate the YZF print preview first, then confirm to open the browser print preview."],
+  ["batchPrintBuildPreview", "生成预览", "Generate preview"],
+  ["batchPrintPreviewTitle", "打印预览", "Print preview"],
+  ["batchPrintBack", "返回设置", "Back to settings"],
+  ["batchPrintNow", "打印", "Print"],
+  ["batchPrintInvalidPages", "页数必须是 1 到 100 之间的整数。", "Page count must be an integer from 1 to 100."],
+  ["batchPrintStartStatus", "正在生成打印预览：{target} 题（{pages} 页 × {perPage} 题），难度 {difficulty}。", "Generating print preview: {target} puzzles ({pages} pages × {perPage}), difficulty {difficulty}."],
+  ["batchPrintProgress", "打印预览生成 {done}/{target}，尝试 {attempts}，已用时 {elapsed}。", "Print preview generation {done}/{target}, {attempts} attempts, elapsed {elapsed}."],
+  ["batchPrintReady", "打印预览已生成：{pages} 页，共 {target} 题。", "Print preview ready: {pages} pages, {target} puzzles."],
+  ["batchPrintCancelled", "打印预览生成已停止。", "Print preview generation stopped."],
+  ["batchPrintPageLabel", "第 {page} 页", "Page {page}"],
   ["moreInput", "更多：题面输入与导出评分", "More: puzzle input, export, and rating"],
   ["preferClipboardLoad", "剪贴板优先", "Clipboard first"],
   ["preferClipboardLoadTitle", "加载题目时优先使用剪贴板，失败后再用文本框", "Prefer clipboard when loading puzzles, then fall back to the text box"],
@@ -4560,6 +4619,33 @@ function applyStaticLanguage() {
   updateBatchModeLabels();
   updateTrainingGenerationModeUi();
   setLocalizedTexts([["btnBatchGenerate", "startBatch"], ["btnBatchStop", "stop"]]);
+  setLocalizedTexts([
+    ["batchImageOptionsTitle", "batchImageOptionsTitle"],
+    ["batchImageModeLabel", "batchImageModeLabel"],
+    ["batchImageModeCandidatesLabel", "batchImageModeCandidates"],
+    ["batchImageModePlainLabel", "batchImageModePlain"],
+    ["batchImageStartNumberLabel", "batchImageStartNumber"],
+    ["batchImageOutputHint", "batchImageOutputHint"],
+    ["btnBatchImageStart", "batchImageStart"],
+    ["batchPrintOptionsTitle", "batchPrintOptionsTitle"],
+    ["batchPrintPerPageLabel", "batchPrintPerPage"],
+    ["batchPrintPagesLabel", "batchPrintPages"],
+    ["batchPrintOrientationLabel", "batchPrintOrientation"],
+    ["batchPrintHint", "batchPrintHint"],
+    ["btnBatchPrintPreview", "batchPrintBuildPreview"],
+    ["batchPrintPreviewTitle", "batchPrintPreviewTitle"],
+    ["btnBatchPrintPreviewBack", "batchPrintBack"],
+    ["btnBatchPrintNow", "batchPrintNow"],
+  ]);
+  setLocalizedSelectOptions(batchPrintOrientation, {
+    portrait: "batchPrintPortrait",
+    landscape: "batchPrintLandscape",
+  });
+  for (const id of ["btnBatchImageOptionsClose", "btnBatchPrintOptionsClose", "btnBatchPrintPreviewClose"]) {
+    setTitleAndAria(document.getElementById(id), ui("close"));
+  }
+  setLocalizedTexts([["btnBatchImageCancel", "trainingTextFilterCancel"], ["btnBatchPrintCancel", "trainingTextFilterCancel"]]);
+  updateBatchDialogSummaries();
   if (batchStatus && (batchStatus.textContent === uiText.zh.batchStatusIdle || batchStatus.textContent === uiText.en.batchStatusIdle)) {
     batchStatus.textContent = ui("batchStatusIdle");
   }
@@ -12415,6 +12501,418 @@ async function openBatchWriter(filename) {
   };
 }
 
+const BATCH_IMAGE_EASY_TECHNIQUES = Object.freeze({
+  none: true,
+  FullHouse: true,
+  HiddenSingle: true,
+  LockedCandidates: true,
+  NakedSingle: true,
+  NakedPair: true,
+  HiddenPair: true,
+  NakedTriple: true,
+  HiddenTriple: true,
+  NakedQuad: true,
+  HiddenQuad: true,
+});
+
+function batchXmlEscape(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function batchImageNumberText(value) {
+  return String(Math.max(0, Number(value || 0))).padStart(3, "0");
+}
+
+function buildBatchSudokuSvg({ puzzle = "", snapshot = null, showCandidates = false, number = null, note = "", footer = true } = {}) {
+  const margin = footer ? 15 : 0;
+  const boardSize = 1000;
+  const totalSize = boardSize + margin * 2;
+  const cellSize = boardSize / 9;
+  const normalizedPuzzle = normalizeBatchImagePuzzleText(puzzle) || ".".repeat(81);
+  const cells = Array.isArray(snapshot?.cells) && snapshot.cells.length === 81 ? snapshot.cells : null;
+  const svg = [];
+  svg.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${totalSize}" height="${totalSize}" viewBox="0 0 ${totalSize} ${totalSize}">`);
+  svg.push(`<rect width="${totalSize}" height="${totalSize}" fill="#ffffff"/>`);
+  svg.push(`<g transform="translate(${margin} ${margin})">`);
+  svg.push(`<rect x="0" y="0" width="${boardSize}" height="${boardSize}" fill="#ffffff"/>`);
+
+  // Keep the outer 4px frame fully inside the SVG viewport.  Drawing a centered
+  // stroke on x/y=0 or 1000 lets SVG clip half of it, which can make a scaled
+  // print preview lose an edge (most visibly the bottom edge in 4-up layout).
+  const outerHalf = 2;
+  svg.push(`<rect x="${outerHalf}" y="${outerHalf}" width="${boardSize - outerHalf * 2}" height="${boardSize - outerHalf * 2}" fill="none" stroke="#111111" stroke-width="4"/>`);
+  for (let i = 1; i <= 8; i += 1) {
+    const position = i * cellSize;
+    const major = i % 3 === 0;
+    const width = major ? 4 : 2;
+    const color = major ? "#111111" : "#8a8a8a";
+    svg.push(`<line x1="${position}" y1="0" x2="${position}" y2="${boardSize}" stroke="${color}" stroke-width="${width}"/>`);
+    svg.push(`<line x1="0" y1="${position}" x2="${boardSize}" y2="${position}" stroke="${color}" stroke-width="${width}"/>`);
+  }
+
+  for (let index = 0; index < 81; index += 1) {
+    const row = Math.floor(index / 9);
+    const col = index % 9;
+    const x = col * cellSize;
+    const y = row * cellSize;
+    const cell = cells?.[index] || null;
+    const sourceDigit = Number(normalizedPuzzle[index]) || 0;
+    const value = Number(cell?.value || sourceDigit || 0);
+    const given = cell ? Boolean(cell.given) : sourceDigit > 0;
+    if (value > 0) {
+      svg.push(`<text x="${x + cellSize / 2}" y="${y + cellSize * 0.69}" text-anchor="middle" font-family="Tahoma,Arial,sans-serif" font-size="65" font-weight="400" fill="${given ? "#000000" : "#1769c2"}">${value}</text>`);
+      continue;
+    }
+    if (!showCandidates || !cell || !Array.isArray(cell.candidates)) continue;
+    for (const rawDigit of cell.candidates) {
+      const digit = Number(rawDigit);
+      if (!(digit >= 1 && digit <= 9)) continue;
+      const cr = Math.floor((digit - 1) / 3);
+      const cc = (digit - 1) % 3;
+      svg.push(`<text x="${x + cellSize * ((cc + 0.5) / 3)}" y="${y + cellSize * ((cr + 0.68) / 3)}" text-anchor="middle" font-family="Tahoma,Arial,sans-serif" font-size="22" font-weight="400" fill="#4b4b4b">${digit}</text>`);
+    }
+  }
+  svg.push(`</g>`);
+  if (footer) {
+    if (number != null) {
+      svg.push(`<text x="15" y="1027" text-anchor="start" font-family="Tahoma,Arial,sans-serif" font-size="14" fill="#111111">#${batchXmlEscape(batchImageNumberText(number))}</text>`);
+    }
+    if (note) {
+      svg.push(`<text x="1015" y="1027" text-anchor="end" font-family="Tahoma,Arial,sans-serif" font-size="14" fill="#111111">${batchXmlEscape(note)}</text>`);
+    }
+  }
+  svg.push(`</svg>`);
+  return svg.join("");
+}
+
+async function batchSvgToPngBlob(svgText, size = 1030) {
+  const source = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(source);
+  try {
+    const image = new Image();
+    image.decoding = "async";
+    image.src = url;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) throw new Error("canvas context unavailable");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, size, size);
+    context.drawImage(image, 0, 0, size, size);
+    return await new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("PNG encode failed")), "image/png");
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function batchZipDosDateTime(date = new Date()) {
+  const year = Math.max(1980, date.getFullYear());
+  return {
+    date: ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate(),
+    time: (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2),
+  };
+}
+
+function batchZipU16(value) {
+  const bytes = new Uint8Array(2);
+  new DataView(bytes.buffer).setUint16(0, value & 0xffff, true);
+  return bytes;
+}
+
+function batchZipU32(value) {
+  const bytes = new Uint8Array(4);
+  new DataView(bytes.buffer).setUint32(0, value >>> 0, true);
+  return bytes;
+}
+
+async function buildBatchStoredZip(entries) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let localOffset = 0;
+  const { date, time } = batchZipDosDateTime();
+  for (const entry of entries) {
+    const nameBytes = encoder.encode(String(entry.name || "image.png"));
+    const data = new Uint8Array(await entry.blob.arrayBuffer());
+    const crc = tlgLibraryCrc32(data);
+    const localHeader = new Blob([
+      batchZipU32(0x04034b50), batchZipU16(20), batchZipU16(0), batchZipU16(0),
+      batchZipU16(time), batchZipU16(date), batchZipU32(crc), batchZipU32(data.length), batchZipU32(data.length),
+      batchZipU16(nameBytes.length), batchZipU16(0), nameBytes,
+    ]);
+    localParts.push(localHeader, data);
+    centralParts.push(new Blob([
+      batchZipU32(0x02014b50), batchZipU16(20), batchZipU16(20), batchZipU16(0), batchZipU16(0),
+      batchZipU16(time), batchZipU16(date), batchZipU32(crc), batchZipU32(data.length), batchZipU32(data.length),
+      batchZipU16(nameBytes.length), batchZipU16(0), batchZipU16(0), batchZipU16(0), batchZipU16(0),
+      batchZipU32(0), batchZipU32(localOffset), nameBytes,
+    ]));
+    localOffset += localHeader.size + data.length;
+  }
+  const centralBlob = new Blob(centralParts);
+  const end = new Blob([
+    batchZipU32(0x06054b50), batchZipU16(0), batchZipU16(0), batchZipU16(entries.length), batchZipU16(entries.length),
+    batchZipU32(centralBlob.size), batchZipU32(localOffset), batchZipU16(0),
+  ]);
+  return new Blob([...localParts, centralBlob, end], { type: "application/zip" });
+}
+
+function batchImageZipFilename(file) {
+  const base = String(file?.name || "sudoku-pictures").replace(/\.[^.]+$/, "").replace(/[\\/:*?"<>|]+/g, "-").trim();
+  return `${base || "sudoku-pictures"}-images.zip`;
+}
+
+async function createBatchImageSink(sourceFile) {
+  if (typeof window.showDirectoryPicker === "function") {
+    try {
+      const directory = await window.showDirectoryPicker({ mode: "readwrite" });
+      return {
+        direct: true,
+        outputLabel: ui("batchImageOutputFolder"),
+        write: async (name, blob) => {
+          const handle = await directory.getFileHandle(name, { create: true });
+          const writable = await handle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+        },
+        close: async () => {},
+        abort: async () => {},
+      };
+    } catch (error) {
+      if (error?.name === "AbortError") throw error;
+      // API 存在但当前浏览器/权限环境拒绝目录写入时，自动降级为单个 ZIP 下载。
+    }
+  }
+  const entries = [];
+  return {
+    direct: false,
+    outputLabel: ui("batchImageOutputZip"),
+    write: async (name, blob) => { entries.push({ name, blob }); },
+    close: async () => {
+      const zip = await buildBatchStoredZip(entries);
+      downloadBlob(zip, batchImageZipFilename(sourceFile));
+      entries.length = 0;
+    },
+    abort: async () => { entries.length = 0; },
+  };
+}
+
+function makeBatchImageMainItem(taskEngine, input, config) {
+  const record = input && typeof input === "object" ? input : { puzzle: String(input || "") };
+  const puzzle = String(record.puzzle || "");
+  const renderMode = config.imageMode === "plain" ? "plain" : "candidates";
+  const solve = parseJson(taskEngine.solve_path_for_import_json(puzzle, renderMode === "candidates" ? 500 : 1));
+  if (!solve?.ok) {
+    const errorCode = String(solve?.errorCode || "IMPORT_FAILED");
+    if (errorCode === "PUZZLE_MULTIPLE_SOLUTIONS") {
+      return { ok: true, kind: "multiple", downgraded: renderMode === "candidates", puzzle, note: record.note || "", lineNumber: record.lineNumber || 0 };
+    }
+    return { ok: false, kind: errorCode === "PUZZLE_NO_SOLUTION" ? "no_solution" : "invalid", puzzle, note: record.note || "", lineNumber: record.lineNumber || 0, errorCode, error: solve?.error || "import failed" };
+  }
+  return { ok: true, kind: "unique", puzzle, note: record.note || "", lineNumber: record.lineNumber || 0, snapshot: renderMode === "candidates" ? solve.final : null, easySteps: renderMode === "candidates" ? Number(solve.steps || 0) : 0 };
+}
+
+function buildBatchPrintDocument(results, { perPage, pages, orientation }) {
+  const portrait = orientation !== "landscape";
+  const pageWidth = portrait ? 210 : 297;
+  const pageHeight = portrait ? 297 : 210;
+  const gridColumns = perPage === 4 ? 2 : (portrait ? 1 : 2);
+  const gridRows = perPage === 4 ? 2 : (portrait ? 2 : 1);
+  const html = [];
+  for (let page = 0; page < pages; page += 1) {
+    const slice = results.slice(page * perPage, page * perPage + perPage);
+    html.push(`<section class="print-page"><div class="screen-page-label">${batchXmlEscape(uif("batchPrintPageLabel", { page: page + 1 }))}</div><div class="puzzle-grid">`);
+    for (const result of slice) {
+      const er = formatSkfrScore(result?.rating?.er);
+      const puzzle = String(result?.puzzle || "");
+      html.push(`<article class="print-puzzle"><div class="print-rating">ER: ${batchXmlEscape(er || "-")}</div>${buildBatchSudokuSvg({ puzzle, footer: false })}</article>`);
+    }
+    html.push(`</div></section>`);
+  }
+  const documentLang = appStatusLanguage() === "en" ? "en" : "zh-CN";
+  return `<!doctype html><html lang="${documentLang}"><head><meta charset="utf-8"><style>
+    *{box-sizing:border-box}html,body{margin:0;padding:0;background:#e5e7eb;font-family:Arial,"Microsoft YaHei",sans-serif;color:#111}
+    .print-page{position:relative;margin:14px auto;background:#fff;box-shadow:0 2px 16px rgba(0,0,0,.18);padding:8mm;width:${pageWidth}mm;height:${pageHeight}mm;break-after:page;page-break-after:always}
+    .puzzle-grid{display:grid;grid-template-columns:repeat(${gridColumns},minmax(0,1fr));grid-template-rows:repeat(${gridRows},minmax(0,1fr));gap:5mm;width:100%;height:100%}
+    .print-puzzle{display:flex;min-width:0;min-height:0;flex-direction:column;align-items:center;justify-content:center;gap:1.5mm;overflow:hidden}
+    .print-puzzle svg{display:block;width:min(100%,100vh);height:auto;max-height:calc(100% - 7mm);aspect-ratio:1/1}
+    .print-rating{width:100%;text-align:left;font-size:10pt;font-weight:600;line-height:1.1}
+    .screen-page-label{position:absolute;right:8mm;bottom:2.5mm;font-size:9pt;color:#6b7280}
+    @media screen{.print-page{width:min(${pageWidth}mm,calc(100vw - 24px));height:auto;aspect-ratio:${pageWidth}/${pageHeight}}}
+    @media print{html,body{background:#fff}.print-page{margin:0;box-shadow:none}.screen-page-label{display:none}@page{size:A4 ${portrait ? "portrait" : "landscape"};margin:0}}
+  </style></head><body>${html.join("")}</body></html>`;
+}
+
+function showBatchPrintPreview(results, options) {
+  if (!batchPrintPreviewFrame || !batchPrintPreviewDialog) return;
+  batchPrintPreviewFrame.srcdoc = buildBatchPrintDocument(results, options);
+  if (!batchPrintPreviewDialog.open) batchPrintPreviewDialog.showModal();
+}
+
+async function runBatchImageTask(records, sourceFile, imageMode, startNumber, sink) {
+  let processed = 0;
+  let written = 0;
+  let skipped = 0;
+  let multiple = 0;
+  const startTime = Date.now();
+  batchAbortRequested = false;
+  setBatchRunning(true);
+  const output = sink.outputLabel || ui("batchImageOutputZip");
+  updateBatchStatus(uif("batchImageStartStatus", {
+    target: records.length,
+    mode: ui(imageMode === "plain" ? "batchImageModePlain" : "batchImageModeCandidates"),
+    output,
+  }));
+
+  const progressText = () => uif("batchImageProgress", {
+    done: processed,
+    target: records.length,
+    written,
+    skipped,
+    multiple,
+    elapsed: formatElapsedSeconds(startTime),
+  });
+  let timer = window.setInterval(() => updateBatchStatus(progressText()), 1000);
+  try {
+    const config = {
+      mode: "image",
+      imageMode,
+      target: records.length,
+      puzzles: records,
+      maxSteps: 500,
+    };
+    const final = await runBatchTaskInWorker(config, {
+      onItem: async (result) => {
+        if (batchAbortRequested) return;
+        processed += 1;
+        if (!result?.ok) {
+          skipped += 1;
+          updateBatchStatus(progressText());
+          return;
+        }
+        if (result.downgraded) multiple += 1;
+        const showCandidates = imageMode === "candidates" && result.kind === "unique";
+        const number = startNumber + written;
+        const svg = buildBatchSudokuSvg({
+          puzzle: result.puzzle,
+          snapshot: showCandidates ? result.snapshot : null,
+          showCandidates,
+          number,
+          note: result.note || "",
+          footer: true,
+        });
+        const png = await batchSvgToPngBlob(svg, 1030);
+        await sink.write(`${batchImageNumberText(number)}.png`, png);
+        written += 1;
+        updateBatchStatus(progressText());
+      },
+      onProgress: () => updateBatchStatus(progressText()),
+      onInvalidStep: () => {},
+    });
+    await sink.close();
+    if (final?.status === "cancelled" || batchAbortRequested) {
+      updateBatchStatus(uif("batchImageCancelled", { written }));
+    } else {
+      updateBatchStatus(uif("batchImageDone", {
+        written,
+        skipped,
+        multiple,
+        output,
+        elapsed: formatElapsedSeconds(startTime),
+      }));
+    }
+  } catch (error) {
+    try { await sink.abort?.(); } catch { /* ignore cleanup failure */ }
+    if (error?.name === "AbortError") {
+      updateBatchStatus(ui("batchCancelled"));
+    } else {
+      updateBatchStatus(uif("batchFailed", { error: error instanceof Error ? error.message : String(error) }));
+    }
+  } finally {
+    if (timer != null) window.clearInterval(timer);
+    batchAbortRequested = false;
+    setBatchRunning(false);
+  }
+}
+
+async function runBatchPrintPreviewTask(options) {
+  const { perPage, pages, orientation } = options;
+  const target = perPage * pages;
+  const difficulty = Number(difficultySelect?.value || 0);
+  const startTime = Date.now();
+  let generated = 0;
+  let attempts = 0;
+  batchAbortRequested = false;
+  lastBatchPrintResults = [];
+  lastBatchPrintOptions = null;
+  setBatchRunning(true);
+  batchPrintOptionsDialog?.close();
+  updateBatchStatus(uif("batchPrintStartStatus", {
+    target,
+    pages,
+    perPage,
+    difficulty: selectedDifficultyLabel(),
+  }));
+  const progressText = () => uif("batchPrintProgress", {
+    done: generated,
+    target,
+    attempts,
+    elapsed: formatElapsedSeconds(startTime),
+  });
+  let timer = window.setInterval(() => updateBatchStatus(progressText()), 1000);
+  try {
+    const final = await runBatchTaskInWorker({
+      mode: "generate",
+      target,
+      difficulty,
+      trainingKind: "",
+      otp: false,
+      maxAttempts: 0,
+      maxSteps: 500,
+      techniqueConfig: getTechniqueConfigPayload(techniqueState.length ? techniqueState : loadTechniqueState()),
+    }, {
+      onItem: async (result) => {
+        if (batchAbortRequested) return;
+        generated += 1;
+        lastBatchPrintResults.push(result);
+        updateBatchStatus(progressText());
+      },
+      onProgress: (progress) => {
+        attempts = Number(progress?.attempts ?? attempts);
+        updateBatchStatus(progressText());
+      },
+      onInvalidStep: (result) => {
+        throw new Error(invalidStepDetail(result));
+      },
+    });
+    if (final?.status === "cancelled" || batchAbortRequested) {
+      updateBatchStatus(ui("batchPrintCancelled"));
+      return;
+    }
+    if (lastBatchPrintResults.length !== target) {
+      throw new Error(`print target mismatch: ${lastBatchPrintResults.length}/${target}`);
+    }
+    lastBatchPrintOptions = { perPage, pages, orientation };
+    showBatchPrintPreview(lastBatchPrintResults, lastBatchPrintOptions);
+    updateBatchStatus(uif("batchPrintReady", { pages, target }));
+  } catch (error) {
+    updateBatchStatus(uif("batchFailed", { error: error instanceof Error ? error.message : String(error) }));
+  } finally {
+    if (timer != null) window.clearInterval(timer);
+    batchAbortRequested = false;
+    setBatchRunning(false);
+  }
+}
+
 function setBatchRunning(running) {
   if (btnBatchGenerate) btnBatchGenerate.disabled = running;
   if (btnBatchStop) btnBatchStop.disabled = !running;
@@ -12441,8 +12939,12 @@ function updateBatchModeLabels() {
   if (batchMode) {
     const generateOption = batchMode.querySelector('option[value="generate"]');
     const solveOption = batchMode.querySelector('option[value="solve"]');
+    const imageOption = batchMode.querySelector('option[value="image"]');
+    const printOption = batchMode.querySelector('option[value="print"]');
     if (generateOption) generateOption.textContent = ui("batchModeGenerate");
     if (solveOption) solveOption.textContent = ui("batchModeSolve");
+    if (imageOption) imageOption.textContent = ui("batchModeImage");
+    if (printOption) printOption.textContent = ui("batchModePrint");
   }
   updateBatchModeUi();
 }
@@ -12450,13 +12952,22 @@ function updateBatchModeLabels() {
 function updateBatchModeUi() {
   const mode = batchMode?.value || "generate";
   const solving = mode === "solve";
+  const imaging = mode === "image";
+  const printing = mode === "print";
   if (batchSolveFile) {
-    batchSolveFile.closest("label")?.classList.toggle("hidden", !solving);
+    const fileLabel = batchSolveFile.closest("label");
+    fileLabel?.classList.toggle("hidden", !(solving || imaging));
+    const labelText = fileLabel?.querySelector("span");
+    if (labelText) labelText.textContent = ui(imaging ? "batchImageFile" : "batchSolveFile");
+  }
+  if (batchFilename) {
+    batchFilename.closest("label")?.classList.toggle("hidden", imaging || printing);
   }
   syncBatchFilenameDefault();
   if (batchStatus && !batchStatus.textContent.trim()) {
     batchStatus.textContent = ui("batchStatusIdle");
   }
+  updateBatchDialogSummaries();
 }
 
 function isEditablePasteTarget(target) {
@@ -12471,6 +12982,41 @@ async function collectBatchSolveInputLinesFromFile() {
   return raw.split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#"));
+}
+
+function normalizeBatchImagePuzzleText(text) {
+  const normalized = String(text || "").replace(/0/g, ".");
+  return normalized.length === 81 && !/[^.1-9]/.test(normalized) ? normalized : "";
+}
+
+async function collectBatchImageInputRecordsFromFile() {
+  const file = batchSolveFile?.files?.[0] || null;
+  if (!file) return [];
+  const raw = (await file.text()).replace(/^\uFEFF/, "");
+  const records = [];
+  raw.split(/\r?\n/).forEach((line, index) => {
+    if (!line.trim()) return;
+    const puzzle = normalizeBatchImagePuzzleText(line.slice(0, 81));
+    records.push({
+      lineNumber: index + 1,
+      puzzle,
+      note: line.slice(81).trim().replace(/\t+/g, "-"),
+      raw: line,
+    });
+  });
+  return records;
+}
+
+function updateBatchDialogSummaries() {
+  const file = batchSolveFile?.files?.[0] || null;
+  if (batchImageInputSummary) {
+    batchImageInputSummary.textContent = file
+      ? uif("batchImageInputSummary", { filename: file.name, count: "…" })
+      : ui("batchImageNoInput");
+  }
+  if (batchPrintDifficultySummary) {
+    batchPrintDifficultySummary.textContent = uif("batchPrintDifficulty", { difficulty: selectedDifficultyLabel() });
+  }
 }
 
 function batchSolveLine(result, index) {
@@ -12553,28 +13099,30 @@ function runBatchTaskInWorker(config, handlers) {
 
 async function runBatchTaskInMainEngine(config, handlers) {
   if (!engine) throw new Error(ui("wasmLoadFailed"));
-  const techniqueConfig = config.techniqueConfig;
-  if (techniqueConfig && typeof engine.set_techniques_json === "function") {
-    engine.set_techniques_json(JSON.stringify(techniqueConfig));
+  const imageMode = config.mode === "image";
+  const taskEngine = imageMode && wasmModule ? new wasmModule.Engine() : engine;
+  const techniqueConfig = imageMode ? BATCH_IMAGE_EASY_TECHNIQUES : config.techniqueConfig;
+  if (techniqueConfig && typeof taskEngine.set_techniques_json === "function") {
+    taskEngine.set_techniques_json(JSON.stringify(techniqueConfig));
   }
   let generated = 0;
   let attempts = 0;
   let failed = 0;
   const puzzles = Array.isArray(config.puzzles) ? config.puzzles : [];
-  const target = config.mode === "solve" ? puzzles.length : Number(config.target || 0);
-  const hasFiniteTarget = config.mode === "solve" || target > 0;
+  const target = (config.mode === "solve" || imageMode) ? puzzles.length : Number(config.target || 0);
+  const hasFiniteTarget = config.mode === "solve" || imageMode || target > 0;
   const emitProgress = () => handlers.onProgress?.({ generated, attempts, failed, target: hasFiniteTarget ? target : 0 });
   while (!batchAbortRequested && (!hasFiniteTarget || generated < target)) {
     attempts += 1;
     let result = null;
     if (config.mode === "solve") {
       const input = puzzles[generated];
-      const imported = parseJson(engine.import_puzzle_json(input));
+      const imported = parseJson(taskEngine.import_puzzle_json(input));
       if (!imported?.ok) {
         failed += 1;
         result = { ok: false, input, error: imported?.error || "import failed" };
       } else {
-        const solve = parseJson(engine.solve_summary_json(Number(config.maxSteps || 500)));
+        const solve = parseJson(taskEngine.solve_summary_json(Number(config.maxSteps || 500)));
         result = {
           ok: solve?.ok !== false,
           input,
@@ -12594,6 +13142,11 @@ async function runBatchTaskInMainEngine(config, handlers) {
       }
       generated += 1;
       handlers.onItem?.(result);
+    } else if (imageMode) {
+      result = makeBatchImageMainItem(taskEngine, puzzles[generated], config);
+      if (!result.ok) failed += 1;
+      generated += 1;
+      await handlers.onItem?.(result);
     } else {
       const trainingKind = config.trainingKind || "";
       const normalizedTrainingFilter = normalizeTrainingTextFilter(config.trainingTextFilter);
@@ -12601,17 +13154,17 @@ async function runBatchTaskInMainEngine(config, handlers) {
       const trainingMode = Boolean(trainingKind || otp);
       const filterJson = JSON.stringify({ ...normalizedTrainingFilter, otp });
       const text = trainingMode
-        ? engine.generate_training_puzzle_summary_filtered_json(
+        ? taskEngine.generate_training_puzzle_summary_filtered_json(
             trainingKind,
             Number(config.difficulty || 0),
             Number(config.maxAttempts || 0),
             filterJson
           )
-        : engine.generate_puzzle_difficulty_json(Number(config.difficulty || 0), 0);
+        : taskEngine.generate_puzzle_difficulty_json(Number(config.difficulty || 0), 0);
       result = parseJson(text);
       if (result?.ok) {
         if (!trainingMode) {
-          const solve = parseJson(engine.solve_summary_json(500));
+          const solve = parseJson(taskEngine.solve_summary_json(500));
           result.solve = solve;
           if (solve?.status === "invalid_step") {
             await handlers.onInvalidStep?.(result);
@@ -12631,6 +13184,7 @@ async function runBatchTaskInMainEngine(config, handlers) {
     emitProgress();
     if ((attempts & 7) === 0) await new Promise((resolve) => setTimeout(resolve, 0));
   }
+  if (imageMode && taskEngine !== engine) taskEngine.delete?.();
   return { status: batchAbortRequested ? "cancelled" : "done", generated, failed, attempts, target };
 }
 
@@ -17303,6 +17857,7 @@ trainingTextFilterDialog?.addEventListener("click", (event) => {
   if (event.target === trainingTextFilterDialog) closeTrainingTextFilterDialog();
 });
 batchMode?.addEventListener("change", updateBatchModeUi);
+batchSolveFile?.addEventListener("change", updateBatchDialogSummaries);
 batchFilename?.addEventListener("input", () => {
   batchFilename.dataset.userEdited = String(batchFilename.value || "").trim() === batchFilenameAutoValue
     ? "false"
@@ -17310,6 +17865,64 @@ batchFilename?.addEventListener("input", () => {
 });
 batchPanel?.addEventListener("toggle", () => {
   if (batchPanel.open) syncBatchFilenameDefault();
+});
+batchImageOptionsDialog?.addEventListener("click", (event) => {
+  if (event.target === batchImageOptionsDialog) batchImageOptionsDialog.close("cancel");
+});
+batchPrintOptionsDialog?.addEventListener("click", (event) => {
+  if (event.target === batchPrintOptionsDialog) batchPrintOptionsDialog.close("cancel");
+});
+btnBatchPrintPreviewClose?.addEventListener("click", () => batchPrintPreviewDialog?.close());
+btnBatchPrintPreviewBack?.addEventListener("click", () => {
+  batchPrintPreviewDialog?.close();
+  updateBatchDialogSummaries();
+  batchPrintOptionsDialog?.showModal();
+});
+btnBatchPrintNow?.addEventListener("click", () => {
+  const printWindow = batchPrintPreviewFrame?.contentWindow;
+  if (!printWindow) return;
+  printWindow.focus();
+  try {
+    printWindow.print();
+  } finally {
+    // window.print() is blocking in the normal browser flow.  Once it returns
+    // (whether the user printed or cancelled), the YZF preview has served its
+    // purpose and should not remain as a second dialog underneath.
+    batchPrintPreviewDialog?.close();
+  }
+});
+btnBatchImageStart?.addEventListener("click", async () => {
+  if (!pendingBatchImageRecords.length || !pendingBatchImageSourceFile) {
+    updateBatchStatus(ui("batchImageNoInput"));
+    return;
+  }
+  const startNumberText = String(batchImageStartNumber?.value || "").trim();
+  if (!/^\d{1,6}$/.test(startNumberText)) {
+    updateBatchStatus(ui("batchImageInvalidNumber"));
+    return;
+  }
+  const startNumber = Number(startNumberText);
+  const imageMode = batchImageModePlain?.checked ? "plain" : "candidates";
+  try {
+    // 目录选择必须直接发生在用户点击回调中，避免失去 File System Access 的 user activation。
+    const sink = await createBatchImageSink(pendingBatchImageSourceFile);
+    batchImageOptionsDialog?.close();
+    await runBatchImageTask(pendingBatchImageRecords, pendingBatchImageSourceFile, imageMode, startNumber, sink);
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      updateBatchStatus(uif("batchFailed", { error: error instanceof Error ? error.message : String(error) }));
+    }
+  }
+});
+btnBatchPrintPreview?.addEventListener("click", async () => {
+  const pages = Number(batchPrintPages?.value || 0);
+  const perPage = Number(batchPrintPerPage?.value || 4) === 2 ? 2 : 4;
+  const orientation = batchPrintOrientation?.value === "landscape" ? "landscape" : "portrait";
+  if (!Number.isInteger(pages) || pages < 1 || pages > 100) {
+    updateBatchStatus(ui("batchPrintInvalidPages"));
+    return;
+  }
+  await runBatchPrintPreviewTask({ pages, perPage, orientation });
 });
 
 async function readClipboardTextForLoad() {
@@ -18626,7 +19239,32 @@ btnBatchStop?.addEventListener("click", () => {
 
 btnBatchGenerate?.addEventListener("click", async () => {
   if (!engine) return;
-  const mode = batchMode?.value === "solve" ? "solve" : "generate";
+  const selectedMode = batchMode?.value || "generate";
+  if (selectedMode === "image") {
+    const sourceFile = batchSolveFile?.files?.[0] || null;
+    if (!sourceFile) {
+      updateBatchStatus(ui("batchImageNoInput"));
+      return;
+    }
+    const records = await collectBatchImageInputRecordsFromFile();
+    if (!records.length) {
+      updateBatchStatus(ui("batchImageNoPuzzle"));
+      return;
+    }
+    pendingBatchImageSourceFile = sourceFile;
+    pendingBatchImageRecords = records;
+    if (batchImageInputSummary) {
+      batchImageInputSummary.textContent = uif("batchImageInputSummary", { filename: sourceFile.name, count: records.length });
+    }
+    if (!batchImageOptionsDialog?.open) batchImageOptionsDialog?.showModal();
+    return;
+  }
+  if (selectedMode === "print") {
+    updateBatchDialogSummaries();
+    if (!batchPrintOptionsDialog?.open) batchPrintOptionsDialog?.showModal();
+    return;
+  }
+  const mode = selectedMode === "solve" ? "solve" : "generate";
   if (mode === "generate" && isRealSampleTrainingSelection()) {
     await generateRealTrainingSampleLibrary();
     return;

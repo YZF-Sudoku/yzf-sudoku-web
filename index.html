@@ -2667,6 +2667,128 @@
       font-size: 12px;
       line-height: 1.35;
     }
+    .batch-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      width: min(520px, calc(100vw - 24px));
+      max-height: min(86vh, 760px);
+      margin: 0;
+      transform: translate(-50%, -50%);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      border-radius: 15px;
+      padding: 0;
+      background: var(--panel);
+      color: var(--ink);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.32);
+    }
+    .batch-dialog::backdrop {
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(2px);
+    }
+    .batch-dialog-shell {
+      display: grid;
+      gap: 12px;
+      max-height: min(86vh, 760px);
+      margin: 0;
+      padding: 0 16px 16px;
+      overflow: auto;
+    }
+    .batch-dialog-header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 -16px;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.32);
+      background: var(--panel);
+    }
+    .batch-dialog-header strong { font-size: 15px; }
+    .batch-dialog-header button {
+      width: 30px;
+      height: 30px;
+      margin: 0;
+      padding: 0;
+      border-radius: 999px;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .batch-dialog-field {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .batch-dialog-field input,
+    .batch-dialog-field select {
+      min-width: 0;
+      height: 34px;
+      padding: 5px 8px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 13px;
+    }
+    .batch-dialog-radio-group {
+      display: grid;
+      gap: 8px;
+      padding: 2px 0;
+    }
+    .batch-dialog-radio {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 8px;
+      align-items: start;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .batch-dialog-radio input { margin-top: 2px; }
+    .batch-dialog-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .batch-dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding-top: 2px;
+    }
+    .batch-print-preview-dialog {
+      width: min(1120px, calc(100vw - 18px));
+      height: min(92vh, 900px);
+      max-height: none;
+    }
+    .batch-print-preview-dialog .batch-dialog-shell {
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      height: 100%;
+      max-height: none;
+      overflow: hidden;
+    }
+    .batch-print-preview-frame {
+      width: 100%;
+      height: 100%;
+      min-height: 360px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #e5e7eb;
+    }
+    @media (max-width: 640px) {
+      .batch-dialog { width: calc(100vw - 14px); }
+      .batch-print-preview-dialog {
+        width: calc(100vw - 8px);
+        height: 94vh;
+      }
+      .batch-dialog-shell { padding: 0 12px 12px; }
+      .batch-dialog-header { margin: 0 -12px; padding: 10px 12px; }
+      .batch-print-preview-frame { min-height: 300px; }
+    }
     .technique-toolbar {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -5950,9 +6072,11 @@
                   <select id="batchMode">
                     <option value="generate" selected>批量出题</option>
                     <option value="solve">批量解题</option>
+                    <option value="image">批量出图</option>
+                    <option value="print">批量打印</option>
                   </select>
                 </label>
-                <label>
+                <label class="batch-filename-label">
                   <span>输出文件名</span>
                   <input id="batchFilename" type="text" value="sudoku-batch.txt">
                 </label>
@@ -5965,8 +6089,87 @@
                 <button id="btnBatchGenerate" class="compact primary" type="button">开始</button>
                 <button id="btnBatchStop" class="compact" type="button" disabled>停止</button>
               </div>
-              <div id="batchStatus" class="batch-status">批量出题/批量解题共用面板。批量出题持续写入输出文件，批量解题从文本文件读取，一行一题。</div>
+              <div id="batchStatus" class="batch-status">批量任务共用面板：出题、解题、出图、打印。出图/解题从文本文件读取，一行一题；出图和打印的选项在开始后弹窗设置。</div>
             </details>
+
+            <dialog id="batchImageOptionsDialog" class="batch-dialog" aria-labelledby="batchImageOptionsTitle">
+              <form method="dialog" class="batch-dialog-shell">
+                <div class="batch-dialog-header">
+                  <strong id="batchImageOptionsTitle">批量出图</strong>
+                  <button id="btnBatchImageOptionsClose" type="submit" value="cancel" aria-label="关闭">×</button>
+                </div>
+                <p id="batchImageInputSummary" class="batch-dialog-note"></p>
+                <div class="batch-dialog-field">
+                  <span id="batchImageModeLabel">出图模式</span>
+                  <div class="batch-dialog-radio-group" role="radiogroup" aria-labelledby="batchImageModeLabel">
+                    <label class="batch-dialog-radio">
+                      <input id="batchImageModeCandidates" name="batchImageMode" type="radio" value="candidates" checked />
+                      <span id="batchImageModeCandidatesLabel">清 Easy step + 提供候选数</span>
+                    </label>
+                    <label class="batch-dialog-radio">
+                      <input id="batchImageModePlain" name="batchImageMode" type="radio" value="plain" />
+                      <span id="batchImageModePlainLabel">不清 Easy step + 不提供候选数</span>
+                    </label>
+                  </div>
+                </div>
+                <label class="batch-dialog-field">
+                  <span id="batchImageStartNumberLabel">起始编号</span>
+                  <input id="batchImageStartNumber" type="text" value="001" inputmode="numeric" pattern="[0-9]{1,6}" maxlength="6" autocomplete="off" />
+                </label>
+                <p id="batchImageOutputHint" class="batch-dialog-note">输入 TXT 一行一题。优先写入所选文件夹；浏览器不支持目录写入时下载 ZIP。</p>
+                <div class="batch-dialog-actions">
+                  <button id="btnBatchImageCancel" type="submit" value="cancel">取消</button>
+                  <button id="btnBatchImageStart" class="primary" type="button">开始出图</button>
+                </div>
+              </form>
+            </dialog>
+
+            <dialog id="batchPrintOptionsDialog" class="batch-dialog" aria-labelledby="batchPrintOptionsTitle">
+              <form method="dialog" class="batch-dialog-shell">
+                <div class="batch-dialog-header">
+                  <strong id="batchPrintOptionsTitle">批量打印</strong>
+                  <button id="btnBatchPrintOptionsClose" type="submit" value="cancel" aria-label="关闭">×</button>
+                </div>
+                <p id="batchPrintDifficultySummary" class="batch-dialog-note"></p>
+                <label class="batch-dialog-field">
+                  <span id="batchPrintPerPageLabel">每页题数</span>
+                  <select id="batchPrintPerPage">
+                    <option value="2">2</option>
+                    <option value="4" selected>4</option>
+                  </select>
+                </label>
+                <label class="batch-dialog-field">
+                  <span id="batchPrintPagesLabel">页数</span>
+                  <input id="batchPrintPages" type="number" min="1" max="100" step="1" value="1" inputmode="numeric" />
+                </label>
+                <label class="batch-dialog-field">
+                  <span id="batchPrintOrientationLabel">方向</span>
+                  <select id="batchPrintOrientation">
+                    <option value="portrait" selected>纵向</option>
+                    <option value="landscape">横向</option>
+                  </select>
+                </label>
+                <p id="batchPrintHint" class="batch-dialog-note">先生成 YZF 打印预览，确认后再进入浏览器打印预览。</p>
+                <div class="batch-dialog-actions">
+                  <button id="btnBatchPrintCancel" type="submit" value="cancel">取消</button>
+                  <button id="btnBatchPrintPreview" class="primary" type="button">生成预览</button>
+                </div>
+              </form>
+            </dialog>
+
+            <dialog id="batchPrintPreviewDialog" class="batch-dialog batch-print-preview-dialog" aria-labelledby="batchPrintPreviewTitle">
+              <div class="batch-dialog-shell">
+                <div class="batch-dialog-header">
+                  <strong id="batchPrintPreviewTitle">打印预览</strong>
+                  <button id="btnBatchPrintPreviewClose" type="button" aria-label="关闭">×</button>
+                </div>
+                <iframe id="batchPrintPreviewFrame" class="batch-print-preview-frame" title="打印预览"></iframe>
+                <div class="batch-dialog-actions">
+                  <button id="btnBatchPrintPreviewBack" type="button">返回设置</button>
+                  <button id="btnBatchPrintNow" class="primary" type="button">打印</button>
+                </div>
+              </div>
+            </dialog>
 
               <details id="tlgSolverPanel" class="tlg-solver-panel">
                 <summary><span id="tlgSolverTitle">TLG Solver</span></summary>

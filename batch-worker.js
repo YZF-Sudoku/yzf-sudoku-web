@@ -14,6 +14,22 @@ const APP_VERSION = "wasm-a6080a3d4de0bdcc";
 let enginePromise = null;
 let cancelRequested = false;
 
+// FB Batch Picture 的 Easy closure 是固定功能语义，不能受用户当前技巧配置影响。
+// 保持集合独立，批量出图只在 Worker 私有 Engine 上启用这些技巧。
+const BATCH_IMAGE_EASY_TECHNIQUES = {
+  none: true,
+  FullHouse: true,
+  HiddenSingle: true,
+  LockedCandidates: true,
+  NakedSingle: true,
+  NakedPair: true,
+  HiddenPair: true,
+  NakedTriple: true,
+  HiddenTriple: true,
+  NakedQuad: true,
+  HiddenQuad: true,
+};
+
 async function getEngine() {
   if (!enginePromise) {
     enginePromise = createModule({
@@ -91,18 +107,58 @@ function makeSolveItem(engine, input, config) {
   };
 }
 
+function makeImageItem(engine, input, config) {
+  const record = input && typeof input === "object" ? input : { puzzle: String(input || "") };
+  const puzzle = String(record.puzzle || "");
+  const renderMode = config.imageMode === "plain" ? "plain" : "candidates";
+  // plain 模式仍做一次唯一性分类，以复刻 FB：无解跳过，多解保留纯题面。
+  // candidates 模式则跑固定 Easy 集合到停滞，final snapshot 直接用于候选图。
+  const solve = parseJson(engine.solve_path_for_import_json(puzzle, renderMode === "candidates" ? 500 : 1));
+  if (!solve?.ok) {
+    const errorCode = String(solve?.errorCode || "IMPORT_FAILED");
+    if (errorCode === "PUZZLE_MULTIPLE_SOLUTIONS") {
+      return {
+        ok: true,
+        kind: "multiple",
+        downgraded: renderMode === "candidates",
+        puzzle,
+        note: String(record.note || ""),
+        lineNumber: Number(record.lineNumber || 0),
+      };
+    }
+    return {
+      ok: false,
+      kind: errorCode === "PUZZLE_NO_SOLUTION" ? "no_solution" : "invalid",
+      puzzle,
+      note: String(record.note || ""),
+      lineNumber: Number(record.lineNumber || 0),
+      error: solve?.error || "import failed",
+      errorCode,
+    };
+  }
+  return {
+    ok: true,
+    kind: "unique",
+    puzzle,
+    note: String(record.note || ""),
+    lineNumber: Number(record.lineNumber || 0),
+    snapshot: renderMode === "candidates" ? (solve.final || null) : null,
+    easySteps: renderMode === "candidates" ? Number(solve.steps || 0) : 0,
+  };
+}
+
 async function runTask(taskId, config) {
   cancelRequested = false;
   const engine = await getEngine();
-  maybeSetTechniques(engine, config.techniqueConfig);
+  const mode = config.mode === "solve" ? "solve" : (config.mode === "image" ? "image" : "generate");
+  maybeSetTechniques(engine, mode === "image" ? BATCH_IMAGE_EASY_TECHNIQUES : config.techniqueConfig);
 
   let generated = 0;
   let attempts = 0;
   let failed = 0;
-  const mode = config.mode === "solve" ? "solve" : "generate";
   const puzzles = Array.isArray(config.puzzles) ? config.puzzles : [];
-  const target = mode === "solve" ? puzzles.length : Number(config.target || 0);
-  const hasFiniteTarget = mode === "solve" || target > 0;
+  const target = (mode === "solve" || mode === "image") ? puzzles.length : Number(config.target || 0);
+  const hasFiniteTarget = mode === "solve" || mode === "image" || target > 0;
   const progress = () => self.postMessage({ type: "progress", taskId, generated, attempts, failed, target: hasFiniteTarget ? target : 0 });
 
   while (!cancelRequested && (!hasFiniteTarget || generated < target)) {
@@ -114,6 +170,11 @@ async function runTask(taskId, config) {
         self.postMessage({ type: "invalid_step", taskId, result, generated, attempts, failed, target });
         return;
       }
+      generated += 1;
+      self.postMessage({ type: "item", taskId, result, generated, attempts, failed, target });
+    } else if (mode === "image") {
+      const result = makeImageItem(engine, puzzles[generated], config);
+      if (!result.ok) failed += 1;
       generated += 1;
       self.postMessage({ type: "item", taskId, result, generated, attempts, failed, target });
     } else {

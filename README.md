@@ -116,6 +116,15 @@ python tools/test_ui_foundation_browser.py
 python tools/test_ocr_guide_launch_browser.py
 ```
 
+## Batch Tasks / 批量任务
+
+The shared Batch Tasks panel provides four modes without expanding the main UI: Batch Generation, Batch Solving, Batch Pictures, and Batch Printing. Picture and print settings use native `<dialog>` surfaces.
+
+- **Batch Pictures / 批量出图:** read a plain TXT file with one standard 81-character puzzle per line. The two FB-compatible modes are (1) clear the fixed Easy set and show remaining candidates, or (2) keep the original puzzle and hide candidates. Output is fixed white-background 1030×1030 PNG with continuous `001.png`, `002.png`, … numbering. A suffix after character 81 is used only as the optional picture caption; the bottom-left number and optional bottom-right caption use an enlarged footer font for social-app readability. Invalid/no-solution rows are skipped; multiple-solution rows fall back to a plain puzzle image. Desktop Chromium writes directly to a selected folder when File System Access is available; other environments receive one ZIP containing the independent PNGs.
+- **Batch Printing / 批量打印:** uses the current difficulty and generates exactly `pages × puzzles per page` puzzles. Supported layouts are 4/page = 2×2, 2/page portrait = 1×2, and 2/page landscape = 2×1. YZF shows its own paged preview first; Print then invokes the browser print preview, and the YZF preview closes automatically when the browser print flow returns. The print document uses vector SVG grids and displays the ER rating for each puzzle.
+
+批量出图/打印不会复用当前盘面的 DOM 截图：题图固定白底，不受深色主题、选中态、焦点跟随或手工标记影响。候选图的 Easy 集合也独立于用户当前技巧配置。
+
 ## WebAssembly Solver
 
 The Sudoku solving engine runs in the browser through WebAssembly.
