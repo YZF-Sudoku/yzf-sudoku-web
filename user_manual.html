@@ -1749,7 +1749,7 @@ GUR 枚举约束 = 1
 <h3>13.13 查找、转换与移除的正确顺序</h3>
 <ul>
 <li><strong>查找删数：</strong>观察性操作。它计算结果 Links 和结论，但不修改用户 Links。</li>
-<li><strong>转换冗余 Truths：</strong>在已有有效结论的结构上，把可转移的冗余 Truth 转成 Link。成功后 Truth 和用户 Link 状态都会按返回结构更新。</li>
+<li><strong>转换冗余 Truths：</strong>在已有有效结论的结构上，普通冗余 Truth 仍先转成 Link，再由“移除未使用 Links”继续精简；若某 Truth 在普通 Truth/Link 候选云中完全孤立，且其候选不属于任何 Virtual Set，则直接删除该 Truth，不生成过渡 Link。AUR/DUR/GUR 只作为投影剪枝约束，不会单独阻止这一孤立判定；所有转换仍需重新投影并保持结论。</li>
 <li><strong>移除未使用 Links：</strong>在结果结构上删除不参与证明的 Links。成功后精简结果提交为用户 Links。</li>
 <li>按钮只有在上一轮存在有效删数或出数时才开放。失败响应不会覆盖上一轮有效输入和结论。</li>
 <li>任何 Truth、用户 Link、VSet、AUR、DAUR、GUR 或候选输入变化，都会清空旧的结果 Links 和结论，防止用旧高亮解释新结构。</li>
@@ -2002,7 +2002,7 @@ GUR enumeration constraints = 1
 <h3>13.13 Find, Convert, and Remove</h3>
 <ul>
 <li><strong>Find Eliminations:</strong> observational. It computes Result Links and conclusions without mutating User Links.</li>
-<li><strong>Convert Redundant Truths:</strong> moves eligible Truths to Links on a valid result structure. Success updates Truths and User Links.</li>
+<li><strong>Convert Redundant Truths:</strong> ordinary redundant Truths are still demoted to Links and may then be simplified by Remove Unused Links. A Truth that is completely isolated from the ordinary Truth/Link candidate cloud is deleted directly, without a transient Link, only when none of its candidates belongs to a Virtual Set. AUR/DUR/GUR remain projection-pruning constraints rather than candidate-cloud anchors; every accepted mutation is reprojected and must preserve the conclusions.</li>
 <li><strong>Remove Unused Links:</strong> removes Links not needed by the proof. Success commits the simplified structure as User Links.</li>
 <li>Follow-up buttons require a valid elimination/assignment. A failed response preserves the previous valid structure.</li>
 <li>Any input edit invalidates old Result Links and conclusions, preventing stale highlights from explaining a new structure.</li>

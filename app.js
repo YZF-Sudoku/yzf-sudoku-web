@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-483f7f2d9304e5a5";
+import createModule from "./sudoku_wasm.js?v=wasm-2f07dc043db4ba87";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -44,7 +44,7 @@ import {
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
 
-const APP_VERSION = "wasm-483f7f2d9304e5a5";
+const APP_VERSION = "wasm-2f07dc043db4ba87";
 const UI_RELEASE_VERSION = "ui-20260811-mobile-clear-hint-apply-toggle";
 const MANUAL_VERSION = "manual-20260811-mobile-clear-hint-apply-toggle";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
@@ -1277,7 +1277,7 @@ for (const [key, zh, en] of [
   ["tlgParseFailed", "TLG_SOLVER_RESPONSE_PARSE_FAILED", "TLG_SOLVER_RESPONSE_PARSE_FAILED"],
   ["tlgFailed", "TLG Solver 失败：{error}", "TLG Solver failed: {error}"],
   ["tlgFindRunning", "正在查找删数并规范化 Links…", "Finding eliminations and normalizing links…"],
-  ["tlgConvertRunning", "正在按稳定顺序转换 Truths To Links…", "Converting Truths To Links in deterministic order…"],
+  ["tlgConvertRunning", "正在按稳定顺序转换冗余 Truths…", "Converting redundant Truths in deterministic order…"],
   ["tlgRemoveRunning", "正在按稳定顺序移除未使用 Links…", "Removing unused Links in deterministic order…"],
   ["tlgConvertSummary", "转换完成：Truths={truths}，Links={links}，转换={moved}，删数={elims}", "Convert complete: Truths={truths}, Links={links}, Moved={moved}, Eliminations={elims}"],
   ["tlgRemoveSummary", "清理完成：Truths={truths}，Links={links}，移除={removed}，删数={elims}", "Cleanup complete: Truths={truths}, Links={links}, Removed={removed}, Eliminations={elims}"],
@@ -15586,7 +15586,10 @@ function formatTlgResponseStatus(response) {
     summary = uif("tlgConvertSummary", {
       truths: counts.truths ?? tlgSolverState.truths.length,
       links: counts.links ?? tlgSolverState.links.length,
-      moved: response?.mutation?.movedTruthsToLinks?.length ?? counts.redundantTruths ?? 0,
+      moved: response?.mutation
+        ? (response.mutation.movedTruthsToLinks?.length || 0) +
+          (response.mutation.removedIsolatedTruths?.length || 0)
+        : (counts.redundantTruths ?? 0),
       elims: counts.eliminations ?? 0,
     });
   } else if (response?.ok !== false && response?.phase === "remove-unused-links") {

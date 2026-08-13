@@ -304,6 +304,20 @@ Frontend and backend compatibility rules:
 Any change to the dual-set state, binary/text serialization, renderer, WASM
 request schema, or localized UI must keep all of the above layers synchronized.
 
+### TLG structure cleanup
+
+`Convert Redundant Truths` keeps the established two-step behavior for ordinary
+redundant Truths: demote the Truth to a Link first, then let `Remove Unused Links`
+prune it if the proof no longer needs it. The one special case is a Truth that is
+fully isolated from the ordinary Truth/Link candidate cloud. If none of that
+Truth's active candidates belongs to a Virtual Set, it is deleted directly and no
+transient private Link is generated. Virtual Set members are candidate-cloud
+anchors and block this shortcut; AUR/DUR/GUR records are pruning constraints and
+do not by themselves make an ordinary Truth non-isolated. Auto-Link normalization
+also removes a private Link whose complete active footprint is contained in only
+that isolated Truth, but only after full reprojection confirms that the exact
+elimination and assignment candidate sets are unchanged.
+
 ## Copyright and contact / 版权与联系
 
 © 2019–2026 YZF Sudoku 及其开发者。保留所有权利。
