@@ -5869,6 +5869,7 @@
 
 </style>
   <link rel="stylesheet" href="./ui-foundation.css?v=ahs-role6-endpoints-20260731" />
+  <link rel="stylesheet" href="./campaign.css?v=campaign-session-near-board-r7" />
   <link rel="stylesheet" href="./ocr-correction.css?v=manual-entry-hybrid-20260801" />
 </head>
 <body>
@@ -5905,6 +5906,21 @@
           <h3 id="boardHeading">盘面</h3>
         </div>
         <div id="boardMeta" class="board-meta"></div>
+        <aside id="campaignSessionBar" class="campaign-session-bar" hidden role="dialog" aria-modal="false" aria-live="polite" aria-labelledby="campaignSessionTitle">
+          <div class="campaign-session-head">
+            <div class="campaign-session-copy">
+              <strong id="campaignSessionTitle">学习路线</strong>
+              <small id="campaignSessionDetail"></small>
+            </div>
+            <button id="btnCampaignPanelToggle" class="campaign-session-toggle" type="button" aria-expanded="true" aria-controls="campaignSessionActions">收起</button>
+          </div>
+          <div id="campaignSessionActions" class="campaign-session-actions">
+            <button id="btnCampaignGuidedHint" class="primary" type="button" hidden>继续引导 H2/4</button>
+            <button id="btnCampaignRestart" class="campaign-session-secondary" type="button">重开本题</button>
+            <button id="btnCampaignReturn" class="campaign-session-secondary" type="button">返回路线</button>
+            <button id="btnCampaignExit" class="campaign-session-secondary" type="button">退出课程</button>
+          </div>
+        </aside>
         <div id="boardStage" class="board-stage">
           <svg id="yzfUnderlay" class="yzf-underlay" viewBox="0 0 900 900" aria-hidden="true"></svg>
           <div id="board" class="sudoku-board"></div>
@@ -6402,6 +6418,25 @@
     </div>
   </main>
 
+  <dialog id="campaignDialog" class="campaign-dialog" aria-labelledby="campaignDialogTitle">
+    <section class="campaign-panel">
+      <header class="campaign-header">
+        <div class="campaign-header-copy">
+          <h2 id="campaignDialogTitle">学习路线</h2>
+          <p id="campaignDialogSubtitle">按顺序学习、练习，并用 Boss 检验是否真正掌握。</p>
+        </div>
+        <button id="btnCampaignClose" type="button" class="yzf-panel-close" aria-label="关闭">×</button>
+      </header>
+      <div id="campaignContent" class="campaign-content">
+        <div class="campaign-toolbar">
+          <button id="btnCampaignBack" type="button" hidden>返回</button>
+          <span id="campaignBreadcrumb"></span>
+        </div>
+        <div id="campaignView"></div>
+      </div>
+    </section>
+  </dialog>
+
   <dialog id="appHubDialog" class="app-hub-dialog" aria-labelledby="appHubTitle">
     <section class="app-hub-panel">
       <header class="yzf-panel-header app-hub-header">
@@ -6429,7 +6464,12 @@
         <section class="app-hub-section" aria-labelledby="appHubLearnTitle">
           <h3 id="appHubLearnTitle">学习与引导</h3>
           <div class="app-hub-grid">
-            <a id="manualLink" class="app-hub-card" href="./user_manual.html?v=manual-20260811-mobile-clear-hint-apply-toggle" target="_blank" rel="noopener">
+            <button id="btnAppHubCampaign" class="app-hub-card app-hub-card-campaign" type="button">
+              <span class="app-hub-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 19.5V5.5l7.5-3 7.5 3v14l-7.5 2z"></path><path d="M8 8.5h8M8 12h6M8 15.5h4"></path></svg></span>
+              <span class="app-hub-card-copy"><strong id="appHubCampaignTitle">学习路线</strong><small id="appHubCampaignDesc">按顺序学习、练习并通过章节 Boss。</small></span>
+              <span id="appHubCampaignBadge" class="app-hub-card-badge" aria-hidden="true"></span>
+            </button>
+            <a id="manualLink" class="app-hub-card" href="./user_manual.html?v=manual-20260814-campaign-exocet-r14-final" target="_blank" rel="noopener">
               <span class="app-hub-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4.5h10a3 3 0 0 1 3 3v12H8a3 3 0 0 0-3 0z"></path><path d="M8 8h6M8 11.5h6"></path></svg></span>
               <span class="app-hub-card-copy"><strong>使用手册</strong><small id="appHubManualDesc">完整操作、移动端、TLG、PWA 与维护说明。</small></span>
             </a>
@@ -6580,6 +6620,6 @@
   <div id="appStatusToast" class="app-status-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=wasm-2f07dc043db4ba87"></script>
+    <script type="module" src="./app.js?v=wasm-d7fe59019ad4c9be-campaign-r7"></script>
   </body>
 </html>

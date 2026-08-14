@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-2f07dc043db4ba87";
+import createModule from "./sudoku_wasm.js?v=wasm-d7fe59019ad4c9be";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -43,10 +43,30 @@ import {
   saveOcrCorrectionDraft,
   upsertRecentPuzzleRecord,
 } from "./workspace-storage.js";
+import {
+  CAMPAIGN_CHAPTERS,
+  campaignChapterById,
+  campaignItemById,
+  campaignLessonById,
+} from "./campaign-data.js?v=campaign-advanced-structures-r11";
+import {
+  campaignLessonMastery,
+  campaignLessonProgress,
+  campaignReviewQueue,
+  clearCampaignSession,
+  isCampaignBossCompleted,
+  isCampaignChapterUnlocked,
+  isCampaignLessonCompleted,
+  loadCampaignProgress,
+  loadCampaignSession,
+  markCampaignBossCompleted,
+  markCampaignItemCompleted,
+  saveCampaignSession,
+} from "./campaign-progress.js?v=campaign-learning-r2";
 
-const APP_VERSION = "wasm-2f07dc043db4ba87";
-const UI_RELEASE_VERSION = "ui-20260811-mobile-clear-hint-apply-toggle";
-const MANUAL_VERSION = "manual-20260811-mobile-clear-hint-apply-toggle";
+const APP_VERSION = "wasm-d7fe59019ad4c9be";
+const UI_RELEASE_VERSION = "ui-20260814-campaign-advanced-structures-r11";
+const MANUAL_VERSION = "manual-20260814-campaign-exocet-r14-final";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
@@ -415,6 +435,25 @@ const btnAllSteps = document.getElementById("btnAllSteps");
 const btnUndo = document.getElementById("btnUndo");
 const btnRedo = document.getElementById("btnRedo");
 const btnSolve = document.getElementById("btnSolve");
+const campaignDialog = document.getElementById("campaignDialog");
+const campaignDialogTitle = document.getElementById("campaignDialogTitle");
+const campaignDialogSubtitle = document.getElementById("campaignDialogSubtitle");
+const campaignView = document.getElementById("campaignView");
+const campaignBreadcrumb = document.getElementById("campaignBreadcrumb");
+const btnCampaignBack = document.getElementById("btnCampaignBack");
+const btnCampaignClose = document.getElementById("btnCampaignClose");
+const btnAppHubCampaign = document.getElementById("btnAppHubCampaign");
+const appHubCampaignTitle = document.getElementById("appHubCampaignTitle");
+const appHubCampaignDesc = document.getElementById("appHubCampaignDesc");
+const appHubCampaignBadge = document.getElementById("appHubCampaignBadge");
+const campaignSessionBar = document.getElementById("campaignSessionBar");
+const campaignSessionTitle = document.getElementById("campaignSessionTitle");
+const campaignSessionDetail = document.getElementById("campaignSessionDetail");
+const btnCampaignPanelToggle = document.getElementById("btnCampaignPanelToggle");
+const btnCampaignGuidedHint = document.getElementById("btnCampaignGuidedHint");
+const btnCampaignRestart = document.getElementById("btnCampaignRestart");
+const btnCampaignReturn = document.getElementById("btnCampaignReturn");
+const btnCampaignExit = document.getElementById("btnCampaignExit");
 const lang = document.getElementById("lang");
 const givens = document.getElementById("givens");
 const numpad = document.getElementById("numpad");
@@ -543,8 +582,13 @@ let allStepsFilterState = { query: "", technique: "", sortMode: "default", repla
 let branchUndoData = null;
 let originalBoard = "";
 let currentHint = null;
+let campaignHintCache = null;
 let currentStepExplainContext = null;
 let currentSnapshot = null;
+let campaignProgress = loadCampaignProgress(CAMPAIGN_CHAPTERS);
+let campaignSession = loadCampaignSession();
+let campaignViewState = { mode: "overview", chapterId: null, lessonId: null };
+let campaignRandomReviewGenerating = false;
 let previewSnapshotActive = false;
 let currentPreviewRecord = null;
 let selectedIndex = -1;
@@ -976,6 +1020,8 @@ for (const [key, zh, en] of [
   ["appHubTasks", "任务状态", "Task status"],
   ["appHubTasksDesc", "查看评分、生成、OCR 与更新进度。", "Review rating, generation, OCR, and update progress."],
   ["appHubLearnTitle", "学习与引导", "Learn & guides"],
+  ["appHubCampaign", "学习路线", "Campaign"],
+  ["appHubCampaignDesc", "按顺序学习、练习并通过章节 Boss。", "Learn in order, practise, and pass each chapter Boss."],
   ["appHubManual", "使用手册", "User Manual"],
   ["appHubManualDesc", "完整操作、移动端、TLG、PWA 与维护说明。", "Complete controls, mobile mode, TLG, PWA, and maintenance notes."],
   ["appHubTechniques", "技巧说明", "Technique Guide"],
@@ -4723,6 +4769,7 @@ function applyStaticLanguage() {
   renderTrainingTechniqueOptionsOnly();
   updateInputControls();
   refreshPwaStatusLanguage();
+  relocalizeCampaignUi();
 }
 
 function text(key) {
@@ -9741,7 +9788,8 @@ function buildStepExplanationContent(step, snapshot = currentSnapshot) {
 }
 
 function updateStepExplainButtonState(step = currentHint, snapshot = currentSnapshot) {
-  const enabled = Boolean(step && step.valid);
+  const campaignAllowsExplain = !campaignSession || Number(campaignSession.hintRevealLevel || 0) >= 4;
+  const enabled = Boolean(step && step.valid && campaignAllowsExplain);
   currentStepExplainContext = enabled ? { step, snapshot } : null;
   if (!btnStepExplain) return;
   btnStepExplain.classList.remove("hidden");
@@ -10515,6 +10563,7 @@ function applySnapshotRefreshState(nextSnapshot = null) {
     renderBoardSnapshot(currentSnapshot, null);
   updateInputControls();
   scheduleAppSessionSave();
+  checkCampaignSessionCompletion();
 }
 
 function resetBoardContextForSnapshot(nextSnapshot = null, options = {}) {
@@ -10523,6 +10572,1250 @@ function resetBoardContextForSnapshot(nextSnapshot = null, options = {}) {
   clearStepViewState(options);
   renderBoardSnapshot(currentSnapshot, null);
   scheduleAppSessionSave();
+}
+
+const CAMPAIGN_COPY = Object.freeze({
+  zh: Object.freeze({
+    routeTitle: "学习路线",
+    routeSubtitle: "按顺序学习、练习，并用 Boss 检验是否真正掌握。",
+    entryDesc: "按顺序学习、练习并通过章节 Boss。",
+    back: "返回",
+    enter: "进入章节",
+    locked: "未解锁",
+    unlocked: "已解锁",
+    complete: "已完成",
+    inProgress: "进行中",
+    lessons: "课程",
+    bossPassed: "Boss 已通过",
+    bossReady: "可直接挑战",
+    bossChallenge: "挑战 Boss",
+    bossReplay: "再次挑战 Boss",
+    lessonReady: "开始学习",
+    lessonReplay: "再次练习",
+    guided: "引导题",
+    practice: "独立练习",
+    practiceNumber: "独立练习 {index}/{total}",
+    practiceProgress: "独立练习：{done}/{total} 已完成",
+    masteryProgress: "连续无提示掌握：{done}/{total}",
+    reviewHubTitle: "综合复习",
+    reviewTitle: "复习队列",
+    reviewHubDesc: "固定复习用于回看薄弱题；随机综合练习会生成一张陌生完整 Sudoku，并保证只靠你已经学过的技巧即可完成。",
+    reviewRandomGenerate: "生成随机综合练习题",
+    reviewRandomGenerating: "正在生成综合练习题…",
+    reviewRandomNeedLessons: "至少完成一门课程后，才能生成综合练习题。",
+    reviewRandomFailed: "暂时没有生成出满足已学技巧白名单的完整题，请稍后再试。",
+    reviewRandomReady: "综合练习已生成：本题只需要已学的 {count} 种技巧。",
+    reviewRandomSessionTitle: "随机综合练习",
+    reviewRandomSessionActive: "正在综合复习：技巧名称已隐藏",
+    reviewRandomCompletedToast: "随机综合练习完成。",
+    reviewItem: "复习题 {index}",
+    reviewHintReason: "上次使用过提示",
+    reviewPracticeReason: "还需要再连续无提示完成一次",
+    reviewStaleReason: "距离上次掌握已有一段时间",
+    reviewReady: "无技巧名提示，直接重做",
+    reviewSessionTitle: "匿名复习题",
+    reviewSessionActive: "正在匿名复习：技巧名称已隐藏",
+    hintLevel: "渐进提示 H{level}/H4",
+    hintH1: "先判断这一步属于哪类逻辑，不要急着找具体删数或出数。方向：{direction}",
+    hintH2: "缩小观察范围：{area}。先在这里寻找结构关系。",
+    hintH3: "关键结构已高亮。尝试自己推出结论；此层不会显示具体出数或删数。",
+    hintH4: "完整逻辑已开放；现在可以查看解释并应用本步。",
+    hintApplyLocked: "Campaign 渐进提示尚未到 H4；继续逐层揭示引导。",
+    guidedHintStart: "开始引导 H1/4",
+    guidedHintNext: "继续引导 H{level}/4",
+    guidedHintDone: "完整提示 H4/4",
+    guidedSessionActive: "引导题 · 当前 H{level}/4",
+    startGuided: "在主盘做引导题",
+    startPractice: "在主盘独立完成",
+    solvedItem: "本题已完成",
+    concept: "本课要点",
+    allowed: "本题从初盘到完成只需要当前及此前已学技巧。",
+    verified: "课程素材已通过白名单完整解题审计",
+    cluesSteps: "{clues} 个提示数 · 审计路径 {steps} 步",
+    placeholder: "本章已经解锁，课程内容将在下一轮副线继续加入。",
+    sessionRestart: "重开本题",
+    sessionReturn: "返回路线",
+    sessionExit: "退出课程",
+    sessionPanelCollapse: "收起",
+    sessionPanelExpand: "展开",
+    sessionActive: "正在课程题中",
+    sessionHints: "已用提示 {count} 次",
+    sessionCompleted: "✓ 已完成。返回学习路线查看进度。",
+    sessionInvalidated: "已使用自动解题，本次不计通过；重开本题可重新挑战。",
+    solveInvalidatedToast: "Campaign：自动解题会展示答案，本次课程挑战将不计通过。",
+    completedToast: "课程题完成，进度已保存。",
+    bossCompletedToast: "Boss 通过！下一章已解锁。",
+    loadFailed: "课程题加载失败。",
+    noOriginal: "没有可恢复的进入前盘面，已退出课程。",
+    restoredOriginal: "已退出课程，并恢复进入课程前的盘面。",
+    bossLabel: "Boss 不会提示目标技巧名称。",
+    progress: "{done}/{total} 已完成",
+    optionalLab: "可选 Lab",
+  }),
+  en: Object.freeze({
+    routeTitle: "Campaign",
+    routeSubtitle: "Learn in order, practise, and use each Boss to prove you can recognise the logic yourself.",
+    entryDesc: "Learn in order, practise, and pass each chapter Boss.",
+    back: "Back",
+    enter: "Open chapter",
+    locked: "Locked",
+    unlocked: "Unlocked",
+    complete: "Completed",
+    inProgress: "In progress",
+    lessons: "Lessons",
+    bossPassed: "Boss passed",
+    bossReady: "Direct challenge available",
+    bossChallenge: "Challenge Boss",
+    bossReplay: "Replay Boss",
+    lessonReady: "Start lesson",
+    lessonReplay: "Practise again",
+    guided: "Guided puzzle",
+    practice: "Independent practice",
+    practiceNumber: "Practice {index}/{total}",
+    practiceProgress: "Independent practice: {done}/{total} completed",
+    masteryProgress: "Consecutive no-hint mastery: {done}/{total}",
+    reviewHubTitle: "Mixed review",
+    reviewTitle: "Review queue",
+    reviewHubDesc: "Fixed review revisits weak items. Random mixed practice generates a fresh full Sudoku that is guaranteed solvable using only techniques you have already learned.",
+    reviewRandomGenerate: "Generate random mixed practice",
+    reviewRandomGenerating: "Generating mixed practice…",
+    reviewRandomNeedLessons: "Complete at least one lesson before generating mixed practice.",
+    reviewRandomFailed: "No full puzzle matching your learned-technique whitelist was found yet. Try again.",
+    reviewRandomReady: "Mixed practice generated: this puzzle needs only your {count} learned techniques.",
+    reviewRandomSessionTitle: "Random mixed practice",
+    reviewRandomSessionActive: "Mixed review in progress: technique names hidden",
+    reviewRandomCompletedToast: "Random mixed practice completed.",
+    reviewItem: "Review puzzle {index}",
+    reviewHintReason: "A hint was used last time",
+    reviewPracticeReason: "One more consecutive no-hint solve is needed",
+    reviewStaleReason: "It has been a while since this was mastered",
+    reviewReady: "Replay without a technique-name spoiler",
+    reviewSessionTitle: "Anonymous review puzzle",
+    reviewSessionActive: "Anonymous review in progress: technique name hidden",
+    hintLevel: "Progressive hint H{level}/H4",
+    hintH1: "First decide what family of logic to inspect; do not hunt the exact placement or elimination yet. Direction: {direction}",
+    hintH2: "Narrow the search to {area}. Look for the structure there first.",
+    hintH3: "The key structure is highlighted. Try to derive the conclusion yourself; this level shows no exact placement or elimination.",
+    hintH4: "Full logic is now available; you may open Explain and apply the step.",
+    hintApplyLocked: "Campaign progressive hints have not reached H4 yet. Continue the guided layers first.",
+    guidedHintStart: "Start guidance H1/4",
+    guidedHintNext: "Continue guidance H{level}/4",
+    guidedHintDone: "Full hint H4/4",
+    guidedSessionActive: "Guided puzzle · H{level}/4",
+    startGuided: "Open guided puzzle",
+    startPractice: "Solve independently",
+    solvedItem: "Completed",
+    concept: "Lesson concepts",
+    allowed: "From the initial grid to the finish, this puzzle only needs techniques learned up to this lesson.",
+    verified: "Course material passed strict whitelist full-solve auditing",
+    cluesSteps: "{clues} givens · {steps}-step audited path",
+    placeholder: "This chapter is unlocked. Its lessons will be added in the next Campaign implementation round.",
+    sessionRestart: "Restart puzzle",
+    sessionReturn: "Return to Campaign",
+    sessionExit: "Exit Campaign",
+    sessionPanelCollapse: "Collapse",
+    sessionPanelExpand: "Expand",
+    sessionActive: "Campaign puzzle in progress",
+    sessionHints: "Hints used: {count}",
+    sessionCompleted: "✓ Completed. Return to Campaign to see your progress.",
+    sessionInvalidated: "Auto Solve was used, so this attempt does not count. Restart the puzzle to challenge it again.",
+    solveInvalidatedToast: "Campaign: Auto Solve reveals the answer, so this attempt will not count as a pass.",
+    completedToast: "Course puzzle completed. Progress saved.",
+    bossCompletedToast: "Boss passed! The next chapter is unlocked.",
+    loadFailed: "Failed to load the Campaign puzzle.",
+    noOriginal: "No pre-Campaign board was available to restore. Campaign exited.",
+    restoredOriginal: "Campaign exited and the pre-Campaign board was restored.",
+    bossLabel: "The Boss does not reveal a target technique name.",
+    progress: "{done}/{total} completed",
+    optionalLab: "Optional Lab",
+  }),
+});
+
+function campaignLocale() {
+  return lang?.value === "en" ? "en" : "zh";
+}
+
+function campaignCopy(key, values = {}) {
+  let text = CAMPAIGN_COPY[campaignLocale()]?.[key] || CAMPAIGN_COPY.zh[key] || key;
+  for (const [name, value] of Object.entries(values)) text = text.replaceAll(`{${name}}`, String(value));
+  return text;
+}
+
+function campaignLocalized(value) {
+  if (!value || typeof value !== "object") return String(value || "");
+  return value[campaignLocale()] || value.zh || value.en || "";
+}
+
+function campaignDom(tag, className = "", text = "") {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== "") node.textContent = text;
+  return node;
+}
+
+function campaignSessionContext(session = campaignSession) {
+  if (!session) return null;
+  if (session.generatedReview && session.generatedItem?.puzzle && session.generatedItem?.solution) {
+    return { chapter: null, lesson: null, boss: null, item: session.generatedItem, generatedReview: true };
+  }
+  const chapter = campaignChapterById(session.chapterId);
+  if (!chapter) return null;
+  if (session.lessonId === "__boss__") {
+    const item = campaignItemById(chapter.id, "__boss__", session.itemId);
+    return item ? { chapter, lesson: null, boss: chapter.boss, item } : null;
+  }
+  const lesson = campaignLessonById(chapter.id, session.lessonId);
+  const item = campaignItemById(chapter.id, session.lessonId, session.itemId);
+  return lesson && item ? { chapter, lesson, boss: null, item } : null;
+}
+
+function campaignLessonAvailable(chapter, lessonIndex) {
+  if (!isCampaignChapterUnlocked(campaignProgress, chapter.id)) return false;
+  if (chapter.independentLessons) return true;
+  if (isCampaignBossCompleted(campaignProgress, chapter.id)) return true;
+  if (lessonIndex <= 0) return true;
+  const previous = chapter.lessons[lessonIndex - 1];
+  return Boolean(previous && isCampaignLessonCompleted(campaignProgress, chapter.id, previous.id));
+}
+
+function updateCampaignEntryBadge() {
+  if (!appHubCampaignBadge) return;
+  const activeChapters = CAMPAIGN_CHAPTERS.filter((chapter) => !chapter.optional && !chapter.placeholder && chapter.lessons?.length);
+  if (!activeChapters.length) {
+    appHubCampaignBadge.textContent = "";
+    return;
+  }
+  const allBossesPassed = activeChapters.every((chapter) => chapter.boss && isCampaignBossCompleted(campaignProgress, chapter.id));
+  if (allBossesPassed) {
+    appHubCampaignBadge.textContent = "✓";
+    return;
+  }
+  const total = activeChapters.reduce((sum, chapter) => sum + chapter.lessons.length, 0);
+  const done = activeChapters.reduce((sum, chapter) => sum + chapter.lessons.filter((lesson) => isCampaignLessonCompleted(campaignProgress, chapter.id, lesson.id)).length, 0);
+  appHubCampaignBadge.textContent = `${done}/${total}`;
+}
+
+function relocalizeCampaignUi() {
+  if (appHubCampaignTitle) appHubCampaignTitle.textContent = campaignCopy("routeTitle");
+  if (appHubCampaignDesc) appHubCampaignDesc.textContent = campaignCopy("entryDesc");
+  if (campaignDialogTitle) campaignDialogTitle.textContent = campaignCopy("routeTitle");
+  if (campaignDialogSubtitle) campaignDialogSubtitle.textContent = campaignCopy("routeSubtitle");
+  if (btnCampaignClose) btnCampaignClose.setAttribute("aria-label", ui("close"));
+  if (btnCampaignBack) btnCampaignBack.textContent = campaignCopy("back");
+  if (btnCampaignRestart) btnCampaignRestart.textContent = campaignCopy("sessionRestart");
+  updateCampaignSessionPanelToggle();
+  updateCampaignGuidedHintButton();
+  if (btnCampaignReturn) btnCampaignReturn.textContent = campaignCopy("sessionReturn");
+  if (btnCampaignExit) btnCampaignExit.textContent = campaignCopy("sessionExit");
+  updateCampaignEntryBadge();
+  renderCampaignSessionBar();
+  if (campaignSession && campaignHintCache?.step && Number(campaignSession.hintRevealLevel || 0) > 0) {
+    renderCampaignProgressiveHint(campaignHintCache.step, Number(campaignSession.hintRevealLevel || 0));
+  }
+  if (campaignDialog?.open) renderCampaignCurrentView();
+}
+
+function renderCampaignOverview() {
+  campaignViewState = { mode: "overview", chapterId: null, lessonId: null };
+  if (!campaignView) return;
+  campaignView.replaceChildren();
+  if (campaignBreadcrumb) campaignBreadcrumb.textContent = "";
+  if (btnCampaignBack) btnCampaignBack.hidden = true;
+  const reviewRows = campaignReviewQueue(campaignProgress, CAMPAIGN_CHAPTERS);
+  {
+    const review = campaignDom("section", "campaign-review-card");
+    review.append(campaignDom("h3", "", campaignCopy("reviewHubTitle")));
+    review.append(campaignDom("p", "campaign-review-desc", campaignCopy("reviewHubDesc")));
+    const randomActions = campaignDom("div", "campaign-card-actions");
+    const randomButton = campaignDom("button", "primary", campaignRandomReviewGenerating
+      ? campaignCopy("reviewRandomGenerating")
+      : campaignCopy("reviewRandomGenerate"));
+    randomButton.type = "button";
+    randomButton.dataset.campaignAction = "generate-random-review";
+    randomButton.disabled = campaignRandomReviewGenerating;
+    randomButton.addEventListener("click", () => generateCampaignRandomReview(randomButton));
+    randomActions.append(randomButton);
+    review.append(randomActions);
+    if (reviewRows.length) review.append(campaignDom("h4", "campaign-review-queue-title", campaignCopy("reviewTitle")));
+    const reviewList = campaignDom("div", "campaign-review-list");
+    reviewRows.slice(0, 5).forEach((row, index) => {
+      const line = campaignDom("div", "campaign-review-item");
+      const copy = campaignDom("div", "campaign-card-copy");
+      copy.append(campaignDom("strong", "", campaignCopy("reviewItem", { index: index + 1 })));
+      const reasonText = row.reason === "stale"
+        ? campaignCopy("reviewStaleReason")
+        : row.reason === "not-mastered"
+          ? campaignCopy("reviewPracticeReason")
+          : campaignCopy("reviewHintReason");
+      copy.append(campaignDom("p", "", reasonText));
+      const button = campaignDom("button", "primary", campaignCopy("reviewReady"));
+      button.type = "button";
+      button.dataset.campaignAction = "start-review";
+      button.addEventListener("click", () => startCampaignItem(row.chapterId, row.lessonId, row.itemId, { review: true }));
+      line.append(copy, button);
+      reviewList.append(line);
+    });
+    if (reviewRows.length) review.append(reviewList);
+    campaignView.append(review);
+  }
+  const list = campaignDom("div", "campaign-chapter-list");
+  for (const chapter of CAMPAIGN_CHAPTERS) {
+    const unlocked = isCampaignChapterUnlocked(campaignProgress, chapter.id);
+    const card = campaignDom("section", `campaign-chapter-card${chapter.optional ? " campaign-lab-card" : ""}${unlocked ? "" : " is-locked"}`);
+    card.dataset.campaignChapter = chapter.id;
+    const head = campaignDom("div", "campaign-card-head");
+    const copy = campaignDom("div", "campaign-card-copy");
+    copy.append(campaignDom("strong", "", `${chapter.order}. ${campaignLocalized(chapter.title)}`));
+    copy.append(campaignDom("p", "", campaignLocalized(chapter.description)));
+    const pillText = chapter.optional
+      ? `${campaignCopy("optionalLab")} · ${unlocked ? campaignCopy("unlocked") : campaignCopy("locked")}`
+      : (unlocked ? campaignCopy("unlocked") : campaignCopy("locked"));
+    const pill = campaignDom("span", "campaign-status-pill", pillText);
+    head.append(copy, pill);
+    card.append(head);
+    if (chapter.lessons.length) {
+      const done = chapter.lessons.filter((lesson) => isCampaignLessonCompleted(campaignProgress, chapter.id, lesson.id)).length;
+      const label = campaignDom("div", "campaign-item-meta", campaignCopy("progress", { done, total: chapter.lessons.length }));
+      const track = campaignDom("div", "campaign-progress-track");
+      const fill = campaignDom("span");
+      fill.style.width = `${chapter.lessons.length ? Math.round(done / chapter.lessons.length * 100) : 0}%`;
+      track.append(fill);
+      card.append(label, track);
+    }
+    const actions = campaignDom("div", "campaign-card-actions");
+    const button = campaignDom("button", unlocked ? "primary" : "", chapter.placeholder ? campaignCopy("enter") : campaignCopy("enter"));
+    button.type = "button";
+    button.dataset.campaignAction = "open-chapter";
+    button.dataset.campaignChapter = chapter.id;
+    button.disabled = !unlocked;
+    button.addEventListener("click", () => renderCampaignChapter(chapter.id));
+    actions.append(button);
+    if (chapter.boss && isCampaignBossCompleted(campaignProgress, chapter.id)) {
+      actions.append(campaignDom("span", "campaign-status-pill", campaignCopy("bossPassed")));
+    }
+    card.append(actions);
+    list.append(card);
+  }
+  campaignView.append(list);
+}
+
+function renderCampaignChapter(chapterId) {
+  const chapter = campaignChapterById(chapterId);
+  if (!chapter || !isCampaignChapterUnlocked(campaignProgress, chapter.id)) return renderCampaignOverview();
+  campaignViewState = { mode: "chapter", chapterId: chapter.id, lessonId: null };
+  campaignView.replaceChildren();
+  if (campaignBreadcrumb) campaignBreadcrumb.textContent = campaignLocalized(chapter.title);
+  if (btnCampaignBack) btnCampaignBack.hidden = false;
+  if (chapter.placeholder) {
+    campaignView.append(campaignDom("div", "campaign-placeholder", campaignCopy("placeholder")));
+    return;
+  }
+  const list = campaignDom("div", "campaign-lesson-list");
+  chapter.lessons.forEach((lesson, index) => {
+    const available = campaignLessonAvailable(chapter, index);
+    const completed = isCampaignLessonCompleted(campaignProgress, chapter.id, lesson.id);
+    const card = campaignDom("section", `campaign-lesson-card${available ? "" : " is-locked"}`);
+    card.dataset.campaignLesson = lesson.id;
+    const head = campaignDom("div", "campaign-card-head");
+    const copy = campaignDom("div", "campaign-card-copy");
+    copy.append(campaignDom("strong", "", `${index + 1}. ${campaignLocalized(lesson.title)}`));
+    copy.append(campaignDom("p", "", campaignLocalized(lesson.summary)));
+    const status = completed ? campaignCopy("complete") : (available ? campaignCopy("inProgress") : campaignCopy("locked"));
+    head.append(copy, campaignDom("span", "campaign-status-pill", status));
+    const actions = campaignDom("div", "campaign-card-actions");
+    const button = campaignDom("button", available ? "primary" : "", completed ? campaignCopy("lessonReplay") : campaignCopy("lessonReady"));
+    button.type = "button";
+    button.dataset.campaignAction = "open-lesson";
+    button.dataset.campaignLesson = lesson.id;
+    button.disabled = !available;
+    button.addEventListener("click", () => renderCampaignLesson(chapter.id, lesson.id));
+    actions.append(button);
+    card.append(head, actions);
+    list.append(card);
+  });
+  campaignView.append(list);
+  if (chapter.boss) {
+    const passed = isCampaignBossCompleted(campaignProgress, chapter.id);
+    const boss = campaignDom("section", "campaign-boss-card");
+    boss.append(campaignDom("h3", "", campaignLocalized(chapter.boss.title)));
+    boss.append(campaignDom("p", "", campaignLocalized(chapter.boss.description)));
+    boss.append(campaignDom("div", "campaign-item-meta", campaignCopy("bossLabel")));
+    const actions = campaignDom("div", "campaign-card-actions");
+    const button = campaignDom("button", "primary", passed ? campaignCopy("bossReplay") : campaignCopy("bossChallenge"));
+    button.type = "button";
+    button.dataset.campaignAction = "start-boss";
+    button.dataset.campaignItem = chapter.boss.item.id;
+    button.addEventListener("click", () => startCampaignItem(chapter.id, "__boss__", chapter.boss.item.id));
+    actions.append(button, campaignDom("span", "campaign-status-pill", passed ? campaignCopy("bossPassed") : campaignCopy("bossReady")));
+    boss.append(actions);
+    campaignView.append(boss);
+  }
+}
+
+function renderCampaignLesson(chapterId, lessonId) {
+  const chapter = campaignChapterById(chapterId);
+  const lesson = campaignLessonById(chapterId, lessonId);
+  const index = chapter?.lessons?.findIndex((entry) => entry.id === lessonId) ?? -1;
+  if (!chapter || !lesson || index < 0 || !campaignLessonAvailable(chapter, index)) return renderCampaignChapter(chapterId);
+  campaignViewState = { mode: "lesson", chapterId, lessonId };
+  campaignView.replaceChildren();
+  if (campaignBreadcrumb) campaignBreadcrumb.textContent = `${campaignLocalized(chapter.title)} · ${campaignLocalized(lesson.title)}`;
+  if (btnCampaignBack) btnCampaignBack.hidden = false;
+  const intro = campaignDom("div", "campaign-lesson-intro");
+  intro.append(campaignDom("h3", "", campaignLocalized(lesson.title)));
+  intro.append(campaignDom("p", "", campaignLocalized(lesson.summary)));
+  intro.append(campaignDom("div", "campaign-item-meta", campaignCopy("allowed")));
+  campaignView.append(intro);
+
+  const tutorial = TECHNIQUE_TUTORIAL_CARDS[lesson.techniqueKey]?.[campaignLocale()] || [];
+  const fields = TECHNIQUE_TUTORIAL_FIELDS[campaignLocale()] || [];
+  const conceptIndexes = [0, 1, 3, 5].filter((idx) => tutorial[idx]);
+  if (conceptIndexes.length) {
+    campaignView.append(campaignDom("h3", "", campaignCopy("concept")));
+    const grid = campaignDom("div", "campaign-concept-grid");
+    for (const idx of conceptIndexes) {
+      const card = campaignDom("section", "campaign-concept-card");
+      card.append(campaignDom("h4", "", fields[idx] || ""));
+      card.append(campaignDom("p", "", tutorial[idx] || ""));
+      grid.append(card);
+    }
+    campaignView.append(grid);
+  }
+
+  const lessonProgress = campaignLessonProgress(campaignProgress, chapter.id, lesson.id);
+  const practiceEntries = lesson.items.filter((entry) => entry.type === "practice");
+  const practiceDone = practiceEntries.filter((entry) => lessonProgress.completedItems?.includes(entry.id)).length;
+  if (practiceEntries.length) {
+    const summary = campaignDom("div", "campaign-practice-summary");
+    summary.append(campaignDom("strong", "", campaignCopy("practiceProgress", { done: practiceDone, total: practiceEntries.length })));
+    const track = campaignDom("div", "campaign-progress-track");
+    const fill = campaignDom("span");
+    fill.style.width = `${Math.round((practiceDone / practiceEntries.length) * 100)}%`;
+    track.append(fill);
+    summary.append(track);
+    const mastery = campaignLessonMastery(campaignProgress, chapter.id, lesson.id, lesson.requiredItems || []);
+    summary.append(campaignDom("div", "campaign-item-meta campaign-mastery", campaignCopy("masteryProgress", { done: mastery.mastered, total: mastery.total })));
+    campaignView.append(summary);
+  }
+  for (const entry of lesson.items) {
+    const completed = lessonProgress.completedItems?.includes(entry.id);
+    const card = campaignDom("section", "campaign-item-card");
+    card.dataset.campaignItem = entry.id;
+    card.dataset.campaignItemType = entry.type;
+    const practiceIndex = entry.type === "practice" ? practiceEntries.findIndex((candidate) => candidate.id === entry.id) + 1 : 0;
+    const title = entry.type === "guided"
+      ? campaignCopy("guided")
+      : campaignCopy("practiceNumber", { index: practiceIndex, total: practiceEntries.length });
+    const head = campaignDom("div", "campaign-card-head");
+    head.append(campaignDom("strong", "", title), campaignDom("span", "campaign-status-pill", completed ? campaignCopy("complete") : campaignCopy("inProgress")));
+    card.append(head);
+    card.append(campaignDom("div", "campaign-item-meta", campaignCopy("cluesSteps", { clues: entry.verification.clues, steps: entry.verification.steps })));
+    card.append(campaignDom("div", "campaign-item-meta", campaignCopy("verified")));
+    const actions = campaignDom("div", "campaign-card-actions");
+    const button = campaignDom("button", "primary", completed ? campaignCopy("lessonReplay") : (entry.type === "guided" ? campaignCopy("startGuided") : campaignCopy("startPractice")));
+    button.type = "button";
+    button.dataset.campaignAction = "start-item";
+    button.dataset.campaignItem = entry.id;
+    button.addEventListener("click", () => startCampaignItem(chapter.id, lesson.id, entry.id));
+    actions.append(button);
+    card.append(actions);
+    campaignView.append(card);
+  }
+}
+
+function renderCampaignCurrentView() {
+  const { mode, chapterId, lessonId } = campaignViewState;
+  if (mode === "lesson" && chapterId && lessonId) return renderCampaignLesson(chapterId, lessonId);
+  if (mode === "chapter" && chapterId) return renderCampaignChapter(chapterId);
+  return renderCampaignOverview();
+}
+
+function openCampaignOverview() {
+  uiFoundation?.appHub?.dialog?.close?.();
+  renderCampaignOverview();
+  if (!campaignDialog?.open) campaignDialog?.showModal?.();
+}
+
+function openCampaignForSession() {
+  const context = campaignSessionContext();
+  if (!context) return openCampaignOverview();
+  // Review is deliberately anonymous: reopening Campaign must not jump to the
+  // source lesson and reveal the technique name before the replay is finished.
+  if (context.generatedReview || campaignSession?.reviewMode) renderCampaignOverview();
+  else if (context.lesson) renderCampaignLesson(context.chapter.id, context.lesson.id);
+  else renderCampaignChapter(context.chapter.id);
+  if (!campaignDialog?.open) campaignDialog?.showModal?.();
+}
+
+function campaignSnapshotSolved(item, snapshot = currentSnapshot) {
+  if (!item?.solution || !snapshot) return false;
+  const board = snapshotBoardString(snapshot);
+  return board.length === 81 && board === item.solution;
+}
+
+function campaignShouldHideCandidates(context = campaignSessionContext()) {
+  if (!context?.item) return false;
+  if (context.generatedReview) {
+    const allowed = Array.isArray(context.item.allowedTechniques) ? context.item.allowedTechniques : [];
+    return allowed.length === 1 && allowed[0] === "FullHouse";
+  }
+  return context.lesson?.techniqueKey === "FullHouse";
+}
+
+function updateCampaignCandidatePresentation(context = campaignSessionContext()) {
+  boardStage?.classList.toggle("campaign-hide-candidates", campaignShouldHideCandidates(context));
+}
+
+function updateCampaignProgressiveHighlight(level = 0) {
+  boardStage?.classList.toggle("campaign-progressive-h3", Number(level) === 3);
+}
+
+function updateCampaignGuidedHintButton(context = campaignSessionContext()) {
+  if (!btnCampaignGuidedHint) return;
+  const guided = Boolean(context?.item?.type === "guided" && !campaignSession?.completed);
+  btnCampaignGuidedHint.hidden = !guided;
+  if (!guided) {
+    btnCampaignGuidedHint.disabled = false;
+    return;
+  }
+  const level = Math.max(0, Math.min(4, Number(campaignSession?.hintRevealLevel || 0)));
+  if (level >= 4) {
+    btnCampaignGuidedHint.textContent = campaignCopy("guidedHintDone");
+    btnCampaignGuidedHint.disabled = true;
+  } else if (level <= 0) {
+    btnCampaignGuidedHint.textContent = campaignCopy("guidedHintStart");
+    btnCampaignGuidedHint.disabled = false;
+  } else {
+    btnCampaignGuidedHint.textContent = campaignCopy("guidedHintNext", { level: level + 1 });
+    btnCampaignGuidedHint.disabled = false;
+  }
+}
+
+let campaignSessionPanelCollapsed = false;
+let campaignSessionPanelPositionFrame = 0;
+
+function campaignViewportMetrics() {
+  const viewport = window.visualViewport;
+  return {
+    width: Math.max(1, Number(viewport?.width || window.innerWidth || document.documentElement.clientWidth || 1)),
+    height: Math.max(1, Number(viewport?.height || window.innerHeight || document.documentElement.clientHeight || 1)),
+    offsetLeft: Math.max(0, Number(viewport?.offsetLeft || 0)),
+    offsetTop: Math.max(0, Number(viewport?.offsetTop || 0)),
+  };
+}
+
+function positionCampaignSessionPanel() {
+  campaignSessionPanelPositionFrame = 0;
+  if (!campaignSessionBar || campaignSessionBar.hidden || !boardStage) return;
+
+  const viewport = campaignViewportMetrics();
+  const edge = 8;
+  const gap = 10;
+  const boardRect = boardStage.getBoundingClientRect();
+  if (!boardRect.width || !boardRect.height) return;
+
+  // The Campaign panel belongs to the board, not to the viewport corner.  Prefer
+  // the nearest side even when that covers the ordinary operation panel; during
+  // a lesson the board and the teaching controls are the primary interaction.
+  campaignSessionBar.style.left = "auto";
+  campaignSessionBar.style.right = "auto";
+  campaignSessionBar.style.top = "auto";
+  campaignSessionBar.style.bottom = "auto";
+  campaignSessionBar.style.width = "";
+  campaignSessionBar.dataset.anchor = "";
+
+  const viewportLeft = viewport.offsetLeft + edge;
+  const viewportTop = viewport.offsetTop + edge;
+  const viewportRight = viewport.offsetLeft + viewport.width - edge;
+  const viewportBottom = viewport.offsetTop + viewport.height - edge;
+  const preferredWidth = viewport.height <= 640 && viewport.width > viewport.height ? 390 : 440;
+  const maxPanelWidth = Math.max(180, Math.min(preferredWidth, viewport.width - edge * 2));
+  const rightSpace = Math.max(0, viewportRight - (boardRect.right + gap));
+  const leftSpace = Math.max(0, (boardRect.left - gap) - viewportLeft);
+  const minimumUsefulSideWidth = Math.min(280, maxPanelWidth);
+
+  let anchor = "below";
+  let width = maxPanelWidth;
+  let left = viewportLeft;
+
+  if (rightSpace >= minimumUsefulSideWidth || rightSpace >= leftSpace && rightSpace >= 220) {
+    anchor = "right";
+    width = Math.min(maxPanelWidth, rightSpace);
+    left = boardRect.right + gap;
+  } else if (leftSpace >= minimumUsefulSideWidth || leftSpace >= 220) {
+    anchor = "left";
+    width = Math.min(maxPanelWidth, leftSpace);
+    left = boardRect.left - gap - width;
+  } else {
+    // Portrait phones have no useful side lane.  Keep the panel close to the
+    // teaching surface: below the board and, when the progressive hint panel is
+    // immediately underneath it, below that hint text rather than covering it.
+    width = Math.min(maxPanelWidth, viewport.width - edge * 2);
+    left = Math.min(
+      Math.max(viewportLeft, boardRect.left + (boardRect.width - width) / 2),
+      viewportRight - width,
+    );
+  }
+
+  campaignSessionBar.style.width = `${Math.max(180, width)}px`;
+  campaignSessionBar.style.left = `${Math.round(left)}px`;
+  campaignSessionBar.dataset.anchor = anchor;
+
+  // Width affects wrapping and therefore panel height, so measure only after the
+  // final width has been applied.
+  const panelRect = campaignSessionBar.getBoundingClientRect();
+  let top;
+  if (anchor === "right" || anchor === "left") {
+    // Bottom-align with the board: the controls stay visually adjacent to the
+    // active solving area while the ordinary right-side controls may sit behind.
+    top = boardRect.bottom - panelRect.height;
+    top = Math.min(Math.max(viewportTop, top), Math.max(viewportTop, viewportBottom - panelRect.height));
+  } else {
+    let teachingBottom = boardRect.bottom;
+    const hintRect = hintPanel?.getBoundingClientRect();
+    if (hintRect && hintRect.height > 0 && hintRect.top >= boardRect.bottom - 2 && hintRect.top <= boardRect.bottom + 180) {
+      teachingBottom = Math.max(teachingBottom, hintRect.bottom);
+    }
+    top = teachingBottom + gap;
+    if (top + panelRect.height > viewportBottom) {
+      // Never cover the Sudoku board.  If the lower lane is tight, use the first
+      // viewport position after the board and allow the panel to cover ordinary
+      // controls; scrolling remains available for the underlying page.
+      top = Math.max(boardRect.bottom + gap, viewportBottom - panelRect.height);
+    }
+  }
+  campaignSessionBar.style.top = `${Math.round(top)}px`;
+}
+
+function scheduleCampaignSessionPanelPosition() {
+  if (campaignSessionPanelPositionFrame) cancelAnimationFrame(campaignSessionPanelPositionFrame);
+  campaignSessionPanelPositionFrame = requestAnimationFrame(positionCampaignSessionPanel);
+}
+
+function updateCampaignSessionPanelToggle() {
+  if (!campaignSessionBar || !btnCampaignPanelToggle) return;
+  campaignSessionBar.classList.toggle("is-collapsed", campaignSessionPanelCollapsed);
+  btnCampaignPanelToggle.setAttribute("aria-expanded", campaignSessionPanelCollapsed ? "false" : "true");
+  const copyKey = campaignSessionPanelCollapsed ? "sessionPanelExpand" : "sessionPanelCollapse";
+  const text = campaignCopy(copyKey);
+  btnCampaignPanelToggle.textContent = text;
+  btnCampaignPanelToggle.setAttribute("title", text);
+  scheduleCampaignSessionPanelPosition();
+}
+
+function toggleCampaignSessionPanel() {
+  if (!campaignSession || !campaignSessionBar || campaignSessionBar.hidden) return;
+  campaignSessionPanelCollapsed = !campaignSessionPanelCollapsed;
+  updateCampaignSessionPanelToggle();
+}
+
+function renderCampaignSessionBar() {
+  const context = campaignSessionContext();
+  if (!campaignSessionBar || !context) {
+    if (campaignSessionBar) {
+      campaignSessionBar.hidden = true;
+      campaignSessionBar.style.left = "";
+      campaignSessionBar.style.right = "";
+      campaignSessionBar.style.top = "";
+      campaignSessionBar.style.bottom = "";
+      campaignSessionBar.style.width = "";
+      campaignSessionBar.dataset.anchor = "";
+    }
+    boardStage?.classList.remove("campaign-hide-candidates", "campaign-progressive-h3");
+    updateCampaignGuidedHintButton(null);
+    updateCampaignSessionPanelToggle();
+    return;
+  }
+  campaignSessionBar.hidden = false;
+  updateCampaignSessionPanelToggle();
+  updateCampaignCandidatePresentation(context);
+  updateCampaignGuidedHintButton(context);
+  const generatedReview = Boolean(context.generatedReview);
+  const anonymousReview = Boolean(campaignSession?.reviewMode && context.lesson);
+  const label = generatedReview
+    ? campaignCopy("reviewRandomSessionTitle")
+    : anonymousReview
+    ? campaignCopy("reviewSessionTitle")
+    : (context.lesson ? campaignLocalized(context.lesson.title) : campaignLocalized(context.boss?.title));
+  if (campaignSessionTitle) campaignSessionTitle.textContent = `${campaignCopy("routeTitle")} · ${label}`;
+  const guided = context.item?.type === "guided" && !anonymousReview && !generatedReview;
+  let detail = generatedReview
+    ? campaignCopy("reviewRandomSessionActive")
+    : (anonymousReview ? campaignCopy("reviewSessionActive") : (guided ? campaignCopy("guidedSessionActive", { level: Math.max(1, Number(campaignSession?.hintRevealLevel || 0)) }) : campaignCopy("sessionActive")));
+  if (campaignSession.invalidatedBySolve) detail = campaignCopy("sessionInvalidated");
+  else if (campaignSession.completed) detail = campaignCopy("sessionCompleted");
+  else if (Number(campaignSession.hintCount || 0) > 0) {
+    const activeText = generatedReview
+      ? campaignCopy("reviewRandomSessionActive")
+      : (anonymousReview ? campaignCopy("reviewSessionActive") : (guided ? campaignCopy("guidedSessionActive", { level: Math.max(1, Number(campaignSession?.hintRevealLevel || 0)) }) : campaignCopy("sessionActive")));
+    detail = `${activeText} · ${campaignCopy("sessionHints", { count: campaignSession.hintCount })}`;
+  }
+  if (campaignSessionDetail) campaignSessionDetail.textContent = detail;
+  scheduleCampaignSessionPanelPosition();
+}
+
+function campaignTechniqueConfigForItem(item) {
+  if (!engine || !item?.allowedTechniques) return null;
+  const registry = parseJson(engine.techniques_json())?.techniques || [];
+  const payload = {};
+  for (const technique of registry) {
+    if (technique?.implemented === false || !technique?.kind) continue;
+    payload[technique.kind] = false;
+  }
+  for (const kind of item.allowedTechniques) payload[kind] = true;
+  return payload;
+}
+
+function campaignLearnedTechniqueKinds() {
+  const learned = new Set();
+  for (const chapter of CAMPAIGN_CHAPTERS) {
+    for (const lesson of chapter.lessons || []) {
+      if (!lesson?.techniqueKey) continue;
+      if (isCampaignLessonCompleted(campaignProgress, chapter.id, lesson.id)) learned.add(lesson.techniqueKey);
+    }
+  }
+  return [...learned];
+}
+
+function campaignRandomReviewTargetClues(learnedKinds) {
+  // The normal training generator digs toward minimal puzzles.  That is fine
+  // once the learner has a modest technique toolbox, but it makes the very
+  // first Campaign lessons needlessly hard to satisfy (Full House alone may
+  // otherwise search thousands of minimal puzzles).  Early mixed review uses
+  // a fuller unique puzzle, then smoothly hands back to minimal generation.
+  const count = Array.isArray(learnedKinds) ? learnedKinds.length : 0;
+  if (count <= 1) return 72;
+  if (count === 2) return 60;
+  if (count === 3) return 48;
+  if (count === 4) return 36;
+  return 0;
+}
+
+function campaignRandomReviewTechniqueConfig(learnedKinds) {
+  const learned = new Set(learnedKinds || []);
+  const state = techniqueState.length ? techniqueState : loadTechniqueState();
+  const payload = getTechniqueConfigPayload(state);
+  for (const technique of state || []) {
+    if (technique?.implemented === false || !technique?.kind) continue;
+    payload[technique.kind] = learned.has(technique.kind);
+  }
+  // Keep the mixed-review whitelist literal.  These are optional search
+  // extensions inside larger techniques rather than separately completed
+  // Campaign lessons, so they must not silently expand the learned universe.
+  payload.ComplexAICWithAMSLS = false;
+  payload.JEWithJEPOM = false;
+  payload.MSLSWithIrregular = false;
+  return payload;
+}
+
+function applyCampaignRandomReviewTechniqueWhitelist(learnedKinds) {
+  const payload = campaignRandomReviewTechniqueConfig(learnedKinds);
+  if (!payload || typeof engine?.set_techniques_json !== "function") return false;
+  const result = parseJson(engine.set_techniques_json(JSON.stringify(payload)));
+  techniqueState = mergeReferenceTechniques(result?.techniques || [], techniqueState);
+  if (typeof result?.whipCompareGWhip === "boolean") whipCompareGWhip = result.whipCompareGWhip;
+  renderTechniques();
+  scheduleAppSessionSave();
+  return true;
+}
+
+function applyCampaignTechniqueWhitelist(item) {
+  const payload = campaignTechniqueConfigForItem(item);
+  if (!payload || typeof engine?.set_techniques_json !== "function") return false;
+  const result = parseJson(engine.set_techniques_json(JSON.stringify(payload)));
+  techniqueState = mergeReferenceTechniques(result?.techniques || [], techniqueState);
+  renderTechniques();
+  scheduleAppSessionSave();
+  return true;
+}
+
+function restoreCampaignTechniqueConfig(payload) {
+  if (!payload || typeof payload !== "object" || typeof engine?.set_techniques_json !== "function") return false;
+  const result = parseJson(engine.set_techniques_json(JSON.stringify(payload)));
+  techniqueState = mergeReferenceTechniques(result?.techniques || [], techniqueState);
+  if (typeof result?.whipCompareGWhip === "boolean") whipCompareGWhip = result.whipCompareGWhip;
+  renderTechniques();
+  scheduleAppSessionSave();
+  return true;
+}
+
+function importCampaignPuzzle(item) {
+  if (!engine || !item?.puzzle) return false;
+  const importText = item.startLibrary || `:0000:x:${item.puzzle}:::`;
+  const result = parseJson(engine.import_puzzle_json(importText));
+  if (!result?.ok) {
+    setStatus(result?.error || campaignCopy("loadFailed"));
+    return false;
+  }
+  setInitialCandidateBaselineFromImport(result);
+  clearAppEditHistory();
+  originalBoard = result.state?.givens || result.givens || result.puzzle || item.puzzle;
+  givens.value = item.puzzle;
+  resetBoardContextForSnapshot(result.state, { resetSelectedIndex: true });
+  updateInputControls();
+  return true;
+}
+
+function startCampaignItem(chapterId, lessonId, itemId, options = {}) {
+  const item = campaignItemById(chapterId, lessonId, itemId);
+  const chapter = campaignChapterById(chapterId);
+  const lesson = lessonId === "__boss__" ? null : campaignLessonById(chapterId, lessonId);
+  if (!item || !chapter || (lessonId !== "__boss__" && !lesson)) return false;
+  const prior = campaignSession;
+  const returnLibrary = prior?.returnLibrary || snapshotToLibraryString(currentSnapshot) || "";
+  const returnInputText = prior?.returnInputText ?? String(givens?.value || "");
+  const returnManualMarks = prior?.returnManualMarks || serializeManualMarks();
+  const returnTechniqueConfig = prior?.returnTechniqueConfig || getTechniqueConfigPayload(techniqueState.length ? techniqueState : loadTechniqueState());
+  if (!importCampaignPuzzle(item)) return false;
+  applyCampaignTechniqueWhitelist(item);
+  campaignHintCache = null;
+  currentHint = null;
+  activateTab("controls");
+  campaignSession = saveCampaignSession({
+    chapterId,
+    lessonId,
+    itemId,
+    itemType: item.type,
+    returnLibrary,
+    returnInputText,
+    returnManualMarks,
+    returnTechniqueConfig,
+    hintCount: 0,
+    hintRevealLevel: 0,
+    maxHintLevel: 0,
+    targetFirstApplied: false,
+    reviewMode: Boolean(options.review || (options.restart && prior?.reviewMode)),
+    invalidatedBySolve: false,
+    completed: false,
+    startedAt: Date.now(),
+  });
+  campaignDialog?.close?.();
+  uiFoundation?.appHub?.dialog?.close?.();
+  renderCampaignSessionBar();
+  if (item.type === "guided") requestCampaignProgressiveHint();
+  scheduleAppSessionSave();
+  return true;
+}
+
+function startCampaignGeneratedReview(result, learnedKinds) {
+  if (!result?.puzzle || !result?.solution) return false;
+  const item = {
+    id: `generated-review-${Date.now()}`,
+    type: "generated-review",
+    puzzle: String(result.puzzle),
+    solution: String(result.solution),
+    targetTechnique: "",
+    allowedTechniques: [...learnedKinds],
+    verified: true,
+  };
+  const prior = campaignSession;
+  const returnLibrary = prior?.returnLibrary || snapshotToLibraryString(currentSnapshot) || "";
+  const returnInputText = prior?.returnInputText ?? String(givens?.value || "");
+  const returnManualMarks = prior?.returnManualMarks || serializeManualMarks();
+  const returnTechniqueConfig = prior?.returnTechniqueConfig || getTechniqueConfigPayload(techniqueState.length ? techniqueState : loadTechniqueState());
+  if (!importCampaignPuzzle(item)) return false;
+  // Random mixed review must keep the exact learned-technique universe for the
+  // actual solving session as well as for generation.  In particular, clear
+  // optional sub-search flags that generic Campaign lessons may intentionally use.
+  applyCampaignRandomReviewTechniqueWhitelist(learnedKinds);
+  campaignHintCache = null;
+  currentHint = null;
+  activateTab("controls");
+  campaignSession = saveCampaignSession({
+    generatedReview: true,
+    generatedItem: item,
+    itemId: item.id,
+    itemType: item.type,
+    returnLibrary,
+    returnInputText,
+    returnManualMarks,
+    returnTechniqueConfig,
+    hintCount: 0,
+    hintRevealLevel: 0,
+    maxHintLevel: 0,
+    targetFirstApplied: false,
+    reviewMode: true,
+    invalidatedBySolve: false,
+    completed: false,
+    startedAt: Date.now(),
+  });
+  campaignDialog?.close?.();
+  uiFoundation?.appHub?.dialog?.close?.();
+  renderCampaignSessionBar();
+  scheduleAppSessionSave();
+  return true;
+}
+
+async function generateCampaignRandomReview(button = null) {
+  if (!engine || campaignRandomReviewGenerating) return false;
+  const learnedKinds = campaignLearnedTechniqueKinds();
+  if (!learnedKinds.length) {
+    setStatus(campaignCopy("reviewRandomNeedLessons"));
+    return false;
+  }
+  campaignRandomReviewGenerating = true;
+  const originalText = button?.textContent || campaignCopy("reviewRandomGenerate");
+  if (button) {
+    button.disabled = true;
+    button.textContent = campaignCopy("reviewRandomGenerating");
+  }
+  setStatus(campaignCopy("reviewRandomGenerating"));
+  await paintBeforeLongTask();
+  try {
+    const resultText = await generateTrainingPuzzleInWorker(
+      learnedKinds.join("|"),
+      0,
+      5000,
+      true,
+      {
+        includeText: "",
+        excludeText: "",
+        caseSensitive: false,
+        findAll: true,
+        otp: false,
+        requireSolved: true,
+        targetClues: campaignRandomReviewTargetClues(learnedKinds),
+      },
+      { techniqueConfig: campaignRandomReviewTechniqueConfig(learnedKinds) }
+    );
+    const result = parseJson(resultText);
+    if (!result?.ok || result?.solve?.status !== "solved") {
+      setStatus(campaignCopy("reviewRandomFailed"));
+      debugLog(JSON.stringify({ campaignRandomReview: true, learnedKinds, result }, null, 2));
+      return false;
+    }
+    if (!startCampaignGeneratedReview(result, learnedKinds)) {
+      setStatus(campaignCopy("loadFailed"));
+      return false;
+    }
+    setStatus(campaignCopy("reviewRandomReady", { count: learnedKinds.length }));
+    debugLog(JSON.stringify({
+      campaignRandomReview: true,
+      learnedKinds,
+      attempts: result.attempts,
+      puzzle: result.puzzle,
+      solve: result.solve,
+    }, null, 2));
+    return true;
+  } catch (error) {
+    setStatus(campaignCopy("reviewRandomFailed"));
+    debugLog(JSON.stringify({
+      campaignRandomReview: true,
+      learnedKinds,
+      error: error instanceof Error ? error.message : String(error),
+    }, null, 2));
+    return false;
+  } finally {
+    campaignRandomReviewGenerating = false;
+    if (button?.isConnected) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+}
+
+function restartCampaignItem() {
+  const context = campaignSessionContext();
+  if (!context) return false;
+  if (context.generatedReview) {
+    if (!importCampaignPuzzle(context.item)) return false;
+    applyCampaignRandomReviewTechniqueWhitelist(context.item.allowedTechniques || []);
+    campaignHintCache = null;
+    currentHint = null;
+    campaignSession = saveCampaignSession({
+      ...campaignSession,
+      hintCount: 0,
+      hintRevealLevel: 0,
+      maxHintLevel: 0,
+      invalidatedBySolve: false,
+      completed: false,
+      completedAt: null,
+      startedAt: Date.now(),
+    });
+    campaignDialog?.close?.();
+    renderCampaignSessionBar();
+    scheduleAppSessionSave();
+    return true;
+  }
+  return startCampaignItem(context.chapter.id, campaignSession.lessonId, context.item.id, { restart: true });
+}
+
+function restorePreCampaignBoard() {
+  const session = campaignSession;
+  const returnLibrary = session?.returnLibrary || "";
+  const returnInputText = session?.returnInputText ?? "";
+  const returnManualMarks = session?.returnManualMarks || null;
+  const returnTechniqueConfig = session?.returnTechniqueConfig || null;
+  campaignSession = null;
+  campaignHintCache = null;
+  campaignSessionPanelCollapsed = false;
+  clearCampaignSession();
+  // Campaign-only presentation must never leak back into the ordinary board.
+  // In particular, Full House hides the pencilmark glyphs while preserving
+  // their hit targets; remove that visual state before attempting to restore
+  // the pre-Campaign puzzle, even if the restore later fails.
+  renderCampaignSessionBar();
+  updateCampaignProgressiveHighlight(0);
+  restoreCampaignTechniqueConfig(returnTechniqueConfig);
+  campaignDialog?.close?.();
+  if (!returnLibrary || !engine) {
+    setStatus(campaignCopy("noOriginal"));
+    return false;
+  }
+  const result = parseJson(engine.import_puzzle_json(returnLibrary));
+  if (!result?.ok) {
+    setStatus(result?.error || ui("operationFailed"));
+    return false;
+  }
+  setInitialCandidateBaselineFromImport(result);
+  clearAppEditHistory();
+  originalBoard = result.state?.givens || result.givens || result.puzzle || originalBoard;
+  if (givens) givens.value = returnInputText || returnLibrary;
+  currentSnapshot = result.state;
+  clearStepViewState({ resetSelectedIndex: true });
+  restoreManualMarks(returnManualMarks);
+  renderBoardSnapshot(currentSnapshot, null);
+  updateInputControls();
+  setStatus(campaignCopy("restoredOriginal"));
+  scheduleAppSessionSave();
+  return true;
+}
+
+function invalidateCampaignByAutoSolve() {
+  if (!campaignSession || campaignSession.completed || campaignSession.invalidatedBySolve) return;
+  campaignSession.invalidatedBySolve = true;
+  campaignSession = saveCampaignSession(campaignSession);
+  renderCampaignSessionBar();
+  showPlainAppStatusToast(campaignCopy("solveInvalidatedToast"), "warning");
+}
+
+function campaignHintSnapshotKey() {
+  return String(currentSnapshot?.stateHash || snapshotToLibraryString(currentSnapshot) || "");
+}
+
+function clearCampaignProgressiveHintPreview(options = {}) {
+  campaignHintCache = null;
+  updateCampaignProgressiveHighlight(0);
+  if (options.keepSessionLevel !== true && campaignSession) {
+    campaignSession.hintRevealLevel = 0;
+    campaignSession = saveCampaignSession(campaignSession);
+  }
+}
+
+function campaignHintDirection(step) {
+  const kind = String(step?.kind || "");
+  if (kind === "FullHouse") return campaignLocale() === "en" ? "find a row, column, or box with exactly one digit missing" : "寻找只缺一个数字的行、列或宫";
+  if (/JE|SeniorExocet|WeakExocet/i.test(kind)) return campaignLocale() === "en" ? "base / target candidate structure" : "基格与目标格候选结构";
+  if (/UniqueRectangle|AvoidableRectangle|ExtendedRectangle|UniqueLoop|Oddagon|GSP/i.test(kind)) return campaignLocale() === "en" ? "uniqueness / contradiction structure" : "唯一性或矛盾结构";
+  if (/Multifish|SueDeCoq/i.test(kind)) return campaignLocale() === "en" ? "set-capacity / rank structure" : "集合容量与秩结构";
+  if (/Single|FullHouse|LockedCandidates|Pair|Triple|Quad/i.test(kind)) return campaignLocale() === "en" ? "local candidates / subset logic" : "局部候选与数组逻辑";
+  if (/Fish|XWing|Swordfish|Jellyfish|Skyscraper|Kite|EmptyRectangle|ERI/i.test(kind)) return campaignLocale() === "en" ? "single-digit pattern logic" : "单数字图形逻辑";
+  if (/Wing|Chain|Whip|Braid|AIC/i.test(kind)) return campaignLocale() === "en" ? "link / chain logic" : "链与强弱关系";
+  if (/ALS|AHS|MSLS|Blossom|Multifish|Loop|Fireworks/i.test(kind)) return campaignLocale() === "en" ? "set-capacity / rank structure" : "集合容量与秩结构";
+  return campaignLocale() === "en" ? "one of the techniques learned so far" : "已学技巧中的一种结构";
+}
+
+function campaignHintArea(step) {
+  if (step?.house) return String(step.house);
+  const cells = Array.isArray(step?.cells) ? step.cells : [];
+  const indices = cells.map((cell) => Number(cell?.index)).filter((index) => Number.isInteger(index) && index >= 0 && index < 81);
+  if (!indices.length) return campaignLocale() === "en" ? "the most constrained region of the grid" : "盘面中约束最紧的区域";
+  const rows = [...new Set(indices.map((index) => Math.floor(index / 9) + 1))];
+  const cols = [...new Set(indices.map((index) => index % 9 + 1))];
+  const boxes = [...new Set(indices.map((index) => Math.floor(Math.floor(index / 9) / 3) * 3 + Math.floor((index % 9) / 3) + 1))];
+  const parts = [];
+  if (rows.length <= 2) parts.push(...rows.map((n) => `r${n}`));
+  if (cols.length <= 2) parts.push(...cols.map((n) => `c${n}`));
+  if (!parts.length && boxes.length <= 2) parts.push(...boxes.map((n) => `b${n}`));
+  return parts.length ? parts.join(" / ") : (campaignLocale() === "en" ? `${indices.length} highlighted structure cells` : `${indices.length} 个结构格附近`);
+}
+
+function campaignHouseCellIndices(house) {
+  const match = /^([rcb])([1-9])$/i.exec(String(house || "").trim());
+  if (!match) return [];
+  const type = match[1].toLowerCase();
+  const n = Number(match[2]) - 1;
+  if (type === "r") return Array.from({ length: 9 }, (_, col) => n * 9 + col);
+  if (type === "c") return Array.from({ length: 9 }, (_, row) => row * 9 + n);
+  const boxRow = Math.floor(n / 3) * 3;
+  const boxCol = (n % 3) * 3;
+  const out = [];
+  for (let dr = 0; dr < 3; dr += 1) for (let dc = 0; dc < 3; dc += 1) out.push((boxRow + dr) * 9 + boxCol + dc);
+  return out;
+}
+
+function campaignMaskedHint(step, level) {
+  if (level < 3) return null;
+  const kind = String(step?.kind || "");
+  let cells = Array.isArray(step?.cells)
+    ? step.cells.map((cell) => ({ index: cell.index, row: cell.row, col: cell.col }))
+    : [];
+  // Full House is a house-completion technique.  At H3 highlighting only the
+  // answer cell gives away the location too early; show the entire house and
+  // keep the actual placement for H4.
+  if (kind === "FullHouse") {
+    const indices = campaignHouseCellIndices(step?.house);
+    if (indices.length) {
+      cells = indices.map((index) => ({ index, row: Math.floor(index / 9) + 1, col: (index % 9) + 1 }));
+    }
+  }
+  return {
+    valid: false,
+    kind,
+    cells,
+    actions: [],
+    eliminations: [],
+    candidates: [],
+    colorCands: [],
+  };
+}
+
+function renderCampaignProgressiveHint(step, level) {
+  updateCampaignProgressiveHighlight(level);
+  if (level >= 4) {
+    currentHint = step;
+    renderBoard(currentHint);
+    const fullConclusion = formatHintDesc(step);
+    setYzfHintBaseText(`${campaignCopy("hintLevel", { level: 4 })} · ${campaignCopy("hintH4")}${fullConclusion ? ` · ${fullConclusion}` : ""}`);
+    updateStepExplainButtonState(currentHint, currentSnapshot);
+    updateMobileSolveHintAction();
+    return;
+  }
+  currentHint = campaignMaskedHint(step, level);
+  renderBoardSnapshot(currentSnapshot, currentHint);
+  const text = level === 1
+    ? campaignCopy("hintH1", { direction: campaignHintDirection(step) })
+    : level === 2
+      ? campaignCopy("hintH2", { area: campaignHintArea(step) })
+      : campaignCopy("hintH3");
+  setYzfHintBaseText(`${campaignCopy("hintLevel", { level })} · ${text}`);
+  updateStepExplainButtonState(null, currentSnapshot);
+  updateMobileSolveHintAction();
+}
+
+function campaignStepMatchesTargetFilter(step, item) {
+  if (!step?.valid || !item?.targetTechnique || step.kind !== item.targetTechnique) return false;
+  const filter = String(item.targetFilter || "").trim();
+  if (!filter) return true;
+  return (step.groups || []).some((group) => String(group?.label || "") === `Branch:${filter}`)
+    || String(step.description || "").includes(filter);
+}
+
+function campaignTargetFirstStep(item) {
+  if (!engine || !item?.targetFirst || !item?.targetTechnique) return null;
+  const registry = parseJson(engine.techniques_json())?.techniques || [];
+  const targetOnly = {};
+  for (const technique of registry) {
+    if (technique?.implemented === false || !technique?.kind) continue;
+    targetOnly[technique.kind] = technique.kind === item.targetTechnique;
+  }
+  const fullConfig = campaignTechniqueConfigForItem(item);
+  const restoreLibrary = snapshotToLibraryString(currentSnapshot);
+  engine.set_techniques_json(JSON.stringify(targetOnly));
+  const step = parseJson(engine.next_step_json());
+  if (fullConfig) engine.set_techniques_json(JSON.stringify(fullConfig));
+  if (campaignStepMatchesTargetFilter(step, item)) return step;
+
+  // A target-only next_step leaves a pending step.  If it was not the requested
+  // branch, re-import the exact current state before falling back so a wrong
+  // branch can never be applied implicitly by the next hint request.
+  if (restoreLibrary) engine.import_puzzle_json(restoreLibrary);
+  if (fullConfig) engine.set_techniques_json(JSON.stringify(fullConfig));
+  return null;
+}
+
+function requestCampaignProgressiveHint() {
+  if (!engine || !campaignSession || campaignSession.completed) return false;
+  const stateKey = campaignHintSnapshotKey();
+  if (!campaignHintCache || campaignHintCache.stateKey !== stateKey) {
+    const context = campaignSessionContext();
+    const forcedTarget = context?.item?.targetFirst && !campaignSession.targetFirstApplied
+      ? campaignTargetFirstStep(context.item)
+      : null;
+    const text = forcedTarget ? JSON.stringify(forcedTarget) : engine.next_step_json();
+    const step = forcedTarget || parseJson(text);
+    if (!step?.valid) {
+      currentHint = step;
+      renderBoard(currentHint);
+      debugLog(text);
+      return true;
+    }
+    campaignHintCache = { stateKey, step };
+    campaignSession.hintRevealLevel = 0;
+  }
+  const level = Math.min(4, Number(campaignSession.hintRevealLevel || 0) + 1);
+  campaignSession.hintRevealLevel = level;
+  campaignSession.maxHintLevel = Math.max(Number(campaignSession.maxHintLevel || 0), level);
+  campaignSession.hintCount = Number(campaignSession.hintCount || 0) + 1;
+  campaignSession = saveCampaignSession(campaignSession);
+  renderCampaignSessionBar();
+  renderCampaignProgressiveHint(campaignHintCache.step, level);
+  debugLog(JSON.stringify({ campaignProgressiveHint: true, level, kind: campaignHintCache.step?.kind || "" }));
+  return true;
+}
+
+function noteCampaignHintUsed() {
+  if (!campaignSession || campaignSession.completed) return;
+  campaignSession.hintCount = Number(campaignSession.hintCount || 0) + 1;
+  campaignSession = saveCampaignSession(campaignSession);
+  renderCampaignSessionBar();
+}
+
+function checkCampaignSessionCompletion() {
+  const context = campaignSessionContext();
+  if (!context || campaignSession.completed || !campaignSnapshotSolved(context.item)) return false;
+  if (campaignSession.invalidatedBySolve) {
+    renderCampaignSessionBar();
+    return false;
+  }
+  if (context.generatedReview) {
+    showPlainAppStatusToast(campaignCopy("reviewRandomCompletedToast"), "success");
+  } else if (context.lesson) {
+    campaignProgress = markCampaignItemCompleted(campaignProgress, context.chapter, context.lesson, context.item.id, {
+      noHint: Number(campaignSession.hintCount || 0) === 0,
+      hintCount: Number(campaignSession.hintCount || 0),
+      maxHintLevel: Number(campaignSession.maxHintLevel || 0),
+    });
+    showPlainAppStatusToast(campaignCopy("completedToast"), "success");
+  } else {
+    campaignProgress = markCampaignBossCompleted(campaignProgress, context.chapter, {
+      noHint: Number(campaignSession.hintCount || 0) === 0,
+      hintCount: Number(campaignSession.hintCount || 0),
+      maxHintLevel: Number(campaignSession.maxHintLevel || 0),
+    });
+    showPlainAppStatusToast(campaignCopy("bossCompletedToast"), "success");
+  }
+  campaignSession.completed = true;
+  campaignSession.completedAt = Date.now();
+  campaignSession = saveCampaignSession(campaignSession);
+  updateCampaignEntryBadge();
+  renderCampaignSessionBar();
+  return true;
+}
+
+function restoreCampaignSessionAfterInit() {
+  const context = campaignSessionContext();
+  if (!context) {
+    campaignSession = null;
+    clearCampaignSession();
+    renderCampaignSessionBar();
+    return;
+  }
+  const currentGivens = currentSnapshot?.givens || snapshotGivensString();
+  if (normalizePuzzle(currentGivens || "") !== normalizePuzzle(context.item.puzzle)) {
+    importCampaignPuzzle(context.item);
+  }
+  if (context.generatedReview) applyCampaignRandomReviewTechniqueWhitelist(context.item.allowedTechniques || []);
+  else applyCampaignTechniqueWhitelist(context.item);
+  campaignHintCache = null;
+  if (Number(campaignSession.hintRevealLevel || 0) !== 0) {
+    campaignSession.hintRevealLevel = 0;
+    campaignSession = saveCampaignSession(campaignSession);
+  }
+  currentHint = null;
+  updateCampaignProgressiveHighlight(0);
+  renderCampaignSessionBar();
+  checkCampaignSessionCompletion();
 }
 
 function captureAppEditHistory() {
@@ -10546,6 +11839,7 @@ function adoptImportedRuntimeState(result, options = {}) {
   renderBoardSnapshot(currentSnapshot, null);
   updateInputControls();
   scheduleAppSessionSave();
+  checkCampaignSessionCompletion();
   return true;
 }
 
@@ -11590,6 +12884,10 @@ function normalizeTrainingTextFilter(value) {
     caseSensitive: Boolean(value?.caseSensitive),
     findAll: value?.findAll !== false,
     otp: Boolean(value?.otp),
+    requireSolved: Boolean(value?.requireSolved),
+    targetClues: Number.isFinite(Number(value?.targetClues))
+      ? Math.max(0, Math.min(81, Math.trunc(Number(value.targetClues))))
+      : 0,
   };
 }
 
@@ -17844,6 +19142,8 @@ async function init() {
   initYzfTyp4DebugOverlayControls();
   initTlgSolverControls();
   initManualMarksControls();
+  restoreCampaignSessionAfterInit();
+  relocalizeCampaignUi();
 }
 
 for (const button of tabButtons) {
@@ -17851,6 +19151,32 @@ for (const button of tabButtons) {
     activateTab(button.dataset.tab);
   });
 }
+
+btnAppHubCampaign?.addEventListener("click", () => {
+  document.getElementById("appHubDialog")?.close?.();
+  if (campaignSession) openCampaignForSession();
+  else openCampaignOverview();
+});
+btnCampaignClose?.addEventListener("click", () => campaignDialog?.close?.());
+campaignDialog?.addEventListener("click", (event) => {
+  if (event.target === campaignDialog) campaignDialog.close();
+});
+btnCampaignBack?.addEventListener("click", () => {
+  if (campaignViewState.mode === "lesson" && campaignViewState.chapterId) {
+    renderCampaignChapter(campaignViewState.chapterId);
+    return;
+  }
+  if (campaignViewState.mode === "chapter") {
+    renderCampaignOverview();
+    return;
+  }
+  campaignDialog?.close?.();
+});
+btnCampaignPanelToggle?.addEventListener("click", toggleCampaignSessionPanel);
+btnCampaignGuidedHint?.addEventListener("click", requestCampaignProgressiveHint);
+btnCampaignRestart?.addEventListener("click", restartCampaignItem);
+btnCampaignReturn?.addEventListener("click", openCampaignForSession);
+btnCampaignExit?.addEventListener("click", restorePreCampaignBoard);
 
 trainingTechniqueSelect?.addEventListener("change", () => {
   updateTrainingTechniqueSelectColor();
@@ -19646,6 +20972,10 @@ btnRate.addEventListener("click", async () => {
 
 btnStep.addEventListener("click", () => {
   if (!engine) return;
+  if (campaignSession) {
+    requestCampaignProgressiveHint();
+    return;
+  }
   const text = engine.next_step_json();
   currentHint = parseJson(text);
   renderBoard(currentHint);
@@ -19654,6 +20984,10 @@ btnStep.addEventListener("click", () => {
 
 btnApply.addEventListener("click", () => {
   if (!engine) return;
+  if (campaignSession && !previewSnapshotActive && Number(campaignSession.hintRevealLevel || 0) < 4) {
+    setStatus(campaignCopy("hintApplyLocked"));
+    return;
+  }
   if (previewSnapshotActive && currentPreviewRecord) {
     const beforeLibrary = captureAppEditHistory();
     const afterSnapshot = currentPreviewRecord.after ||
@@ -19687,10 +21021,19 @@ btnApply.addEventListener("click", () => {
     setStatus(ui("appliedPreviewStep"));
     return;
   }
+  const campaignTargetWasApplied = Boolean(
+    campaignSession && currentHint?.valid && campaignStepMatchesTargetFilter(currentHint, campaignSessionContext()?.item)
+      && campaignSessionContext()?.item?.targetFirst && !campaignSession.targetFirstApplied
+  );
   currentHint = null;
   const beforeLibrary = captureAppEditHistory();
   const text = engine.apply_hint_json();
   if (refreshAfterEdit(text, { beforeLibrary })) {
+    if (campaignSession && campaignTargetWasApplied) {
+      campaignSession.targetFirstApplied = true;
+      campaignSession = saveCampaignSession(campaignSession);
+    }
+    if (campaignSession) clearCampaignProgressiveHintPreview();
     debugLog(text);
     setStatus(ui("appliedHint"));
   } else {
@@ -19712,6 +21055,17 @@ window.addEventListener("orientationchange", () => requestAnimationFrame(positio
 document.addEventListener("fullscreenchange", () => requestAnimationFrame(positionStepExplanationDialog));
 window.visualViewport?.addEventListener("resize", positionStepExplanationDialog);
 window.visualViewport?.addEventListener("scroll", positionStepExplanationDialog);
+window.addEventListener("resize", scheduleCampaignSessionPanelPosition, { passive: true });
+window.addEventListener("orientationchange", scheduleCampaignSessionPanelPosition, { passive: true });
+document.addEventListener("fullscreenchange", scheduleCampaignSessionPanelPosition);
+document.addEventListener("webkitfullscreenchange", scheduleCampaignSessionPanelPosition);
+window.visualViewport?.addEventListener("resize", scheduleCampaignSessionPanelPosition, { passive: true });
+window.visualViewport?.addEventListener("scroll", scheduleCampaignSessionPanelPosition, { passive: true });
+window.addEventListener("yzf-layout-modechange", scheduleCampaignSessionPanelPosition);
+if (boardStage && typeof ResizeObserver !== "undefined") {
+  const campaignBoardResizeObserver = new ResizeObserver(() => scheduleCampaignSessionPanelPosition());
+  campaignBoardResizeObserver.observe(boardStage);
+}
 
 allStepsFilterText?.addEventListener("input", () => {
   allStepsFilterState.query = allStepsFilterText.value || "";
@@ -19789,6 +21143,7 @@ btnRedo?.addEventListener("click", () => {
 
 btnSolve.addEventListener("click", async () => {
   if (!engine || solverBusyTask) return;
+  invalidateCampaignByAutoSolve();
   const sourceSnapshot = currentSnapshot || getCurrentSnapshot();
   try {
     setSolverBusy("solve", true);
@@ -20597,7 +21952,8 @@ function syncMobileSolveStatus() {
 }
 
 function mobileSolveHintActionIsApply() {
-  return Boolean(currentHint?.valid === true || (previewSnapshotActive && currentPreviewRecord));
+  const campaignAllowsApply = !campaignSession || Number(campaignSession.hintRevealLevel || 0) >= 4;
+  return Boolean((currentHint?.valid === true && campaignAllowsApply) || (previewSnapshotActive && currentPreviewRecord));
 }
 
 function updateMobileSolveHintAction() {

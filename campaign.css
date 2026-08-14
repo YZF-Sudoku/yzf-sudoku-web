@@ -1,0 +1,252 @@
+/*
+ * Copyright (c) 2019-2026 YZF Sudoku and its developers. All rights reserved.
+ * Contact: 63160007@qq.com. Full notice: COPYRIGHT.md.
+ * Campaign route, lesson cards, and active-session presentation.
+ */
+.campaign-session-bar {
+  position: fixed;
+  /* Fallback before JS anchors the panel beside the active board. */
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  z-index: 1200;
+  display: grid;
+  gap: .55rem;
+  width: min(440px, calc(100vw - 28px));
+  max-height: min(42dvh, 360px);
+  padding: .7rem .75rem;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--accent, #2767c5) 46%, var(--border, #ddd));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel, #fff) 94%, var(--accent, #2767c5) 6%);
+  color: var(--ink, #111);
+  box-shadow: 0 14px 38px rgba(15, 23, 42, .20), 0 2px 8px rgba(15, 23, 42, .12);
+  overflow: hidden;
+  pointer-events: auto;
+  isolation: isolate;
+}
+.campaign-session-bar[hidden] { display: none !important; }
+
+.campaign-session-bar[data-anchor="right"] {
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+.campaign-session-bar[data-anchor="left"] {
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+.campaign-session-bar[data-anchor="below"] {
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+.campaign-session-head {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  min-width: 0;
+}
+.campaign-session-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.campaign-session-copy strong,
+.campaign-session-copy small { display: block; }
+.campaign-session-copy strong {
+  line-height: 1.28;
+  overflow-wrap: break-word;
+}
+.campaign-session-copy small {
+  margin-top: .18rem;
+  line-height: 1.32;
+  opacity: .78;
+  overflow-wrap: break-word;
+}
+.campaign-session-toggle {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: .32rem .55rem;
+  white-space: nowrap;
+}
+.campaign-session-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: .4rem;
+  min-width: 0;
+}
+.campaign-session-actions button {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.2;
+}
+.campaign-session-bar button:not(.primary) {
+  border-color: var(--border, #ddd);
+  background: color-mix(in srgb, var(--panel, #fff) 90%, var(--ink, #111) 10%);
+  color: var(--ink, #111);
+}
+.campaign-session-bar button:not(.primary):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--panel, #fff) 82%, var(--accent, #2767c5) 18%);
+}
+.campaign-session-actions #btnCampaignGuidedHint {
+  grid-column: 1 / -1;
+}
+.campaign-session-bar.is-collapsed {
+  gap: .35rem;
+  width: min(430px, calc(100vw - 28px));
+  padding-block: .55rem;
+}
+.campaign-session-bar.is-collapsed .campaign-session-copy small,
+.campaign-session-bar.is-collapsed .campaign-session-secondary {
+  display: none !important;
+}
+.campaign-session-bar.is-collapsed .campaign-session-actions:has(#btnCampaignGuidedHint[hidden]) {
+  display: none;
+}
+@media (max-width: 640px) {
+  .campaign-session-bar {
+    width: min(440px, calc(100vw - 16px));
+    max-height: min(36dvh, 280px);
+    padding: .58rem .62rem;
+    border-radius: 13px;
+    gap: .45rem;
+  }
+  .campaign-session-head { gap: .42rem; }
+  .campaign-session-copy strong { font-size: .92rem; }
+  .campaign-session-copy small { font-size: .78rem; }
+  .campaign-session-toggle { padding: .28rem .45rem; font-size: .78rem; }
+  .campaign-session-actions { gap: .34rem; }
+  .campaign-session-actions button { padding-inline: .4rem; font-size: .8rem; }
+  .campaign-session-bar.is-collapsed {
+    width: min(430px, calc(100vw - 16px));
+  }
+}
+@media (orientation: landscape) and (max-height: 640px) {
+  .campaign-session-bar {
+    width: min(390px, calc(100vw - 16px));
+    max-height: min(48dvh, 245px);
+  }
+}
+.campaign-dialog {
+  width: min(940px, calc(100vw - 28px));
+  max-height: min(900px, calc(100vh - 28px));
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: var(--panel, #fff);
+  color: var(--ink, #111);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .28);
+}
+.campaign-dialog::backdrop { background: rgba(0, 0, 0, .42); }
+.campaign-panel { display: flex; flex-direction: column; max-height: inherit; }
+.campaign-header { display: flex; align-items: flex-start; gap: 1rem; padding: 1rem 1.1rem .8rem; border-bottom: 1px solid var(--border, #ddd); }
+.campaign-header-copy { flex: 1; min-width: 0; }
+.campaign-header h2 { margin: 0; font-size: 1.25rem; }
+.campaign-header p { margin: .3rem 0 0; opacity: .78; }
+.campaign-content { overflow: auto; padding: 1rem 1.1rem 1.2rem; overscroll-behavior: contain; }
+.campaign-toolbar { display: flex; gap: .5rem; align-items: center; margin-bottom: .85rem; }
+.campaign-toolbar button[hidden] { display: none; }
+.campaign-chapter-list, .campaign-lesson-list { display: grid; gap: .75rem; }
+.campaign-chapter-card, .campaign-lesson-card, .campaign-boss-card, .campaign-item-card {
+  border: 1px solid var(--border, #ddd);
+  border-radius: 14px;
+  padding: .85rem;
+  background: color-mix(in srgb, var(--panel, #fff) 94%, var(--ink, #111) 6%);
+}
+.campaign-chapter-card.is-locked, .campaign-lesson-card.is-locked { opacity: .55; }
+.campaign-card-head { display: flex; gap: .7rem; align-items: flex-start; justify-content: space-between; }
+.campaign-card-copy { min-width: 0; }
+.campaign-card-copy strong { display: block; }
+.campaign-card-copy p { margin: .32rem 0 0; opacity: .8; line-height: 1.45; }
+.campaign-status-pill { flex: none; border-radius: 999px; padding: .2rem .55rem; font-size: .78rem; border: 1px solid var(--border, #ccc); }
+.campaign-card-actions { display: flex; gap: .45rem; flex-wrap: wrap; margin-top: .72rem; }
+.campaign-card-actions button.primary, .campaign-item-card button.primary { font-weight: 650; }
+.campaign-progress-track { height: 7px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--ink, #111) 10%, transparent); margin-top: .62rem; }
+.campaign-progress-track span { display: block; height: 100%; background: var(--accent, #2767c5); }
+.campaign-lesson-intro { margin-bottom: 1rem; }
+.campaign-concept-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .7rem; margin: .8rem 0 1rem; }
+.campaign-concept-card { border: 1px solid var(--border, #ddd); border-radius: 12px; padding: .75rem; }
+.campaign-concept-card h4 { margin: 0 0 .35rem; font-size: .9rem; }
+.campaign-concept-card p { margin: 0; line-height: 1.48; }
+.campaign-item-card + .campaign-item-card { margin-top: .65rem; }
+.campaign-item-meta { margin-top: .35rem; font-size: .82rem; opacity: .72; }
+.campaign-boss-card { margin-top: 1rem; border-width: 2px; }
+.campaign-boss-card h3 { margin: 0; }
+.campaign-boss-card p { line-height: 1.5; }
+.campaign-placeholder { text-align: center; padding: 2rem 1rem; opacity: .78; }
+.app-hub-card-campaign .app-hub-card-icon { color: var(--accent, #2767c5); }
+@media (max-width: 640px) {
+  .campaign-dialog { width: calc(100vw - 12px); max-height: calc(100dvh - 12px); border-radius: 14px; }
+  .campaign-header { padding: .85rem; }
+  .campaign-content { padding: .8rem; }
+  .campaign-concept-grid { grid-template-columns: 1fr; }
+}
+.campaign-practice-summary {
+  margin: .8rem 0 .7rem;
+  padding: .7rem .8rem;
+  border: 1px solid color-mix(in srgb, var(--accent, #2767c5) 28%, var(--border, #ddd));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent, #2767c5) 6%, var(--panel, #fff));
+}
+.campaign-practice-summary strong { font-size: .9rem; }
+
+/* Optional Campaign Labs are visually distinguished without changing the main-route layout. */
+.campaign-chapter-card.campaign-lab-card {
+  border-style: dashed;
+}
+
+/* Anonymous review queue: deliberately avoids technique-name labels before replay. */
+.campaign-review-card {
+  margin-bottom: .9rem;
+  border: 1px solid color-mix(in srgb, var(--accent, #2767c5) 38%, var(--border, #ddd));
+  border-radius: 14px;
+  padding: .8rem;
+  background: color-mix(in srgb, var(--accent, #2767c5) 7%, var(--panel, #fff));
+}
+.campaign-review-card h3 { margin: 0 0 .55rem; font-size: 1rem; }
+.campaign-review-desc { margin: 0; opacity: .8; line-height: 1.45; }
+.campaign-review-queue-title { margin: .9rem 0 .25rem; font-size: .9rem; }
+.campaign-review-list { display: grid; gap: .5rem; }
+.campaign-review-item {
+  display: flex;
+  gap: .65rem;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid color-mix(in srgb, var(--border, #ddd) 72%, transparent);
+  padding-top: .5rem;
+}
+.campaign-review-item:first-child { border-top: 0; padding-top: 0; }
+.campaign-review-item button { flex: none; }
+.campaign-mastery { margin-top: .45rem; font-weight: 600; }
+@media (max-width: 640px) {
+  .campaign-review-item { align-items: stretch; flex-direction: column; }
+  .campaign-review-item button { width: 100%; }
+}
+
+/* Campaign pedagogy: Full House is taught before candidate notation is needed.
+   Hide pencilmarks while preserving cell geometry and all step/cell highlights. */
+/* Keep the nine candidate slots hit-testable for the established desktop
+   mouse controls.  Only suppress their painting: visibility:hidden on the
+   grid would also remove the slots from pointer hit-testing, breaking left
+   click value entry and right-click candidate restore in Full House. */
+.board-stage.campaign-hide-candidates .candidate {
+  color: transparent !important;
+  text-shadow: none !important;
+}
+.board-stage.campaign-hide-candidates .candidate::before,
+.board-stage.campaign-hide-candidates .candidate::after {
+  visibility: hidden !important;
+}
+
+/* Campaign H3 must be visibly different from the ordinary board in every theme.
+   Keep this scoped to the progressive Campaign preview so normal solver hint
+   semantics remain unchanged. */
+.board-stage.campaign-progressive-h3 .sudoku-cell.hint-structure {
+  background: color-mix(in srgb, var(--accent, #1466cc) 20%, var(--board-cell-bg, #fff)) !important;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent, #1466cc) 72%, transparent) !important;
+}
+:root[data-yzf-theme="contrast"] .board-stage.campaign-progressive-h3 .sudoku-cell.hint-structure {
+  background: #fff !important;
+  box-shadow: inset 0 0 0 3px #0037c5 !important;
+}
