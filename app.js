@@ -454,6 +454,7 @@ const btnCampaignGuidedHint = document.getElementById("btnCampaignGuidedHint");
 const btnCampaignRestart = document.getElementById("btnCampaignRestart");
 const btnCampaignReturn = document.getElementById("btnCampaignReturn");
 const btnCampaignExit = document.getElementById("btnCampaignExit");
+let campaignSessionBarHomeMarker = null;
 const lang = document.getElementById("lang");
 const givens = document.getElementById("givens");
 const numpad = document.getElementById("numpad");
@@ -11244,7 +11245,12 @@ function renderCampaignSessionBar() {
     : (anonymousReview ? campaignCopy("reviewSessionActive") : (guided ? campaignCopy("guidedSessionActive", { level: Math.max(1, Number(campaignSession?.hintRevealLevel || 0)) }) : campaignCopy("sessionActive")));
   if (campaignSession.invalidatedBySolve) detail = campaignCopy("sessionInvalidated");
   else if (campaignSession.completed) detail = campaignCopy("sessionCompleted");
-  else if (Number(campaignSession.hintCount || 0) > 0) {
+  else if (mobileSolveActive && guided && Number(campaignSession?.hintRevealLevel || 0) > 0 && yzfHintBaseText) {
+    // The ordinary hint panel lives inside app-shell, which is intentionally
+    // hidden in Mobile Solve. Mirror the current progressive teaching copy
+    // into the floating Campaign panel so phone users never lose H1-H4 text.
+    detail = yzfHintBaseText;
+  } else if (Number(campaignSession.hintCount || 0) > 0) {
     const activeText = generatedReview
       ? campaignCopy("reviewRandomSessionActive")
       : (anonymousReview ? campaignCopy("reviewSessionActive") : (guided ? campaignCopy("guidedSessionActive", { level: Math.max(1, Number(campaignSession?.hintRevealLevel || 0)) }) : campaignCopy("sessionActive")));
@@ -11356,6 +11362,51 @@ function importCampaignPuzzle(item) {
   return true;
 }
 
+function mountCampaignSessionBarForMobile() {
+  if (!campaignSessionBar || !mobileSolveShell) return false;
+  if (!campaignSessionBarHomeMarker && campaignSessionBar.parentNode) {
+    campaignSessionBarHomeMarker = document.createComment("campaign-session-bar-home");
+    campaignSessionBar.parentNode.insertBefore(campaignSessionBarHomeMarker, campaignSessionBar);
+  }
+  if (campaignSessionBar.parentNode !== mobileSolveShell) mobileSolveShell.appendChild(campaignSessionBar);
+  return true;
+}
+
+function restoreCampaignSessionBarHome() {
+  if (!campaignSessionBar || !campaignSessionBarHomeMarker?.parentNode) return false;
+  campaignSessionBarHomeMarker.parentNode.insertBefore(campaignSessionBar, campaignSessionBarHomeMarker.nextSibling);
+  return true;
+}
+
+function campaignMobileSessionMetadata(prior = null) {
+  if (prior && typeof prior.campaignAutoMobile === "boolean") {
+    return {
+      campaignAutoMobile: Boolean(prior.campaignAutoMobile),
+      campaignForcedFocusFollow: Boolean(prior.campaignForcedFocusFollow),
+      returnMobileSolveFocusFollow: Boolean(prior.returnMobileSolveFocusFollow),
+    };
+  }
+  const eligible = isMobileSolveRecommendedViewport() && !ocrCorrectionIsActive();
+  return {
+    campaignAutoMobile: Boolean(eligible && !mobileSolveActive),
+    campaignForcedFocusFollow: Boolean(eligible && !mobileSolveFocusFollow),
+    returnMobileSolveFocusFollow: Boolean(mobileSolveFocusFollow),
+  };
+}
+
+function activateCampaignMobileInteraction(session = campaignSession) {
+  if (!session || !isMobileSolveRecommendedViewport() || ocrCorrectionIsActive()) return false;
+  if (!mobileSolveActive) enterMobileSolveMode();
+  mountCampaignSessionBarForMobile();
+  // Campaign lessons on phones must remain directly operable next to the board.
+  // Temporarily enable the existing focus-follow 4x4 pad without changing the
+  // user's saved preference; restore the prior preference when the lesson exits.
+  if (!mobileSolveFocusFollow) setMobileSolveFocusFollow(true, { persist: false });
+  scheduleMobileSolveLayout();
+  scheduleCampaignSessionPanelPosition();
+  return true;
+}
+
 function startCampaignItem(chapterId, lessonId, itemId, options = {}) {
   const item = campaignItemById(chapterId, lessonId, itemId);
   const chapter = campaignChapterById(chapterId);
@@ -11366,6 +11417,7 @@ function startCampaignItem(chapterId, lessonId, itemId, options = {}) {
   const returnInputText = prior?.returnInputText ?? String(givens?.value || "");
   const returnManualMarks = prior?.returnManualMarks || serializeManualMarks();
   const returnTechniqueConfig = prior?.returnTechniqueConfig || getTechniqueConfigPayload(techniqueState.length ? techniqueState : loadTechniqueState());
+  const mobileSession = campaignMobileSessionMetadata(prior);
   if (!importCampaignPuzzle(item)) return false;
   applyCampaignTechniqueWhitelist(item);
   campaignHintCache = null;
@@ -11388,9 +11440,11 @@ function startCampaignItem(chapterId, lessonId, itemId, options = {}) {
     invalidatedBySolve: false,
     completed: false,
     startedAt: Date.now(),
+    ...mobileSession,
   });
   campaignDialog?.close?.();
   uiFoundation?.appHub?.dialog?.close?.();
+  activateCampaignMobileInteraction(campaignSession);
   renderCampaignSessionBar();
   if (item.type === "guided") requestCampaignProgressiveHint();
   scheduleAppSessionSave();
@@ -11413,6 +11467,7 @@ function startCampaignGeneratedReview(result, learnedKinds) {
   const returnInputText = prior?.returnInputText ?? String(givens?.value || "");
   const returnManualMarks = prior?.returnManualMarks || serializeManualMarks();
   const returnTechniqueConfig = prior?.returnTechniqueConfig || getTechniqueConfigPayload(techniqueState.length ? techniqueState : loadTechniqueState());
+  const mobileSession = campaignMobileSessionMetadata(prior);
   if (!importCampaignPuzzle(item)) return false;
   // Random mixed review must keep the exact learned-technique universe for the
   // actual solving session as well as for generation.  In particular, clear
@@ -11438,9 +11493,11 @@ function startCampaignGeneratedReview(result, learnedKinds) {
     invalidatedBySolve: false,
     completed: false,
     startedAt: Date.now(),
+    ...mobileSession,
   });
   campaignDialog?.close?.();
   uiFoundation?.appHub?.dialog?.close?.();
+  activateCampaignMobileInteraction(campaignSession);
   renderCampaignSessionBar();
   scheduleAppSessionSave();
   return true;
@@ -11533,6 +11590,7 @@ function restartCampaignItem() {
       startedAt: Date.now(),
     });
     campaignDialog?.close?.();
+    activateCampaignMobileInteraction(campaignSession);
     renderCampaignSessionBar();
     scheduleAppSessionSave();
     return true;
@@ -11540,12 +11598,15 @@ function restartCampaignItem() {
   return startCampaignItem(context.chapter.id, campaignSession.lessonId, context.item.id, { restart: true });
 }
 
-function restorePreCampaignBoard() {
+async function restorePreCampaignBoard() {
   const session = campaignSession;
   const returnLibrary = session?.returnLibrary || "";
   const returnInputText = session?.returnInputText ?? "";
   const returnManualMarks = session?.returnManualMarks || null;
   const returnTechniqueConfig = session?.returnTechniqueConfig || null;
+  const campaignAutoMobile = Boolean(session?.campaignAutoMobile);
+  const campaignForcedFocusFollow = Boolean(session?.campaignForcedFocusFollow);
+  const returnMobileSolveFocusFollow = Boolean(session?.returnMobileSolveFocusFollow);
   campaignSession = null;
   campaignHintCache = null;
   campaignSessionPanelCollapsed = false;
@@ -11558,6 +11619,13 @@ function restorePreCampaignBoard() {
   updateCampaignProgressiveHighlight(0);
   restoreCampaignTechniqueConfig(returnTechniqueConfig);
   campaignDialog?.close?.();
+  if (campaignForcedFocusFollow && mobileSolveFocusFollow !== returnMobileSolveFocusFollow) {
+    setMobileSolveFocusFollow(returnMobileSolveFocusFollow, { persist: false });
+  }
+  restoreCampaignSessionBarHome();
+  if (campaignAutoMobile && mobileSolveActive) {
+    await exitMobileSolveMode({ exitFullscreen: false });
+  }
   if (!returnLibrary || !engine) {
     setStatus(campaignCopy("noOriginal"));
     return false;
@@ -11677,6 +11745,7 @@ function renderCampaignProgressiveHint(step, level) {
     renderBoard(currentHint);
     const fullConclusion = formatHintDesc(step);
     setYzfHintBaseText(`${campaignCopy("hintLevel", { level: 4 })} · ${campaignCopy("hintH4")}${fullConclusion ? ` · ${fullConclusion}` : ""}`);
+    if (mobileSolveActive) renderCampaignSessionBar();
     updateStepExplainButtonState(currentHint, currentSnapshot);
     updateMobileSolveHintAction();
     return;
@@ -11689,6 +11758,7 @@ function renderCampaignProgressiveHint(step, level) {
       ? campaignCopy("hintH2", { area: campaignHintArea(step) })
       : campaignCopy("hintH3");
   setYzfHintBaseText(`${campaignCopy("hintLevel", { level })} · ${text}`);
+  if (mobileSolveActive) renderCampaignSessionBar();
   updateStepExplainButtonState(null, currentSnapshot);
   updateMobileSolveHintAction();
 }
@@ -11814,6 +11884,7 @@ function restoreCampaignSessionAfterInit() {
   }
   currentHint = null;
   updateCampaignProgressiveHighlight(0);
+  activateCampaignMobileInteraction(campaignSession);
   renderCampaignSessionBar();
   checkCampaignSessionCompletion();
 }
