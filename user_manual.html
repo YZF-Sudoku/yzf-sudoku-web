@@ -821,7 +821,8 @@
 <thead><tr><th>功能</th><th>电脑</th><th>手机/触屏</th></tr></thead>
 <tbody>
 <tr><td>图片输入</td><td>文件、剪贴板按钮、<span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>选择图片或拍照识别</td></tr>
-<tr><td>普通出数/候选</td><td>鼠标左键候选出数、左键用户大数清除、右键切候选；键盘方向键选格，1–9 出数，0/Delete/Backspace 清除，Ctrl/Cmd+数字切候选</td><td>统一使用格优先：先轻触目标格，再按当前“出数/候选”模式点 1–9；固定提示数格只用于查看，点击后直接按该数字做同数高亮且不弹编辑浮窗；“更多”可开启焦点跟随操作盘</td></tr>
+<tr><td>普通出数/候选</td><td>保持 FB 风格候选位置直接操作：鼠标左键候选位置出数、左键用户大数清除、右键候选位置切候选。隐藏候选只隐藏数字外观，原 3×3 候选热区仍可直接点击操作，无需改用数字盘。键盘方向键选格，1–9 出数，0/Delete/Backspace 清除，Ctrl/Cmd+数字切候选</td><td>统一使用格优先：先轻触目标格，再按当前“出数/候选”模式点 1–9；固定提示数格只用于查看，点击后直接按该数字做同数高亮且不弹编辑浮窗；“更多”可开启焦点跟随操作盘</td></tr>
+<tr><td>盘面显示</td><td>常用按钮区为 2×6；第 6 列固定放“隐藏/显示候选数”和“关闭/开启同数字高亮”。细指针电脑即使缩窄窗口也保持 2×6，新按钮会和其它常用按钮一起进入紧凑尺寸；手机/粗指针布局才隐藏这两个快捷按钮。鼠标点击提示数格会把该数字作为同数字高亮焦点，不修改提示数。隐藏候选后原 3×3 候选点击热区仍保留，鼠标仍可按候选位置直接出数/切候选</td><td>手机隐藏这两个电脑快捷按钮，“做题 → 更多”保留同样两个开关；与电脑共用同一份本机偏好。隐藏候选只改变显示，不删除候选</td></tr>
 <tr><td>手工候选标记</td><td>按当前模式使用左/右键；链、构造链和微型区域由第二次点击的左右键决定类型</td><td>先点格子，再使用大数字键和面板按钮；长按可删除常规视觉标记</td></tr>
 <tr><td>替换解题路径</td><td>右键可替换步骤</td><td>长按约 0.65 秒</td></tr>
 <tr><td>标记截图</td><td>优先复制 PNG 到剪贴板，失败时下载</td><td>优先打开系统分享，失败时下载</td></tr>
@@ -874,6 +875,7 @@
 <tbody>
 <tr><td>Image input</td><td>File, clipboard button, or <span class="kbd">Ctrl</span>+<span class="kbd">V</span></td><td>Select Image or Take Photo</td></tr>
 <tr><td>Values / candidates</td><td>Mouse: left-click sets/clears and right-click toggles a candidate. Keyboard: arrows select, 1–9 sets, 0/Delete/Backspace clears, Ctrl/Cmd+digit toggles a candidate.</td><td>Choose a digit and Value/Candidate, then tap a cell.</td></tr>
+<tr><td>Board display</td><td>The common action area is a 2×6 grid; column 6 holds Hide/Show Candidates and Disable/Enable Same-digit Highlight. Fine-pointer desktop windows keep the 2×6 grid when narrowed, with the new buttons entering the same compact sizing as their peers; coarse-pointer mobile layouts hide only those two shortcuts. Clicking a fixed given uses its digit as the highlight focus without editing it. When candidates are hidden, the original 3×3 candidate hit areas remain active, so mouse input continues to use the same candidate positions even though the digits are invisible.</td><td>Mobile hides those two desktop shortcut buttons and keeps the same switches under Solving → More. Desktop and mobile share the same locally saved display preferences; hiding candidates never deletes them.</td></tr>
 <tr><td>Manual candidate marks</td><td>Left-click adds; right-click erases the current mark mode</td><td>Select a cell, then tap a large digit to add or hold it for about 0.6 s to erase; Add/Erase buttons remain available</td></tr>
 <tr><td>Replace solve path</td><td>Right-click a replaceable step</td><td>Long-press for about 0.65 seconds</td></tr>
 <tr><td>Mark capture</td><td>Copies PNG to the clipboard when possible, otherwise downloads</td><td>Opens system share when possible, otherwise downloads</td></tr>
@@ -1047,7 +1049,8 @@
 <li>键盘：Ctrl/Cmd+1–9 开关当前选中格的对应候选；该快捷键不读取屏幕数字盘当前是“出数”还是“候选”。某些浏览器可能保留主键盘 Ctrl+数字，可改用数字小键盘，或在安装后的 PWA/Standalone 中操作。</li>
 <li>触摸/触控笔：先轻触目标格，再切到候选模式并点 1–9，切换当前格候选；手机开启焦点跟随时，数字和模式按钮会随焦点显示在格子附近。</li>
 <li>候选模式改的是<strong>真实当前候选盘</strong>，会直接影响后续提示、自动解题、评分和 TLG。</li>
-<li>“隐藏候选数”只改变显示，不会删除候选；再次显示后原候选仍在。</li>
+<li>“隐藏候选数”只改变显示，不会删除候选；再次显示后原候选仍在。电脑常用按钮区第 6 列可直接切换；细指针电脑缩窄窗口时仍保留 2×6 并与其它按钮同步进入紧凑尺寸。隐藏后原 3×3 候选热区仍可点击，可继续按原候选位置直接出数/切候选；手机/粗指针布局隐藏该电脑快捷按钮，在“做题 → 更多”中切换。两端共用并记忆同一份本机显示偏好。</li>
+<li>“同数字高亮”同样是显示偏好，不改变盘面。电脑常用按钮区第 6 列提供快捷开关；鼠标点击提示数格会以该数字作为高亮焦点。手机不显示这个电脑快捷按钮，但“做题 → 更多”保留同一开关并采用相同语义。</li>
 <li>手工标记中的“预备删数/正式删数”不是候选模式。前者纯视觉，后者只有点击“应用全部删数”才会写入真实候选盘。</li>
 </ul>
 <h3>提示、应用与可选步骤</h3>
@@ -1060,9 +1063,9 @@
 <p>图片识别结果可先作为草稿进入盘面，即使提示数暂时不是唯一解也能继续校正。校正完成后再使用需要唯一性前提的技巧，特别是 UR、AUR、DAUR 和 GUR。</p>
 <h3>电脑与手机的基本操作差异</h3>
 <ul>
-<li><strong>鼠标：</strong>使用 FB 风格直接操作，数字盘自动隐藏。左键候选出数，左键用户大数清除，右键候选删除/恢复。</li>
+<li><strong>鼠标：</strong>候选可见时使用 FB 风格直接操作，数字盘隐藏：左键候选出数，左键用户大数清除，右键候选删除/恢复。隐藏候选后，候选数字外观消失但 3×3 热区仍在原位，仍按原位置左键出数、右键切候选，无需键盘或数字盘。点击固定提示数格不会编辑该格，而是把该数字作为同数字高亮焦点；两个显示开关位于常用按钮区第 6 列。</li>
 <li><strong>键盘：</strong>使用选格优先操作；方向键、数字键和删除键只在普通盘面生效。焦点位于输入框、OCR、TLG、手工标记、步骤预览或任意弹窗时，快捷键不会穿透修改主盘。</li>
-<li><strong>手机：</strong>普通做题与精细候选标记统一使用<strong>格优先</strong>：先选格子，再点大数字键。普通出数/候选模式下，固定提示数格是只读查看入口：点击会选中该格并按它的数字进行同数高亮，不弹 4×4 编辑浮窗；用户自己填入的数字仍可编辑，点击后照常弹出操作盘；点空格会清除上一数字遗留的同数高亮。可在“更多”开启“焦点跟随操作盘”，点可编辑格后 4×4 操作盘会按当前布局的 81 格位置表稳定跟随焦点（只有横竖屏、全屏或盘面尺寸变化时才重算）；第四行固定为“清除｜提示/应用｜标记｜更多”，其中同一按钮平时显示“提示”，取得有效提示后原地切换为“应用”，应用后恢复“提示”。关闭焦点跟随时继续使用固定操作区。</li>
+<li><strong>手机：</strong>普通做题与精细候选标记统一使用<strong>格优先</strong>：先选格子，再点大数字键。普通出数/候选模式下，固定提示数格是只读查看入口：点击会选中该格并按它的数字进行同数高亮，不弹 4×4 编辑浮窗；用户自己填入的数字仍可编辑，点击后照常弹出操作盘；点空格会清除上一数字遗留的同数高亮。“做题 → 更多”保留“隐藏/显示候选数”和“关闭/开启同数字高亮”，状态与电脑端共享并记忆。可在“更多”开启“焦点跟随操作盘”，点可编辑格后 4×4 操作盘会按当前布局的 81 格位置表稳定跟随焦点（只有横竖屏、全屏或盘面尺寸变化时才重算）；第四行固定为“清除｜提示/应用｜标记｜更多”，其中同一按钮平时显示“提示”，取得有效提示后原地切换为“应用”，应用后恢复“提示”。关闭焦点跟随时继续使用固定操作区。</li>
 <li>开启 TLG 编辑后，盘面点击由 TLG 接管；要恢复普通出数/候选编辑，先关闭“启用 TLG 编辑”。</li>
 </ul>
 <div class="warn">不要把“画了一个删数标记”误认为候选已经删除。真正改变盘面的入口只有候选模式、应用提示、应用全部删数，以及其它明确写入盘面的操作。</div>
@@ -1095,7 +1098,8 @@
 <li>Keyboard: Ctrl/Cmd+1–9 toggles the matching candidate in the selected cell without reading the on-screen Value/Candidate mode. Some browsers reserve main-keyboard Ctrl+digit; use the numeric keypad or the installed PWA/Standalone when necessary.</li>
 <li>Touch/pen: choose Candidate mode and a digit, then tap an empty cell.</li>
 <li>Candidate mode changes the <strong>real current candidate grid</strong>, affecting hints, auto solving, rating, and TLG.</li>
-<li>Hide Candidates changes display only; it does not delete candidates.</li>
+<li>Hide Candidates changes display only; it does not delete candidates. Desktop exposes the switch in column 6 of the common 2×6 action grid. Fine-pointer desktop windows keep that 2×6 layout when narrowed and compact all common buttons together. Hiding candidates keeps the original 3×3 candidate hit areas active, so direct mouse value entry and candidate toggling continue at the same positions. Coarse-pointer mobile layouts hide this desktop shortcut and keep the same switch under Solving → More. Both surfaces share and remember the same local display preference.</li>
+<li>Same-digit Highlight is also display-only. On desktop, clicking a fixed given uses that digit as the highlight focus without editing the given or opening the number pad; mobile uses the same read-only lookup behavior. The highlight can be disabled or enabled at any time from the corresponding display control.</li>
 <li>Provisional/Formal Eliminations in Manual Marks are different. Provisional is visual only; Formal is committed only by Apply All Eliminations.</li>
 </ul>
 <h3>Hint, Apply, and Available Steps</h3>
@@ -1108,8 +1112,8 @@
 <p>An OCR result may enter as an editable draft even before the givens form a unique puzzle. Correct it before using techniques that require uniqueness, especially UR, AUR, DAUR, and GUR.</p>
 <h3>Desktop vs Mobile</h3>
 <ul>
-<li><strong>Mouse:</strong> FB-style direct input is used and the number pad is hidden. Left-click sets an active candidate, left-click clears a user value, and right-click removes/restores a candidate.</li>
-<li><strong>Mobile:</strong> ordinary solving should use the large “choose digit, then cell” flow. For precise candidate marks, select a cell and use the large digit buttons.</li>
+<li><strong>Mouse:</strong> with candidates visible, FB-style direct input is used and the number pad stays hidden: left-click sets an active candidate, left-click clears a user value, and right-click removes/restores a candidate. When candidates are hidden, the candidate digits become invisible but their 3×3 hit areas stay active; left-click and right-click continue to work at the same positions. Clicking a fixed given uses its digit as the same-digit highlight focus without editing it. The two display shortcuts occupy column 6 of the common desktop action grid.</li>
+<li><strong>Mobile:</strong> ordinary solving uses the cell-first flow: select a cell and use the large digit buttons. The two desktop action-grid shortcuts are hidden on mobile; Solving → More keeps the same Hide/Show Candidates and Disable/Enable Same-digit Highlight switches, and their saved state is shared with desktop.</li>
 <li>When TLG editing is enabled, TLG owns board input. Disable it to resume ordinary Value/Candidate editing.</li>
 </ul>
 <div class="warn">A drawn elimination mark does not mean the candidate has been removed. Only Candidate mode, Apply Hint, Apply All Eliminations, and other explicit commit actions change the live board.</div>
@@ -2245,8 +2249,8 @@ GUR enumeration constraints = 1
 <li><strong>提示 / 应用：</strong>手机共用同一个按钮：平时点“提示”只预览，出现有效步骤后该按钮原地变为“应用”；只有点“应用”才改盘，完成或提示失效后按钮恢复“提示”。</li>
 <li><strong>可选步骤：</strong>退出做题布局后打开“可选步骤”页签。</li>
 <li><strong>题面输入：</strong>退出做题布局后展开输入面板并聚焦文本框。</li>
-<li><strong>隐藏/显示候选数：</strong>只改变显示，不删除候选。</li>
-<li><strong>关闭/开启同数字高亮：</strong>根据当前数字盘数字，高亮相同大数字。</li>
+<li><strong>隐藏/显示候选数：</strong>只改变显示，不删除候选。电脑隐藏候选后仍保留原 3×3 候选热区，可继续按原候选位置直接完成鼠标出数/候选切换；手机做题布局不受电脑快捷按钮影响。</li>
+<li><strong>关闭/开启同数字高亮：</strong>控制同数字/同候选的跟随高亮。手机点击固定提示数格时以该数字作为高亮焦点；关闭后不再显示该高亮，重新开启后可继续使用。该偏好与电脑常用按钮区第 6 列的同名开关共享。</li>
 <li><strong>屏幕常亮：</strong>默认开启。进入做题模式时申请 Screen Wake Lock，退出做题模式时释放；切到后台后浏览器会自动释放，重新回到前台时程序会再次申请。关闭该开关后按手机系统的屏保时间正常息屏。</li>
 <li><strong>全屏：</strong>调用浏览器 Fullscreen API。</li>
 <li><strong>分析模式：</strong>退出专用做题界面，返回完整分析 UI。</li>
@@ -2290,7 +2294,7 @@ GUR enumeration constraints = 1
 <li>Ordinary candidate editing: tap the target cell first, switch to Candidate, then press a digit; with Focus-follow enabled the controls are available beside the selected cell.</li>
 <li>Candidate marks: select a cell, tap a large digit to add, or hold it about 0.5–0.6 seconds to erase the mark.</li>
 <li>Cell coloring: tap to add and hold the cell for about 0.6 seconds to erase.</li>
-<li>Hide Candidates is display-only; candidate mark modes reveal them automatically.</li>
+<li>Hide Candidates is display-only; candidate mark modes reveal them automatically. On desktop, hiding candidates leaves the original 3×3 candidate hit areas active for direct mouse input. The saved visibility state is shared with the desktop common-action shortcut.</li>
 <li>Long-press erase does not delete a live candidate. Formal eliminations still require Apply All Eliminations.</li>
 </ul>
 <h3>TLG on Mobile</h3>
@@ -2309,7 +2313,7 @@ GUR enumeration constraints = 1
 <li><strong>Available Steps:</strong> leaves Solve layout and opens the Available Steps tab.</li>
 <li><strong>Puzzle Input:</strong> leaves Solve Mode, opens the input panel, and focuses the text area.</li>
 <li><strong>Hide/Show Candidates:</strong> changes display only.</li>
-<li><strong>Disable/Enable Same-Digit Highlight:</strong> highlights large digits matching the current pad digit.</li>
+<li><strong>Disable/Enable Same-Digit Highlight:</strong> controls same-digit/same-candidate follow highlighting. Tapping a fixed given uses that digit as the highlight focus; disabling the switch suppresses the highlight until it is enabled again. The saved preference is shared with the desktop column-6 common-action shortcut.</li>
 <li><strong>Keep Screen Awake:</strong> enabled by default. Solve Mode requests a Screen Wake Lock and releases it when Solve Mode closes. Browsers release it in the background; the app requests it again after returning to the foreground. Turn the switch off to use the phone's normal sleep timeout.</li>
 <li><strong>Fullscreen:</strong> calls the browser Fullscreen API.</li>
 <li><strong>Analysis Mode:</strong> exits the dedicated solve interface.</li>

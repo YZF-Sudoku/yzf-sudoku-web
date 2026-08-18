@@ -1660,7 +1660,7 @@ button.primary:not(:disabled) {
   background: #17382f;
 }
 
-:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell:is(
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell:is(
   .mobile-same-digit,
   .mobile-same-digit-candidate,
   .mobile-same-digit-value
@@ -1668,11 +1668,11 @@ button.primary:not(:disabled) {
   background: #382b14 !important;
   box-shadow: inset 0 0 0 2px #d59a2c;
 }
-:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell.mobile-same-digit-value .cell-value {
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell.mobile-same-digit-value .cell-value {
   color: #ffd58a;
   text-shadow: none;
 }
-:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell:is(
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell:is(
   .mobile-same-digit.selected,
   .mobile-same-digit-candidate.selected,
   .mobile-same-digit-value.selected
@@ -1740,13 +1740,13 @@ button.primary:not(:disabled) {
 .candidate.bkclr-12 {
   color: #ffffff !important;
 }
-:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell.mobile-same-digit-value.selected .cell-value.given {
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell.mobile-same-digit-value.selected .cell-value.given {
   color: var(--board-given) !important;
 }
-:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell.mobile-same-digit-value.selected .cell-value.solved {
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell.mobile-same-digit-value.selected .cell-value.solved {
   color: var(--board-solved) !important;
 }
-:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .mobile-solve-shell .sudoku-cell.mobile-same-digit-value.selected .cell-value.suggested {
+:root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"]) .sudoku-cell.mobile-same-digit-value.selected .cell-value.suggested {
   color: var(--place) !important;
 }
 

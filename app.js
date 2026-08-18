@@ -520,6 +520,8 @@ const tabButtons = [...document.querySelectorAll(".tab-button")];
 const tabPanels = [...document.querySelectorAll("[data-tab-panel]")];
 const btnFullscreen = document.getElementById("btnFullscreen");
 const btnMobileSolveMode = document.getElementById("btnMobileSolveMode");
+const btnBoardCandidates = document.getElementById("btnBoardCandidates");
+const btnBoardSameDigit = document.getElementById("btnBoardSameDigit");
 const mobileSolveShell = document.getElementById("mobileSolveShell");
 const mobileSolveBoardHost = document.getElementById("mobileSolveBoardHost");
 const mobileSolveFocusPad = document.getElementById("mobileSolveFocusPad");
@@ -1528,7 +1530,7 @@ for (const [key, zh, en] of [
   ["keyboardCandidateShortcutHint", "Ctrl/Cmd+数字切换当前格候选；若浏览器占用该快捷键，可使用数字小键盘或安装后的 PWA/Standalone。", "Ctrl/Cmd+digit toggles a candidate in the selected cell. If the browser reserves that shortcut, use the numeric keypad or the installed PWA/Standalone."],
   ["candidateMode", "候选", "Candidates"],
   ["valueMode", "出数", "Values"],
-  ["inputModeTitle", "触摸/触控笔：先点目标格，再用数字键按当前出数/候选模式输入；固定提示数格点击后只做同数查看，不弹编辑浮窗。手机“更多”可开启焦点跟随操作盘。鼠标直接在盘面使用左/右键。", "Touch/pen: tap the target cell first, then use a digit in the current Value/Candidate mode. Fixed givens are lookup-only: tapping one follows its digit for same-digit highlighting without opening an editing pad. Mobile More can enable the focus-follow keypad. Mouse input uses direct left/right clicks on the board."],
+  ["inputModeTitle", "触摸/触控笔：先点目标格，再用数字键按当前出数/候选模式输入；固定提示数格点击后只做同数查看，不弹编辑浮窗。手机“更多”可开启焦点跟随操作盘。电脑鼠标始终按候选 3×3 位置直接操作；隐藏候选只隐藏数字外观，原候选热区仍可左键出数、右键切候选。", "Touch/pen: tap the target cell first, then use a digit in the current Value/Candidate mode. Fixed givens are lookup-only: tapping one follows its digit for same-digit highlighting without opening an editing pad. Mobile More can enable the focus-follow keypad. On desktop, mouse input always uses the candidate 3×3 positions directly; hiding candidates only hides their visuals, while the same hit areas still support left-click value entry and right-click candidate toggling."],
   ["currentInput", "当前", "Current"],
   ["techPresetAll", "全选", "All In"],
   ["techPresetHighSpeed", "高速", "High Speed"],
@@ -10432,6 +10434,12 @@ function renderBoardSnapshot(snapshot, hint = currentHint) {
         const currentCell = currentSnapshot?.cells?.[index];
         if (currentCell?.value > 0) {
           if (isFixedCell(index)) {
+            const fixedValue = Number(currentCell?.value || 0);
+            if (fixedValue >= 1 && fixedValue <= 9) {
+              selectedDigit = fixedValue;
+              mobileSolveLastDigit = fixedValue;
+              updateInputControls();
+            }
             renderBoardSnapshot(currentSnapshot, currentHint);
             setStatus(ui("fixedCell"));
           } else {
@@ -12095,6 +12103,12 @@ function refreshAfterHistory(responseText, changedText, emptyText) {
 function handleValueTap(index) {
   if (tlgSolverEditingActive()) return;
   if (isFixedCell(index)) {
+    const fixedValue = Number(currentSnapshot?.cells?.[index]?.value || 0);
+    if (!mobileSolveActive && fixedValue >= 1 && fixedValue <= 9) {
+      selectedDigit = fixedValue;
+      mobileSolveLastDigit = fixedValue;
+      updateInputControls();
+    }
     renderBoardSnapshot(currentSnapshot, currentHint);
     setStatus(ui("fixedCell"));
     return;
@@ -12109,6 +12123,12 @@ function handleValueTap(index) {
 function handleCandidateTap(index) {
   if (tlgSolverEditingActive()) return;
   if (isFixedCell(index)) {
+    const fixedValue = Number(currentSnapshot?.cells?.[index]?.value || 0);
+    if (!mobileSolveActive && fixedValue >= 1 && fixedValue <= 9) {
+      selectedDigit = fixedValue;
+      mobileSolveLastDigit = fixedValue;
+      updateInputControls();
+    }
     renderBoardSnapshot(currentSnapshot, currentHint);
     setStatus(ui("fixedCandidate"));
     return;
@@ -12399,10 +12419,12 @@ function buildNumpad() {
         return;
       }
       selectedDigit = digit;
+      mobileSolveLastDigit = digit;
       if (manualMarksActive() && manualMarkNeedsDigit() && selectedIndex >= 0) {
         applyManualMarkTarget(selectedIndex, digit, manualMarkButton);
       }
       updateInputControls();
+      syncMobileSolveDigitHighlights();
     };
     button.addEventListener("click", applyNumpadDigit);
     installManualMarkProtectedTouch(
@@ -21673,7 +21695,7 @@ function clearMobileSolveDigitHighlights() {
 
 function syncMobileSolveDigitHighlights() {
   clearMobileSolveDigitHighlights();
-  if (!mobileSolveActive || !mobileSolveSameDigitHighlight || !currentSnapshot) return;
+  if (!mobileSolveSameDigitHighlight || !currentSnapshot) return;
   const digit = Number(mobileSolveLastDigit || 0);
   if (!Number.isInteger(digit) || digit < 1 || digit > 9) return;
   for (const node of board?.querySelectorAll(".sudoku-cell[data-cell-index]") || []) {
@@ -21753,10 +21775,23 @@ function updateMobileSolvePreferenceButtons() {
     btnMobileSolveSameDigit.setAttribute("aria-label", label);
     btnMobileSolveSameDigit.setAttribute("aria-pressed", mobileSolveSameDigitHighlight ? "true" : "false");
   }
+  if (btnBoardCandidates) {
+    const hidden = !mobileSolveCandidatesVisible;
+    const label = ui(hidden ? "mobileSolveShowCandidates" : "mobileSolveHideCandidates");
+    setButtonText(btnBoardCandidates, label); btnBoardCandidates.title = label;
+    btnBoardCandidates.setAttribute("aria-label", label); btnBoardCandidates.setAttribute("aria-pressed", hidden ? "true" : "false");
+  }
+  if (btnBoardSameDigit) {
+    const label = ui(mobileSolveSameDigitHighlight ? "mobileSolveDisableSameDigit" : "mobileSolveEnableSameDigit");
+    setButtonText(btnBoardSameDigit, label); btnBoardSameDigit.title = label;
+    btnBoardSameDigit.setAttribute("aria-label", label); btnBoardSameDigit.setAttribute("aria-pressed", mobileSolveSameDigitHighlight ? "true" : "false");
+  }
   updateMobileSolveWakeLockUi();
 }
 
 function applyMobileSolvePreferences() {
+  document.body?.classList.toggle("board-candidates-hidden", !mobileSolveCandidatesVisible);
+  boardStage?.classList.toggle("board-hide-candidates", !mobileSolveCandidatesVisible);
   mobileSolveShell?.classList.toggle("mobile-hide-candidates", !mobileSolveCandidatesVisible);
   mountMobileSolveFocusControls();
   updateMobileSolvePreferenceButtons();
@@ -22378,6 +22413,8 @@ function installMobileSolveMode() {
   btnMobileSolveInput?.addEventListener("click", openPuzzleInputFromMobile);
   btnMobileSolveCandidates?.addEventListener("click", toggleMobileSolveCandidates);
   btnMobileSolveSameDigit?.addEventListener("click", toggleMobileSolveSameDigitHighlight);
+  btnBoardCandidates?.addEventListener("click", toggleMobileSolveCandidates);
+  btnBoardSameDigit?.addEventListener("click", toggleMobileSolveSameDigitHighlight);
   mobileSolveFocusFollowToggle?.addEventListener("change", () => {
     setMobileSolveFocusFollow(mobileSolveFocusFollowToggle.checked);
     setMobileSolveDrawer(false);
