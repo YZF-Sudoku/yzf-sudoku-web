@@ -65,8 +65,8 @@ import {
 } from "./campaign-progress.js?v=campaign-learning-r2";
 
 const APP_VERSION = "wasm-44b435ec52839909";
-const UI_RELEASE_VERSION = "ui-20260814-campaign-advanced-structures-r11";
-const MANUAL_VERSION = "manual-20260814-campaign-exocet-r14-final";
+const UI_RELEASE_VERSION = "ui-20260819-solve-timer-v1";
+const MANUAL_VERSION = "manual-20260819-solve-timer-v1";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
 const MOBILE_NEW_PUZZLE_DIFFICULTY_KEY = "yzf-mobile-new-puzzle-difficulty-v1";
 const TRAINING_TEXT_FILTER_STORAGE_KEY = "yzf-training-text-filter-v1";
@@ -266,7 +266,8 @@ let localSudokuOcrModulePromise = null;
 let ortScriptPromise = null;
 let localSudokuOcrLoadAttempt = 0;
 const APP_SESSION_STORAGE_KEY = "yzf_sudoku_session_v1";
-const APP_SESSION_PAYLOAD_VERSION = 2;
+const APP_SESSION_PAYLOAD_VERSION = 3;
+const SOLVE_TIMER_CHECKPOINT_MS = 30000;
 const OCR_DRAFT_SAVE_DELAY_MS = 450;
 const SHARED_PUZZLE_QUERY_PARAM = "p";
 const LEGACY_SHARED_PUZZLE_QUERY_PARAM = "puzzle";
@@ -278,6 +279,12 @@ const EXPORT_FORMAT_STORAGE_KEY = "yzf_sudoku_export_format_v1";
 let appSessionSaveTimer = 0;
 let appSessionRestoring = false;
 let appSaveStatus = { state: "saved", values: {} };
+let solveTimerState = "idle";
+let solveTimerAccumulatedMs = 0;
+let solveTimerRunStartedAt = 0;
+let solveTimerTickHandle = 0;
+let solveTimerCheckpointHandle = 0;
+let currentPuzzleSolution = "";
 let pwaStatus = { state: "initializing", values: {} };
 let pwaRegistration = null;
 let pwaInstallPrompt = null;
@@ -520,6 +527,15 @@ const tabButtons = [...document.querySelectorAll(".tab-button")];
 const tabPanels = [...document.querySelectorAll("[data-tab-panel]")];
 const btnFullscreen = document.getElementById("btnFullscreen");
 const btnMobileSolveMode = document.getElementById("btnMobileSolveMode");
+const btnSolveTimer = document.getElementById("btnSolveTimer");
+const solveTimerText = document.getElementById("solveTimerText");
+const solveTimerAction = document.getElementById("solveTimerAction");
+const solveTimerPauseOverlay = document.getElementById("solveTimerPauseOverlay");
+const solveTimerPauseLabel = document.getElementById("solveTimerPauseLabel");
+const solveTimerPauseText = document.getElementById("solveTimerPauseText");
+const btnSolveTimerResume = document.getElementById("btnSolveTimerResume");
+const btnMobileSolveTimer = document.getElementById("btnMobileSolveTimer");
+const mobileSolveTimerText = document.getElementById("mobileSolveTimerText");
 const btnBoardCandidates = document.getElementById("btnBoardCandidates");
 const btnBoardSameDigit = document.getElementById("btnBoardSameDigit");
 const mobileSolveShell = document.getElementById("mobileSolveShell");
@@ -998,12 +1014,19 @@ for (const [key, zh, en] of [
   ["exitFullscreen", "退出全屏", "Exit fullscreen"],
   ["mobileSolveEntry", "做题", "Solve"],
   ["mobileSolveMode", "做题模式", "Solve mode"],
+  ["solveTimerStart", "开始计时", "Start timer"],
+  ["solveTimerPause", "暂停", "Pause"],
+  ["solveTimerResume", "继续计时", "Resume timer"],
+  ["solveTimerPaused", "计时已暂停", "Timer paused"],
+  ["solveTimerFinished", "已完成", "Finished"],
+  ["solveTimerRestart", "重新计时", "Restart timer"],
+  ["solveTimerBlocked", "计时暂停中，请先继续计时。", "The timer is paused. Resume before editing the puzzle."],
   ["mobileSolveExit", "返回", "Back"],
   ["mobileSolveNewPuzzle", "新题", "New"],
   ["mobileSolveNewPuzzleTitle", "生成新题", "New puzzle"],
   ["mobileSolveNewPuzzleHint", "选择难度后生成，生成完成后继续留在做题模式。", "Choose a difficulty and generate without leaving solve mode."],
-  ["mobileSolveNewPuzzleWarning", "当前作答进度或标记将在生成新题后清除。", "Your current progress or manual marks will be cleared when a new puzzle is generated."],
-  ["mobileSolveNewPuzzleConfirm", "当前作答进度或标记将被清除，确定生成新题吗？", "Your current progress or manual marks will be cleared. Generate a new puzzle?"],
+  ["mobileSolveNewPuzzleWarning", "当前作答进度、标记和计时将在生成新题后清除。", "Your current progress, manual marks, and timer will be cleared when a new puzzle is generated."],
+  ["mobileSolveNewPuzzleConfirm", "当前作答进度、标记和计时将被清除，确定生成新题吗？", "Your current progress, manual marks, and timer will be cleared. Generate a new puzzle?"],
   ["mobileSolveNewPuzzleGenerate", "生成", "Generate"],
   ["mobileSolveNewPuzzleGenerating", "生成中…", "Generating…"],
   ["mobileSolveNewPuzzleCancel", "取消", "Cancel"],
@@ -1066,7 +1089,7 @@ for (const [key, zh, en] of [
   ["workspaceTitle", "工作现场", "Workspaces"],
   ["workspaceIntro", "从自动保存现场、OCR 草稿或近期快照继续工作。", "Resume the saved board, an OCR draft, or a recent snapshot."],
   ["workspaceCurrent", "自动保存现场", "Saved session"],
-  ["workspaceCurrentDetail", "重新载入最近保存的盘面、技巧配置和手工标记。", "Reload the latest autosaved board and manual marks."],
+  ["workspaceCurrentDetail", "重新载入最近保存的盘面、技巧配置、手工标记和做题计时。", "Reload the latest autosaved board, technique settings, manual marks, and solve timer."],
   ["workspaceResume", "继续", "Resume"],
   ["workspaceOcr", "OCR 校正草稿", "OCR correction draft"],
   ["workspaceOcrDetail", "继续尚未导入主盘的图片对照校正。", "Continue the unfinished image review without importing it yet."],
@@ -1489,7 +1512,7 @@ for (const [key, zh, en] of [
   ["exportFormatCoach", "To Coach", "To Coach"],
   ["clearSavedSession", "清除本地现场", "Clear saved session"],
   ["clearSavedSessionTitle", "清除浏览器中自动保存的上次盘面和技巧配置；不会清空当前盘面。", "Clear the last board and technique settings saved in this browser; the current board is not cleared."],
-  ["sessionRestored", "已恢复上次关闭时的盘面和技巧配置。", "Restored the board and technique settings from the last session."],
+  ["sessionRestored", "已恢复上次关闭时的盘面、技巧配置和计时现场。", "Restored the board, technique settings, and timer state from the last session."],
   ["sharedPuzzleLoaded", "已从分享链接导入题面。", "Imported the puzzle from the shared link."],
   ["sharedPuzzleEmpty", "分享链接中的题面参数为空，未恢复本地现场。", "The puzzle parameter in the shared link is empty; the saved local session was not restored."],
   ["sharedPuzzleInvalid", "分享链接题面编码无效：{message}", "The shared puzzle encoding is invalid: {message}"],
@@ -5748,6 +5771,182 @@ async function shareCurrentPuzzle() {
   }, null, 2));
 }
 
+
+function solveTimerElapsedMs() {
+  if (solveTimerState === "running" && solveTimerRunStartedAt > 0) {
+    return Math.max(0, solveTimerAccumulatedMs + (performance.now() - solveTimerRunStartedAt));
+  }
+  return Math.max(0, solveTimerAccumulatedMs);
+}
+
+function solveTimerFormat(ms) {
+  const totalSeconds = Math.max(0, Math.floor(Number(ms || 0) / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return hours > 0
+    ? `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+    : `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function solveTimerSerialize() {
+  return {
+    version: 1,
+    state: solveTimerState,
+    elapsedMs: Math.round(solveTimerElapsedMs()),
+  };
+}
+
+function solveTimerIsPaused() {
+  return solveTimerState === "paused";
+}
+
+function solveTimerNormalizePayload(payload) {
+  if (!payload || typeof payload !== "object") return { state: "idle", elapsedMs: 0 };
+  const state = ["idle", "running", "paused", "finished"].includes(payload.state) ? payload.state : "idle";
+  return { state, elapsedMs: Math.max(0, Number(payload.elapsedMs || 0)) };
+}
+
+function solveTimerUpdateTextOnly() {
+  const formatted = solveTimerFormat(solveTimerElapsedMs());
+  if (solveTimerText) solveTimerText.textContent = formatted;
+  if (mobileSolveTimerText) mobileSolveTimerText.textContent = formatted;
+  if (solveTimerPauseText) solveTimerPauseText.textContent = formatted;
+}
+
+function solveTimerBlockedControls(paused) {
+  const controls = [
+    btnUndo, btnRedo, btnSolve, btnStep, btnApply, btnAllSteps,
+    btnMobileSolveInputMode, btnMobileSolveClear, btnMobileSolveUndo, btnMobileSolveRedo,
+    btnMobileSolveHint, btnMobileSolveMarks,
+  ].filter(Boolean);
+  for (const control of controls) {
+    if (paused) {
+      if (!control.hasAttribute("data-solve-timer-prev-disabled")) {
+        control.setAttribute("data-solve-timer-prev-disabled", control.disabled ? "1" : "0");
+      }
+      control.disabled = true;
+      control.setAttribute("aria-disabled", "true");
+    } else if (control.hasAttribute("data-solve-timer-prev-disabled")) {
+      control.disabled = control.getAttribute("data-solve-timer-prev-disabled") === "1";
+      control.removeAttribute("data-solve-timer-prev-disabled");
+      if (!control.disabled) control.removeAttribute("aria-disabled");
+    }
+  }
+  if (numpad) numpad.inert = paused;
+  if (mobileSolveFocusPad) mobileSolveFocusPad.inert = paused;
+}
+
+function syncSolveTimerUi() {
+  solveTimerUpdateTextOnly();
+  const paused = solveTimerIsPaused();
+  document.body?.classList.toggle("solve-timer-paused", paused);
+  if (solveTimerPauseOverlay) solveTimerPauseOverlay.hidden = !paused;
+  if (solveTimerPauseLabel) solveTimerPauseLabel.textContent = ui("solveTimerPaused");
+  if (btnSolveTimerResume) btnSolveTimerResume.textContent = ui("solveTimerResume");
+
+  let actionKey = "solveTimerStart";
+  if (solveTimerState === "running") actionKey = "solveTimerPause";
+  else if (solveTimerState === "paused") actionKey = "solveTimerResume";
+  else if (solveTimerState === "finished") actionKey = "solveTimerFinished";
+  const action = ui(actionKey);
+  if (solveTimerAction) solveTimerAction.textContent = action;
+  for (const control of [btnSolveTimer, btnMobileSolveTimer].filter(Boolean)) {
+    control.dataset.state = solveTimerState;
+    control.title = action;
+    control.setAttribute("aria-label", `${action} · ${solveTimerFormat(solveTimerElapsedMs())}`);
+    control.setAttribute("aria-pressed", paused ? "true" : "false");
+    control.disabled = !currentSnapshot || solveTimerState === "finished";
+  }
+  solveTimerBlockedControls(paused);
+  updateMobileSolveWakeLockUi();
+}
+
+function resetSolveTimer(options = {}) {
+  solveTimerState = "idle";
+  solveTimerAccumulatedMs = 0;
+  solveTimerRunStartedAt = 0;
+  syncSolveTimerUi();
+  if (options.save !== false) scheduleAppSessionSave();
+}
+
+function restoreSolveTimer(payload, options = {}) {
+  const normalized = solveTimerNormalizePayload(payload);
+  solveTimerState = normalized.state;
+  solveTimerAccumulatedMs = normalized.elapsedMs;
+  solveTimerRunStartedAt = solveTimerState === "running" ? performance.now() : 0;
+  syncSolveTimerUi();
+  if (options.save === true) scheduleAppSessionSave();
+}
+
+function startOrResumeSolveTimer() {
+  if (!currentSnapshot || solveTimerState === "finished") return false;
+  if (solveTimerState === "running") return pauseSolveTimer();
+  if (solveTimerState === "idle") solveTimerAccumulatedMs = 0;
+  solveTimerState = "running";
+  solveTimerRunStartedAt = performance.now();
+  syncSolveTimerUi();
+  saveAppSessionNow();
+  return true;
+}
+
+function pauseSolveTimer() {
+  if (solveTimerState !== "running") return false;
+  solveTimerAccumulatedMs = solveTimerElapsedMs();
+  solveTimerRunStartedAt = 0;
+  solveTimerState = "paused";
+  closeMobileSolveFocusPad();
+  syncSolveTimerUi();
+  saveAppSessionNow();
+  return true;
+}
+
+function finishSolveTimer() {
+  if (solveTimerState !== "running") return false;
+  solveTimerAccumulatedMs = solveTimerElapsedMs();
+  solveTimerRunStartedAt = 0;
+  solveTimerState = "finished";
+  syncSolveTimerUi();
+  saveAppSessionNow();
+  return true;
+}
+
+function maybeFinishSolveTimer() {
+  if (solveTimerState !== "running" || !currentPuzzleSolution || currentPuzzleSolution.length !== 81) return false;
+  const boardText = snapshotBoardString(currentSnapshot);
+  if (boardText === currentPuzzleSolution) return finishSolveTimer();
+  return false;
+}
+
+function solveTimerGuardInput() {
+  if (!solveTimerIsPaused()) return false;
+  setStatus(ui("solveTimerBlocked"));
+  return true;
+}
+
+function installSolveTimer() {
+  btnSolveTimer?.addEventListener("click", () => {
+    if (solveTimerState === "running") pauseSolveTimer();
+    else startOrResumeSolveTimer();
+  });
+  btnMobileSolveTimer?.addEventListener("click", () => {
+    if (solveTimerState === "running") pauseSolveTimer();
+    else startOrResumeSolveTimer();
+  });
+  btnSolveTimerResume?.addEventListener("click", startOrResumeSolveTimer);
+  if (!solveTimerTickHandle) {
+    solveTimerTickHandle = window.setInterval(() => {
+      if (solveTimerState === "running") solveTimerUpdateTextOnly();
+    }, 250);
+  }
+  if (!solveTimerCheckpointHandle) {
+    solveTimerCheckpointHandle = window.setInterval(() => {
+      if (solveTimerState === "running") saveAppSessionNow();
+    }, SOLVE_TIMER_CHECKPOINT_MS);
+  }
+  syncSolveTimerUi();
+}
+
 function currentSessionLibraryString() {
   if (!engine || appSessionRestoring || previewSnapshotActive) return "";
   return exportedPuzzleString();
@@ -5773,6 +5972,7 @@ function buildAppSessionPayload() {
     libraryString,
     techniqueConfig,
     manualMarks: serializeManualMarks(),
+    solveTimer: solveTimerSerialize(),
   };
 }
 
@@ -5808,6 +6008,7 @@ function saveAppSessionNow() {
         source: "session",
         manualMarks: payload.manualMarks,
         manualMarkCount: manualMarkItemCount(),
+        solveTimer: payload.solveTimer,
         previewValues: cells.map((cell) => Number(cell?.value || 0)),
         previewGivens: cells.map((cell, index) => Number(cell?.value || 0) > 0 && isFixedCell(index)),
       });
@@ -5852,7 +6053,7 @@ async function restoreAppSession(options = {}) {
     console.warn("Failed to read YZF session", error);
     return false;
   }
-  if (!payload || ![1, APP_SESSION_PAYLOAD_VERSION].includes(payload.version)) return false;
+  if (!payload || ![1, 2, APP_SESSION_PAYLOAD_VERSION].includes(payload.version)) return false;
   appSessionRestoring = true;
   try {
     if (payload.language && lang && [...lang.options].some((option) => option.value === payload.language)) {
@@ -5865,13 +6066,14 @@ async function restoreAppSession(options = {}) {
     }
     if (restorePuzzle && payload.libraryString) {
       givens.value = payload.libraryString;
-      const restored = await importPuzzleFromCurrentInput({ clipboardFallback: false, sessionRestore: true });
+      const restored = await importPuzzleFromCurrentInput({ clipboardFallback: false, sessionRestore: true, preserveSolveTimer: true });
       if (!restored?.ok) {
         throw new Error(restored?.error || ui("importUnknownFormat"));
       }
       restoreManualMarks(payload.manualMarks || null);
       renderBoardSnapshot(currentSnapshot, currentHint);
     }
+    restoreSolveTimer(payload.solveTimer || null);
     renderTechniques();
     if (announce) {
       setStatus(ui("sessionRestored"));
@@ -10573,10 +10775,12 @@ function applySnapshotRefreshState(nextSnapshot = null) {
   updateInputControls();
   scheduleAppSessionSave();
   checkCampaignSessionCompletion();
+  maybeFinishSolveTimer();
 }
 
 function resetBoardContextForSnapshot(nextSnapshot = null, options = {}) {
   currentSnapshot = nextSnapshot || getCurrentSnapshot();
+  if (options.preserveSolveTimer !== true) resetSolveTimer({ save: false });
   mobileSolvePuzzleBaselineSignature = mobileSolveSnapshotSignature(currentSnapshot);
   clearStepViewState(options);
   renderBoardSnapshot(currentSnapshot, null);
@@ -11364,6 +11568,7 @@ function importCampaignPuzzle(item) {
   setInitialCandidateBaselineFromImport(result);
   clearAppEditHistory();
   originalBoard = result.state?.givens || result.givens || result.puzzle || item.puzzle;
+  currentPuzzleSolution = /^[1-9]{81}$/.test(String(item.solution || result.solution || "")) ? String(item.solution || result.solution) : "";
   givens.value = item.puzzle;
   resetBoardContextForSnapshot(result.state, { resetSelectedIndex: true });
   updateInputControls();
@@ -11933,6 +12138,7 @@ function restoreAppHistorySnapshot(libraryText) {
 }
 
 function performAppUndo() {
+  if (solveTimerGuardInput()) return false;
   if (!engine || appUndoStack.length === 0) {
     setStatus(ui("undoNone"));
     return false;
@@ -11949,6 +12155,7 @@ function performAppUndo() {
 }
 
 function performAppRedo() {
+  if (solveTimerGuardInput()) return false;
   if (!engine || appRedoStack.length === 0) {
     setStatus(ui("redoNone"));
     return false;
@@ -11977,6 +12184,7 @@ function refreshAfterEdit(responseText, options = {}) {
 }
 
 function executeSimpleEngineEdit(operation) {
+  if (solveTimerGuardInput()) return false;
   if (!engine || typeof operation !== "function") return false;
   const beforeLibrary = captureAppEditHistory();
   return refreshAfterEdit(operation(), { beforeLibrary });
@@ -12045,6 +12253,7 @@ function repairEngineCandidatesToMasks(desiredMasks) {
 }
 
 function executeValueEdit(index, nextValue) {
+  if (solveTimerGuardInput()) return false;
   if (!engine || !currentSnapshot) return false;
   const oldValue = Number(currentSnapshot.cells?.[index]?.value || 0);
   const normalizedNext = Number(nextValue || 0);
@@ -12101,6 +12310,7 @@ function refreshAfterHistory(responseText, changedText, emptyText) {
 }
 
 function handleValueTap(index) {
+  if (solveTimerGuardInput()) return;
   if (tlgSolverEditingActive()) return;
   if (isFixedCell(index)) {
     const fixedValue = Number(currentSnapshot?.cells?.[index]?.value || 0);
@@ -12121,6 +12331,7 @@ function handleValueTap(index) {
 }
 
 function handleCandidateTap(index) {
+  if (solveTimerGuardInput()) return;
   if (tlgSolverEditingActive()) return;
   if (isFixedCell(index)) {
     const fixedValue = Number(currentSnapshot?.cells?.[index]?.value || 0);
@@ -12145,6 +12356,7 @@ function handleCandidateTap(index) {
 }
 
 function handleCellTap(index) {
+  if (solveTimerGuardInput()) return;
   if (tlgSolverEditingActive()) return;
   if (!engine || !currentSnapshot) {
     renderBoardSnapshot(currentSnapshot, currentHint);
@@ -12211,7 +12423,7 @@ function desktopBoardKeyboardBlocked(event) {
   if (event.defaultPrevented || !engine || !currentSnapshot) return true;
   if (desktopBoardKeyboardEditableTarget(event.target)) return true;
   if (tabBtnControls?.getAttribute("aria-selected") !== "true") return true;
-  if (mobileSolveActive || solverBusyTask || previewSnapshotActive) return true;
+  if (mobileSolveActive || solverBusyTask || previewSnapshotActive || solveTimerIsPaused()) return true;
   if (manualMarksActive() || tlgSolverEditingActive() || ocrCorrectionIsActive()) return true;
   if (document.querySelector('dialog[open]')) return true;
   return false;
@@ -12363,6 +12575,7 @@ function ensureMobileSolveSelection() {
 }
 
 function applyMobileSolveDigit(digit) {
+  if (solveTimerGuardInput()) return false;
   const value = Number(digit || 0);
   if (!ensureMobileSolveSelection() || value < 1 || value > 9) return false;
   selectedDigit = value;
@@ -19457,8 +19670,9 @@ async function importPuzzleFromCurrentInput(options = {}) {
     setInitialCandidateBaselineFromImport(result);
     clearAppEditHistory();
     originalBoard = result.state?.givens || result.givens || result.puzzle;
+    currentPuzzleSolution = /^[1-9]{81}$/.test(String(result.solution || "")) ? String(result.solution) : "";
     givens.value = result.givens === result.puzzle && !result.hasCandidates ? result.puzzle : rawInput;
-    resetBoardContextForSnapshot(result.state, { resetSelectedIndex: true });
+    resetBoardContextForSnapshot(result.state, { resetSelectedIndex: true, preserveSolveTimer: options.preserveSolveTimer === true || options.sessionRestore === true });
         debugLog(JSON.stringify(result, null, 2));
     setStatus(uif("importedPuzzle", { format: result.format, candidates: result.hasCandidates ? ui("importedWithCandidates") : "" }));
     updateInputControls();
@@ -20652,6 +20866,7 @@ function generatePuzzleAtDifficulty(difficulty) {
   setInitialCandidateBaselineFromImport(result);
   clearAppEditHistory();
   originalBoard = result.state?.givens || result.puzzle;
+  currentPuzzleSolution = /^[1-9]{81}$/.test(String(result.solution || "")) ? String(result.solution) : "";
   givens.value = result.puzzle;
   resetBoardContextForSnapshot(result.state, { resetSelectedIndex: true });
     setStatus(uif("generatedPuzzle", { difficulty: difficultyLabel(result.difficultyName ?? normalizedDifficulty), clues: result.clues, rating: formatRating(result.rating) }));
@@ -20937,6 +21152,7 @@ btnGenerateTraining?.addEventListener("click", async () => {
       setInitialCandidateBaselineFromImport(imported);
       clearAppEditHistory();
       originalBoard = result.puzzle;
+      currentPuzzleSolution = /^[1-9]{81}$/.test(String(result.solution || "")) ? String(result.solution) : "";
       givens.value = otpLibrary;
       resetBoardContextForSnapshot(imported.state || otpSnapshot, { resetSelectedIndex: true });
       const matchedTechnique = trainingTechniqueNameForKind(result.technique) || result.technique || "OTP";
@@ -20955,6 +21171,7 @@ btnGenerateTraining?.addEventListener("click", async () => {
     const matchedRecord = Array.isArray(result.solve?.path) ? result.solve.path[matchedIndex] : null;
     const trainingSnapshot = result.trainingState || matchedRecord?.before || null;
     originalBoard = result.puzzle;
+    currentPuzzleSolution = /^[1-9]{81}$/.test(String(result.solution || "")) ? String(result.solution) : "";
     const trainingLibrary = String(result.trainingLibrary || "") || snapshotToLibraryString(trainingSnapshot);
     const imported = trainingLibrary ? parseJson(engine.import_puzzle_json(trainingLibrary)) : null;
     if (!trainingSnapshot || !trainingLibrary || !imported?.ok) {
@@ -21608,7 +21825,7 @@ async function releaseMobileSolveWakeLock(options = {}) {
 
 async function requestMobileSolveWakeLock(options = {}) {
   const { announceFailure = true, announceSuccess = false } = options;
-  if (!mobileSolveKeepScreenAwake || !mobileSolveActive || document.visibilityState !== "visible") {
+  if (!mobileSolveKeepScreenAwake || !mobileSolveActive || solveTimerIsPaused() || document.visibilityState !== "visible") {
     updateMobileSolveWakeLockUi();
     return false;
   }
@@ -22795,6 +23012,7 @@ lang.addEventListener("change", () => {
   } else {
     renderBoard(currentHint);
   }
+  syncSolveTimerUi();
   scheduleAppSessionSave();
   uiFoundation?.relocalize();
 });
@@ -22813,7 +23031,7 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
     flushAppSessionSave();
     updateMobileSolveWakeLockUi();
-  } else if (mobileSolveActive && mobileSolveKeepScreenAwake) {
+  } else if (mobileSolveActive && mobileSolveKeepScreenAwake && !solveTimerIsPaused()) {
     requestMobileSolveWakeLock({ announceFailure: false }).catch(() => {});
   }
 });
@@ -22821,6 +23039,7 @@ document.addEventListener("visibilitychange", () => {
 installDynamicBoardSizing();
 installMobileSolveMode();
 installDesktopBoardKeyboardInput();
+installSolveTimer();
 installAppStatusControls();
 installAppBackNavigation();
 applyStaticLanguage();
@@ -22903,6 +23122,7 @@ uiFoundation = installUiFoundation({
       boardPointerMode,
       mobileSolveActive,
       currentLanguage: appStatusLanguage(),
+      solveTimer: solveTimerSerialize(),
     },
     save: { ...appSaveStatus },
     pwa: {
@@ -22933,9 +23153,10 @@ uiFoundation = installUiFoundation({
     const record = loadRecentPuzzleRecords().find((item) => item.id === String(id || ""));
     if (!record?.libraryString) return false;
     givens.value = record.libraryString;
-    const imported = await importPuzzleFromCurrentInput({ clipboardFallback: false, preferClipboardFirst: false });
+    const imported = await importPuzzleFromCurrentInput({ clipboardFallback: false, preferClipboardFirst: false, preserveSolveTimer: true });
     if (!imported?.ok) return false;
     restoreManualMarks(record.manualMarks || null);
+    restoreSolveTimer(record.solveTimer || null);
     renderBoardSnapshot(currentSnapshot, currentHint);
     scheduleAppSessionSave();
     return true;

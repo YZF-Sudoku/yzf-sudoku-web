@@ -2066,3 +2066,84 @@ html[lang="en"] .yzf-lang-zh { display: none !important; }
   #techniqueList .technique-row[data-technique-level="4"] { --yzf-technique-config-bg: #4a2b16; }
 :root:is([data-yzf-theme="dark"], [data-yzf-theme="system"][data-yzf-resolved-theme="dark"])
   #techniqueList .technique-row[data-technique-level="5"] { --yzf-technique-config-bg: #4a2025; }
+
+
+/* V530 solve timer: the timer is part of the recoverable puzzle workspace. */
+.solve-timer-control,
+.mobile-solve-timer-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  margin: 0;
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 9px;
+  background: var(--surface, #fff);
+  color: var(--ink, #1f2937);
+  font: inherit;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.solve-timer-control { padding: 5px 8px; }
+.solve-timer-control svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.solve-timer-control[data-state="running"] { border-color: var(--accent, #2563eb); }
+.solve-timer-control[data-state="paused"],
+.mobile-solve-timer-control[data-state="paused"] { border-color: var(--yzf-warning, #d97706); }
+.solve-timer-control:disabled,
+.mobile-solve-timer-control:disabled { opacity: .55; cursor: default; }
+.solve-timer-text { font-variant-numeric: tabular-nums; }
+.solve-timer-action { font-size: .86em; opacity: .82; }
+
+.mobile-solve-timer-control {
+  min-width: 68px !important;
+  min-height: 30px !important;
+  padding: 4px 6px !important;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+@media (max-width: 390px) {
+  .mobile-solve-timer-control { min-width: 61px !important; padding-inline: 4px !important; font-size: 11px; }
+}
+
+.board-stage { position: relative; }
+.solve-timer-pause-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: var(--surface, #ffffff);
+  color: var(--ink, #111827);
+  border-radius: inherit;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+.solve-timer-pause-overlay[hidden] { display: none !important; }
+.solve-timer-pause-card {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  max-width: min(86%, 320px);
+  padding: 22px 26px;
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 16px;
+  background: var(--surface-soft, var(--surface, #fff));
+  box-shadow: 0 12px 32px rgba(15, 23, 42, .12);
+}
+.solve-timer-pause-label { font-size: 15px; font-weight: 750; }
+.solve-timer-pause-time { font-size: clamp(30px, 8vw, 48px); font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.solve-timer-resume {
+  min-height: 38px;
+  padding: 7px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--accent, #2563eb);
+  background: var(--accent, #2563eb);
+  color: var(--yzf-accent-contrast, #fff);
+  font-weight: 750;
+}
+body.solve-timer-paused .sudoku-board,
+body.solve-timer-paused .yzf-underlay,
+body.solve-timer-paused .yzf-overlay { visibility: hidden; }
+body.solve-timer-paused #numpad { opacity: .48; }

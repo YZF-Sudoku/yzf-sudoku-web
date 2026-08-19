@@ -4959,7 +4959,7 @@
     .mobile-solve-topbar {
       grid-area: mobile-top;
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      grid-template-columns: auto minmax(0, 1fr) auto auto auto;
       align-items: center;
       gap: 6px;
       min-height: 38px;
@@ -5910,6 +5910,11 @@
             <button class="app-status-button" type="button" data-app-status-kind="transient" data-state="idle" data-tone="ok" hidden aria-label="状态通知" title="状态通知"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12.5 10.7 15 16.5 8.8"></path><circle cx="12" cy="12" r="8.5"></circle></svg><span class="app-status-dot" aria-hidden="true"></span></button>
             <button id="btnTaskCenter" class="app-status-button yzf-task-center-entry" type="button" data-tone="muted" data-state="idle" aria-label="任务状态" title="任务状态"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7.5h14"></path><path d="M5 12h14"></path><path d="M5 16.5h9"></path></svg><span class="app-status-badge" data-yzf-task-badge aria-hidden="true"></span></button>
           </div>
+          <button id="btnSolveTimer" class="solve-timer-control" type="button" data-state="idle" title="开始计时" aria-label="开始计时">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7.5"></circle><path d="M9.5 2.8h5M12 5.5V3M12 13l3-2"></path></svg>
+            <span id="solveTimerText" class="solve-timer-text">00:00</span>
+            <span id="solveTimerAction" class="solve-timer-action">开始</span>
+          </button>
           <button id="btnStepExplain" class="step-explain-button" type="button" disabled title="当前没有可解释的步骤。" aria-label="当前没有可解释的步骤。">解释</button>
           <button id="btnMobileSolveMode" class="mobile-solve-entry" type="button" title="做题模式" aria-label="做题模式">做题</button>
           <button id="btnAppHub" class="app-hub-entry" type="button" aria-haspopup="dialog" aria-controls="appHubDialog" title="帮助与现场" aria-label="帮助与现场">
@@ -5947,6 +5952,13 @@
           <svg id="yzfUnderlay" class="yzf-underlay" viewBox="0 0 900 900" aria-hidden="true"></svg>
           <div id="board" class="sudoku-board"></div>
           <svg id="yzfOverlay" class="yzf-overlay" viewBox="0 0 900 900" aria-hidden="true"></svg>
+          <div id="solveTimerPauseOverlay" class="solve-timer-pause-overlay" hidden aria-live="polite">
+            <div class="solve-timer-pause-card">
+              <span id="solveTimerPauseLabel" class="solve-timer-pause-label">计时已暂停</span>
+              <strong id="solveTimerPauseText" class="solve-timer-pause-time">00:00</strong>
+              <button id="btnSolveTimerResume" class="solve-timer-resume" type="button">继续计时</button>
+            </div>
+          </div>
         </div>
         <div id="hintPanel" class="hint-panel">等待加载题面。</div>
         <div id="stepExplainPanel" class="step-explain-panel hidden" aria-live="polite"></div>
@@ -6564,6 +6576,7 @@
         <div id="mobileSolveTitle" class="mobile-solve-title">做题模式</div>
         <div id="mobileSolveInputState" class="mobile-solve-input-state">出数 · 未选格</div>
       </div>
+      <button id="btnMobileSolveTimer" class="mobile-solve-timer-control" type="button" data-state="idle" title="开始计时" aria-label="开始计时"><span aria-hidden="true">⏱</span><span id="mobileSolveTimerText">00:00</span></button>
       <div class="app-status-cluster" aria-label="应用状态"><button class="app-status-button" type="button" data-app-status-kind="pwa" data-state="initializing" data-tone="working" aria-label="正在初始化离线功能" title="正在初始化离线功能"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 18.5h9.2a4.3 4.3 0 0 0 .6-8.6A6.2 6.2 0 0 0 5.4 8.4 5 5 0 0 0 7.5 18.5Z"></path></svg><span class="app-status-dot" aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="save" data-state="saved" data-tone="ok" aria-label="当前进度已保存" title="当前进度已保存"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5h11l3 3V20.5H5Z"></path><path d="M8 3.5v6h8v-5M8 20.5v-7h8v7"></path></svg><span class="app-status-dot" aria-hidden="true"></span></button><button class="app-status-button" type="button" data-app-status-kind="transient" data-state="idle" data-tone="ok" hidden aria-label="状态通知" title="状态通知"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12.5 10.7 15 16.5 8.8"></path><circle cx="12" cy="12" r="8.5"></circle></svg><span class="app-status-dot" aria-hidden="true"></span></button></div>
       <button id="btnMobileSolveNewPuzzle" type="button" aria-expanded="false">新题</button>
     </header>

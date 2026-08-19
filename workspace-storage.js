@@ -41,6 +41,11 @@ function normalizeRecentRecord(record) {
     source: String(record.source || "session"),
     manualMarks: record.manualMarks && typeof record.manualMarks === "object" ? record.manualMarks : null,
     manualMarkCount: Math.max(0, Number(record.manualMarkCount || 0)),
+    solveTimer: record.solveTimer && typeof record.solveTimer === "object" ? {
+      version: 1,
+      state: ["idle", "running", "paused", "finished"].includes(record.solveTimer.state) ? record.solveTimer.state : "idle",
+      elapsedMs: Math.max(0, Number(record.solveTimer.elapsedMs || 0)),
+    } : null,
     previewValues: Array.isArray(record.previewValues) && record.previewValues.length === 81
       ? record.previewValues.map((value) => {
         const digit = Number(value || 0);
