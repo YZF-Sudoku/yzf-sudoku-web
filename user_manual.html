@@ -678,24 +678,12 @@
 </style>
 </head>
 <body>
-  <section class="manual-timer-update">
-    <div class="yzf-lang-zh" lang="zh">
-      <h2>做题计时与暂停现场</h2>
-      <p>主盘顶部（手机做题顶部）提供计时按钮。首次点击从 00:00 开始；运行中点击“暂停”会立即冻结时间并用不透明遮罩隐藏整个盘面。暂停时盘面鼠标、键盘、手机数字输入、提示/应用、撤销/重做均不可修改题目，但“帮助与现场”、主题等纯界面功能仍可使用。</p>
-      <p>继续计时时从原累计时间向后计，不会重新归零。自动保存现场与“近期快照”都会保存计时状态：运行中关闭页面，下次恢复从保存值继续（关闭期间不计时）；暂停中关闭页面，下次恢复仍保持原时间并继续遮盘。加载/生成真正的新题会把计时重置为 00:00；撤销/重做只影响盘面，不回退计时。</p>
-    </div>
-    <div class="yzf-lang-en" lang="en">
-      <h2>Solve timer and paused workspace</h2>
-      <p>The timer button is available above the main board and in the mobile solve top bar. The first press starts at 00:00. Pressing Pause freezes the accumulated time and covers the entire grid with an opaque overlay. While paused, mouse/keyboard/mobile number input, hints/apply, and undo/redo cannot change the puzzle; Help &amp; Workspaces and other display-only UI remain available.</p>
-      <p>Resume continues from the accumulated value rather than restarting. Autosave and Recent snapshots persist the timer state. Restoring a running session resumes from the saved value without counting time while the app was closed; restoring a paused session keeps the grid covered at the saved time. Loading or generating a genuinely new puzzle resets the timer to 00:00. Undo/redo never rewinds the timer.</p>
-    </div>
-  </section>
 <header>
 <div class="wrap">
 <h1>YZF Sudoku 使用手册 / User Manual</h1>
 <p>适用于 YZF Sudoku Web / WASM / Standalone 版本</p>
 <p>For YZF Sudoku Web, WASM, and Standalone builds</p>
-<div class="meta">Version: Manual v3.10 · Updated: 2026-08-14</div>
+<div class="meta">Version: Manual v3.11 · Updated: 2026-08-21</div>
 </div>
 <div aria-label="Manual language view / 手册语言视图" class="manual-language-toolbar" role="group">
 <button aria-pressed="true" data-manual-lang-button="bilingual" type="button">双语 / Bilingual</button>
@@ -925,8 +913,8 @@
 </ol>
 <p>手工录入复用 OCR 校正器的三角色盘面，但不会写入或清除 OCR 校正草稿。OCR 图片校正仍保留原图对照和识别 mask，不会套用手工录入的自动候选更新。</p>
 <h3>自动保存现场</h3>
-<p>程序会在本机浏览器保存当前盘面、候选状态、语言、技巧配置和完整手工标记，下次打开时自动恢复。现场格式 v2 可保存整格/候选着色、圆圈、预删数、正式删数、强弱链、构造链、微型区域、区块草稿和当前标记模式，同时兼容旧版 v1 现场。</p>
-<p>“帮助与现场”还能继续未确认导入的 OCR 对照校正草稿，并保留最多 12 条去重后的近期题目。空白启动盘不会进入近期列表。</p>
+<p>程序会在本机浏览器保存当前盘面、候选状态、语言、技巧配置、完整手工标记和做题计时状态，下次打开时自动恢复。现场格式 v3 在 v2 的整格/候选着色、圆圈、预删数、正式删数、强弱链、构造链、微型区域、区块草稿和当前标记模式基础上增加计时状态，同时兼容旧版 v1/v2 现场。</p>
+<p>“帮助与现场”还能继续未确认导入的 OCR 对照校正草稿，并保留最多 12 条去重后的近期题目。自动现场和“近期快照”都会保存累计计时及 running/paused 状态：恢复 running 现场时从保存值继续，应用关闭期间不计时；恢复 paused 现场时保持原时间并继续遮盘，直到手动继续。空白启动盘不会进入近期列表。</p>
 <div class="warn">当前提示预览、解题路径预览和 TLG 逻辑不属于主现场。TLG 请使用“TLG 题库”保存，并定期导出 <code>.tlgdb</code> 文件备份；清除站点数据会同时删除现场、近期记录、OCR 草稿和 TLG 用户题库。</div>
 <h3>Coach 候选数 mask</h3>
 <p><code>userCellCandidates</code> 由 81 个十进制 mask 组成，用 <code>-</code> 分隔。数字 <code>d</code> 对应 <code>1 &lt;&lt; d</code>；例如候选 2、3、6 的 mask 为 <code>4 + 8 + 64 = 76</code>。</p>
@@ -956,8 +944,8 @@
 </ol>
 <p>Manual Entry reuses the three-role OCR editor but does not save over or clear an OCR correction draft. Image OCR keeps its source-image comparison and recognized masks; it does not use Manual Entry's automatic candidate normalization.</p>
 <h3>Automatic Session Restore</h3>
-<p>The browser locally saves the current board, candidate state, language, technique configuration, and complete Manual Marks state. Session format v2 includes cell and candidate colors, circles, pending and applied eliminations, chain lines, construction lines, Mini-Regions, blocks, and the current marking tools, while remaining compatible with legacy v1 sessions.</p>
-<p>Help &amp; Workspaces can also resume an unfinished OCR correction draft and up to 12 recent puzzle snapshots. Recent puzzles are deduplicated, and the initial empty board is never added to the list. Clear Saved Session removes the board, language, technique data, and saved manual marks used for the next restore, but does not clear the board currently on screen.</p>
+<p>The browser locally saves the current board, candidate state, language, technique configuration, complete Manual Marks state, and solve-timer state. Session format v3 adds timer state to the v2 payload of cell/candidate colors, circles, pending/applied eliminations, chain lines, construction lines, Mini-Regions, blocks, and marking tools, while remaining compatible with legacy v1/v2 sessions.</p>
+<p>Help &amp; Workspaces can also resume an unfinished OCR correction draft and up to 12 recent puzzle snapshots. Autosave and Recent snapshots persist the accumulated timer plus its running/paused state. Restoring a running session continues from the saved value without counting time while the app was closed; restoring a paused session keeps the saved time and the board covered until Resume is pressed. Recent puzzles are deduplicated, and the initial empty board is never added to the list. Clear Saved Session removes the saved board, language, technique data, marks, and timer state used for the next restore, but does not clear the board currently on screen.</p>
 <div class="warn">The current hint preview, solve-path preview, and TLG logic are not part of the main saved session. Save TLG logic in the TLG Library and export a <code>.tlgdb</code> backup regularly. Clearing browser site data also removes local workspaces and OCR drafts.</div>
 <h3>Coach Candidate Masks</h3>
 <p><code>userCellCandidates</code> contains 81 decimal masks separated by <code>-</code>. Digit <code>d</code> corresponds to <code>1 &lt;&lt; d</code>; candidates 2, 3, and 6 therefore use <code>4 + 8 + 64 = 76</code>.</p>
@@ -1045,6 +1033,15 @@
 <li><strong>继续与回退：</strong>每次正式出数、候选编辑、应用提示都进入撤销历史。误操作立即使用“撤销”，确认无误后再继续。</li>
 <li><strong>保存现场：</strong>要保存真实候选状态，优先导出 Library、Coach 或 Sukaku；要保存颜色、圈、链和区块，使用“截图”。</li>
 </ol>
+<h3>做题计时、暂停与继续</h3>
+<ul>
+<li><strong>开始：</strong>主盘计时控件首次点击从 <code>00:00</code> 开始累计；计时属于当前题目现场，不是独立秒表。</li>
+<li><strong>暂停：</strong>运行中点击暂停会冻结累计时间，并用不透明遮罩完全隐藏盘面。暂停期间盘面鼠标、键盘、手机数字输入、提示/应用、撤销/重做均不能修改题目；帮助与现场、主题等纯界面功能仍可使用。</li>
+<li><strong>继续：</strong>点击继续后从暂停时的累计值向后计，不会重新从 <code>00:00</code> 开始。</li>
+<li><strong>恢复现场：</strong>自动现场和“近期快照”都会保存累计时间及 running/paused 状态。运行中关闭应用后，下次从保存值继续，关闭期间不计时；暂停中关闭应用后，下次仍保持原时间并继续遮盘。</li>
+<li><strong>新题与撤销：</strong>载入或生成真正的新题会把计时重置为 <code>00:00</code>；撤销/重做只回退盘面操作，不回退计时。</li>
+</ul>
+<div class="note">暂停的目的不仅是停止秒表，也是避免暂停期间继续观察题面；因此遮罩必须保持到“继续计时”为止。</div>
 <h3>出数模式</h3>
 <ul>
 <li>鼠标：左键点击空格中当前真实存在的候选，将其写为用户出数。已被删除的候选不能直接出数，需先右键恢复。</li>
@@ -1094,6 +1091,15 @@
 <li><strong>Continue or recover:</strong> formal values, candidate edits, and applied hints enter Undo history. Undo mistakes before continuing.</li>
 <li><strong>Save the state:</strong> use Library, Coach, or Sukaku for the real candidate state; use Capture for colors, circles, chains, and blocks.</li>
 </ol>
+<h3>Solve Timer, Pause, and Resume</h3>
+<ul>
+<li><strong>Start:</strong> the first press of the board timer starts at <code>00:00</code>. The timer is part of the current puzzle workspace rather than a separate stopwatch.</li>
+<li><strong>Pause:</strong> while running, Pause freezes the accumulated time and covers the whole board with an opaque overlay. Mouse/keyboard/mobile number input, Hint/Apply, and Undo/Redo cannot change the puzzle while paused; Help &amp; Workspaces, theme controls, and other display-only UI remain available.</li>
+<li><strong>Resume:</strong> Resume continues from the accumulated value instead of restarting at <code>00:00</code>.</li>
+<li><strong>Restore:</strong> autosave and Recent snapshots persist the accumulated value plus running/paused state. A restored running session continues from the saved value without counting time while the app was closed; a restored paused session keeps the saved time and board cover until resumed.</li>
+<li><strong>New puzzle and Undo:</strong> loading or generating a genuinely new puzzle resets the timer to <code>00:00</code>. Undo/Redo affects board history only and never rewinds the timer.</li>
+</ul>
+<div class="note">Pause is designed to stop both the clock and puzzle observation, so the opaque board cover stays in place until Resume is pressed.</div>
 <h3>Value Mode</h3>
 <ul>
 <li>Mouse: left-click an active candidate to enter it as a user value.</li>
@@ -1804,7 +1810,7 @@ GUR 枚举约束 = 1
 </ul>
 <h3>13.15 结果表示与预算</h3>
 <p>大写 <code>R/C/B/N</code> 表示 Truth，小写 <code>r/c/b/n</code> 表示 Link，<code>N/n</code> 表示单元格集合。状态区会区分用户 Links 和结果 Links，并显示唯一性门控、活动候选数、AUR/DAUR/GUR 验证信息、删数和出数。</p>
-<div class="warn">出现“投影解数量超过预算”“搜索节点超过预算”或 GUR 局部完成枚举超预算，表示搜索未完成。此时“0 个删数”不能解释为已证明无删数；应缩小候选云、减少 Truth/Link，或在 native 环境提高预算测试。</div>
+<div class="warn">当前 Web/WASM TLG 主调用预算为<strong>最多 12,000,000 个有效投影解</strong>和<strong>最多 40,000,000 个搜索节点</strong>。出现“投影解数量超过预算”“搜索节点超过预算”或 GUR 局部完成枚举超预算，表示搜索未完成：前两项分别表示已经撞到 1200 万投影解或 4000 万搜索节点的上限。此时“0 个删数”不能解释为已证明无删数；应缩小候选云、减少 Truth/Link，或在 native 环境提高预算测试。底层投影组件自身的默认预算较低，但 YZF 的 TLG UI 调用会显式使用上述更高预算。</div>
 <h3>13.16 清理命令的区别</h3>
 <ul>
 <li><strong>当前状态列表逐项删除：</strong>只删除对应用户输入。</li>
@@ -2056,7 +2062,7 @@ GUR enumeration constraints = 1
 </ul>
 <h3>13.15 Result Notation and Budgets</h3>
 <p>Uppercase <code>R/C/B/N</code> denotes Truths; lowercase <code>r/c/b/n</code> denotes Links; <code>N/n</code> is a cell set. Status distinguishes User Links from Result Links and reports the gate, active candidates, AUR/DAUR/GUR validation, eliminations, and assignments.</p>
-<div class="warn">Solution-budget, search-node, or GUR local-enumeration budget exceeded means the search is incomplete. Zero eliminations is not proof of none. Reduce the cloud/structure or test a higher budget in native.</div>
+<div class="warn">The current Web/WASM TLG call allows up to <strong>12,000,000 valid projection solutions</strong> and <strong>40,000,000 search nodes</strong>. A solution-budget or search-node message therefore means the run hit the 12-million-solution or 40-million-node limit respectively; a GUR local-enumeration budget message likewise means that local search is incomplete. Zero eliminations is not proof of none. Reduce the candidate cloud/Truth-Link structure or test a higher budget in native. The low-level projection component has smaller defaults, but the YZF TLG UI call explicitly overrides them with the limits above.</div>
 <h3>13.16 Clearing Commands</h3>
 <ul>
 <li><strong>Delete an item in Current TLG State:</strong> removes that user input only.</li>
@@ -2223,6 +2229,7 @@ GUR enumeration constraints = 1
 <ul>
 <li><strong>返回：</strong>优先关闭当前弹窗、更多抽屉或手工标记；没有内层界面时才退出做题模式并回到原滚动位置。标题栏返回图标右上角数字表示仍可关闭的层数。</li>
 <li><strong>新题：</strong>选择 ER 难度后生成；已有作答或标记时会警告，确认后清除进度和手工标记。</li>
+<li><strong>计时：</strong>做题顶部提供计时控件。首次点击开始；运行中暂停会冻结时间并遮住盘面；继续后从原累计值继续。暂停状态和累计时间随自动现场/近期快照保存，横竖屏切换不会重置计时。</li>
 <li><strong>清除：</strong>清除当前选中格的用户大数字；空格不会猜测要删哪个候选。候选模式下再次点同一个数字即可删除该候选。</li>
 <li><strong>撤销/重做：</strong>与主界面共用历史。</li>
 <li><strong>标记：</strong>打开完整手工标记面板。</li>
@@ -2287,6 +2294,7 @@ GUR enumeration constraints = 1
 <ul>
 <li><strong>Back:</strong> first closes the current dialog, More drawer, or Manual Marks layer. It exits Solve Mode only when no inner layer remains. The badge on the title-bar Back icon shows the remaining depth.</li>
 <li><strong>New Puzzle:</strong> chooses an ER band and generates. Existing progress/marks trigger a warning.</li>
+<li><strong>Timer:</strong> the solve top bar contains the timer control. The first press starts it; Pause freezes the time and covers the board; Resume continues from the accumulated value. Timer value and paused/running state are saved with autosave/Recent snapshots, and orientation changes do not reset it.</li>
 <li><strong>Clear:</strong> clears the selected user-entered value. On an empty cell it never guesses which candidate to remove; in Candidate mode, press the same digit again to remove that candidate.</li>
 <li><strong>Undo/Redo:</strong> shares history with the main interface.</li>
 <li><strong>Marks:</strong> opens the full Manual Marks panel.</li>

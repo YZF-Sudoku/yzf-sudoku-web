@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-44b435ec52839909";
+import createModule from "./sudoku_wasm.js?v=wasm-73d71a935423e3c9";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -64,7 +64,7 @@ import {
   saveCampaignSession,
 } from "./campaign-progress.js?v=campaign-learning-r2";
 
-const APP_VERSION = "wasm-44b435ec52839909";
+const APP_VERSION = "wasm-73d71a935423e3c9";
 const UI_RELEASE_VERSION = "ui-20260819-solve-timer-v1";
 const MANUAL_VERSION = "manual-20260819-solve-timer-v1";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
@@ -1354,6 +1354,7 @@ for (const [key, zh, en] of [
   ["tlgConvertSummary", "转换完成：Truths={truths}，Links={links}，转换={moved}，删数={elims}", "Convert complete: Truths={truths}, Links={links}, Moved={moved}, Eliminations={elims}"],
   ["tlgRemoveSummary", "清理完成：Truths={truths}，Links={links}，移除={removed}，删数={elims}", "Cleanup complete: Truths={truths}, Links={links}, Removed={removed}, Eliminations={elims}"],
   ["tlgPhase1Summary", "查找完成：Truths={truths}，Links={links}，删数={elims}", "Find completed: Truths={truths}, Links={links}, Eliminations={elims}"],
+  ["tlgFallbackProofStatus", "Fallback 证明模式（存在性/反例）：未进行全量投影枚举。", "Fallback proof mode (existence/counterexample): full projection enumeration was not performed."],
   ["tlgNoConsequencesSummary", "计算完成，但没有找到 Links 或删数：Truths={truths}", "Computed, but no Links or eliminations were found: Truths={truths}"],
   ["tlgParsedOnlySummary", "TLG 已解析，但尚未计算删数：Truths={truths}，Links={links}", "TLG parsed, but eliminations were not computed: Truths={truths}, Links={links}"],
   ["tlgCandidateGridImportedUnique", "TLG 候选盘面已导入：{candidates} 个候选。已保存为初始候选盘，并按唯一解模式核验 AUR/DUR 的初始交换前提。", "TLG candidate grid imported: {candidates} candidates. It is preserved as the initial candidate grid, and AUR/DUR swap premises will be verified in unique-puzzle mode."],
@@ -1376,6 +1377,7 @@ for (const [key, zh, en] of [
   ["tlgSummaryEndpoint", "端点={value}", "Endpoint={value}"],
   ["tlgSolutionTruths", "{count} Truths = {{body}}", "{count} Truths = {{body}}"],
   ["tlgSolutionLinks", "{count} Links = {{body}}", "{count} Links = {{body}}"],
+  ["tlgSolutionFallbackMode", "计算模式：Fallback 存在性/反例证明（非全量投影枚举）", "Computation mode: Fallback existence/counterexample proof (not full projection enumeration)"],
   ["tlgSolutionVirtualSet", "Virtual Set {group}[k={cardinality}] = {{body}}", "Virtual Set {group}[k={cardinality}] = {{body}}"],
   ["tlgSolutionAurs", "{count} 个定式 AUR = {body}", "{count} Fixed AURs = {body}"],
   ["tlgSolutionDaurPool", "DAUR 候选池 = {{body}}", "DAUR Pool = {{body}}"],
@@ -15930,6 +15932,9 @@ function buildTlgSolutionText(response) {
   const lines = [];
   lines.push(`     ${uif("tlgSolutionTruths", { count: truthItems.length, body: truths.join(" ") })}`);
   lines.push(`     ${uif("tlgSolutionLinks", { count: linkItems.length, body: links.join(" ") })}`);
+  if (response?.autoLink?.fallback === true && response?.autoLink?.fullEnumeration === false) {
+    lines.push(`     ${ui("tlgSolutionFallbackMode")}`);
+  }
   tlgSolverState.virtualSets.forEach((group, index) => {
     if (!group.size) return;
     lines.push(`     ${uif("tlgSolutionVirtualSet", {
@@ -17208,6 +17213,9 @@ function formatTlgResponseStatus(response) {
       truths: counts.truths ?? tlgSolverState.truths.length,
       links: counts.links ?? tlgSolverState.links.length,
     });
+  }
+  if (response?.autoLink?.fallback === true && response?.autoLink?.fullEnumeration === false) {
+    summary = `${summary} | ${ui("tlgFallbackProofStatus")}`;
   }
   const errors = Array.isArray(response?.validationErrors) && response.validationErrors.length
     ? ` | ${response.validationErrors.map(localizeTlgBackendMessage).join("; ")}`
