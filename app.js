@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-73d71a935423e3c9";
+import createModule from "./sudoku_wasm.js?v=wasm-8e858a21fbe30267";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -64,7 +64,7 @@ import {
   saveCampaignSession,
 } from "./campaign-progress.js?v=campaign-learning-r2";
 
-const APP_VERSION = "wasm-73d71a935423e3c9";
+const APP_VERSION = "wasm-8e858a21fbe30267";
 const UI_RELEASE_VERSION = "ui-20260819-solve-timer-v1";
 const MANUAL_VERSION = "manual-20260819-solve-timer-v1";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
