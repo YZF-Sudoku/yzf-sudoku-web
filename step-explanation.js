@@ -2862,11 +2862,29 @@ function buildAuditedPhase4Guide(step = {}, locale = "zh") {
 
   if (kind === "BlossomLoop") {
     const focus = firstGroup(step, /^focus$/i);
+    const terminals = firstGroup(step, /^petalterminals$/i);
     const chainBranches = list(step?.chainBranches);
     const main = chainBranches.find((b) => /burring loop/i.test(String(b?.label || "")));
     const burrs = chainBranches.filter((b) => /^burr branch/i.test(String(b?.label || "")));
     const focusText = String(focus?.tail || "").trim() || cn(focus?.cells) || (zh ? "后端Focus" : "backend Focus");
+    const terminalText = String(terminals?.tail || "").trim() || digitText(terminals?.digits) || "";
     const mainNodes = list(main?.nodes).length;
+    const doublePetal = /double-petal/i.test(`${branch} ${step?.title || ""} ${step?.description || ""}`);
+    if (doublePetal) return zh ? [
+      `Blossom Loop（${branchLabel}）：AALS本体=${focusText}${terminalText ? `；双瓣端点数字={${terminalText}}` : ""}；主Burring Loop含${mainNodes || "后端记录的"}个链节点，并配有两条Petal链。`,
+      `AALS Double-Petal 的 Focus 是整组 AALS 本体。2格/4数型中，四个AALS数字恰好全部作为双瓣端点；3格/5数型中，只选四个合格数字分成两对交给 Petal 1 与 Petal 2，第五个数字仍属于AALS本体自由度。`,
+      `逐一检查双瓣的两条 Petal：无论AALS本体内部最终怎样完成，至少有一条 Petal 会把目标推到相反状态，所以目标在全部合法AALS完成下都不成立。真正要核对的是整组AALS本体 + 双瓣端点子集，而不是把证明误写成“只有四数参与”。`,
+      `① 先读 Focus，确认完整AALS本体（n格 / n+2 数）；② 再读双瓣端点数字，只把它们视作 Petal 端点子集；③ 分别核对 Petal 1 / Petal 2；④ 核对 Rank-0 Truth/Link 计数；⑤ 应用删数。`,
+      `高亮应先整体标出AALS本体，再叠加Petal路径；不要只给四个端点数字上色。动态教程要保留两条 Petal 的原始尤里卡，并明确说明还有剩余AALS数字只是没有被选作端点。`,
+      `这类步骤仍属于 Blossom Loop，但说明口径必须和普通 Cell / Region / AALS Type 区分开：这里的 Focus 是完整AALS，四个端点数字只是双瓣子集。`,
+    ] : [
+      `Blossom Loop (${branchLabel}): AALS body=${focusText}${terminalText ? `; petal terminal digits={${terminalText}}` : ""}; the main Burring Loop has ${mainNodes || "backend-recorded"} chain nodes, together with two petal paths.`,
+      `In AALS Double-Petal, the Focus is the full AALS body. In the 2-cell/4-digit form all four AALS digits are the petal terminals. In the 3-cell/5-digit form only four eligible digits are split into two pairs for Petal 1 and Petal 2, while the fifth digit remains part of the AALS body freedom.`,
+      `Check the two petals against the full AALS body. Whatever legal completion the AALS takes, at least one petal drives the target to the opposite state, so the target is false in every legal completion. The proof must therefore mention the full AALS body plus the terminal subset, not just the four terminal digits.`,
+      `1. Read Focus and verify the complete AALS body (n cells / n+2 digits). 2. Read the petal terminal digits only as the chosen terminal subset. 3. Verify Petal 1 and Petal 2. 4. Verify the Rank-0 truth/link count. 5. Apply eliminations.`,
+      `Highlight the whole AALS body first, then overlay the petal paths; do not colour only the four terminal digits. Keep the raw eureka for both petals and state explicitly that some AALS digits may remain body-only digits not used as terminals.`,
+      `This still belongs to Blossom Loop, but its explanation must be distinct from ordinary Cell / Region / AALS Type: the Focus is the full AALS body, while the four terminal digits are only the double-petal subset.`,
+    ];
     return zh ? [
       `Blossom Loop（${branchLabel}）：Focus=${focusText}；主Burring Loop含${mainNodes || "后端记录的"}个链节点，另有${burrs.length}条Burr Branch。`,
       `Focus中的候选/位置/AALS唯一分支必须有一个成立。主Burring Loop连接两条活动分支，其余Focus分支分别沿Burr Branch导向同一反相结论；所有分支闭合后形成全局Rank-0式循环。`,

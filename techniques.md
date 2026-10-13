@@ -755,6 +755,57 @@ Kazusa tutorial 的讲法不是简单列技巧名，而是按“从可见约束�
 - **核对要点：**不要只凭“像矩形”判断；必须能解释为什么会产生第二解，以及为什么这与唯一解前提矛盾。
 
 
+### Borescoper Deadly Pattern（三数） / ABC-UR
+
+**Kind:** BorescoperDeadlyPattern3 **Category:** Uniqueness **Difficulty:** 3 已接入 / wired
+
+- **基本含义：**三数 BDP（ABC-UR）由七个格和三个致命数字组成；致命候选允许残缺，不要求每格都含完整三数。
+
+- **成立逻辑：**若额外候选全部为假，主体会退化为可交换的致命填法，因此唯一解题必须保留至少一个破坏点。
+
+- **数学逻辑：**当前生产实现覆盖 Type 1–4：唯一破坏格、共同 guardian、数组容量与锁定数字。证明前提来自原始标准题的独立唯一解验证，不使用候选盘唯一性或已知终解制造结论。
+
+- **看盘步骤：**① 找七格主体与三个致命数字；② 找 extra/guardian；③ 按 Type 1–4 核对破坏点、数组或锁定条件；④ 应用删数。
+
+- **高亮阅读：**`BDPBody` 标主体，`Guardians/Extra/Subset/Locked` 标辅助逻辑，删数候选单独高亮。
+
+- **核对要点：**标准主线只启用 Type 1–4；alternate-body 仍是显式实验开关。BDP 已并入主线并默认启用；alternate-body 仍保持独立实验开关。
+
+
+### Borescoper Deadly Pattern（四数） / ABCD-UR
+
+**Kind:** BorescoperDeadlyPattern4 **Category:** Uniqueness **Difficulty:** 4 已接入 / wired
+
+- **基本含义：**四数 BDP（ABCD-UR）是八格、四致命数字的推广结构。
+
+- **成立逻辑：**若结构失去所有破坏点，会出现保持相关行、列、宫数字集合的替代填法，与唯一解前提矛盾。
+
+- **数学逻辑：**Type 1/2 使用 extra-digit breaker，Type 3 使用数组容量，Type 4 使用锁定数字占位；所有生产结论都要求原始标准题唯一性 provenance。
+
+- **看盘步骤：**① 核对八格主体；② 确认四个致命数字；③ 找 extra/guardian/数组/锁定；④ 按步骤证书应用结论。
+
+- **高亮阅读：**先看 `BDPBody`，再看 `Guardians/Extra/Subset/Locked`；辅助格不是主体成员。
+
+- **核对要点：**候选残缺本身不能证明唯一性；标准 Type 1–4 与实验 alternate-body 必须分开。BDP 已并入主线并默认启用。
+
+
+### Qiu's Deadly Pattern 淑芬致命结构（QDP）
+
+**Kind:** QiuDeadlyPattern **Category:** Uniqueness **Difficulty:** 4 已接入 / wired
+
+- **基本含义：**QDP 建立在成对行/列及交叉传递结构上。生产实现覆盖 Type 1–4、Locked、External 1/2 与 Dual。
+
+- **成立逻辑：**标准 Type 1–4、Locked 与 External 2 保留各自的生产判定；External 1（Ext-Num）先使用 Distinguishing UR Type1 作为结构筛选，但结构条件本身不再授权删数：每一个待删非基础候选还必须通过 ExactExchange 局部交换证书；Dual 继续按 Distinguishing UR 的双方向定义判定。Ext-Num 的证书要求在该候选假设下，每个可见于外界的行/列/宫 footprint 都存在第二个不同局部完成。
+
+- **数学逻辑：**Ext-Num 不再只比较原始提示数集合，也不再使用 generalized/local-transfer 近似；Distinguishing UR Type1 只负责筛选候选结构，真正删数必须由 ExactExchange 逐候选证明。未通过证书的结构即使删数碰巧正确也不作为 QDP Ext-Num 报告。Dual 同样按 0/1/2 个候选区分度格的定义式判定。TLG 只承担离线理论 oracle，不进入运行时。
+
+- **看盘步骤：**① 找两条主行/列与 cross；② 看标题判断 Type/Locked/External/Dual；③ Ext-Num 核对 AB、有效交叉格、区分度和唯一外部承接格；Dual 核对两个方向的区分度及障碍 Pin；④ 应用明确删数。
+
+- **高亮阅读：**Dual 步骤会给出 `DualRows`、`DualColumns` 与 `DualObstacle`；结论候选单独标色。
+
+- **核对要点：**必须有原始标准题唯一解证明；不能用候选盘唯一性、已知终解或 TLG 离线结果替代运行时证书。QDP 已并入主线并默认启用。
+
+
 ## Negative Rank: Oddagon / 负秩奇环结构
 
 对应 Kazusa Rank Logic 里的 Negative Ranks。读法是先看奇数/负秩结构为什么本身无法满足，再看 guardian 或额外候选如何作为“出口”阻止坏结构完整成立。它靠无解/容量矛盾证明，不靠 UR/BUG 那种唯一解第二解反证。
@@ -1243,7 +1294,7 @@ Kazusa tutorial 的讲法不是简单列技巧名，而是按“从可见约束�
 
 **Kind:** BlossomLoop **Category:** Rank Logic **Difficulty:** 7 已接入 / wired
 
-- **基本含义：**绽放环是一种介于标准连续环和网之间的 Rank 0 环状结构。它带有动态分支和强制/毛刺分支，分支像花朵一样从主环展开，因此称为绽放环。
+- **基本含义：**绽放环是一种介于标准连续环和网之间的 Rank 0 环状结构。它带有动态分支和强制/毛刺分支，分支像花朵一样从主环展开，因此称为绽放环。当前实现覆盖 Cell Type、Region Type、AALS Type，以及新增的 AALS Double-Petal。Double-Petal 明确分为 2格/4数 与 3格/5数：2格型四个AALS数字全部作为双瓣端点；3格型则从五个AALS数字中选四个作为端点，第五个数字仍属于AALS本体。
 
 - **成立逻辑：**标准绽放环中，每一处原本看似弱关系的位置，都可以通过动态链或强制链补成强关系；因此它能像连续环一样，对每个弱关系位置产生删数。
 
@@ -1251,7 +1302,7 @@ Kazusa tutorial 的讲法不是简单列技巧名，而是按“从可见约束�
 
 - **看盘步骤：**① 先找主环；② 标出动态分支与强制/毛刺分支；③ 检查分开和汇合的节点是否整体按强/弱区域连接；④ 数 Truth 与 Link 是否相等；⑤ 对每处弱关系按连续环式规则核对删数。
 
-- **高亮阅读：**主环可先按连续环读；分支不是额外装饰，而是用来证明某些断点/弱关系在整体上可当强关系使用。动态分支按动态链读，强制分支按毛刺/多毛刺链读。
+- **高亮阅读：**主环可先按连续环读；分支不是额外装饰，而是用来证明某些断点/弱关系在整体上可当强关系使用。动态分支按动态链读，强制分支按毛刺/多毛刺链读。对于 AALS Double-Petal，应先整体高亮完整 AALS 本体，再叠加双瓣端点与两条 Petal 路径，不能只显示四个端点数字。
 
 - **核对要点：**不要把绽放环写成普通 AIC Loop，也不要简单当成 Death Blossom 闭合版。关键是 Rank = 0，以及每个分支的分开、汇合节点能否把所有弱关系补成强关系。
 

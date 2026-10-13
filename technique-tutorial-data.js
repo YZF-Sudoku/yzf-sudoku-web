@@ -704,6 +704,42 @@ export const TECHNIQUE_TUTORIAL_CARDS = {
       "Use this only on a confirmed unique puzzle. Do not apply it to a multi-solution grid, an inconsistent grid, or an OCR draft whose uniqueness has not been checked."
     ]
   },
+  "BorescoperDeadlyPattern3": {
+    "zh": [
+      "三数探长致命结构（ABC-UR）由七个格和三个致命数字构成；候选允许残缺，不要求每格都含有全部数字。",
+      "若所有额外候选都为假，结构会退化为可替代填数的致命形态，因此唯一解题必须保留至少一个破坏点。",
+      "证明依赖原始标准提示数确有唯一解。致命形态存在保持相关行、列、宫数字集合的替代填法；Type 1–4 分别用唯一破坏格、共同守护数、数组容量或锁定数字推出结论。",
+      "① 核对七格结构和致命数字；② 找额外候选；③ 按当前 Type 检查破坏点、数组或锁定条件；④ 只应用已证明的删数。",
+      "BDPBody 标出结构，Guardians/Extra 标出破坏点，Subset 标出数组辅助格；结论候选单独高亮。",
+      "仅适用于已独立验证唯一解的原始标准题。不得凭已知终解、候选盘唯一性或调用者布尔值冒充证明；实验性的替代结构分支需单独启用；BDP 已并入主线并默认启用；实验性的替代结构分支仍需单独启用。"
+    ],
+    "en": [
+      "The three-digit Borescoper Deadly Pattern (ABC-UR) is a seven-cell reversible structure. Missing deadly candidates are allowed.",
+      "If all extra candidates are false, the body becomes deadly, so a uniquely solvable puzzle must retain at least one breaker.",
+      "The premise is an independently verified unique original standard puzzle. The deadly form has an alternative filling preserving the relevant row, column and box digit sets. Types 1–4 use a single breaker, common guardians, subset capacity or locked digits.",
+      "1. Verify the seven-cell body and deadly digits. 2. Locate extra candidates. 3. Check the subtype's breaker, subset or locking condition. 4. Apply only the proved eliminations.",
+      "BDPBody marks the structure; Guardians/Extra marks breakers; Subset marks supporting cells. Eliminations are highlighted separately.",
+      "Use only an independently verified unique original standard puzzle. A known solution, Sukaku uniqueness or a caller-supplied flag is not sufficient. The alternate-body experiment is separately gated. BDP is enabled by default in the main solver; the alternate-body experiment remains separately gated."
+    ]
+  },
+  "BorescoperDeadlyPattern4": {
+    "zh": [
+      "四数探长致命结构（ABCD-UR）由八个格和四个致命数字构成，是三数结构的推广。",
+      "若所有额外候选均不成立，结构会出现保持相关行、列、宫数字集合的另一种填法，违反原始标准题的唯一解前提。",
+      "Type 1/2 通过一个额外数字的破坏点推出删数；Type 3 利用额外数字与辅助格构成的数组容量；Type 4 利用锁定数字占位后剩余格必须为破坏点。具体结论以当前步骤证书为准。",
+      "① 核对八格、四数结构；② 检查结构外的候选约束；③ 分别核对 Type 1–4 的额外数字、数组或锁定条件；④ 应用结论。",
+      "先看 BDPBody 的四个致命数字，再看 Guardians/Extra/Subset 与结论；不要把辅助格误认为致命结构成员。",
+      "必须有原始标准题唯一性证明，且当前候选状态与该题一致。不能把候选残缺自动理解为有解或唯一解。"
+    ],
+    "en": [
+      "The four-digit Borescoper Deadly Pattern (ABCD-UR) is an eight-cell, four-digit generalization of the three-digit pattern.",
+      "Without an extra breaker, the body admits an alternative filling preserving the relevant row, column and box digit sets, contradicting original standard-puzzle uniqueness.",
+      "Types 1/2 use an extra-digit breaker, Type 3 uses subset capacity, and Type 4 uses locked-digit occupancy to force a breaker. The current step's certificate determines the exact conclusion.",
+      "1. Verify the eight-cell body and four deadly digits. 2. Check outside candidate restrictions. 3. Verify the subtype's extra-digit, subset or locking conditions. 4. Apply the conclusion.",
+      "Read BDPBody first, then Guardians/Extra/Subset and the eliminations. Supporting subset cells are not themselves deadly-body members.",
+      "The original standard puzzle must be independently verified unique, and the current candidate state must remain consistent with it. Sparse candidates alone do not establish uniqueness."
+    ]
+  },
   "BivalueOddagon": {
     "zh": [
       "双值奇环由一圈双值关系构成，若没有破坏点会造成奇数环/负秩无解矛盾；它不是唯一性技巧，不以“产生第二解”为主要证明。",
@@ -722,6 +758,25 @@ export const TECHNIQUE_TUTORIAL_CARDS = {
       "Do not interpret this as UR/BUG second-solution logic. Verify the odd/negative-rank contradiction and every required exit."
     ]
   },
+  "QiuDeadlyPattern": {
+    "zh": [
+      "淑芬致命结构（QDP）是建立在两条成对行或列上的唯一性结构。当前实现覆盖标准 Type 1–4、Locked、External 1/2 与 Dual 双向传递分支。",
+      "External 1（Ext-Num）先按 Distinguishing UR Type1 筛选结构，但结构条件本身不授权删数；每个待删非基础候选还必须通过 ExactExchange 局部交换证书。Dual 则要求行/列两个区分度方向中恰有一个成立，并只删除使失败方向在 Pin 假设下恢复区分度的障碍候选。",
+      "Ext-Num 的 Distinguishing 条件只作为 prefilter；生产删数必须逐候选携带 ExactExchange 证书，证明该假设下每个外部 row/column/box footprint 都有第二个局部完成。未认证结构不输出为 Ext-Num。Dual 直接枚举区分度中的 0/1/2 个候选格；TLG 仅用于离线理论验证。",
+      "① 确认两条主行/列及交叉结构；② 根据标题判断 Type、Locked、External 或 Dual；③ Ext-Num 核对 AB、有效交叉格、区分度和唯一外部承接格，Dual 核对两个方向区分度及障碍 Pin；④ 只接受步骤报告中的明确删数。",
+      "主结构通常用主体格/候选高亮；Dual 会附带 DualRows、DualColumns 与 DualObstacle 分组。删数候选使用结论色单独标示。",
+      "必须是已经独立验证唯一解的原始标准题。不要把候选盘唯一性、已知终解或 TLG 离线 oracle 当作运行时证明；Dual 的不同子证书也不能互相替代；QDP 已并入主线并默认启用。"
+    ],
+    "en": [
+      "Qiu's Deadly Pattern (QDP) is a uniqueness structure built on a paired set of rows or columns. The implementation covers standard Types 1–4, Locked, External 1/2, and the Dual two-direction transfer branch.",
+      "External 1 (Ext-Num) uses Distinguishing UR Type1 only as a structural prefilter. Every proposed non-base elimination must additionally pass an ExactExchange local certificate. Dual requires exactly one of the row/column distinction directions to pass and removes only an obstacle candidate whose pin assumption repairs the failing direction.",
+      "For Ext-Num, the distinction definition does not itself authorize an elimination: each eliminated assumption must have a second local completion with the same externally visible row/column/box footprint. Uncertified structural hits are suppressed. Dual explicitly enumerates the 0/1/2 candidate cells allowed by the distinction definition. TLG remains an offline theory oracle only.",
+      "1. Identify the two main rows/columns and the cross structure. 2. Read the reported subtype. 3. For Ext-Num check A/B, effective cross cells, distinction and the unique external carrier; for Dual check both distinction directions and the obstacle pin. 4. Apply only the explicit elimination reported by the step.",
+      "The body candidates are highlighted separately from the conclusion. Dual steps expose DualRows, DualColumns and DualObstacle groups.",
+      "The original standard puzzle must have independently verified uniqueness. Candidate-state uniqueness, a known solution, or the offline TLG oracle is not a runtime proof, and one Dual subtype certificate must not be substituted for another. QDP is enabled by default in the main solver."
+    ]
+  },
+
   "TripletOddagon": {
     "zh": [
       "三数字奇环把双值奇环推广到三个数字或三值结构，仍属于负秩/无解矛盾口径。",
@@ -1192,19 +1247,19 @@ export const TECHNIQUE_TUTORIAL_CARDS = {
   },
   "BlossomLoop": {
     "zh": [
-      "绽放环是一种介于标准连续环和网之间的 Rank 0 环状结构。它带有动态分支和强制/毛刺分支，分支像花朵一样从主环展开，因此称为绽放环。",
+      "绽放环是一种介于标准连续环和网之间的 Rank 0 环状结构。它带有动态分支和强制/毛刺分支，分支像花朵一样从主环展开，因此称为绽放环。当前前端需要同时区分 Cell Type、Region Type、AALS Type 与 AALS Double-Petal。AALS Double-Petal 明确包含 2格/4数 与 3格/5数 两种本体：2格型的四个AALS数字全部作为双瓣端点；3格型则从五个AALS数字中选四个作端点，第五个数字仍属于AALS本体。",
       "标准绽放环中，每一处原本看似弱关系的位置，都可以通过动态链或强制链补成强关系；因此它能像连续环一样，对每个弱关系位置产生删数。",
       "从秩理论看，环内强区域 Truth 表示至少一个候选为真，弱区域 Link 表示最多一个候选为真。标准绽放环的 Truth 数与 Link 数相等，即 Rank = 0，所以结构内真候选数量被上下界同时夹住：至少要满足所有 Truth，至多只能装入所有 Link。两者相等时，每个弱区域必须恰好有一个真候选。若外部候选成立并破坏某个弱区域或分支配额，就会导致 Truth 无法满足、Link 容量超限，或沿动态/强制分支绕回矛盾，因此该候选可删。",
       "① 先找主环；② 标出动态分支与强制/毛刺分支；③ 检查分开和汇合的节点是否整体按强/弱区域连接；④ 数 Truth 与 Link 是否相等；⑤ 对每处弱关系按连续环式规则核对删数。",
-      "主环可先按连续环读；分支不是额外装饰，而是用来证明某些断点/弱关系在整体上可当强关系使用。动态分支按动态链读，强制分支按毛刺/多毛刺链读。",
+      "主环可先按连续环读；分支不是额外装饰，而是用来证明某些断点/弱关系在整体上可当强关系使用。动态分支按动态链读，强制分支按毛刺/多毛刺链读。对于 AALS Double-Petal，必须先整体标出完整AALS本体，再叠加双瓣端点与两条Petal路径，不能只画四个端点数字。",
       "不要把绽放环写成普通 AIC Loop，也不要简单当成 Death Blossom 闭合版。关键是 Rank = 0，以及每个分支的分开、汇合节点能否把所有弱关系补成强关系。"
     ],
     "en": [
-      "Blossom Loop is a Rank-0 loop/network between a continuous loop and a net, with dynamic and forcing branches blooming from the main loop.",
+      "Blossom Loop is a Rank-0 loop/network between a continuous loop and a net, with dynamic and forcing branches blooming from the main loop. The frontend tutorial must distinguish Cell Type, Region Type, AALS Type, and AALS Double-Petal. AALS Double-Petal explicitly includes 2-cell/4-digit and 3-cell/5-digit bodies: in the 2-cell form all four AALS digits are petal terminals, while in the 3-cell form four of the five AALS digits are terminals and the fifth remains part of the AALS body.",
       "Each apparently weak break is reinforced by a dynamic or forcing branch, allowing the overall structure to behave like a continuous loop.",
       "Truth sectors require at least one true candidate and Link sectors allow at most one. At Rank 0 the lower and upper bounds are equal, so every link capacity is exactly used. An outside target that disrupts a link or branch quota makes a Truth unsatisfied or a Link overfull and is false.",
       "1. Find the main loop. 2. Mark dynamic and forcing/burr branches. 3. Verify how branches split and rejoin. 4. Count Truths and Links. 5. Apply continuous-loop-style eliminations at justified weak links.",
-      "The main loop is the skeleton; branches are proof components that turn breaks into effective strong relations.",
+      "The main loop is the skeleton; branches are proof components that turn breaks into effective strong relations. For AALS Double-Petal, highlight the whole AALS body first, then overlay the terminal subset and the two petals; do not show only the four terminal digits.",
       "Do not describe it as an ordinary AIC loop or merely a closed Death Blossom. Rank 0 and every branch reinforcement must be verified."
     ]
   },

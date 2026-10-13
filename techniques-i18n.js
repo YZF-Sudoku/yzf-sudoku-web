@@ -264,6 +264,9 @@
       "Use this only on a confirmed unique puzzle. Original clues cannot enter the body, extra body candidates are allowed, both deadly digits must remain in every body cell, ordinary UL Types keep priority, and an External result requires a strict body, an exact GuardianCover proof, and the subtype deduction."
     ),
     ExtendedRectangle: uniqueness("Extended Rectangle", "larger reversible rectangle-like structure"),
+    BorescoperDeadlyPattern3: uniqueness("Borescoper Deadly Pattern (3 digits)", "seven-cell, three-digit reversible structure"),
+    BorescoperDeadlyPattern4: uniqueness("Borescoper Deadly Pattern (4 digits)", "eight-cell, four-digit reversible structure"),
+    QiuDeadlyPattern: uniqueness("Qiu's Deadly Pattern", "paired-line deadly structure with corner or dual-line transfer"),
     BivalueOddagon: entry(
       "A Bivalue Oddagon is an odd cycle of bivalue relations that would be impossible without an escape candidate. It is a negative-rank contradiction, not a uniqueness proof.",
       "Two values cannot alternate consistently around an odd cycle, so a guardian or extra candidate must break the cycle.",

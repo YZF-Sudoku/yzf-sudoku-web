@@ -1725,7 +1725,7 @@
 <li>闭合局部模型可能推出教程没有单独列出的额外删数或出数。这通常表示 TLG 使用的完整投影比手工教程结论更强；仍应核对候选云边界是否准确。</li>
 </ul>
 <div class="warn">当前 GUR 需要覆盖至少 4 个格，安全上限为 16 个格、64 个候选点。典型 18 格 RUR/RUL 超过当前格数上限，不能直接当作已正式支持。</div>
-<h4>实战案例 1：QDP Type 1</h4>
+<h4>独立技巧 BDP / QDP 与 TLG 的关系</h4><p>主解题器中的 Borescoper Deadly Pattern（三数/四数）与 Qiu Deadly Pattern（QDP）现在是独立技巧。BDP 标准启用 Type 1–4；QDP 覆盖标准、Locked、External 与 Dual。其中 External 1（Ext-Num）使用 Distinguishing UR Type1 作为结构筛选，但每个生产删数还必须逐候选通过 ExactExchange 局部交换证书；仅满足结构条件不再足以产出步骤。Dual 按 Distinguishing UR 的区分度定义直接判定，不再用 fixed-pair 或 family-cross 近似直接产出步骤。它们只在原始标准题唯一解已经由引擎独立验证时运行。TLG 仍是独立的理论验证工具：可以用于离线核对结构，但不会在普通求解过程中替代 BDP/QDP 的生产判定。三个技巧现已并入主线并默认启用；实验性的 BDP alternate-body 分支仍保持单独开关。</p><h4>实战案例 1：QDP Type 1</h4>
 <p>此例使用 15 个 Cell Truth、覆盖 15 格的 61 个 GUR 候选。程序返回 26 个结果 Links、1 个 GUR 枚举约束、7 个删数和 1 个出数。QDP 的核心结论是 <code>r7c5&lt;&gt;26</code>；完整闭合模型进一步得到 <code>r7c5=3</code>。</p>
 <details><summary>展开完整前端结构与结果</summary>
 <pre><code>:0000:x:.48.163.736...2.4.5..3.....+4.....+1.8...451+7..1.....+4..+7....9..4.2.1...736.478.21.:862 574::
@@ -1978,7 +1978,7 @@ GUR 枚举约束 = 1
 <li>A closed local model can produce additional eliminations or assignments beyond a tutorial's highlighted conclusion. This can be valid because TLG evaluates all complete projections, but the cloud boundary should still be audited.</li>
 </ul>
 <div class="warn">A GUR currently spans at least 4 and at most 16 cells, with at most 64 candidate points. A typical 18-cell RUR/RUL exceeds the current cell limit and is not yet directly supported.</div>
-<h4>Verified Case 1: QDP Type 1</h4>
+<h4>Independent BDP / QDP techniques versus TLG</h4><p>The main solver now exposes three-digit and four-digit Borescoper Deadly Pattern plus Qiu Deadly Pattern (QDP) as independent techniques. Standard BDP enables Types 1–4; QDP covers standard, Locked, External, and Dual branches. External 1 (Ext-Num) now uses Distinguishing UR Type1 only as a structural prefilter; every production elimination must additionally pass a per-candidate ExactExchange local certificate. Structural conditions alone no longer authorize a step. Dual follows the Distinguishing UR definition directly instead of emitting steps from fixed-pair or family-cross approximations. They run only when uniqueness of the original standard puzzle has been independently verified by the engine. TLG remains a separate theory-validation tool: it may audit structures offline, but it is not used as the runtime BDP/QDP predicate. All three techniques are now enabled by default in the main solver; the experimental BDP alternate-body branch remains separately gated.</p><h4>Verified Case 1: QDP Type 1</h4>
 <p>This case uses 15 Cell Truths and 61 GUR candidates across 15 cells. The engine returns 26 Result Links, one GUR enumeration constraint, seven eliminations, and one assignment. The core QDP conclusion is <code>r7c5&lt;&gt;26</code>; the closed model further establishes <code>r7c5=3</code>.</p>
 <details><summary>Show the complete frontend structure and result</summary>
 <pre><code>:0000:x:.48.163.736...2.4.5..3.....+4.....+1.8...451+7..1.....+4..+7....9..4.2.1...736.478.21.:862 574::

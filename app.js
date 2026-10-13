@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-8e858a21fbe30267";
+import createModule from "./sudoku_wasm.js?v=wasm-08ca06499f5a6b6f";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -64,7 +64,7 @@ import {
   saveCampaignSession,
 } from "./campaign-progress.js?v=campaign-learning-r2";
 
-const APP_VERSION = "wasm-8e858a21fbe30267";
+const APP_VERSION = "wasm-08ca06499f5a6b6f";
 const UI_RELEASE_VERSION = "ui-20260819-solve-timer-v1";
 const MANUAL_VERSION = "manual-20260819-solve-timer-v1";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
@@ -815,6 +815,10 @@ const REF_TECHNIQUES = [
   ["WeakExocet", "Weak Exocet", "Exocet", 4, 500],
   ["TripletOddagon", "Triplet Oddagon", "Negative Rank", 4, 500],
   ["BruteForce", "BruteForce", "Fallback", 5, 10000],
+  // Append-only IDs 70/71/72. Display order is assigned separately below.
+  ["BorescoperDeadlyPattern3", "Borescoper Deadly Pattern (3 digits)", "Uniqueness", 3, 200],
+  ["BorescoperDeadlyPattern4", "Borescoper Deadly Pattern (4 digits)", "Uniqueness", 4, 260],
+  ["QiuDeadlyPattern", "Qiu's Deadly Pattern", "Uniqueness", 4, 260],
 ].map(([kind, title, category, difficulty, score], index) => ({
   kind,
   title,
@@ -827,6 +831,23 @@ const REF_TECHNIQUES = [
   implemented: false,
 }));
 
+// Never reorder REF_TECHNIQUES: its array positions are persisted backend IDs.
+// Presentation/search order is independent from the persisted IDs: keep BDP3
+// after Extended Rectangle, and place BDP4/QDP immediately before X-Chain.
+const BDP_DISPLAY_ORDER = new Map([
+  ["BorescoperDeadlyPattern3", 31.25],
+  ["BorescoperDeadlyPattern4", 37.25],
+  ["QiuDeadlyPattern", 37.5],
+]);
+const DEADLY_COLOR_LEVEL = new Map([
+  ["BorescoperDeadlyPattern3", 3],
+  ["BorescoperDeadlyPattern4", 4],
+  ["QiuDeadlyPattern", 4],
+]);
+for (const item of REF_TECHNIQUES) {
+  if (BDP_DISPLAY_ORDER.has(item.kind)) item.order = BDP_DISPLAY_ORDER.get(item.kind);
+}
+
 const REF_TECHNIQUE_BKCLR = [
   5, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2,
   2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -837,7 +858,9 @@ const REF_TECHNIQUE_BY_KIND = new Map(REF_TECHNIQUES.map((item, index) => [
   item.kind,
   {
     ...item,
-    colorLevel: (REF_TECHNIQUE_BKCLR[index + 1] ?? 0) + 1,
+    colorLevel: DEADLY_COLOR_LEVEL.has(item.kind)
+      ? DEADLY_COLOR_LEVEL.get(item.kind)
+      : (REF_TECHNIQUE_BKCLR[index + 1] ?? 0) + 1,
   },
 ]));
 
@@ -9463,7 +9486,7 @@ function stepExplainTemplateType(step = {}) {
   if (["CellRegionFC", "DynamicChain"].includes(kind)) return "forcing";
   if (["DeathBlossom", "BlossomLoop"].includes(kind)) return "blossom";
   if (["BivalueOddagon", "TripletOddagon"].includes(kind)) return "oddagon";
-  if (["GSP", "BUGOne", "BUGPlusN", "AvoidableRectangle", "UniqueRectangle", "UniqueLoop", "ExtendedRectangle"].includes(kind)) return "unique";
+  if (["GSP", "BUGOne", "BUGPlusN", "AvoidableRectangle", "UniqueRectangle", "UniqueLoop", "ExtendedRectangle", "BorescoperDeadlyPattern3", "BorescoperDeadlyPattern4", "QiuDeadlyPattern"].includes(kind)) return "unique";
   if (kind === "BrokenWing") return "guardian";
   if (kind === "Fireworks") return "fireworks";
   if (["XWing", "Swordfish", "Jellyfish", "FinnedXWing", "FinnedSwordfish", "FinnedJellyfish"].includes(kind)) return "fish";
@@ -11889,7 +11912,7 @@ function campaignHintDirection(step) {
   const kind = String(step?.kind || "");
   if (kind === "FullHouse") return campaignLocale() === "en" ? "find a row, column, or box with exactly one digit missing" : "寻找只缺一个数字的行、列或宫";
   if (/JE|SeniorExocet|WeakExocet/i.test(kind)) return campaignLocale() === "en" ? "base / target candidate structure" : "基格与目标格候选结构";
-  if (/UniqueRectangle|AvoidableRectangle|ExtendedRectangle|UniqueLoop|Oddagon|GSP/i.test(kind)) return campaignLocale() === "en" ? "uniqueness / contradiction structure" : "唯一性或矛盾结构";
+  if (/UniqueRectangle|AvoidableRectangle|ExtendedRectangle|BorescoperDeadlyPattern|QiuDeadlyPattern|UniqueLoop|Oddagon|GSP/i.test(kind)) return campaignLocale() === "en" ? "uniqueness / contradiction structure" : "唯一性或矛盾结构";
   if (/Multifish|SueDeCoq/i.test(kind)) return campaignLocale() === "en" ? "set-capacity / rank structure" : "集合容量与秩结构";
   if (/Single|FullHouse|LockedCandidates|Pair|Triple|Quad/i.test(kind)) return campaignLocale() === "en" ? "local candidates / subset logic" : "局部候选与数组逻辑";
   if (/Fish|XWing|Swordfish|Jellyfish|Skyscraper|Kite|EmptyRectangle|ERI/i.test(kind)) return campaignLocale() === "en" ? "single-digit pattern logic" : "单数字图形逻辑";
@@ -12954,6 +12977,7 @@ function mergeReferenceTechniques(engineTechniques, previousState = techniqueSta
       ...ref,
       ...(previous || {}),
       ...(engineItem || {}),
+      order: ref.order,
       title: engineItem?.title || ref.title,
       category: engineItem?.category || ref.category,
       score: engineItem?.score ?? ref.score,
@@ -13001,7 +13025,7 @@ function renderTrainingTechniqueOptionsOnly() {
     ahsAnyOption.style.color = "#1d2430";
     trainingTechniqueSelect.appendChild(ahsAnyOption);
   }
-  for (const item of state.filter((tech) => tech.implemented !== false)) {
+  for (const item of state.filter((tech) => tech.implemented !== false).sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999))) {
     const option = document.createElement("option");
     option.value = item.kind;
     option.textContent = `${techniqueName(item)} (${item.difficulty})`;
@@ -14021,6 +14045,24 @@ function generatedYzfScore(result) {
     ?? "";
 }
 
+function batchTsvField(value) {
+  return String(value ?? "")
+    .replace(/\t/g, " ")
+    .replace(/\r?\n/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function batchTrainingStepColumns(result) {
+  const step = result?.matchedStep || null;
+  if (!step) return ["", "", ""];
+  return [
+    batchTsvField(step.kind),
+    batchTsvField(step.title || step.chainType || ""),
+    batchTsvField(step.description || ""),
+  ];
+}
+
 function batchLine(result, trainingMode = false) {
   const library = trainingMode
     ? String(result?.trainingLibrary || "")
@@ -14030,11 +14072,20 @@ function batchLine(result, trainingMode = false) {
       ? "training result is missing the matched-step Library record"
       : "generated puzzle cannot be converted to Library format");
   }
-  return [
+  const columns = [
     library,
     generatedYzfScore(result),
     formatSkfrScore(result?.rating?.er),
-  ].join("\t") + "\n";
+  ];
+  // Training output keeps the historical first three columns intact and
+  // appends stable backend step identity.  In particular, matchedStep.title
+  // carries the concrete technique subtype (QDP Ext-Num/Dual, BDP Type 3/4,
+  // fish/chain variants, etc.), so saved corpora no longer require manually
+  // replaying every puzzle just to identify the generated branch.
+  if (trainingMode) {
+    columns.push(...batchTrainingStepColumns(result));
+  }
+  return columns.join("\t") + "\n";
 }
 
 function invalidStepDetail(result) {
@@ -22771,7 +22822,7 @@ function applyTechniquePreset(mode) {
     const order = orderOf(kind);
     return order >= orderOf(start) && order <= orderOf(end);
   };
-  const highSpeedDisabled = (kind) => inRange(kind, "DeathBlossom", "ComplexSquirmbagFish") || kind === "Braid" || kind === "GBraid";
+  const highSpeedDisabled = (kind) => BDP_DISPLAY_ORDER.has(kind) || inRange(kind, "DeathBlossom", "ComplexSquirmbagFish") || kind === "Braid" || kind === "GBraid";
   const extremeDisabled = (kind) => (
     kind === "GSP" ||
     inRange(kind, "AlmostPair", "AvoidableRectangle") ||
@@ -22779,6 +22830,7 @@ function applyTechniquePreset(mode) {
     inRange(kind, "XYZRing", "WXYZWing") ||
     kind === "UniqueLoop" ||
     kind === "ExtendedRectangle" ||
+    BDP_DISPLAY_ORDER.has(kind) ||
     kind === "Fireworks" ||
     kind === "BrokenWing" ||
     inRange(kind, "ALSXZ", "AHSWWing") ||

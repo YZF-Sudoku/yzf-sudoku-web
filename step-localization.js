@@ -47,6 +47,9 @@ const TECHNIQUE_NAMES = Object.freeze({
     UniqueRectangle: "唯一矩形",
     UniqueLoop: "唯一环",
     ExtendedRectangle: "拓展矩形",
+    BorescoperDeadlyPattern3: "三数 BDP 致命结构",
+    BorescoperDeadlyPattern4: "四数 BDP 致命结构",
+    QiuDeadlyPattern: "淑芬致命结构（QDP）",
     FinnedXWing: "鳍X翼",
     FinnedSwordfish: "鳍剑鱼",
     FinnedJellyfish: "鳍水母",
@@ -119,6 +122,9 @@ const TECHNIQUE_NAMES = Object.freeze({
     UniqueRectangle: "Unique Rectangle",
     UniqueLoop: "Unique Loop",
     ExtendedRectangle: "Extended Rectangle",
+    BorescoperDeadlyPattern3: "Borescoper Deadly Pattern (3 digits)",
+    BorescoperDeadlyPattern4: "Borescoper Deadly Pattern (4 digits)",
+    QiuDeadlyPattern: "Qiu's Deadly Pattern",
     FinnedXWing: "Finned X-Wing",
     FinnedSwordfish: "Finned Swordfish",
     FinnedJellyfish: "Finned Jellyfish",
@@ -320,6 +326,7 @@ function localizeKnownFamilyVariantZh(step, title) {
   if (/^Cell Type Blossom Loop$/i.test(title)) return "单元格型绽放环";
   if (/^Region Type Blossom Loop$/i.test(title)) return "区域型绽放环";
   if (/^AALS Type Blossom Loop$/i.test(title)) return "AALS型绽放环";
+  if (/^AALS Double-Petal Blossom Loop$/i.test(title)) return "AALS双瓣型绽放环";
   if ((match = title.match(/^Death Blossom Complex Type\s*(\d+)(\s*\(MSLS\))?$/i))) {
     return `死亡绽放（复杂 ${match[1]} 型${match[2] ? "，MSLS" : ""}）`;
   }
@@ -395,7 +402,7 @@ const FINNED_FISH = new Set(["FinnedXWing", "FinnedSwordfish", "FinnedJellyfish"
 const COMPLEX_FISH = new Set(["ComplexSwordfish", "ComplexJellyfish", "ComplexSquirmbagFish", "Multifish"]);
 const SINGLE_DIGIT_PATTERNS = new Set(["Skyscraper", "TwoStringKite", "EmptyRectangle", "ERIPair"]);
 const WINGS = new Set(["WWing", "XYWing", "XYZWing", "XYZRing", "WXYZWing"]);
-const UNIQUENESS = new Set(["AvoidableRectangle", "UniqueRectangle", "UniqueLoop", "ExtendedRectangle", "BUGOne", "BUGPlusN", "GSP"]);
+const UNIQUENESS = new Set(["AvoidableRectangle", "UniqueRectangle", "UniqueLoop", "ExtendedRectangle", "BorescoperDeadlyPattern3", "BorescoperDeadlyPattern4", "QiuDeadlyPattern", "BUGOne", "BUGPlusN", "GSP"]);
 const ODDAGONS = new Set(["BivalueOddagon", "TripletOddagon"]);
 const ALS_PATTERNS = new Set([
   "AlmostPair", "AlmostTriple", "SueDeCoq", "ALSXZ", "ALSXYWing", "ALSWWing",
@@ -867,6 +874,43 @@ function formatWingZh(step, name) {
 
 function formatUniquenessZh(step, name) {
   const cells = cellList(structureCells(step));
+  if (step?.kind === "QiuDeadlyPattern") {
+    const baseName = TECHNIQUE_NAMES.zh.QiuDeadlyPattern;
+    const branch = String(findGroup(step, /^branch$/i)?.tail || "");
+    const main = findGroup(step, /^mainlines$/i);
+    const distinguishing = findGroup(step, /^distinguishingcells$/i);
+    const cross = findGroup(step, /^crosscells$/i);
+    const stabilizer = findGroup(step, /^externalstabilizer$/i);
+    const branchZh = branch
+      .replace(/External Type 1\/Ext-Num LocalTransfer/gi, "External 1 型（Ext-Num，局部传递）")
+      .replace(/External Type 1\/Ext-Num/gi, "External 1 型（Ext-Num）")
+      .replace(/External Type 2/gi, "External 2 型")
+      .replace(/Type\s*([1-4])/gi, "$1 型")
+      .replace(/Locked/gi, "锁定型")
+      .replace(/Dual/gi, "Dual 双向传递");
+    const parts = [];
+    if (main?.tail) {
+      const lineText = main.tail
+        .replace(/^Rows:/i, "行 ")
+        .replace(/^Columns:/i, "列 ")
+        .replace(/,/g, "、");
+      parts.push(`主线为${lineText}`);
+    }
+    if (distinguishing && groupCellsText(distinguishing)) parts.push(`区分格为${groupCellsText(distinguishing)}`);
+    if (cross && groupCellsText(cross)) parts.push(`交叉格为${groupCellsText(cross)}`);
+    if (/External Type 1\/Ext-Num/i.test(branch)) {
+      const ds = validDigits((String(stabilizer?.tail || "").match(/[1-9]/g) || []).map(Number));
+      const sc = stabilizer && groupCellsText(stabilizer) ? groupCellsText(stabilizer) : "外部稳定格";
+      return `${baseName}（${branchZh || "External 1 型（Ext-Num）"}）：${parts.length ? parts.join("；") + "。" : ""}` +
+        `在标准淑芬主体条件成立后，核心数字${slashDigits(ds) || "相关数字"}的外部承接集中在${sc}；只有经过专项证明确认该格的其他候选会恢复致命交换时，才允许删除这些候选。${conclusionTextZh(step)}`;
+    }
+    if (/Dual/i.test(branch) || /Dual/i.test(String(step?.title || ""))) {
+      return `${baseName}（Dual 双向传递）：${parts.length ? parts.join("；") + "。" : ""}` +
+        `Pin 假设会触发双向传递，并由 fixed-pair 或 family-cross 专项证书导出矛盾，因此该 Pin 候选不能成立。${conclusionTextZh(step)}`;
+    }
+    return `${baseName}${branchZh ? `（${branchZh}）` : ""}：` +
+      `${parts.length ? parts.join("；") + "。" : ""}结构满足淑芬致命结构的唯一性条件；目标候选若保留，会恢复不可接受的可交换完成。${conclusionTextZh(step)}`;
+  }
   if (step?.kind === "GSP") {
     return `${name}：若保留目标候选，盘面会形成与唯一解冲突的全局对称摆放。${conclusionTextZh(step)}`;
   }
@@ -1102,7 +1146,7 @@ function formatRankZh(step, name) {
   const reason = {
     SKLoop: "分段融合待定数组首尾闭合成多米诺环，结构内的候选容量被完全锁定",
     MSLS: "相关单元与候选构成网状零秩结构，结构内的真数和链接容量达到平衡",
-    BlossomLoop: "绽放分支首尾闭合成环，各分支共同限制结构外候选",
+    BlossomLoop: "绽放分支首尾闭合成环，各分支共同限制结构外候选；AALS双瓣型会额外以整组AALS本体承载双瓣端点",
   }[step?.kind] || "结构满足秩约束";
   return `${name}：${reason}${rank ? `（秩${rank}）` : ""}${cells ? `，结构格为${cells}` : ""}。${conclusionTextZh(step)}`;
 }
@@ -1232,6 +1276,7 @@ function preserveBackendProofZh(step) {
   const structuredLocalizedKinds = new Set([
     "ALSXZ", "ALSXYWing", "ALSWWing",
     "AHSXZ", "AHSXYWing", "AHSWWing",
+    "BorescoperDeadlyPattern3", "BorescoperDeadlyPattern4", "QiuDeadlyPattern",
     "MSLS",
   ]);
   if (structuredLocalizedKinds.has(String(step?.kind || ""))) return "";
@@ -1239,6 +1284,7 @@ function preserveBackendProofZh(step) {
   const variant = !titleIsGenericForKind(step, title);
   const alwaysPreserve = new Set([
     "GSP", "AvoidableRectangle", "UniqueRectangle", "UniqueLoop", "ExtendedRectangle",
+    "BorescoperDeadlyPattern3", "BorescoperDeadlyPattern4",
     "BUGOne", "BUGPlusN", "BivalueOddagon", "TripletOddagon", "Fireworks",
     "XChain", "XYChain", "AIC", "GroupedAIC", "ComplexAIC", "CellRegionFC",
     "Whip", "GWhip", "DynamicChain", "Braid", "GBraid", "SKLoop", "MSLS",

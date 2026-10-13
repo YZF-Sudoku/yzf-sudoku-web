@@ -18,6 +18,17 @@ assert.match(
   /writer\.write\(batchLine\(result, trainingMode\)\)/,
   "batch generation must tell the formatter whether matched-step output is required"
 );
+
+assert.match(
+  source,
+  /function batchTrainingStepColumns\(result\)[\s\S]*step\.kind[\s\S]*step\.title[\s\S]*step\.description/,
+  "training output must append main technique, concrete subtype title, and step description"
+);
+assert.match(
+  source,
+  /if \(trainingMode\) \{[\s\S]{0,200}columns\.push\(\.\.\.batchTrainingStepColumns\(result\)\)/,
+  "only training generation should append step classification columns"
+);
 assert.match(
   source,
   /const trainingSnapshot = result\.trainingState \|\| matchedRecord\?\.before \|\| null;/,
