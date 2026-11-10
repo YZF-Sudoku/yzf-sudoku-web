@@ -10,7 +10,7 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-08ca06499f5a6b6f";
+import createModule from "./sudoku_wasm.js?v=wasm-0151ca4a50ef8ec4";
 import {
   categoryNameForLocale,
   localizedStepDescription,
@@ -64,7 +64,7 @@ import {
   saveCampaignSession,
 } from "./campaign-progress.js?v=campaign-learning-r2";
 
-const APP_VERSION = "wasm-08ca06499f5a6b6f";
+const APP_VERSION = "wasm-0151ca4a50ef8ec4";
 const UI_RELEASE_VERSION = "ui-20260819-solve-timer-v1";
 const MANUAL_VERSION = "manual-20260819-solve-timer-v1";
 const MOBILE_SOLVE_PREFERENCES_KEY = "yzf-mobile-solve-preferences-v1";
@@ -8814,7 +8814,9 @@ function reindexOverlayBranchPath(branch, branchIndex, nextIds) {
   const nodeIdMap = new Map();
   const branchLabel = branch?.label || `branch ${branchIndex + 1}`;
   const branchRole = String(branch?.role || "");
-  const isForceBranch = /=>/.test(branchLabel);
+  // BUG R4 labels carry full Eureka and explicit root rather than an
+  // artificial "=> elimination" placeholder; they are still Force branches.
+  const isForceBranch = /=>|\[root ON:\s*[1-9]r[1-9]c[1-9]\]/i.test(branchLabel);
   const nodes = (branch?.path?.nodes || []).map((node, nodeIndex) => {
     const nodeId = nextIds.node++;
     nodeIdMap.set(node.nodeId, nodeId);
@@ -8879,7 +8881,9 @@ function combineOverlayBranches(overlaySample, branches) {
   branches.forEach((branch, branchIndex) => {
     const branchLabel = branch?.label || `branch ${branchIndex + 1}`;
     const branchRole = String(branch?.role || "");
-    const isForceBranch = /=>/.test(branchLabel);
+    // BUG R4 labels carry full Eureka and explicit root rather than an
+  // artificial "=> elimination" placeholder; they are still Force branches.
+  const isForceBranch = /=>|\[root ON:\s*[1-9]r[1-9]c[1-9]\]/i.test(branchLabel);
     const branchNodeMap = new Map();
 
     for (const [nodeIndex, node] of (branch?.path?.nodes || []).entries()) {
@@ -8986,8 +8990,17 @@ function forcingBranchDisplayTexts(step, branches) {
   const details = forceChainDescriptionDetails(step);
   const detailBranches = details.filter((line) => /^branch\s+\d+\s*:/i.test(line));
   return branches.map((branch, index) => {
+    const branchLabel = String(branch?.label || "").trim();
+    // R4: backend-authored BUG branch labels contain the COMPLETE Eureka,
+    // including the final link back to the assumed ON root. Prefer those
+    // over the abbreviated description (which contains only four entries).
+    // For an old WASM, keep the legacy description/label behavior.
+    if (/^BUG Forcing Chain$/i.test(String(step?.title || "")) &&
+        /^branch\s+\d+\s*:\s*.+/i.test(branchLabel)) {
+      return branchLabel.replace(/^branch\s+\d+\s*:\s*/i, "");
+    }
     const detail = String(detailBranches[index] || "").replace(/^branch\s+\d+\s*:\s*/i, "").trim();
-    return detail || String(branch?.label || `${ui("branch")} ${index + 1}`).trim();
+    return detail || branchLabel || `${ui("branch")} ${index + 1}`;
   });
 }
 
@@ -9041,6 +9054,89 @@ function cycleYzfBranch(delta) {
   selectYzfBranchMode(sequence[nextIndex]);
 }
 
+// R3: A BUG witness is a complete *post-assumption* board, not a list of
+// 30-60 OFF proof leaves.  Show the actual bivalue digits and forced placements
+// before the optional branch proof browser.  No projection is guessed in JS.
+function bugForceWitnessData(step) {
+  if (!/^BUG Forcing Chain$/i.test(String(step?.title || ""))) return null;
+  const groups = Array.isArray(step?.groups) ? step.groups : [];
+  const cells = Array(81).fill(null);
+  const forced = new Set();
+  const guardians = new Map();
+  for (const group of groups) {
+    const label = String(group?.label || "");
+    if (label === "BUGIntermediateForcedCells") {
+      for (const entry of group.cells || []) {
+        const cell = Number(entry?.index ?? entry);
+        if (Number.isInteger(cell) && cell >= 0 && cell < 81) forced.add(cell);
+      }
+    }
+    const guardianMatch = /^BUGGuardian:([1-9])$/.exec(label);
+    if (guardianMatch) for (const entry of group.cells || []) {
+      const cell = Number(entry?.index ?? entry);
+      if (Number.isInteger(cell) && cell >= 0 && cell < 81)
+        guardians.set(cell, `${guardians.get(cell) || ""}${guardianMatch[1]}`);
+    }
+    const match = /^BUGBoard(Placed|Pair):([1-9]{1,2})$/.exec(label);
+    if (!match || (match[1] === "Placed" && match[2].length !== 1) ||
+        (match[1] === "Pair" && (match[2].length !== 2 || match[2][0] >= match[2][1]))) continue;
+    for (const entry of group.cells || []) {
+      const cell = Number(entry?.index ?? entry);
+      if (!Number.isInteger(cell) || cell < 0 || cell >= 81 || cells[cell]) return null;
+      cells[cell] = { text: match[2], placed: match[1] === "Placed" };
+    }
+  }
+  if (cells.some((cell) => cell === null)) return null; // old WASM: don't fabricate a board
+  return { cells, forced, guardians };
+}
+
+function renderBugForceWitness(step) {
+  const evidence = bugForceWitnessData(step);
+  if (!evidence) return null;
+  const zh = lang.value !== "en";
+  const panel = document.createElement("section");
+  panel.className = "bug-force-witness";
+  const heading = document.createElement("div");
+  heading.className = "bug-force-witness-heading";
+  heading.textContent = zh ? "假设传播后的完整 BUG 中间盘面" : "Complete BUG board after assumption";
+  panel.appendChild(heading);
+  const board = document.createElement("div");
+  board.className = "bug-force-witness-board";
+  board.setAttribute("role", "grid");
+  board.setAttribute("aria-label", heading.textContent);
+  for (let index = 0; index < 81; index += 1) {
+    const row = Math.floor(index / 9), col = index % 9;
+    const data = evidence.cells[index];
+    const cell = document.createElement("div");
+    cell.className = `bug-force-witness-cell ${data.placed ? (evidence.forced.has(index) ? "is-forced" : "is-given") : "is-bivalue"}`;
+    if (col === 2 || col === 5) cell.classList.add("box-right");
+    if (row === 2 || row === 5) cell.classList.add("box-bottom");
+    if (evidence.guardians.has(index)) cell.classList.add("has-guardian");
+    cell.textContent = data.text;
+    const cellName = `r${row + 1}c${col + 1}`;
+    const guardianDigits = evidence.guardians.get(index);
+    cell.title = `${cellName}: ${data.text}${guardianDigits ? ` | Guardian: ${guardianDigits}` : ""}${evidence.forced.has(index) ? " | forced placement" : ""}`;
+    cell.setAttribute("role", "gridcell");
+    board.appendChild(cell);
+  }
+  panel.appendChild(board);
+  const legend = document.createElement("div");
+  legend.className = "bug-force-witness-legend";
+  legend.textContent = zh
+    ? "每个未解格显示两个候选；绿色数字为推理中新增的出数；橙点表示原盘与 BUG 盘面的 Guardian 差分。该盘面只用于证明，不修改主盘面。"
+    : "Unfilled cells show both candidates; green digits are forced placements; orange dots mark Guardian differences. This proof board does not change the playing grid.";
+  panel.appendChild(legend);
+  const guardianList = [...evidence.guardians.entries()].flatMap(([index, digits]) =>
+    [...digits].map((digit) => `${digit}r${Math.floor(index / 9) + 1}c${index % 9 + 1}`));
+  if (guardianList.length) {
+    const detail = document.createElement("div");
+    detail.className = "bug-force-witness-legend";
+    detail.textContent = `Guardian (${guardianList.length}): ${guardianList.join("、")}`;
+    panel.appendChild(detail);
+  }
+  return panel;
+}
+
 function renderYzfBranchHintPanel() {
   if (!hintPanel) return;
   hintPanel.replaceChildren();
@@ -9050,6 +9146,8 @@ function renderYzfBranchHintPanel() {
     ? (yzfBranchContext.summaryText || yzfHintBaseText || ui("initialHint"))
     : (yzfHintBaseText || ui("initialHint"));
   hintPanel.appendChild(message);
+  const bugWitness = renderBugForceWitness(currentHint);
+  if (bugWitness) hintPanel.appendChild(bugWitness);
 
   if (!yzfBranchContext.active || yzfBranchContext.branches.length <= 1) return;
 
@@ -9067,7 +9165,18 @@ function renderYzfBranchHintPanel() {
     })),
   ];
 
-  entries.forEach((entry) => {
+  const manyProofLeaves = /^BUG Forcing Chain$/i.test(String(currentHint?.title || "")) && entries.length > 9;
+  const extraBranches = manyProofLeaves ? document.createElement("details") : null;
+  if (extraBranches) {
+    extraBranches.className = "forcing-branch-extra";
+    if (Number(yzfSelectedBranchMode) > 3) extraBranches.open = true;
+    const toggle = document.createElement("summary");
+    toggle.textContent = lang.value === "en"
+      ? `Show remaining ${entries.length - 4} proof paths`
+      : `展开其余 ${entries.length - 4} 条证明路径`;
+    extraBranches.appendChild(toggle);
+  }
+  entries.forEach((entry, entryIndex) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "forcing-branch-line";
@@ -9098,8 +9207,10 @@ function renderYzfBranchHintPanel() {
         hintPanel?.querySelector(`[data-branch-mode="${CSS.escape(yzfSelectedBranchMode)}"]`)?.focus({ preventScroll: true });
       });
     });
-    nav.appendChild(button);
+    if (extraBranches && entryIndex >= 4) extraBranches.appendChild(button);
+    else nav.appendChild(button);
   });
+  if (extraBranches) nav.appendChild(extraBranches);
 
   const shortcut = document.createElement("div");
   shortcut.className = "forcing-branch-shortcut";
@@ -9129,7 +9240,12 @@ function updateYzfBranchNavigation(overlaySample) {
     summaryText: forcingBranchSummaryText(currentHint || overlaySample, yzfHintBaseText),
     contextKey: nextKey,
   };
-  if (changed) yzfSelectedBranchMode = "all";
+  // A complete BUG may require dozens of OFF proof leaves. On first display,
+  // read one path instead of covering the playing grid with the merged 54-path
+  // graph. Σ remains available explicitly and proof data is not discarded.
+  if (changed) yzfSelectedBranchMode =
+    (/^BUG Forcing Chain$/i.test(String(currentHint?.title || overlaySample?.title || "")) && branches.length > 9)
+      ? "1" : "all";
   const sequence = branchModeSequence();
   if (!sequence.includes(yzfSelectedBranchMode)) yzfSelectedBranchMode = "all";
   renderYzfBranchHintPanel();
@@ -13551,6 +13667,7 @@ const REAL_SAMPLE_SUBTARGETS = [
   ["ComplexAIC", "Tridagon", "EdgeReason:tridagon"],
   ["CellRegionFC", "Cell Force Chain", "ForceChainKind:Cell Force Chain"],
   ["CellRegionFC", "Region Force Chain", "ForceChainKind:Region Force Chain"],
+  ["CellRegionFC", "BUG Forcing Chain", "ForceChainKind:BUG Forcing Chain"],
   ["CellRegionFC", "UR Force Chain", "ForceChainKind:UR Force Chain"],
   ["CellRegionFC", "Triplet Oddagon Force Chain", "ForceChainKind:Triplet Oddagon Force Chain"],
   ["DynamicChain", "Grouped Dynamic", "Grouped Dynamic Chain"],
@@ -13691,7 +13808,7 @@ const REAL_SAMPLE_BUILTIN_FIRST_IDS = new Set([
   "AIC::M2-Ring", "AIC::W-Wing", "AIC::L3-Wing",
   "ComplexAIC::UR Guardian", "GroupedAIC::Grouped L3-Ring",
   "CellRegionFC::Cell Force Chain", "CellRegionFC::Region Force Chain",
-  "CellRegionFC::UR Force Chain", "CellRegionFC::Triplet Oddagon Force Chain",
+  "CellRegionFC::BUG Forcing Chain", "CellRegionFC::UR Force Chain", "CellRegionFC::Triplet Oddagon Force Chain",
 ]);
 const REAL_SAMPLE_BUILTIN_BUDGETS = new Map([
   ["MSLS", 5], ["SKLoop", 10], ["JE", 1], ["SeniorExocet", 61], ["WeakExocet", 2],
@@ -13699,6 +13816,7 @@ const REAL_SAMPLE_BUILTIN_BUDGETS = new Map([
   ["AIC::M2-Ring", 1], ["AIC::W-Wing", 1], ["AIC::L3-Wing", 1],
   ["ComplexAIC::UR Guardian", 1], ["GroupedAIC::Grouped L3-Ring", 1],
   ["CellRegionFC::Cell Force Chain", 1], ["CellRegionFC::Region Force Chain", 1],
+  ["CellRegionFC::BUG Forcing Chain", 2],
   ["CellRegionFC::UR Force Chain", 1],
   // Five full solve paths are already a meaningful real-bank attempt here;
   // this rare branch falls back to training generation if those paths miss.

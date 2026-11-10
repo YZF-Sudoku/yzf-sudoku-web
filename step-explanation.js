@@ -179,6 +179,7 @@ function localizedProofMeta(value, locale = "zh") {
     ["DifferentDigit", "异数字端点"],
     ["Cell Force Chain", "单元格强制链"],
     ["Region Force Chain", "区域强制链"],
+    ["BUG Forcing Chain", "BUG 强制链"],
     ["UR Force Chain", "唯一矩形强制链"],
     ["Triplet Oddagon Force Chain", "三值死环强制链"],
     ["Pointing", "指向型"],
@@ -1375,6 +1376,26 @@ function forcingExplanation(step, locale) {
   const forceKind = firstGroupTail(step, "ForceChainKind") || String(step?.title || "Force Chain");
   const branchCount = firstGroupTail(step, "BranchCount") || String(branches.length || "");
   const commonTargets = firstGroup(step, /^commontargets$/i);
+  const bug = firstGroup(step, /^witnessbug$/i);
+  if (/^bug forcing chain$/i.test(forceKind) && bug?.cells?.length) {
+    const cells = cellNames(bug.cells, 15, locale);
+    const forced = firstGroup(step, /^bugintermediateforcedcells$/i);
+    const forcedNames = forced?.cells?.length ? cellNames(forced.cells, 15, locale) : "";
+    const guards = list(step?.groups).filter((g) => /^bugguardian:[1-9]$/i.test(String(g?.label || "")));
+    const guardianFacts = guards.map((g) => `${String(g.label).slice(-1)}@${cellNames(g.cells, 12, locale)}`);
+    const guardianText = guardianFacts.join(zh ? "、" : ", ");
+    return {
+      structure: zh
+        ? `BUG 强制链：假设起始候选为真，经链传播形成中间盘面${forcedNames ? `，其中 ${forcedNames} 被迫出数` : ""}；剩余 ${bug.cells.length} 格均为双候选格（${cells}）。`
+        : `BUG Forcing Chain: assuming the root true yields an intermediate candidate board${forcedNames ? ` with forced placements at ${forcedNames}` : ""}; the remaining ${bug.cells.length} cells are bivalue (${cells}).`,
+      basis: zh
+        ? "后端验证每个未填数字在每行、列、宫恰有两个候选位置；完整 BUG 可整体交换成第二个解，与已验证的原题唯一解矛盾。"
+        : "The backend verifies exactly two positions for every unplaced digit in every row, column and box. Flipping the complete BUG yields a second solution, contrary to the certified unique solution.",
+      deduction: zh
+        ? `原盘与致命盘面差分为 Guardian${guardianText ? `（${guardianText}）` : ""}，但必须排除中间盘面已出数的格。反向回放各条证明链，照原有逻辑对端点删数集合取交集。`
+        : `The original-to-deadly-board candidate difference gives the Guardians${guardianText ? ` (${guardianText})` : ""}, excluding every cell filled in the intermediate board. Reverse the proof chains and intersect endpoint elimination sets as before.`,
+    };
+  }
   const triplet = firstGroup(step, /^witnesstripletoddagon$/i);
   const guardians = tripletGuardianFacts(step, locale);
   const guardianBranches = tripletGuardianBranchFacts(step, locale);
@@ -3101,6 +3122,21 @@ function buildAuditedPhase6Guide(step = {}, locale = "zh") {
     const forceKind = localizedProofMeta(forceKindRaw, locale);
     const branches = firstGroupTail(step, "BranchCount") || String(list(step?.chainBranches).length || "");
     const targets = firstGroup(step, /^commontargets$/i);
+    const bug = firstGroup(step, /^witnessbug$/i);
+    if (/^bug forcing chain$/i.test(forceKindRaw) && bug?.cells?.length) {
+      const cells = cellNames(bug.cells, 15, locale);
+      return zh ? [
+        model.structure, model.basis, model.deduction,
+        `① 假设根候选为真；② 传播并生成中间盘面；③ 检查 ${bug.cells.length} 个未解格各剩两个候选、每个未填区域数字双位置；④ 差分提取 Guardian，排除已出数格；⑤ 逆向回放证明链并取端点删数交集。`,
+        `BUG 主体见证格：${cells}。链、候选删除、BUG 剩余主体必须分别核对；任何关键删除没有来源即不能成立。`,
+        "其他端点删数若被输出，仍需满足所有显示分支端点的共同删数条件。",
+      ] : [
+        model.structure, model.basis, model.deduction,
+        `1. Assume the root true. 2. Propagate to an intermediate board. 3. Verify ${bug.cells.length} bivalue cells and two positions for each unplaced house-digit. 4. Extract Guardians by difference, excluding filled cells. 5. Reverse the proof chains and intersect endpoint elimination sets.`,
+        `BUG witness cells: ${cells}. Independently verify the paths, OFF removals and remaining BUG body; no required deletion may lack a source.`,
+        "Other emitted endpoint eliminations must independently belong to the intersection of all displayed branch endpoint sets.",
+      ];
+    }
     const triplet = firstGroup(step, /^witnesstripletoddagon$/i);
     const guardians = tripletGuardianFacts(step, locale);
     const guardianBranches = tripletGuardianBranchFacts(step, locale);

@@ -700,6 +700,21 @@ const phase6Cases = [
     chainBranches: [{ label: "branch 1", nodes: [], edges: [] }, { label: "branch 2", nodes: [], edges: [] }],
     groups: [{ label: "ForceChainKind:Region Force Chain", cells: [] }, { label: "BranchCount:2", cells: [] }, { label: "MergeRule:EndpointDeletionIntersection", cells: [] }, { label: "CommonTargets:4", cells: [c(30)] }],
   }), "输出仍是标准 Forcing Chain"],
+  ["BUG Forcing Chain", base({
+    kind: "CellRegionFC", title: "BUG Forcing Chain", candidates: [1], actions: [], eliminations: [elim(12, [1])],
+    chainBranches: [{ label: "branch 1", nodes: [], edges: [] }],
+    groups: [
+      { label: "ForceChainKind:BUG Forcing Chain", cells: [] },
+      { label: "WitnessBUG:BivalueGrid", cells: [c(30), c(31), c(32)] },
+      { label: "BUGIntermediateForcedCells", cells: [c(1), c(2)] },
+      { label: "BUGGuardian:3", cells: [c(30)] },
+      { label: "BUGGuardianCount:1", cells: [] },
+      { label: "MergeRule:EndpointDeletionIntersection", cells: [] },
+      { label: "BUGHouseDigitCount:2", cells: [] },
+      { label: "BUGUniquenessPremise:Certified", cells: [] },
+      { label: "BranchCount:1", cells: [] },
+    ],
+  }), "完整 BUG"],
   ["UR Force Chain", base({
     kind: "CellRegionFC", title: "UR Force Chain", candidates: [2], actions: [], eliminations: [elim(40, [2])],
     chainBranches: [{ label: "branch 1", nodes: [], edges: [] }, { label: "branch 2", nodes: [], edges: [] }],
@@ -769,6 +784,12 @@ for (const [name, step, expectedZh] of phase6Cases) {
   assert.ok(zhText.includes(expectedZh), `${name}: missing marker ${expectedZh}\n${zhText}`);
   if (step.kind === "CellRegionFC") {
     assert.ok(!zhText.includes("矛盾链"), `${name}: Force Chain must not be presented as a contradiction chain`);
+  }
+  if (name === "BUG Forcing Chain") {
+    assert.ok(zhText.includes("差分"), "BUG: Chinese Guardian difference missing");
+    assert.ok(zhText.includes("3@r4c4"), "BUG: per-candidate guardian cell is missing");
+    assert.ok(zhText.includes("端点删数集合取交集"), "BUG: original reversed endpoint merge lost");
+    assert.ok(zhText.includes("排除中间盘面已出数的格"), "BUG: filled-cell exclusion omitted");
   }
   const enPayload = buildAuditedStepExplanationPayload(step, "en");
   const enGuide = buildAuditedTechniqueGuide(step, "en");

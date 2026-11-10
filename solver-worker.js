@@ -8,9 +8,9 @@
  * - 主线程代码要避免长时间同步计算；耗时工作优先留在 Worker/WASM。
  * - 涉及移动端指针事件时同时检查鼠标、触摸、长按抑制和浏览器返回行为。
  */
-import createModule from "./sudoku_wasm.js?v=wasm-08ca06499f5a6b6f";
+import createModule from "./sudoku_wasm.js?v=wasm-0151ca4a50ef8ec4";
 
-const APP_VERSION = "wasm-08ca06499f5a6b6f";
+const APP_VERSION = "wasm-0151ca4a50ef8ec4";
 
 let enginePromise = null;
 

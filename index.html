@@ -4823,6 +4823,22 @@
     /* V438: forcing-chain branches are selected from the explanation text.
        No branch widget is attached to the board, so branch switching cannot
        cover, move, or resize the grid. */
+    /* R3: the deadly intermediate BUG board belongs in the hint, not the game grid. */
+    .hint-panel .bug-force-witness { margin: 9px 0; max-width: 345px; }
+    .hint-panel .bug-force-witness-heading { font-weight: 750; margin-bottom: 5px; }
+    .hint-panel .bug-force-witness-board { display: grid; grid-template-columns: repeat(9,minmax(0,1fr)); width: 100%; aspect-ratio: 1; border: 2px solid var(--text-color, #475569); background: var(--surface, #fff); }
+    .hint-panel .bug-force-witness-cell { min-width:0; display:flex; align-items:center; justify-content:center; position:relative; border-right:1px solid #94a3b8; border-bottom:1px solid #94a3b8; font-size:clamp(10px,1.1vw,15px); font-weight:600; line-height:1; color:var(--text-color,#25344b); }
+    .hint-panel .bug-force-witness-cell:nth-child(9n) { border-right:0; }
+    .hint-panel .bug-force-witness-cell:nth-child(n+73) { border-bottom:0; }
+    .hint-panel .bug-force-witness-cell.box-right { border-right:2px solid #475569; }
+    .hint-panel .bug-force-witness-cell.box-bottom { border-bottom:2px solid #475569; }
+    .hint-panel .bug-force-witness-cell.is-forced { color:#15803d; background:rgba(22,163,74,.12); font-size:1.1em; font-weight:850; }
+    .hint-panel .bug-force-witness-cell.is-given { font-weight:750; opacity:.75; }
+    .hint-panel .bug-force-witness-cell.has-guardian::after { content:""; position:absolute; right:1px; top:1px; width:5px; height:5px; border-radius:50%; background:#f59e0b; }
+    .hint-panel .bug-force-witness-legend { font-size:11px; line-height:1.5; margin:5px 0; overflow-wrap:anywhere; }
+    .hint-panel .forcing-branch-extra summary { cursor:pointer; padding:6px; font-weight:600; }
+    .hint-panel .forcing-branch-extra { margin:4px 0; border:1px solid rgba(104,139,188,.28); border-radius:7px; }
+    @media(max-width:450px) { .hint-panel .bug-force-witness-cell { font-size:11px; } }
     .hint-panel .forcing-branch-nav {
       display: grid;
       gap: 4px;
@@ -6742,6 +6758,6 @@
   <div id="appStatusToast" class="app-status-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <!-- V442: correct ASCII candidate-grid import; singleton cells stay large digits. -->
-    <script type="module" src="./app.js?v=wasm-08ca06499f5a6b6f"></script>
+    <script type="module" src="./app.js?v=wasm-0151ca4a50ef8ec4"></script>
   </body>
 </html>

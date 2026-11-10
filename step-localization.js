@@ -331,10 +331,11 @@ function localizeKnownFamilyVariantZh(step, title) {
     return `死亡绽放（复杂 ${match[1]} 型${match[2] ? "，MSLS" : ""}）`;
   }
   if (/^Death Blossom$/i.test(title)) return "死亡绽放";
-  if (/^(?:Cell|Region|UR|Triplet Oddagon) Force Chain$/i.test(title)) {
+  if (/^(?:(?:Cell|Region|UR|Triplet Oddagon) Force Chain|BUG Forcing Chain)$/i.test(title)) {
     return title
       .replace(/^Cell Force Chain$/i, "单元格强制链")
       .replace(/^Region Force Chain$/i, "区域强制链")
+      .replace(/^BUG Forcing Chain$/i, "BUG 强制链")
       .replace(/^UR Force Chain$/i, "唯一矩形强制链")
       .replace(/^Triplet Oddagon Force Chain$/i, "三值死环强制链");
   }
@@ -910,6 +911,20 @@ function formatUniquenessZh(step, name) {
     }
     return `${baseName}${branchZh ? `（${branchZh}）` : ""}：` +
       `${parts.length ? parts.join("；") + "。" : ""}结构满足淑芬致命结构的唯一性条件；目标候选若保留，会恢复不可接受的可交换完成。${conclusionTextZh(step)}`;
+  }
+  if (step?.kind === "BorescoperDeadlyPattern4" && /Type\s*4\b/i.test(String(step?.title || ""))) {
+    const witness = findGroup(step, /^bdp4candidatewitness$/i);
+    const swap = findGroup(step, /^bdp4geometricpartner$/i);
+    if (witness && swap && /^[1-9]{8}$/.test(witness.tail) && /^[1-9]{8}$/.test(swap.tail)) {
+      const positions = witness.cells || [];
+      const layout = (digits) => positions.length === 8
+        ? positions.map((c, i) => `${cellName(c)}=${digits[i]}`).join("、")
+        : digits;
+      return `${name}（4 型）：${cells}构成八格结构；四个致命数字的一组候选兼容局部填数为${layout(witness.tail)}。` +
+        `按交换定式，保持各相关行、列、宫数字集合不变的另一组几何填数为${layout(swap.tail)}。` +
+        `后者是唯一性反证布局，不保证满足当前盘面已经删除的所有笔记候选。` +
+        `锁定数字迫使目标候选恢复这样的致命结构，故可删数。${conclusionTextZh(step)}`;
+    }
   }
   if (step?.kind === "GSP") {
     return `${name}：若保留目标候选，盘面会形成与唯一解冲突的全局对称摆放。${conclusionTextZh(step)}`;
